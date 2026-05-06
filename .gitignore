@@ -22,6 +22,10 @@ analysis_options_user.yaml
 .DS_Store
 Thumbs.db
 
+# Firebase native config (keep local / CI secret storage)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
 # Android and iOS platform-specific ignores are maintained in:
 # - android/.gitignore
 # - ios/.gitignore
