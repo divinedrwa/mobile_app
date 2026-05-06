@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches DesignColors.primary (0xFF2563EB) — keep native + Flutter splash visually aligned -->
+    <color name="splash_primary">#FF2563EB</color>
+</resources>

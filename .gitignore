@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+build/
+
+# Generated / IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+analysis_options_user.yaml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android and iOS platform-specific ignores are maintained in:
+# - android/.gitignore
+# - ios/.gitignore

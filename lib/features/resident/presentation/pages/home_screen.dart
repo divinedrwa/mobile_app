@@ -1,0 +1,2866 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../shared/models/user_model.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/visitor_provider.dart';
+import '../../data/models/maintenance_due_model.dart';
+import '../../data/models/notice_model.dart';
+import '../../data/models/quick_action_model.dart';
+import '../../data/models/notification_model.dart';
+import '../../data/providers/content_provider.dart';
+import '../../data/providers/maintenance_provider.dart';
+import '../../data/providers/notification_provider.dart';
+import '../../data/providers/dashboard_provider.dart';
+import '../../data/providers/security_contact_provider.dart';
+import '../../data/models/billing_cycle_current_model.dart';
+import '../../data/models/resident_dashboard_model.dart';
+import '../../data/models/security_contact_model.dart';
+import 'amenities_screen.dart';
+import 'amenity_booking_history_screen.dart';
+import 'complaint_screen.dart';
+import 'vendors_staff_screen.dart';
+import 'notifications_center_screen.dart';
+import 'parcel_management_screen.dart';
+import 'sos_screen.dart';
+import 'visitor_history_screen.dart';
+
+/// Landing / home dashboard — UI aligned to product reference (light cards, blue accents).
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+// —— Reference design spec (resident landing) ——
+const Color _kOrange = Color(0xFFFF6D00);
+const Color _kGreen = Color(0xFF4CAF50);
+const Color _kPageBg = Color(0xFFF8F9FB);
+const Color _kTextSecondary = Color(0xFF64748B);
+
+const double _kPadH = 20;
+const double _kSectionGap = 20;
+const double _kRadiusLg = 16;
+const double _kRadiusMd = 14;
+const double _kRadiusSm = 12;
+
+List<BoxShadow> _cardShadow([double opacity = 0.06]) => [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: opacity),
+        blurRadius: 10,
+        offset: const Offset(0, 3),
+      ),
+    ];
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  Future<void> _handleRefresh() async {
+    ref.invalidate(pendingMaintenanceProvider);
+    ref.invalidate(maintenanceHistoryProvider);
+    ref.invalidate(residentBillingCycleProvider);
+    ref.invalidate(residentDashboardProvider);
+    ref.invalidate(noticesProvider);
+    ref.invalidate(eventsProvider);
+    ref.invalidate(pollsProvider);
+    ref.invalidate(documentsProvider);
+    ref.invalidate(notificationProvider);
+    ref.invalidate(visitorApprovalRequestsProvider('pending'));
+    ref.invalidate(visitorApprovalRequestsProvider('all'));
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) setState(() {});
+  }
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  String _roleLabel(UserRole role) {
+    switch (role) {
+      case UserRole.superAdmin:
+        return 'Platform';
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.guard:
+        return 'Guard';
+      case UserRole.resident:
+        return 'Resident';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final pendingState = ref.watch(pendingMaintenanceProvider);
+    final noticesState = ref.watch(noticesProvider);
+    final notificationsState = ref.watch(notificationProvider);
+    final dashboardAsync = ref.watch(residentDashboardProvider);
+    final billingAsync = ref.watch(residentBillingCycleProvider);
+    final securityContactsAsync = ref.watch(securityContactsProvider);
+    final user = authState.user;
+    final unreadNotifications = notificationsState.maybeWhen(
+      data: (list) => list.where((n) => !n.isRead).length,
+      orElse: () => 0,
+    );
+    final hasImportantNotices =
+        (noticesState.valueOrNull ?? const <NoticeModel>[]).isNotEmpty;
+
+    final activeBillingCycle = billingAsync.maybeWhen(
+      data: (c) {
+        if (user?.role == UserRole.admin || !c.hasCycle || c.isPaid) {
+          return null;
+        }
+        final s = c.status;
+        if (s?.isOpen == true || s?.isUpcoming == true) {
+          return c;
+        }
+        return null;
+      },
+      orElse: () => null,
+    );
+    final pendingBillingDues = billingAsync.maybeWhen(
+      data: (c) => c.pendingDues,
+      orElse: () => const <BillingPendingDue>[],
+    );
+    return Scaffold(
+      backgroundColor: _kPageBg,
+      body: RefreshIndicator(
+        color: DesignColors.primary,
+        onRefresh: _handleRefresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(
+                context,
+                user?.name ?? 'User',
+                user?.role ?? UserRole.resident,
+                user,
+                unreadNotifications,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(_kPadH, 12, _kPadH, 112),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDashboardStatsRow(context, dashboardAsync),
+                    const SizedBox(height: _kSectionGap),
+                    _buildSocietyFundBalanceCard(context, dashboardAsync),
+                    const SizedBox(height: _kSectionGap),
+                    _buildQuickActions(context),
+                    const SizedBox(height: _kSectionGap),
+                    if (activeBillingCycle != null) ...[
+                      _buildOpenBillingStripe(context, activeBillingCycle),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+                    if (pendingBillingDues.isNotEmpty) ...[
+                      _buildMonthWiseBillingDues(context, pendingBillingDues),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+                    _buildMaintenanceInsightsEntry(context),
+                    const SizedBox(height: _kSectionGap),
+                    if (hasImportantNotices) ...[
+                      _buildImportantNotices(context, noticesState),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+                    _buildGateVisitorRequestsBanner(context),
+                    const SizedBox(height: _kSectionGap),
+                    _buildVisitorsAndGateSection(context),
+                    const SizedBox(height: _kSectionGap),
+                    _buildOutstandingDues(context, pendingState),
+                    const SizedBox(height: _kSectionGap),
+                    _buildSupportStripWithFab(context, securityContactsAsync),
+                    const SizedBox(height: _kSectionGap),
+                    _buildRecentActivity(context, notificationsState),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    String name,
+    UserRole role,
+    UserModel? user,
+    int unreadNotifications,
+  ) {
+    final unitNo = user?.villaNumber?.trim();
+    final unitLabel =
+        unitNo != null && unitNo.isNotEmpty ? 'Unit $unitNo' : null;
+    final block = user?.villaBlock?.trim();
+    final society = user?.societyName?.trim();
+
+    final unitBlockLabel = <String>[];
+    if (unitLabel != null) unitBlockLabel.add(unitLabel);
+    if (block != null && block.isNotEmpty) unitBlockLabel.add('Block $block');
+    final unitBlockText = unitBlockLabel.join(' · ');
+
+    final badgeText = unreadNotifications > 99
+        ? '99+'
+        : '$unreadNotifications';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: [0.0, 0.38, 1.0],
+          colors: [
+            Color(0xFFEEF6FF),
+            Color(0xFFF3F0FF),
+            Colors.white,
+          ],
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          _buildHeaderIllustration(),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(_kPadH, 4, 10, 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          DesignColors.primary.withValues(alpha: 0.88),
+                          DesignColors.primary.withValues(alpha: 0.52),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: DesignColors.primary.withValues(alpha: 0.18),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'R',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.35,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _greeting(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _kTextSecondary.withValues(alpha: 0.92),
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                            letterSpacing: 0.02,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        LayoutBuilder(
+                          builder: (context, c) {
+                            const gap = 6.0;
+                            const pillReserve = 76.0;
+                            final nameW =
+                                (c.maxWidth - pillReserve - gap).clamp(48.0, double.infinity);
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: nameW,
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: DesignColors.textPrimary,
+                                      height: 1.18,
+                                      letterSpacing: -0.4,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                SizedBox(width: gap),
+                                _buildHeaderActivePill(),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DesignColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.badge_outlined, size: 12, color: DesignColors.primary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    _roleLabel(role),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: DesignColors.primary,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (unitBlockText.isNotEmpty)
+                              Container(
+                                constraints: const BoxConstraints(maxWidth: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.94),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: DesignColors.primary.withValues(alpha: 0.16),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.apartment_rounded,
+                                      size: 12,
+                                      color: DesignColors.primary,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Expanded(
+                                      child: Text(
+                                        unitBlockText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: DesignColors.textPrimary,
+                                          height: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (society != null && society.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          KeyedSubtree(
+                            key: ValueKey<String>(society),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: DesignColors.primary.withValues(alpha: 0.08),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: DesignColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.domain_rounded,
+                                      size: 14,
+                                      color: DesignColors.primary.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Society',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.4,
+                                            color: _kTextSecondary.withValues(alpha: 0.85),
+                                            height: 1,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          society,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: DesignColors.textPrimary,
+                                            height: 1.28,
+                                            letterSpacing: -0.15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 380.ms, curve: Curves.easeOut)
+                                .slideY(
+                                  begin: 0.06,
+                                  end: 0,
+                                  duration: 380.ms,
+                                  curve: Curves.easeOutCubic,
+                                ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Material(
+                    color: Colors.white,
+                    elevation: 0,
+                    shape: const CircleBorder(),
+                    shadowColor: Colors.transparent,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => residentNotificationsEntry,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.035),
+                              blurRadius: 6,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_none_rounded,
+                              color: DesignColors.textPrimary.withValues(alpha: 0.85),
+                              size: 20,
+                            ),
+                            if (unreadNotifications > 0)
+                              Positioned(
+                                right: 5,
+                                top: 5,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: unreadNotifications > 9 ? 3 : 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE53935),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.white, width: 1.25),
+                                  ),
+                                  constraints: const BoxConstraints(minHeight: 15),
+                                  child: Text(
+                                    badgeText,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.05,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderActivePill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _kGreen.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: const BoxDecoration(
+              color: _kGreen,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            'Active',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: _kGreen,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Subtle house + trees art (top-right), scaled down to reduce header height.
+  Widget _buildHeaderIllustration() {
+    return Positioned(
+      right: 2,
+      top: 26,
+      child: IgnorePointer(
+        child: SizedBox(
+          width: 108,
+          height: 78,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                right: 2,
+                top: 14,
+                child: Icon(
+                  Icons.grass_rounded,
+                  size: 28,
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.22),
+                ),
+              ),
+              Positioned(
+                right: 30,
+                top: 4,
+                child: Icon(
+                  Icons.park_rounded,
+                  size: 34,
+                  color: const Color(0xFF66BB6A).withValues(alpha: 0.26),
+                ),
+              ),
+              Positioned(
+                right: 38,
+                top: 22,
+                child: Icon(
+                  Icons.holiday_village_rounded,
+                  size: 44,
+                  color: DesignColors.primary.withValues(alpha: 0.16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Overview — single card, 2×2 grid with inner dividers (tighter than separate tiles).
+  Widget _buildDashboardStatsRow(
+    BuildContext context,
+    AsyncValue<ResidentDashboardModel> dash,
+  ) {
+    final fallbackStats = const ResidentDashboardStats(
+      pendingMaintenance: 0,
+      activeComplaints: 0,
+      pendingParcels: 0,
+      upcomingBookings: 0,
+    );
+    final s = dash.maybeWhen(
+      data: (d) => d.stats,
+      orElse: () => fallbackStats,
+    );
+    final divider = DesignColors.borderLight;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              'Overview',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: DesignColors.textPrimary,
+                letterSpacing: -0.38,
+                height: 1.15,
+              ),
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: () => context.push('/resident/overview'),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Text(
+                  'View all >',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                    color: DesignColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusMd),
+            border: Border.all(color: const Color(0xFFE8ECF0)),
+            boxShadow: _cardShadow(0.055),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _overviewStatCell(
+                          label: 'Maintenance',
+                          value: s.pendingMaintenance,
+                          color: _kOrange,
+                          icon: Icons.payments_outlined,
+                          onTap: () => context.push('/resident/maintenance-payment'),
+                        ),
+                      ),
+                      Container(width: 1, color: divider),
+                      Expanded(
+                        child: _overviewStatCell(
+                          label: 'Complaints',
+                          value: s.activeComplaints,
+                          color: const Color(0xFFE65100),
+                          icon: Icons.report_problem_outlined,
+                          onTap: () => context.push('/resident/my-complaints'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, thickness: 1, color: divider),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _overviewStatCell(
+                          label: 'Parcels',
+                          value: s.pendingParcels,
+                          color: DesignColors.primary,
+                          icon: Icons.inventory_2_outlined,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ParcelManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Container(width: 1, color: divider),
+                      Expanded(
+                        child: _overviewStatCell(
+                          label: 'Bookings',
+                          value: s.upcomingBookings,
+                          color: const Color(0xFF00897B),
+                          icon: Icons.event_available_outlined,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const AmenityBookingHistoryScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocietyFundBalanceCard(
+    BuildContext context,
+    AsyncValue<ResidentDashboardModel> dash,
+  ) {
+    final inr = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
+    return dash.when(
+      loading: () => Container(
+        height: 72,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(_kRadiusLg),
+          border: Border.all(color: const Color(0xFFE8ECF0)),
+          boxShadow: _cardShadow(0.05),
+        ),
+        child: const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.2),
+        ),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (d) {
+        final fund = d.fund;
+        final isPositive = fund.currentBalance >= 0;
+        final balanceColor =
+            isPositive ? const Color(0xFF166534) : const Color(0xFFB91C1C);
+        final balanceBg =
+            isPositive ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusLg),
+            border: Border.all(color: const Color(0xFFE8ECF0)),
+            boxShadow: _cardShadow(0.05),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 20,
+                    color: DesignColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Current society fund balance',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: balanceBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      inr.format(fund.currentBalance),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: balanceColor,
+                        letterSpacing: -0.35,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${DateFormat('MMM yyyy').format(DateTime(fund.year > 0 ? fund.year : DateTime.now().year, fund.month >= 1 && fund.month <= 12 ? fund.month : DateTime.now().month))} snapshot',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: _kTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Collected ${inr.format(fund.allTimeCollected)} · Spent ${inr.format(fund.allTimeSpent)}',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: _kTextSecondary,
+                ),
+              ),
+              if (fund.additionalMergedInflowAllTime > 0 ||
+                  fund.additionalMergedInflowMonth > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Additional funds (merged): ${inr.format(fund.additionalMergedInflowMonth)} this month · ${inr.format(fund.additionalMergedInflowAllTime)} all-time',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: DesignColors.primary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _overviewStatCell({
+    required String label,
+    required int value,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 11, 9, 11),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 17, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: DesignColors.textSecondary,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$value',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        height: 1.08,
+                        letterSpacing: -0.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: DesignColors.textTertiary.withValues(alpha: 0.78),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOpenBillingStripe(
+    BuildContext context,
+    BillingCycleCurrent cycle,
+  ) {
+    final inr = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
+    final total = cycle.totalDue ?? cycle.amount ?? 0;
+    final availableCredit = cycle.availableCredit ?? 0;
+    final remainingDue = cycle.remainingDue ?? total;
+    final isPayableNow = cycle.status?.isOpen == true;
+
+    if (!isPayableNow && cycle.status?.isUpcoming != true) {
+      return const SizedBox.shrink();
+    }
+
+    final Color accentColor;
+    final IconData accentIcon;
+    final String amountLine;
+
+    if (isPayableNow) {
+      accentColor = _kOrange;
+      accentIcon = Icons.event_available_rounded;
+      final windowEnd = cycle.dueDateUtc ?? cycle.paymentEndUtc;
+      final subtitle = windowEnd != null
+          ? 'Pay before ${DateFormat('dd MMM, HH:mm').format(windowEnd.toLocal())}'
+          : 'Payment window open';
+      amountLine = availableCredit > 0
+          ? '$subtitle · ${inr.format(remainingDue)} due after ${inr.format(availableCredit)} credit'
+          : '$subtitle · ${inr.format(total)} due';
+    } else {
+      accentColor = DesignColors.primary;
+      accentIcon = Icons.schedule_rounded;
+      final start = cycle.paymentStartUtc;
+      final dueText = availableCredit > 0
+          ? '${inr.format(remainingDue)} due after ${inr.format(availableCredit)} credit'
+          : '${inr.format(total)} due';
+      amountLine = start != null
+          ? 'Opens ${DateFormat('dd MMM, HH:mm').format(start.toLocal())} · $dueText'
+          : 'Opening soon · $dueText';
+    }
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(_kRadiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_kRadiusMd),
+        onTap: () => isPayableNow
+            ? _confirmPayThenMaintenance(context)
+            : _pushMaintenanceFinance(context),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_kRadiusMd),
+            border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+            boxShadow: _cardShadow(0.05),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  accentIcon,
+                  size: 22,
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cycle.title ?? 'Maintenance billing',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        height: 1.2,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      amountLine,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: _kTextSecondary,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (isPayableNow)
+                FilledButton(
+                  onPressed: () => _confirmPayThenMaintenance(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Pay now',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                )
+              else
+                OutlinedButton(
+                  onPressed: () => _pushMaintenanceFinance(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: DesignColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    side: BorderSide(color: DesignColors.primary.withValues(alpha: 0.35)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Details',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthWiseBillingDues(
+    BuildContext context,
+    List<BillingPendingDue> dues,
+  ) {
+    final inr = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
+    final now = DateTime.now();
+    final totalDue = dues.fold<double>(0, (sum, d) => sum + d.amount);
+    final topDues = dues.take(4).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        border: Border.all(color: const Color(0xFFFECACA)),
+        boxShadow: _cardShadow(0.05),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.receipt_long_rounded,
+                  color: Color(0xFFB91C1C),
+                  size: 21,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Month-wise pending dues',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: DesignColors.textPrimary,
+                      letterSpacing: -0.25,
+                    ),
+                  ),
+                ),
+                Text(
+                  inr.format(totalDue),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFB91C1C),
+                    letterSpacing: -0.35,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            for (var i = 0; i < topDues.length; i++) ...[
+              if (i > 0) const Divider(height: 14, thickness: 1, color: Color(0xFFF1F5F9)),
+              _dueRow(topDues[i], now, inr),
+            ],
+            if (dues.length > topDues.length) ...[
+              const SizedBox(height: 8),
+              Text(
+                '+${dues.length - topDues.length} more month(s)',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _kTextSecondary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: () => context.push('/resident/maintenance-payment'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  minimumSize: const Size(0, 38),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'View all dues',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dueRow(BillingPendingDue due, DateTime now, NumberFormat inr) {
+    final dueEnd = due.paymentEndUtc;
+    final isOverdue = due.isGraceOver || (dueEnd != null && dueEnd.isBefore(now));
+    final badgeBg = isOverdue ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7);
+    final badgeFg = isOverdue ? const Color(0xFFB91C1C) : const Color(0xFFB45309);
+    final badgeText = isOverdue ? 'Overdue' : 'Pending';
+    final line2 = dueEnd != null
+        ? 'Due by ${DateFormat('dd MMM yyyy').format(dueEnd.toLocal())}'
+        : (due.title.isNotEmpty ? due.title : 'Maintenance cycle');
+
+    final parts = due.cycleKey.split('-');
+    final qYear = parts.length == 2 ? int.tryParse(parts[0]) : null;
+    final qMonth = parts.length == 2 ? int.tryParse(parts[1]) : null;
+    final targetPath = (qYear != null && qMonth != null && qMonth >= 1 && qMonth <= 12)
+        ? Uri(
+            path: '/resident/maintenance-payment',
+            queryParameters: {
+              'year': qYear.toString(),
+              'month': qMonth.toString(),
+            },
+          ).toString()
+        : '/resident/maintenance-payment';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => context.push(targetPath),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      due.cycleKey.isNotEmpty ? due.cycleKey : 'Cycle',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      line2,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: _kTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    inr.format(due.amount),
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: DesignColors.textPrimary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: badgeFg,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: DesignColors.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _pushMaintenanceFinance(BuildContext context) {
+    context.push('/resident/maintenance-payment');
+  }
+
+  Future<void> _confirmPayThenMaintenance(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Complete payment'),
+        content: const Text(
+          'In-app checkout is not available yet. Please pay this cycle at your '
+          'society office or through the method your administrator shares. You can '
+          'open Maintenance & finances to review dues and receipts.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.push('/resident/maintenance-payment');
+            },
+            child: const Text('Open maintenance'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, VoidCallback onViewAll, {bool dense = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.35,
+            height: dense ? 1.1 : 1.2,
+          ),
+        ),
+        TextButton(
+          onPressed: onViewAll,
+          style: TextButton.styleFrom(
+            foregroundColor: DesignColors.primary,
+            padding: EdgeInsets.fromLTRB(4, dense ? 0 : 4, 4, dense ? 0 : 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: dense ? VisualDensity.compact : VisualDensity.standard,
+          ),
+          child: Text(
+            'View All >',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              height: dense ? 1.1 : 1.2,
+              color: DesignColors.primary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openQuickAction(BuildContext context, QuickAction action) {
+    switch (action.id) {
+      case 'parcels':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ParcelManagementScreen()),
+        );
+        return;
+      case 'visitor_history':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const VisitorHistoryScreen()),
+        );
+        return;
+      case 'amenity_bookings':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AmenityBookingHistoryScreen()),
+        );
+        return;
+      case 'maintenance_expenses':
+        context.push('/resident/maintenance-payment');
+        return;
+      case 'community':
+        ref.read(currentTabProvider.notifier).state = 1;
+        return;
+      case 'sos':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const SOSScreen()),
+        );
+        return;
+      case 'amenities':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AmenitiesScreen()),
+        );
+        return;
+      case 'complaint':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ComplaintScreen()),
+        );
+        return;
+      case 'daily_help':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const VendorsStaffScreen()),
+        );
+        return;
+      case 'more':
+        _showMoreServicesSheet(context);
+        return;
+      default:
+        if (action.route.isNotEmpty) {
+          context.push(action.route);
+        }
+        return;
+    }
+  }
+
+  String _quickActionOverflowSubtitle(String id) {
+    switch (id) {
+      case 'parcels':
+        return 'Deliveries and pickups';
+      case 'maintenance_expenses':
+        return 'Paid/unpaid months and expense split';
+      case 'community':
+        return 'Notices, polls, events';
+      case 'sos':
+        return 'Emergency assistance';
+      case 'amenities':
+        return 'Book society amenities';
+      case 'complaint':
+        return 'Raise a complaint';
+      case 'daily_help':
+        return 'Service vendors';
+      default:
+        return '';
+    }
+  }
+
+  void _showMoreServicesSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: DesignColors.borderLight,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  'More actions',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: DesignColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Parcels, maintenance & expenses, and community notices',
+                  style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                ...residentQuickActionsOverflow.map(
+                  (action) => _moreSheetTile(
+                    icon: action.icon,
+                    title: action.label,
+                    subtitle: _quickActionOverflowSubtitle(action.id),
+                    color: action.color,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openQuickAction(context, action);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _moreSheetTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: color, size: 22),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: DesignColors.textSecondary)),
+      trailing: const Icon(Icons.chevron_right, color: DesignColors.textTertiary),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildGateVisitorRequestsBanner(BuildContext context) {
+    final gateAsync = ref.watch(visitorApprovalRequestsProvider('pending'));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Gate visitor requests',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.35,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        gateAsync.when(
+          loading: () => Container(
+            height: 64,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(_kRadiusMd),
+              border: Border.all(color: const Color(0xFFE8ECF0)),
+              boxShadow: _cardShadow(0.04),
+            ),
+            child: const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            ),
+          ),
+          error: (_, _) => Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusMd),
+            child: InkWell(
+              onTap: () =>
+                  ref.invalidate(visitorApprovalRequestsProvider('pending')),
+              borderRadius: BorderRadius.circular(_kRadiusMd),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_kRadiusMd),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
+                  boxShadow: _cardShadow(0.04),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_off_rounded, color: Colors.red.shade700, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Could not load gate requests. Tap to retry.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade900,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.refresh_rounded, color: Colors.red.shade700, size: 22),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          data: (list) {
+            final n = list.length;
+            final hasPending = n > 0;
+            return Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(_kRadiusMd),
+              elevation: 0,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(_kRadiusMd),
+                onTap: () => context.push('/resident/visitor-requests'),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 11, 10, 11),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_kRadiusMd),
+                    border: Border.all(
+                      color: hasPending
+                          ? DesignColors.primary.withValues(alpha: 0.35)
+                          : const Color(0xFFE8ECF0),
+                    ),
+                    boxShadow: _cardShadow(0.04),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: hasPending
+                              ? DesignColors.primary.withValues(alpha: 0.12)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.how_to_reg_rounded,
+                          size: 20,
+                          color: hasPending ? DesignColors.primary : _kTextSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              hasPending
+                                  ? '$n pending ${n == 1 ? 'request' : 'requests'}'
+                                  : 'No pending approvals',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: DesignColors.textPrimary,
+                                letterSpacing: -0.25,
+                                height: 1.15,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hasPending
+                                  ? 'Approve or decline — security is waiting'
+                                  : 'Visitors registered for your flat appear here',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: _kTextSecondary,
+                                height: 1.25,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasPending)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: DesignColors.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '$n',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: DesignColors.textSecondary.withValues(alpha: 0.85),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVisitorsAndGateSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Visitors & gate',
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.35,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Pre-approve guests and passes for your flat',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: DesignColors.textSecondary,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusLg),
+            border: Border.all(color: const Color(0xFFE8ECF0)),
+            boxShadow: _cardShadow(0.05),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                onPressed: () =>
+                    context.push('/resident/pre-approve-visitor'),
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                label: const Text(
+                  'Add pre-approved visitor',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/resident/my-pre-approved-visitors'),
+                icon: Icon(Icons.groups_2_outlined, color: DesignColors.primary.withValues(alpha: 0.95), size: 20),
+                label: Text(
+                  'My pre-approved visitors',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: DesignColors.primary.withValues(alpha: 0.95),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: DesignColors.primary,
+                  side: const BorderSide(color: Color(0xFFCBD8F5)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tight header: avoids [TextButton] minimum vertical insets that widen the gap to the grid.
+  Widget _buildQuickActionsHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Quick Actions',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.35,
+            height: 1.0,
+            leadingDistribution: TextLeadingDistribution.proportional,
+          ),
+        ),
+        InkWell(
+          onTap: () => _showAllQuickActionsSheet(context),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 2, 2),
+            child: Text(
+              'View All >',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                height: 1.0,
+                color: DesignColors.primary,
+                leadingDistribution: TextLeadingDistribution.proportional,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildQuickActionsHeader(context),
+        const SizedBox(height: 10),
+        GridView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 8,
+            mainAxisExtent: 54,
+          ),
+          itemCount: residentHomeQuickActionsGrid.length,
+          itemBuilder: (context, index) {
+            return _quickActionTile(context, residentHomeQuickActionsGrid[index]);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _quickActionTile(BuildContext context, QuickAction action) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusMd),
+        boxShadow: _cardShadow(0.05),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_kRadiusMd),
+          onTap: () => _openQuickAction(context, action),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(action.icon, color: action.color, size: 19),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    action.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: DesignColors.textPrimary,
+                      height: 1.2,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildMaintenanceInsightsEntry(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: _cardShadow(0.05),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_kRadiusLg),
+          onTap: () {
+            context.push('/resident/maintenance-payment');
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: DesignColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.insights_rounded, color: DesignColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Maintenance & Expenses',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: DesignColors.textPrimary,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Month-wise paid/unpaid, society expense, and your pending dues',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: _kTextSecondary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    context.push('/resident/maintenance-payment');
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'View',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutstandingDues(
+    BuildContext context,
+    AsyncValue<List<MaintenanceDueModel>> pendingState,
+  ) {
+    return pendingState.when(
+      loading: () => Container(
+        height: 72,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(_kRadiusLg),
+          border: Border.all(color: const Color(0xFFE8ECF0)),
+          boxShadow: _cardShadow(0.05),
+        ),
+        child: const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.2),
+        ),
+      ),
+      error: (_, _) => Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        child: InkWell(
+          onTap: () => ref.invalidate(pendingMaintenanceProvider),
+          borderRadius: BorderRadius.circular(_kRadiusLg),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_kRadiusLg),
+              border: Border.all(color: const Color(0xFFFFCDD2)),
+              boxShadow: _cardShadow(0.04),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline_rounded, color: Colors.red.shade700, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Could not load dues. Tap to retry.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade900,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+                Icon(Icons.refresh_rounded, color: Colors.red.shade700, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+      data: (pending) {
+        final inr = NumberFormat.currency(
+          locale: 'en_IN',
+          symbol: '₹',
+          decimalDigits: 0,
+        );
+        final totalDue = pending.fold<double>(0, (sum, item) => sum + item.amount);
+        final hasDue = totalDue > 0;
+        if (!hasDue) {
+          return const SizedBox.shrink();
+        }
+
+        final count = pending.length;
+        DateTime? earliestDue;
+        for (final item in pending) {
+          earliestDue = earliestDue == null || item.dueDate.isBefore(earliestDue)
+              ? item.dueDate
+              : earliestDue;
+        }
+
+        final now = DateTime.now();
+
+        final String statusLabel;
+        final Color accent;
+        final Color badgeBg;
+        final Color badgeFg;
+
+        if (earliestDue == null) {
+          statusLabel = 'Due';
+          accent = DesignColors.primary;
+          badgeBg = DesignColors.primary.withValues(alpha: 0.12);
+          badgeFg = DesignColors.primary;
+        } else if (earliestDue.isBefore(now)) {
+          statusLabel = 'Overdue';
+          accent = const Color(0xFFDC2626);
+          badgeBg = const Color(0xFFFEE2E2);
+          badgeFg = const Color(0xFFB91C1C);
+        } else {
+          statusLabel = 'Due soon';
+          accent = const Color(0xFFD97706);
+          badgeBg = const Color(0xFFFEF3C7);
+          badgeFg = const Color(0xFFB45309);
+        }
+
+        final String scheduleLine;
+        if (earliestDue == null) {
+          scheduleLine = 'Tap to review and pay';
+        } else if (earliestDue.isBefore(now)) {
+          final overdueDays = now.difference(earliestDue).inDays.abs();
+          scheduleLine =
+              '$overdueDays day${overdueDays == 1 ? '' : 's'} overdue · ${DateFormat('dd MMM yyyy').format(earliestDue)}';
+        } else {
+          final daysLeft = earliestDue.difference(now).inDays + 1;
+          scheduleLine =
+              '${DateFormat('dd MMM yyyy').format(earliestDue)} · $daysLeft day${daysLeft == 1 ? '' : 's'} left';
+        }
+
+        final countHint = count > 1 ? ' · $count charges' : '';
+
+        void openPayments() => context.push('/resident/maintenance-payment');
+
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(_kRadiusMd),
+          elevation: 0,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(_kRadiusMd),
+            onTap: openPayments,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(_kRadiusMd),
+                border: Border.all(color: accent.withValues(alpha: 0.28)),
+                boxShadow: _cardShadow(0.04),
+              ),
+              padding: const EdgeInsets.fromLTRB(0, 10, 12, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.95),
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Icon(Icons.account_balance_wallet_outlined, size: 22, color: accent.withValues(alpha: 0.95)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Outstanding dues',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: DesignColors.textSecondary,
+                                letterSpacing: 0.05,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: badgeBg,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: badgeFg,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$scheduleLine$countHint',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: _kTextSecondary,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        inr.format(totalDue),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: DesignColors.textPrimary,
+                          letterSpacing: -0.5,
+                          height: 1.05,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pay',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: DesignColors.primary,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(Icons.chevron_right_rounded, size: 18, color: DesignColors.textTertiary.withValues(alpha: 0.85)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentActivity(
+    BuildContext context,
+    AsyncValue<List<NotificationModel>> notificationsState,
+  ) {
+    final notifications = notificationsState.valueOrNull ?? const <NotificationModel>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionHeader('Recent Activity', () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => residentNotificationsEntry),
+          );
+        }),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusLg),
+            boxShadow: _cardShadow(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: notificationsState.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => _emptyBlock(
+              context,
+              message: 'Could not load recent activity',
+              onRetry: () => ref.invalidate(notificationProvider),
+            ),
+            data: (_) {
+              if (notifications.isEmpty) {
+                return _emptyBlock(
+                  context,
+                  message: 'No recent activity yet',
+                  onRetry: () => ref.invalidate(notificationProvider),
+                );
+              }
+              final latest = notifications.take(3).toList();
+              return Column(
+                children: [
+                  for (int i = 0; i < latest.length; i++) ...[
+                    _activityRow(
+                      icon: latest[i].type.icon,
+                      iconBg: latest[i].type.color.withValues(alpha: 0.12),
+                      iconColor: latest[i].type.color,
+                      title: latest[i].title,
+                      subtitle:
+                          '${latest[i].message} • ${_timeAgo(latest[i].createdAt)}',
+                      status: latest[i].isRead ? 'Seen' : 'New',
+                      statusColor: latest[i].isRead ? _kTextSecondary : _kGreen,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => residentNotificationsEntry,
+                          ),
+                        );
+                      },
+                    ),
+                    if (i != latest.length - 1)
+                      Divider(height: 1, color: DesignColors.borderLight),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _activityRow({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String status,
+    Color? statusColor,
+    VoidCallback? onTap,
+  }) {
+    final chipColor = statusColor ?? _kGreen;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(_kRadiusSm),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: DesignColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _kTextSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: chipColor, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: chipColor,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: DesignColors.textTertiary, size: 20),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAllQuickActionsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: DesignColors.borderLight,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  'Additional shortcuts',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: DesignColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'These are not on your home quick row',
+                  style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                if (residentQuickActionsViewAll.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'No extra shortcuts right now.',
+                      style: TextStyle(fontSize: 14, color: DesignColors.textSecondary),
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: residentQuickActionsViewAll.map((action) {
+                      return SizedBox(
+                        width: (MediaQuery.of(ctx).size.width - 60) / 2,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _openQuickAction(context, action);
+                          },
+                          icon: Icon(action.icon, color: action.color, size: 18),
+                          label: Text(
+                            action.label,
+                            style: const TextStyle(
+                              color: DesignColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            side: const BorderSide(color: DesignColors.borderLight),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImportantNotices(
+    BuildContext context,
+    AsyncValue<List<NoticeModel>> noticesState,
+  ) {
+    final notices = noticesState.valueOrNull ?? const <NoticeModel>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionHeader('Important Notices', () {
+          ref.read(currentTabProvider.notifier).state = 1;
+        }),
+        const SizedBox(height: 6),
+        noticesState.when(
+          loading: () => Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(_kRadiusLg),
+              boxShadow: _cardShadow(),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, _) => _emptyBlock(
+            context,
+            message: 'Could not load notices',
+            onRetry: () => ref.invalidate(noticesProvider),
+          ),
+          data: (_) {
+            if (notices.isEmpty) {
+              return _emptyBlock(
+                context,
+                message: 'No notices published yet',
+                onRetry: () => ref.invalidate(noticesProvider),
+              );
+            }
+            final top = notices.take(2).toList();
+            final borderLight = DesignColors.borderLight;
+            return Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(_kRadiusMd),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(_kRadiusMd),
+                  border: Border.all(color: const Color(0xFFE8ECF0)),
+                  boxShadow: _cardShadow(0.055),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (int i = 0; i < top.length; i++) ...[
+                      if (i > 0)
+                        Divider(height: 1, thickness: 1, color: borderLight),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () =>
+                              ref.read(currentTabProvider.notifier).state = 1,
+                          child: _buildNoticeCard(
+                            title: top[i].title,
+                            content: top[i].content,
+                            date: _timeAgo(top[i].publishedAt),
+                            accentColor: top[i].isUrgent
+                                ? const Color(0xFFE53935)
+                                : DesignColors.primary,
+                            showUrgentBadge: top[i].isUrgent,
+                            embeddedInPanel: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  Widget _emptyBlock(
+    BuildContext context, {
+    required String message,
+    required VoidCallback onRetry,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        boxShadow: _cardShadow(),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: _kTextSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _kTextSecondary,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoticeCard({
+    required String title,
+    required String content,
+    required String date,
+    required Color accentColor,
+    required bool showUrgentBadge,
+    bool embeddedInPanel = false,
+  }) {
+    const accentW = 4.0;
+    const titleSize = 14.0;
+    const bodySize = 12.5;
+    const bodyLines = 3;
+
+    final inner = IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: accentW,
+            decoration: BoxDecoration(color: accentColor),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.11),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.campaign_outlined,
+                          size: 20,
+                          color: accentColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showUrgentBadge) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFEBEE),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'URGENT',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                    color: Color(0xFFC62828),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w800,
+                                color: DesignColors.textPrimary,
+                                letterSpacing: -0.28,
+                                height: 1.22,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  size: 14,
+                                  color: _kTextSecondary.withValues(alpha: 0.88),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  date,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: _kTextSecondary.withValues(alpha: 0.92),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: DesignColors.textTertiary.withValues(alpha: 0.75),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    content,
+                    maxLines: bodyLines,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: bodySize,
+                      fontWeight: FontWeight.w500,
+                      color: _kTextSecondary.withValues(alpha: 0.95),
+                      height: 1.38,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (embeddedInPanel) {
+      return inner;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: inner,
+    );
+  }
+
+  Widget _buildSupportStripWithFab(
+    BuildContext context,
+    AsyncValue<List<SecurityContactModel>> securityContactsAsync,
+  ) {
+    return _buildSupportBanner(context, securityContactsAsync);
+  }
+
+  Widget _buildSupportBanner(
+    BuildContext context,
+    AsyncValue<List<SecurityContactModel>> securityContactsAsync, {
+    double trailingReserve = 0,
+  }) {
+    final contacts = securityContactsAsync.maybeWhen(
+      data: (list) => list.where((c) => c.phone.trim().isNotEmpty).toList(),
+      orElse: () => const <SecurityContactModel>[],
+    );
+    final primaryPhone = contacts.isNotEmpty ? contacts.first.phone.trim() : '100';
+    final hasGuardContact = contacts.isNotEmpty;
+    final securityLine = hasGuardContact
+        ? 'Security desk: $primaryPhone'
+        : 'Emergency fallback: 100';
+
+    Future<void> callSecurity() async {
+      final uri = Uri.parse('tel:$primaryPhone');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
+
+    return Material(
+      color: DesignColors.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(_kRadiusLg),
+      elevation: 0,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        onTap: callSecurity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(Icons.shield_outlined, color: DesignColors.primary, size: 26),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: trailingReserve),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Need Help? Contact Security',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: DesignColors.primary,
+                              height: 1.25,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            securityLine,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: _kTextSecondary,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Material(
+                    color: Colors.white,
+                    elevation: 2,
+                    shadowColor: Colors.black.withValues(alpha: 0.08),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: callSecurity,
+                      child: const Padding(
+                        padding: EdgeInsets.all(11),
+                        child: Icon(Icons.phone, color: DesignColors.primary, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                hasGuardContact
+                    ? 'Tap Call to reach your society security desk.'
+                    : 'No active guard contact found. Calling emergency line 100.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: DesignColors.textSecondary,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tab index for [ResidentShell] (home / community / profile).
+final currentTabProvider = StateProvider<int>((ref) => 0);
