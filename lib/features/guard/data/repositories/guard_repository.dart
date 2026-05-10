@@ -44,7 +44,7 @@ class GuardRepository {
     try {
       final response = await _dio.get(ApiEndpoints.guardDashboard);
       final data = response.data;
-      debugPrint('[GuardDash] raw type=${data.runtimeType}');
+      if (kDebugMode) debugPrint('[GuardDash] raw type=${data.runtimeType}');
       Map<String, dynamic>? map;
       if (data is Map<String, dynamic>) {
         map = data;
@@ -52,27 +52,31 @@ class GuardRepository {
         map = Map<String, dynamic>.from(data);
       }
       if (map == null) {
-        debugPrint('[GuardDash] response is not a Map — aborting');
+        if (kDebugMode) debugPrint('[GuardDash] response is not a Map — aborting');
         throw const FormatException('Invalid dashboard response');
       }
-      debugPrint('[GuardDash] top-level keys=${map.keys.toList()}');
+      if (kDebugMode) debugPrint('[GuardDash] top-level keys=${map.keys.toList()}');
       final payload = _resolveDashboardMap(map);
-      debugPrint('[GuardDash] resolved keys=${payload.keys.toList()}');
+      if (kDebugMode) debugPrint('[GuardDash] resolved keys=${payload.keys.toList()}');
       final result = GuardDashboardData.fromJson(payload);
-      debugPrint('[GuardDash] parsed: guard=${result.guardName}, '
-          'gate=${result.gateName}, gateId=${result.gateId}, '
-          'stats=(v:${result.todayStats.visitors},p:${result.todayStats.parcels},'
-          'i:${result.todayStats.incidents},pat:${result.todayStats.patrols}), '
-          'sos=${result.activeSos.length}');
+      if (kDebugMode) {
+        debugPrint('[GuardDash] parsed: guard=${result.guardName}, '
+            'gate=${result.gateName}, gateId=${result.gateId}, '
+            'stats=(v:${result.todayStats.visitors},p:${result.todayStats.parcels},'
+            'i:${result.todayStats.incidents},pat:${result.todayStats.patrols}), '
+            'sos=${result.activeSos.length}');
+      }
       return result;
     } on DioException catch (e) {
-      debugPrint('[GuardDash] DioException: ${e.message} '
-          'status=${e.response?.statusCode} body=${e.response?.data}');
+      if (kDebugMode) {
+        debugPrint('[GuardDash] DioException: ${e.message} '
+            'status=${e.response?.statusCode} body=${e.response?.data}');
+      }
       throw mapDioException(e, 'Failed to load guard dashboard');
     } on FormatException catch (e) {
       throw ServerException(message: e.message);
     } catch (e, st) {
-      debugPrint('[GuardDash] unexpected: $e\n$st');
+      if (kDebugMode) debugPrint('[GuardDash] unexpected: $e\n$st');
       throw ServerException(
         message: 'Could not read guard dashboard data.',
         data: e,

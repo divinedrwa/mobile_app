@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/resident_dashboard_model.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
+import '../../data/providers/maintenance_provider.dart';
 import 'amenity_booking_history_screen.dart';
 import 'parcel_management_screen.dart';
 
@@ -15,20 +17,26 @@ const Color _kOverviewOrange = Color(0xFFFF6D00);
 class ResidentOverviewScreen extends ConsumerWidget {
   const ResidentOverviewScreen({super.key});
 
-  static int _attentionTotal(ResidentDashboardStats s) =>
-      s.pendingMaintenance + s.activeComplaints + s.pendingParcels + s.upcomingBookings;
+  static int _attentionTotal(ResidentDashboardStats s, {bool excludeMaintenance = false}) =>
+      (excludeMaintenance ? 0 : s.pendingMaintenance) + s.activeComplaints + s.pendingParcels + s.upcomingBookings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userExcluded = ref.watch(authProvider).user?.isBillingExcluded ?? false;
+    final billingExcludedFromCycle = ref.watch(residentBillingCycleProvider).maybeWhen(
+      data: (c) => c.maintenanceBillingExcluded,
+      orElse: () => false,
+    );
+    final isBillingExcluded = userExcluded || billingExcludedFromCycle;
     final dash = ref.watch(residentDashboardProvider);
-    final fallback = const ResidentDashboardStats(
+    const fallback = ResidentDashboardStats(
       pendingMaintenance: 0,
       activeComplaints: 0,
       pendingParcels: 0,
       upcomingBookings: 0,
     );
     final s = dash.maybeWhen(data: (d) => d.stats, orElse: () => fallback);
-    final total = _attentionTotal(s);
+    final total = _attentionTotal(s, excludeMaintenance: isBillingExcluded);
 
     return Scaffold(
       backgroundColor: _kPageBg,
@@ -51,7 +59,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
               flexibleSpace: FlexibleSpaceBar(
                 expandedTitleScale: 1.0,
                 titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 14),
-                title: Text(
+                title: const Text(
                   'Overview',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
@@ -84,7 +92,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                       _OverviewErrorChip(onRetry: () => ref.invalidate(residentDashboardProvider)),
                       const SizedBox(height: 14),
                     ],
-                    _HeroSummaryCard(stats: s, attentionTotal: total),
+                    _HeroSummaryCard(stats: s, attentionTotal: total, isBillingExcluded: isBillingExcluded),
                     const SizedBox(height: 22),
                     Row(
                       children: [
@@ -97,7 +105,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
+                        const Text(
                           'Your metrics',
                           style: TextStyle(
                             fontSize: 13,
@@ -117,15 +125,17 @@ class ResidentOverviewScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _OverviewMetricTile(
-                    icon: Icons.payments_outlined,
-                    color: _kOverviewOrange,
-                    title: 'Maintenance',
-                    value: s.pendingMaintenance,
-                    subtitle: 'Pending maintenance items',
-                    onTap: () => context.push('/resident/maintenance-payment'),
-                  ),
-                  const SizedBox(height: 12),
+                  if (!isBillingExcluded) ...[
+                    _OverviewMetricTile(
+                      icon: Icons.payments_outlined,
+                      color: _kOverviewOrange,
+                      title: 'Maintenance',
+                      value: s.pendingMaintenance,
+                      subtitle: 'Pending maintenance items',
+                      onTap: () => context.push('/resident/maintenance'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _OverviewMetricTile(
                     icon: Icons.report_problem_outlined,
                     color: const Color(0xFFE65100),
@@ -217,15 +227,17 @@ class _HeroSummaryCard extends StatelessWidget {
   const _HeroSummaryCard({
     required this.stats,
     required this.attentionTotal,
+    this.isBillingExcluded = false,
   });
 
   final ResidentDashboardStats stats;
   final int attentionTotal;
+  final bool isBillingExcluded;
 
   @override
   Widget build(BuildContext context) {
     final lines = <String>[];
-    if (stats.pendingMaintenance > 0) {
+    if (!isBillingExcluded && stats.pendingMaintenance > 0) {
       lines.add('${stats.pendingMaintenance} maintenance');
     }
     if (stats.activeComplaints > 0) {
@@ -243,7 +255,9 @@ class _HeroSummaryCard extends StatelessWidget {
         : '$attentionTotal ${attentionTotal == 1 ? 'item' : 'items'} need attention';
 
     final detail = attentionTotal == 0
-        ? 'No pending maintenance, parcels, or open complaints in these counters.'
+        ? (isBillingExcluded
+            ? 'No pending parcels or open complaints in these counters.'
+            : 'No pending maintenance, parcels, or open complaints in these counters.')
         : (lines.length <= 2
             ? lines.join(' · ')
             : '${lines.take(2).join(' · ')} · +${lines.length - 2} more');
@@ -307,11 +321,12 @@ class _HeroSummaryCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _MiniStatChip(
-                      label: 'Maint.',
-                      value: stats.pendingMaintenance,
-                      color: _kOverviewOrange,
-                    ),
+                    if (!isBillingExcluded)
+                      _MiniStatChip(
+                        label: 'Maint.',
+                        value: stats.pendingMaintenance,
+                        color: _kOverviewOrange,
+                      ),
                     _MiniStatChip(
                       label: 'Compl.',
                       value: stats.activeComplaints,
@@ -373,7 +388,7 @@ class _MiniStatChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$value',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: DesignColors.textPrimary,
@@ -498,7 +513,7 @@ class _OverviewMetricTile extends StatelessWidget {
                                 color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.arrow_forward_ios_rounded,
                                 size: 12,
                                 color: DesignColors.textTertiary,

@@ -42,6 +42,7 @@ class _LegalWebViewScreenState extends State<LegalWebViewScreen> {
       appBar: AppBar(
         title: Text(widget.title),
         leading: IconButton(
+          tooltip: 'Close',
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).maybePop(),
         ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/society_banner_type.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/providers/content_provider.dart';
 import '../widgets/premium_society_banner_card.dart';
 
@@ -51,7 +52,7 @@ List<Widget> _buildBannersGroupedByType(
               const SizedBox(width: 8),
               Text(
                 t.displayLabel,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
@@ -174,7 +175,7 @@ class EventsListScreen extends ConsumerWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: DesignColors.textPrimary,
@@ -182,7 +183,7 @@ class EventsListScreen extends ConsumerWidget {
               ),
               Text(
                 subtitle,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: DesignColors.textSecondary,
                 ),
@@ -195,44 +196,10 @@ class EventsListScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(DesignSpacing.xl),
-            decoration: BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.event_busy_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No Events Scheduled',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: DesignSpacing.xl),
-            child: Text(
-              'Community → Events lists everything your society publishes here '
-              '(announcements, festivals, maintenance, offers, and more). '
-              'Items must be Active and within start/end dates. Pull to refresh.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500], height: 1.35),
-            ),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.event_outlined,
+      title: 'No upcoming events',
+      subtitle: 'Stay tuned \u2014 community events and activities will show up here.',
     );
   }
 

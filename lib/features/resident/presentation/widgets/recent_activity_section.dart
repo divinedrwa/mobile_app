@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../pages/notifications_center_screen.dart';
 
 /// Recent activity section showing last few activities
@@ -87,8 +88,8 @@ class RecentActivitySection extends StatelessWidget {
                 ),
               ),
             ).animate().fadeIn(
-              duration: 300.ms,
-              delay: ((index + 1) * 100).ms,
+              duration: DesignAnimations.durationEntrance,
+              delay: DesignAnimations.staggerFor(index),
             );
           },
         ),

@@ -80,18 +80,22 @@ class AuthRepository {
     required String password,
   }) async {
     try {
-      debugPrint('📡 Calling login API: ${ApiEndpoints.login}');
-      debugPrint('📡 Society: $societyId');
-      debugPrint('📡 Username/Email: $username');
-      
+      if (kDebugMode) {
+        debugPrint('📡 Calling login API: ${ApiEndpoints.login}');
+        debugPrint('📡 Society: $societyId');
+        debugPrint('📡 Username/Email: $username');
+      }
+
       // Get device token information
       final deviceInfo = _notificationService.getDeviceTokenInfo();
-      debugPrint('📱 Device Info:');
-      debugPrint(
-        '   - Token: ${deviceInfo['fcmToken'] != null && deviceInfo['fcmToken']!.length >= 20 ? '${deviceInfo['fcmToken']!.substring(0, 20)}...' : deviceInfo['fcmToken']}',
-      );
-      debugPrint('   - Device ID: ${deviceInfo['deviceId']}');
-      debugPrint('   - Device Type: ${deviceInfo['deviceType']}');
+      if (kDebugMode) {
+        debugPrint('📱 Device Info:');
+        debugPrint(
+          '   - Token: ${deviceInfo['fcmToken'] != null && deviceInfo['fcmToken']!.length >= 20 ? '${deviceInfo['fcmToken']!.substring(0, 20)}...' : deviceInfo['fcmToken']}',
+        );
+        debugPrint('   - Device ID: ${deviceInfo['deviceId']}');
+        debugPrint('   - Device Type: ${deviceInfo['deviceType']}');
+      }
       
       final payload = <String, dynamic>{
         'societyId': societyId.trim(),
@@ -120,8 +124,10 @@ class AuthRepository {
         data: payload,
       );
 
-      debugPrint('✅ Login API response: ${response.statusCode}');
-      debugPrint('✅ Response data keys: ${response.data?.keys}');
+      if (kDebugMode) {
+        debugPrint('✅ Login API response: ${response.statusCode}');
+        debugPrint('✅ Response data keys: ${response.data?.keys}');
+      }
 
       // Validate response structure
       if (response.data == null) {
@@ -139,11 +145,15 @@ class AuthRepository {
       // Save token
       final token = response.data['token'].toString();
       await StorageService.saveToken(token);
-      debugPrint('✅ Token saved: ${token.substring(0, 20)}...');
+      if (kDebugMode) {
+        debugPrint('✅ Token saved: ${token.substring(0, 20)}...');
+      }
 
       // Parse and save user data
       final userData = Map<String, dynamic>.from(response.data['user']);
-      debugPrint('✅ User data fields: ${userData.keys}');
+      if (kDebugMode) {
+        debugPrint('✅ User data fields: ${userData.keys}');
+      }
 
       final sidLogin = societyId.trim();
       if ((userData['societyId']?.toString().trim() ?? '').isEmpty) {
@@ -153,16 +163,20 @@ class AuthRepository {
 
       final user = UserModel.fromJson(userData);
       await StorageService.saveUserData(userData);
-      debugPrint('✅ User data saved: ${user.name} (${user.role})');
+      if (kDebugMode) {
+        debugPrint('✅ User data saved: ${user.name} (${user.role})');
+      }
 
       await PushSyncService.sync();
 
       return user;
     } on DioException catch (e) {
-      debugPrint('❌ DioException: ${e.message}');
-      debugPrint('❌ Request: ${e.requestOptions.uri}');
-      debugPrint('❌ Response: ${e.response?.data}');
-      debugPrint('❌ Status: ${e.response?.statusCode}');
+      if (kDebugMode) {
+        debugPrint('❌ DioException: ${e.message}');
+        debugPrint('❌ Request: ${e.requestOptions.uri}');
+        debugPrint('❌ Response: ${e.response?.data}');
+        debugPrint('❌ Status: ${e.response?.statusCode}');
+      }
 
       final wrapped = e.error;
       if (wrapped is AppException) {
@@ -173,8 +187,10 @@ class AuthRepository {
         message: parseApiErrorMessage(e.response?.data, 'Login failed'),
       );
     } catch (e) {
-      debugPrint('❌ Unexpected error: $e');
-      debugPrint('❌ Stack trace: ${StackTrace.current}');
+      if (kDebugMode) {
+        debugPrint('❌ Unexpected error: $e');
+        debugPrint('❌ Stack trace: ${StackTrace.current}');
+      }
       throw AppException(message: 'Unexpected error: $e');
     }
   }
@@ -422,7 +438,7 @@ class AuthRepository {
 
   /// Check if user is logged in
   Future<bool> isLoggedIn() async {
-    final token = StorageService.getToken();
+    final token = await StorageService.getToken();
     return token != null && token.isNotEmpty;
   }
 

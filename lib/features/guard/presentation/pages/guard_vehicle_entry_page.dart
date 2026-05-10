@@ -50,9 +50,9 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
     final reg = _vehicle.text.trim();
     if (reg.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: const Text('Enter a recognizable vehicle number'),
+          content: Text('Enter a recognizable vehicle number'),
           backgroundColor: GuardTokens.warning,
         ),
       );
@@ -101,6 +101,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
@@ -142,7 +143,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                       ),
                       decoration: InputDecoration(
                         hintText: 'e.g. KA01 AB 1234',
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.pin_rounded,
                           color: GuardTokens.guardAccent,
                         ),

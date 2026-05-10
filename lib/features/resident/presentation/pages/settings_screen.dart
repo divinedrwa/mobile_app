@@ -12,6 +12,7 @@ import '../../../../core/utils/storage_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/notification_settings_notifier.dart';
+import 'legal_markdown_screen.dart';
 import 'legal_webview_screen.dart';
 
 /// Settings Screen
@@ -72,10 +73,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _openLegalWebView(String title, String url) {
+  /// Opens bundled Markdown in-app, or a hosted HTTPS page if [publicUrl] is set via `--dart-define`.
+  void _openLegalPage({
+    required String title,
+    required String assetPath,
+    String publicUrl = '',
+  }) {
+    final hosted = publicUrl.trim();
+    if (hosted.isNotEmpty) {
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => LegalWebViewScreen(title: title, url: hosted),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => LegalWebViewScreen(title: title, url: url),
+        builder: (_) =>
+            LegalMarkdownScreen(title: title, assetPath: assetPath),
       ),
     );
   }
@@ -124,6 +140,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 SwitchListTile(
+                  secondary: const Icon(Icons.notifications_outlined),
                   title: const Text('Enable Notifications'),
                   subtitle: const Text(
                     'Master switch for push and society email alerts',
@@ -139,6 +156,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
+                  secondary: const Icon(Icons.phone_android_outlined),
                   title: const Text('Push Notifications'),
                   subtitle: const Text(
                     'Firebase push — registers this device when enabled',
@@ -154,6 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
+                  secondary: const Icon(Icons.email_outlined),
                   title: const Text('Email Notifications'),
                   subtitle: const Text(
                     'Society email alerts — saved to your account',
@@ -185,6 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.language_rounded),
                   title: const Text('Language'),
                   subtitle: const Text('English'),
                   trailing: const Icon(Icons.chevron_right),
@@ -240,9 +260,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   leading: const Icon(Icons.privacy_tip),
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openLegalWebView(
-                    'Privacy Policy',
-                    AppConstants.privacyPolicyUrl,
+                  onTap: () => _openLegalPage(
+                    title: 'Privacy Policy',
+                    assetPath: AppConstants.privacyPolicyAsset,
+                    publicUrl: AppConstants.privacyPolicyPublicUrl,
                   ),
                 ),
                 const Divider(height: 1),
@@ -250,9 +271,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   leading: const Icon(Icons.description_outlined),
                   title: const Text('Terms & Conditions'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openLegalWebView(
-                    'Terms & Conditions',
-                    AppConstants.termsConditionsUrl,
+                  onTap: () => _openLegalPage(
+                    title: 'Terms & Conditions',
+                    assetPath: AppConstants.termsConditionsAsset,
+                    publicUrl: AppConstants.termsConditionsPublicUrl,
                   ),
                 ),
               ],
@@ -272,10 +294,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('App Version'),
-                  subtitle: const Text('1.0.0 (Build 100)'),
+                const ListTile(
+                  leading: Icon(Icons.info),
+                  title: Text('App Version'),
+                  subtitle: Text('1.0.0 (Build 100)'),
                 ),
                 const Divider(height: 1),
                 ListTile(

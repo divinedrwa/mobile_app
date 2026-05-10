@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/widgets/animated_counter.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 
@@ -208,8 +209,8 @@ class _SummaryCell extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '$value',
+                AnimatedCounter(
+                  value: value,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,

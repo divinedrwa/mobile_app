@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../pages/notices_list_screen.dart';
 
 /// Notices section showing recent announcements
@@ -85,8 +86,8 @@ class NoticesSection extends StatelessWidget {
                 },
               ),
             ).animate().fadeIn(
-              duration: 300.ms,
-              delay: ((index + 4) * 100).ms,
+              duration: DesignAnimations.durationEntrance,
+              delay: DesignAnimations.staggerFor(index),
             );
           },
         ),

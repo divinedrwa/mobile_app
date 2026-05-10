@@ -181,7 +181,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
                     padding: const EdgeInsets.all(GuardTokens.g2),
                     child: Row(
                       children: [
-                        Icon(Icons.sync_problem_rounded, color: GuardTokens.warning),
+                        const Icon(Icons.sync_problem_rounded, color: GuardTokens.warning),
                         const SizedBox(width: GuardTokens.g2),
                         Expanded(
                           child: Text(
@@ -228,7 +228,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
                 ),
               const SizedBox(height: 18),
               Text(
-                "Visitor approvals & outcomes",
+                'Visitor approvals & outcomes',
                 style: GuardTokens.headingStyle(context).copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -257,7 +257,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
                     padding: const EdgeInsets.all(GuardTokens.g3),
                     child: Row(
                       children: [
-                        Icon(Icons.history_toggle_off_rounded, color: GuardTokens.warning),
+                        const Icon(Icons.history_toggle_off_rounded, color: GuardTokens.warning),
                         const SizedBox(width: GuardTokens.g2),
                         Expanded(
                           child: Text(
@@ -567,7 +567,7 @@ class _PendingBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.check_circle_outline_rounded,
+            const Icon(Icons.check_circle_outline_rounded,
                 color: GuardTokens.success, size: 20),
             const SizedBox(width: 10),
             Expanded(
@@ -614,7 +614,7 @@ class _PendingBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: Icon(
+            child: const Icon(
               Icons.pending_actions_rounded,
               color: GuardTokens.warning,
               size: 20,

@@ -11,7 +11,7 @@ class PushSyncService {
 
   /// Call after login and when the app returns to foreground (token may have refreshed).
   static Future<void> sync() async {
-    final token = StorageService.getToken();
+    final token = await StorageService.getToken();
     if (token == null || token.isEmpty) {
       fcmDiag('API_REGISTER', 'skip: no JWT (user not logged in)');
       return;
@@ -90,7 +90,7 @@ class PushSyncService {
 
   /// Best-effort unregister before logout (requires valid JWT).
   static Future<void> unregister() async {
-    final token = StorageService.getToken();
+    final token = await StorageService.getToken();
     if (token == null || token.isEmpty) return;
 
     final deviceId = NotificationService().deviceId?.trim() ?? '';

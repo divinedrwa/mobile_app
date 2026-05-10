@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen> {
   final MobileScannerController _controller = MobileScannerController();
 
   bool _handled = false;
+  bool _torchOn = false;
 
   @override
   void dispose() {
@@ -36,8 +38,8 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen> {
 
     _handled = true;
     await _controller.stop();
-    HapticFeedback.heavyImpact();
-    SystemSound.play(SystemSoundType.click);
+    unawaited(HapticFeedback.heavyImpact());
+    unawaited(SystemSound.play(SystemSoundType.click));
 
     if (!mounted) return;
     Navigator.of(context).pop(raw);
@@ -79,6 +81,7 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen> {
                       Row(
                         children: [
                           IconButton(
+                            tooltip: 'Close',
                             style: IconButton.styleFrom(
                               backgroundColor: Colors.white.withValues(alpha: 0.14),
                               foregroundColor: Colors.white,
@@ -97,7 +100,22 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 48),
+                          IconButton(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(alpha: 0.14),
+                              foregroundColor: Colors.white,
+                            ),
+                            tooltip: 'Toggle flashlight',
+                            onPressed: () async {
+                              await _controller.toggleTorch();
+                              setState(() => _torchOn = !_torchOn);
+                            },
+                            icon: Icon(
+                              _torchOn
+                                  ? Icons.flash_on_rounded
+                                  : Icons.flash_off_rounded,
+                            ),
+                          ),
                         ],
                       ),
                       Expanded(

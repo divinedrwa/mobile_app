@@ -1095,7 +1095,7 @@ class _FetchWarningBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: GuardTokens.warning),
+          const Icon(Icons.warning_amber_rounded, color: GuardTokens.warning),
           const SizedBox(width: GuardTokens.g2),
           Expanded(
             child: Text(

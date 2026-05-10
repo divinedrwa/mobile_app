@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 
 /// Ultra-polished Financial Alert Card with native feel
 class FinancialAlertCard extends StatelessWidget {
@@ -178,8 +179,8 @@ class FinancialAlertCard extends StatelessWidget {
       ),
     )
         .animate()
-        .fadeIn(duration: 500.ms, curve: Curves.easeOut)
-        .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic)
+        .fadeIn(duration: DesignAnimations.durationEntrance, curve: Curves.easeOut)
+        .slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic)
         .shimmer(duration: 1800.ms, delay: 600.ms);
   }
 }

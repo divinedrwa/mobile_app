@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/models/document_model.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/providers/content_provider.dart';
 
 /// Provider for selected document category filter
@@ -273,7 +274,7 @@ class DocumentsListScreen extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Text(
                         _formatFileSize(document.fileSize),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           color: DesignColors.textSecondary,
                         ),
@@ -291,7 +292,7 @@ class DocumentsListScreen extends ConsumerWidget {
                       Flexible(
                         child: Text(
                           _getRelativeDate(document.uploadedAt),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             color: DesignColors.textSecondary,
                           ),
@@ -314,10 +315,11 @@ class DocumentsListScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: IconButton(
+                tooltip: 'Download',
                 onPressed: () {
                   _openDocument(context, document.fileUrl);
                 },
-                icon: Icon(
+                icon: const Icon(
                   Icons.download_rounded,
                   color: DesignColors.primary,
                   size: 22,
@@ -333,38 +335,10 @@ class DocumentsListScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(DesignSpacing.xl),
-            decoration: BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.folder_open_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No Documents',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No documents found in this category',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.folder_open_outlined,
+      title: 'No documents shared yet',
+      subtitle: 'Your admin will upload society documents here when available.',
     );
   }
 

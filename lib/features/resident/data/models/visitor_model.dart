@@ -27,21 +27,28 @@ class VisitorModel {
   });
 
   factory VisitorModel.fromJson(Map<String, dynamic> json) {
+    final purposeRaw = json['purpose']?.toString().trim();
+    final checkInStr = json['checkInTime']?.toString();
+    final checkInParsed = checkInStr != null
+        ? DateTime.tryParse(checkInStr)
+        : null;
+
     return VisitorModel(
       id: json['id'] as String?,
       name: json['name'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       visitDate: json['visitDate'] != null
-          ? DateTime.tryParse(json['visitDate'] as String) ?? DateTime.now()
-          : DateTime.now(),
+          ? DateTime.tryParse(json['visitDate'].toString()) ??
+              checkInParsed ??
+              DateTime.now()
+          : checkInParsed ?? DateTime.now(),
       visitTime: json['visitTime'] as String?,
-      purpose: json['purpose'] as String?,
-      status: json['status'] as String? ?? 'pending',
-      checkInTime: json['checkInTime'] != null
-          ? DateTime.tryParse(json['checkInTime'] as String)
-          : null,
+      purpose:
+          (purposeRaw != null && purposeRaw.isNotEmpty) ? purposeRaw : null,
+      status: (json['status'] as String? ?? 'pending').trim(),
+      checkInTime: checkInParsed,
       checkOutTime: json['checkOutTime'] != null
-          ? DateTime.tryParse(json['checkOutTime'] as String)
+          ? DateTime.tryParse(json['checkOutTime'].toString())
           : null,
       vehicleNumber: json['vehicleNumber'] as String?,
       photo: json['photo'] as String?,

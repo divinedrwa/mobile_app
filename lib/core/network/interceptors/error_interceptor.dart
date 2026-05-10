@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../../errors/exceptions.dart';
 import '../../session/account_deactivated_handler.dart';
+import '../../session/session_expired_handler.dart';
 import '../api_error_message.dart';
 
 bool _accountDisabledMessage(String message) {
@@ -53,6 +54,11 @@ class ErrorInterceptor extends Interceptor {
             exception = UnauthorizedException(message: message);
             if (_accountDisabledMessage(message)) {
               unawaited(AccountDeactivatedHandler.triggerIfRegistered());
+            } else {
+              // Generic 401 = token expired / revoked / signing-key rotated.
+              // Force a single logout + redirect; the SessionExpiredHandler
+              // guards against multiple parallel requests each firing.
+              unawaited(SessionExpiredHandler.triggerIfRegistered());
             }
             break;
           case 403:

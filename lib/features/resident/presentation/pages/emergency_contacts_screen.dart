@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../data/providers/emergency_contact_provider.dart';
 import 'add_emergency_contact_screen.dart';
 
@@ -87,10 +88,12 @@ class EmergencyContactsScreen extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
+                        tooltip: 'Call',
                         icon: const Icon(Icons.call, color: Colors.green),
                         onPressed: () => _makeCall(contact.phone),
                       ),
                       IconButton(
+                        tooltip: 'Delete',
                         icon: const Icon(
                           Icons.delete_outline,
                           color: Colors.red,
@@ -103,7 +106,7 @@ class EmergencyContactsScreen extends ConsumerWidget {
                 ),
               ).animate().fadeIn(
                 duration: 300.ms,
-                delay: ((index + 1) * 100).ms,
+                delay: DesignAnimations.staggerFor(index + 1),
               );
             }),
           ],

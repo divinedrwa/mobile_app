@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../data/auth_repository.dart';
@@ -53,8 +55,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           return;
         }
         state = state.copyWith(user: cachedUser);
-        // Refresh profile in background
-        _refreshProfile();
+        // Refresh profile in background; deliberately fire-and-forget so
+        // the splash doesn't block on the network round-trip.
+        unawaited(_refreshProfile());
       }
     }
   }

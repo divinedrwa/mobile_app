@@ -74,6 +74,8 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
             // Name
             TextFormField(
               controller: _nameController,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Name',
                 hintText: 'Enter full name',
@@ -111,6 +113,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
             // Phone
             TextFormField(
               controller: _phoneController,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Phone (Optional)',
                 hintText: 'Enter phone number',
@@ -124,6 +127,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
             // Email
             TextFormField(
               controller: _emailController,
+              textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 labelText: 'Email (Optional)',
                 hintText: 'Enter email address',

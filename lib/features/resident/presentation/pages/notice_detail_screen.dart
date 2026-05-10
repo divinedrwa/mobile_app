@@ -18,6 +18,7 @@ class NoticeDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Go back',
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
         ),
@@ -31,10 +32,11 @@ class NoticeDetailScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            tooltip: 'Share',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Notice shared!'),
+                const SnackBar(
+                  content: Text('Notice shared!'),
                   backgroundColor: Colors.green,
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -108,23 +110,23 @@ class NoticeDetailScreen extends ConsumerWidget {
             // Meta Info
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: DesignColors.textSecondary),
+                const Icon(Icons.calendar_today, size: 16, color: DesignColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   DateFormat('MMM d, y • h:mm a').format(notice.publishedAt),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: DesignColors.textSecondary,
                   ),
                 ),
                 if (notice.publishedBy != null) ...[
                   const SizedBox(width: 16),
-                  Icon(Icons.person, size: 16, color: DesignColors.textSecondary),
+                  const Icon(Icons.person, size: 16, color: DesignColors.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       notice.publishedBy!,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: DesignColors.textSecondary,
                       ),
@@ -177,18 +179,18 @@ class NoticeDetailScreen extends ConsumerWidget {
                         color: DesignColors.primary.withValues(alpha: 0.1),
                         borderRadius: DesignRadius.borderLG,
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.attach_file,
                         color: DesignColors.primary,
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Attachment',
                             style: TextStyle(
                               fontSize: 15,
@@ -196,7 +198,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                               color: DesignColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'Tap to view or download',
                             style: TextStyle(

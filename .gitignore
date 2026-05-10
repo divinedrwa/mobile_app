@@ -26,6 +26,12 @@ Thumbs.db
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
+# Android release-signing material — keystore lives in CI secret storage,
+# key.properties is generated locally from key.properties.example.
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+
 # Android and iOS platform-specific ignores are maintained in:
 # - android/.gitignore
 # - ios/.gitignore

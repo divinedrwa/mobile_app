@@ -76,7 +76,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
                         ? FileImage(File(_selectedImage!.path))
                         : null,
                     child: _selectedImage == null
-                        ? Icon(
+                        ? const Icon(
                             Icons.person,
                             size: 50,
                             color: DesignColors.primary,
@@ -90,6 +90,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
                       radius: 18,
                       backgroundColor: DesignColors.primary,
                       child: IconButton(
+                        tooltip: 'Change photo',
                         icon: const Icon(
                           Icons.camera_alt,
                           size: 18,

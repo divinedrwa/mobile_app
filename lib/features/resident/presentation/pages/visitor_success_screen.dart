@@ -9,18 +9,35 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/design_animations.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 
 /// Success screen after pre-approving visitor
-class VisitorSuccessScreen extends StatelessWidget {
+class VisitorSuccessScreen extends StatefulWidget {
   const VisitorSuccessScreen({super.key, required this.visitor});
 
   final PreApprovedVisitorModel visitor;
 
+  @override
+  State<VisitorSuccessScreen> createState() => _VisitorSuccessScreenState();
+}
+
+class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
+  PreApprovedVisitorModel get visitor => widget.visitor;
+
   bool get _hasPasscode {
     final otp = visitor.passcode?.trim();
     return otp != null && otp.isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DesignHaptics.success();
+    });
   }
 
   @override
@@ -40,6 +57,7 @@ class VisitorSuccessScreen extends StatelessWidget {
           style: DesignTypography.headingM.copyWith(fontSize: 17),
         ),
         leading: IconButton(
+          tooltip: 'Close',
           icon: const Icon(Icons.close_rounded),
           onPressed: () => _exitToResidentHome(context),
         ),
@@ -127,10 +145,10 @@ class VisitorSuccessScreen extends StatelessWidget {
                                     ),
                                   );
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                    const SnackBar(
                                       behavior: SnackBarBehavior.floating,
-                                      content: const Text('Passcode copied'),
-                                      duration: const Duration(seconds: 1),
+                                      content: Text('Passcode copied'),
+                                      duration: Duration(seconds: 1),
                                     ),
                                   );
                                 }
@@ -165,7 +183,7 @@ class VisitorSuccessScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
+            ).animate().fadeIn(delay: 400.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
             const SizedBox(height: DesignSpacing.lg),
             Container(
               decoration: DesignComponents.cardDecoration(boxShadow: DesignElevation.md),
@@ -204,7 +222,7 @@ class VisitorSuccessScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.qr_code_2_rounded,
                             size: 44,
                             color: DesignColors.textTertiary,
@@ -227,7 +245,7 @@ class VisitorSuccessScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
+            ).animate().fadeIn(delay: 500.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
             const SizedBox(height: DesignSpacing.lg),
             Container(
               decoration: DesignComponents.cardDecoration(),

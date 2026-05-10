@@ -32,12 +32,30 @@ class ApiEndpoints {
   static const String maintenanceHistory = '/residents/my-maintenance';
   static const String paymentHistory = '/residents/my-maintenance';
 
-  /// SaaS billing cycle (UTC windows; status from server): `GET /v1/cycles/current?societyId=`
-  static String billingCyclesCurrent({required String societyId}) =>
-      '/v1/cycles/current?societyId=${Uri.encodeQueryComponent(societyId)}';
+  /// SaaS billing cycle (UTC windows; status from server): `GET /v1/cycles/current?societyId=&billingCycleId=`
+  static String billingCyclesCurrent({
+    required String societyId,
+    String? billingCycleId,
+  }) {
+    final q = <String, String>{
+      'societyId': societyId,
+      if (billingCycleId != null && billingCycleId.isNotEmpty)
+        'billingCycleId': billingCycleId,
+    };
+    return '/v1/cycles/current?${Uri(queryParameters: q).query}';
+  }
 
   /// `POST /v1/payments/create-order`
   static const String billingCreateOrder = '/v1/payments/create-order';
+
+  /// Financial years for billing (`GET /v1/financial-years`) — admin + resident.
+  static const String billingFinancialYears = '/v1/financial-years';
+
+  /// Billing cycles in a financial year (`GET /v1/billing-cycles?financialYearId=`).
+  static const String billingCyclesForYear = '/v1/billing-cycles';
+
+  /// Resolve cycle → financial year (`GET /v1/billing-cycles/context?billingCycleId=`).
+  static const String billingCycleContext = '/v1/billing-cycles/context';
   
   // Resident - Complaints
   static const String myComplaints = '/residents/my-complaints';

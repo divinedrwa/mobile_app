@@ -68,6 +68,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             // Vehicle Number
             TextFormField(
               controller: _numberController,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Vehicle Number',
                 hintText: 'e.g., MH 12 AB 1234',
@@ -106,6 +108,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             // Brand
             TextFormField(
               controller: _brandController,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Brand (Optional)',
                 hintText: 'e.g., Honda, Hero',
@@ -118,6 +121,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             // Model
             TextFormField(
               controller: _modelController,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Model (Optional)',
                 hintText: 'e.g., City, Splendor',
@@ -130,6 +134,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             // Color
             TextFormField(
               controller: _colorController,
+              textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 labelText: 'Color (Optional)',
                 hintText: 'e.g., White, Black',

@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../providers/sos_provider.dart';
@@ -104,6 +105,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
       ref.invalidate(sosAlertsProvider);
 
       if (!mounted) return;
+      DesignHaptics.success();
       context.go('/resident/sos/active');
     } catch (e) {
       if (!mounted) return;
@@ -152,7 +154,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Icon(Icons.emergency, size: 88, color: DesignColors.error)
+          const Icon(Icons.emergency, size: 88, color: DesignColors.error)
               .animate()
               .shake(duration: 600.ms),
           const SizedBox(height: AppSpacing.sm),
@@ -185,7 +187,10 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-          Listener(
+          Semantics(
+            label: 'Hold to trigger SOS alert',
+            button: true,
+            child: Listener(
             onPointerDown: (_) => _beginHold(),
             onPointerUp: (_) => _cancelHold(),
             onPointerCancel: (_) => _cancelHold(),
@@ -235,6 +240,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
                 ),
               ),
           ),
+          ),
           const SizedBox(height: AppSpacing.xxl),
           Text(
             'SOS history',
@@ -246,7 +252,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
           historyAsync.when(
             data: (list) {
               if (list.isEmpty) {
-                return Text(
+                return const Text(
                   'No past alerts yet.',
                   style: TextStyle(color: DesignColors.textSecondary),
                 );
@@ -258,7 +264,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
                 children: sorted.take(15).map((a) {
                   return Card(
                     child: ListTile(
-                      leading: Icon(Icons.history, color: DesignColors.error),
+                      leading: const Icon(Icons.history, color: DesignColors.error),
                       title: Text(a.type.value),
                       subtitle: Text(
                         '${a.status.value} · ${a.createdAt != null ? DateFormat('MMM d HH:mm').format(a.createdAt!.toLocal()) : '—'}',

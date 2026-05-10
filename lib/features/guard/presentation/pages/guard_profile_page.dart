@@ -28,7 +28,7 @@ class GuardProfilePage extends ConsumerWidget {
                   backgroundColor: GuardTokens.guardAccent.withValues(
                     alpha: 0.15,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.person_rounded,
                     color: GuardTokens.guardAccentDeep,
                   ),
@@ -67,8 +67,8 @@ class GuardProfilePage extends ConsumerWidget {
           ),
           const Divider(height: GuardTokens.sectionGap),
           ListTile(
-            leading: Icon(Icons.logout_rounded, color: DesignColors.error),
-            title: Text('Log out', style: TextStyle(color: DesignColors.error)),
+            leading: const Icon(Icons.logout_rounded, color: DesignColors.error),
+            title: const Text('Log out', style: TextStyle(color: DesignColors.error)),
             onTap: () async {
               await ref.read(authProvider.notifier).logout();
               if (context.mounted) context.go('/login');

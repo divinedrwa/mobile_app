@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/amenity_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../widgets/list_skeleton.dart';
 import 'amenity_booking_history_screen.dart';
 
 /// Amenities Booking Screen
@@ -79,7 +84,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
     if (!mounted) return;
     if (success) {
       ref.invalidate(amenitiesProvider);
-      ref.read(amenityBookingProvider.notifier).fetchBookings();
+      unawaited(ref.read(amenityBookingProvider.notifier).fetchBookings());
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -109,6 +114,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
         title: const Text('Amenities'),
         actions: [
           IconButton(
+            tooltip: 'Booking history',
             icon: const Icon(Icons.calendar_today),
             onPressed: () {
               Navigator.of(context).push(
@@ -121,7 +127,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
         ],
       ),
       body: amenitiesState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(itemHeight: 88),
         error: (error, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -141,7 +147,13 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
             ],
           ),
         ),
-        data: (amenities) => ListView.builder(
+        data: (amenities) => amenities.isEmpty
+            ? const EmptyStateWidget(
+                icon: Icons.sports_tennis_outlined,
+                title: 'No amenities available',
+                subtitle: 'Your society hasn\'t set up bookable amenities yet. Check back later!',
+              )
+            : ListView.builder(
           padding: const EdgeInsets.all(AppSpacing.md),
           itemCount: amenities.length,
           itemBuilder: (context, index) {
@@ -194,7 +206,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
               ),
             ).animate().fadeIn(
                   duration: 300.ms,
-                  delay: (index * 80).ms,
+                  delay: DesignAnimations.staggerFor(index),
                 );
           },
         ),

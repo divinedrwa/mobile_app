@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/design_haptics.dart';
 import '../../ui/guard_tokens.dart';
 
 /// Bottom navigation shell for guard — separate from [ResidentShell].
@@ -33,8 +34,8 @@ class GuardNavigationShell extends StatelessWidget {
           children: [
             Expanded(child: shell),
             Material(
-              elevation: 8,
-              shadowColor: Colors.black26,
+              elevation: 2,
+              shadowColor: Colors.black12,
               color: barBg,
               child: SafeArea(
                 top: false,
@@ -69,7 +70,10 @@ class GuardNavigationShell extends StatelessWidget {
                   ),
                   child: NavigationBar(
                     selectedIndex: shell.currentIndex,
-                    onDestinationSelected: shell.goBranch,
+                    onDestinationSelected: (index) {
+                      DesignHaptics.selection();
+                      shell.goBranch(index);
+                    },
                     destinations: const [
                       NavigationDestination(
                         icon: Icon(Icons.space_dashboard_outlined),

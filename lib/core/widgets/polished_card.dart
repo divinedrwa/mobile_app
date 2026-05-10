@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_elevations.dart';
+import '../theme/design_animations.dart';
+import '../theme/design_haptics.dart';
+import '../theme/design_tokens.dart';
 
 /// Ultra-polished card widget with native feel
 class PolishedCard extends StatefulWidget {
@@ -38,15 +41,16 @@ class _PolishedCardState extends State<PolishedCard> {
       onTapDown: widget.onTap != null ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: widget.onTap != null ? (_) {
         setState(() => _isPressed = false);
+        DesignHaptics.selection();
         widget.onTap!();
       } : null,
       onTapCancel: widget.onTap != null ? () => setState(() => _isPressed = false) : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
+        duration: DesignAnimations.durationInteraction,
+        curve: DesignAnimations.curveInteraction,
         margin: widget.margin,
         transform: Matrix4.identity()
-          ..scaleByDouble(_isPressed ? 0.97 : 1.0, _isPressed ? 0.97 : 1.0, 1.0, 1.0),
+          ..scaleByDouble(_isPressed ? DesignAnimations.scaleCardPressed : 1.0, _isPressed ? DesignAnimations.scaleCardPressed : 1.0, 1.0, 1.0),
         child: Container(
           decoration: BoxDecoration(
             color: bgColor,
@@ -56,12 +60,12 @@ class _PolishedCardState extends State<PolishedCard> {
                 : null,
           ),
           child: Material(
-            color: Colors.transparent,
+            color: DesignColors.surface.withValues(alpha: 0),
             child: InkWell(
               onTap: widget.onTap,
               borderRadius: BorderRadius.circular(widget.borderRadius),
               child: Padding(
-                padding: widget.padding ?? const EdgeInsets.all(16),
+                padding: widget.padding ?? const EdgeInsets.all(DesignSpacing.cardPadding),
                 child: widget.child,
               ),
             ),

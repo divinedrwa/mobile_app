@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/constants/api_endpoints.dart';
@@ -95,11 +96,27 @@ class VisitorRepository {
       final list = response.data['visitors'] as List? ?? [];
       return list.whereType<Map>().map((raw) {
         final json = Map<String, dynamic>.from(raw);
-        json['visitDate'] =
-            json['checkInTime'] ?? json['checkInAt'] ?? json['createdAt'];
-        json['visitTime'] = null;
-        json['checkInTime'] = json['checkInTime'] ?? json['checkInAt'];
+        final checkInRaw = json['checkInTime'] ?? json['checkInAt'];
+        json['visitDate'] = checkInRaw ?? json['createdAt'];
+        json['checkInTime'] = checkInRaw;
         json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
+
+        final checkIn = checkInRaw != null
+            ? DateTime.tryParse(checkInRaw.toString())
+            : null;
+        if (checkIn != null) {
+          json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());
+        } else {
+          json['visitTime'] = null;
+        }
+
+        final purpose = json['purpose']?.toString().trim();
+        if (purpose == null || purpose.isEmpty) {
+          json['purpose'] = null;
+        } else {
+          json['purpose'] = purpose;
+        }
+
         return VisitorModel.fromJson(json);
       }).toList();
     } on DioException catch (e) {

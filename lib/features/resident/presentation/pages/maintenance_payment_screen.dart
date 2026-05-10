@@ -14,8 +14,6 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../data/models/billing_cycle_current_model.dart';
-import '../../data/models/maintenance_due_model.dart';
 import '../../data/providers/maintenance_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -28,6 +26,51 @@ Map<String, dynamic> _normalizeDashboardPayload(Map<String, dynamic> raw) {
   return raw;
 }
 
+/// Pick a sensible default billing cycle (matches current calendar month if present).
+String? _pickDefaultBillingCycleId(List<Map<String, dynamic>> cycles) {
+  if (cycles.isEmpty) return null;
+  final now = DateTime.now();
+  final key =
+      '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  for (final c in cycles) {
+    if (c['cycleKey']?.toString() == key) {
+      return c['id']?.toString();
+    }
+  }
+  for (final c in cycles.reversed) {
+    if (c['status']?.toString() == 'OPEN') {
+      return c['id']?.toString();
+    }
+  }
+  return cycles.last['id']?.toString();
+}
+
+String? _pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
+  if (fys.isEmpty) return null;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  for (final fy in fys) {
+    final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
+    final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
+    if (s == null || e == null) continue;
+    final ds = DateTime(s.year, s.month, s.day);
+    final de = DateTime(e.year, e.month, e.day);
+    if (!today.isBefore(ds) && !today.isAfter(de)) {
+      return fy['id']?.toString();
+    }
+  }
+  return fys.first['id']?.toString();
+}
+
+({int month, int year})? _monthYearFromCycleKey(String cycleKey) {
+  final m = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(cycleKey.trim());
+  if (m == null) return null;
+  final y = int.tryParse(m.group(1)!);
+  final mo = int.tryParse(m.group(2)!);
+  if (y == null || mo == null || mo < 1 || mo > 12) return null;
+  return (month: mo, year: y);
+}
+
 /// Maintenance Financial Dashboard Screen
 class MaintenancePaymentScreen extends ConsumerStatefulWidget {
   const MaintenancePaymentScreen({super.key});
@@ -37,13 +80,10 @@ class MaintenancePaymentScreen extends ConsumerStatefulWidget {
       _MaintenancePaymentScreenState();
 }
 
-enum _HistoryFilterMode { monthly, yearly }
-
 enum _ResidentStatusFilter { all, paid, unpaid }
 
 class _MaintenancePaymentScreenState
     extends ConsumerState<MaintenancePaymentScreen> {
-  _HistoryFilterMode _historyFilterMode = _HistoryFilterMode.monthly;
   _ResidentStatusFilter _residentStatusFilter = _ResidentStatusFilter.all;
   bool _appliedInitialQueryFilter = false;
 
@@ -51,30 +91,203 @@ class _MaintenancePaymentScreenState
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_appliedInitialQueryFilter) return;
-    _appliedInitialQueryFilter = true;
 
     final uri = GoRouterState.of(context).uri;
-    final month = int.tryParse(uri.queryParameters['month'] ?? '');
-    final year = int.tryParse(uri.queryParameters['year'] ?? '');
-    if (month == null || year == null) return;
-    if (month < 1 || month > 12 || year < 2000 || year > 2100) return;
+    final q = uri.queryParameters;
+    final monthRaw = int.tryParse(q['month'] ?? '');
+    final yearRaw = int.tryParse(q['year'] ?? '');
+    final hasValidMonthYear = monthRaw != null &&
+        yearRaw != null &&
+        monthRaw >= 1 &&
+        monthRaw <= 12 &&
+        yearRaw >= 2000 &&
+        yearRaw <= 2100;
+
+    final cycleIdParam = q['cycleId'];
+    final collectionCycleId = (cycleIdParam != null && cycleIdParam.isNotEmpty)
+        ? cycleIdParam
+        : null;
+    final fyParam = q['financialYearId'];
+    final financialYearId =
+        (fyParam != null && fyParam.isNotEmpty) ? fyParam : null;
+    final billingCycleParam = q['billingCycleId'];
+    final billingCycleId =
+        (billingCycleParam != null && billingCycleParam.isNotEmpty)
+            ? billingCycleParam
+            : null;
+
+    final hasBillingParams = hasValidMonthYear ||
+        financialYearId != null ||
+        billingCycleId != null ||
+        collectionCycleId != null;
+
+    if (!hasBillingParams) {
+      _appliedInitialQueryFilter = true;
+      return;
+    }
+
+    _appliedInitialQueryFilter = true;
+
+    if (billingCycleId != null &&
+        financialYearId == null &&
+        !hasValidMonthYear) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _applyDeepLinkBillingCycleOnly(billingCycleId, collectionCycleId);
+      });
+      return;
+    }
+
+    final stub = DateTime.now();
+    final int month;
+    final int year;
+    if (hasValidMonthYear) {
+      month = monthRaw;
+      year = yearRaw;
+    } else {
+      month = stub.month;
+      year = stub.year;
+    }
 
     final current = ref.read(maintenanceDashboardFilterProvider);
-    if (current.month == month && current.year == year) return;
-    ref.read(maintenanceDashboardFilterProvider.notifier).state =
-        current.copyWith(month: month, year: year);
+    final effectiveBillingCycleId = billingCycleId;
+    final effectiveFinancialYearId = financialYearId;
+
+    if (current.month == month &&
+        current.year == year &&
+        current.maintenanceCollectionCycleId == collectionCycleId &&
+        current.financialYearId == effectiveFinancialYearId &&
+        current.billingCycleId == effectiveBillingCycleId) {
+      if (effectiveFinancialYearId != null) {
+        ref.invalidate(
+          billingCyclesForFinancialYearProvider(effectiveFinancialYearId),
+        );
+      }
+      return;
+    }
+
+    ref.read(maintenanceDashboardFilterProvider.notifier).state = current
+        .copyWith(
+          month: month,
+          year: year,
+          maintenanceCollectionCycleId: collectionCycleId,
+          clearCollectionCycleId: collectionCycleId == null,
+          financialYearId: effectiveFinancialYearId,
+          clearFinancialYearId: effectiveFinancialYearId == null,
+          billingCycleId: effectiveBillingCycleId,
+          clearBillingCycleId: effectiveBillingCycleId == null,
+        );
     ref.invalidate(maintenanceDashboardProvider);
+    if (effectiveFinancialYearId != null) {
+      ref.invalidate(
+        billingCyclesForFinancialYearProvider(effectiveFinancialYearId),
+      );
+    }
+  }
+
+  Future<void> _applyDeepLinkBillingCycleOnly(
+    String billingCycleId,
+    String? collectionCycleId,
+  ) async {
+    if (!mounted) return;
+    try {
+      final ctx = await ref
+          .read(maintenanceRepositoryProvider)
+          .getBillingCycleContext(billingCycleId);
+      if (!mounted || ctx == null) return;
+      final fyMap = ctx['financialYear'];
+      final bcMap = ctx['billingCycle'];
+      if (fyMap is! Map || bcMap is! Map) return;
+      final fyId = fyMap['id']?.toString();
+      final key = bcMap['cycleKey']?.toString() ?? '';
+      final my = _monthYearFromCycleKey(key);
+      if (fyId == null || fyId.isEmpty || my == null) return;
+
+      final cur = ref.read(maintenanceDashboardFilterProvider);
+      ref.read(maintenanceDashboardFilterProvider.notifier).state =
+          cur.copyWith(
+        month: my.month,
+        year: my.year,
+        maintenanceCollectionCycleId: collectionCycleId,
+        clearCollectionCycleId: collectionCycleId == null,
+        financialYearId: fyId,
+        clearFinancialYearId: false,
+        billingCycleId: billingCycleId,
+        clearBillingCycleId: false,
+      );
+      ref.invalidate(maintenanceDashboardProvider);
+      ref.invalidate(billingCyclesForFinancialYearProvider(fyId));
+    } catch (_) {}
   }
 
   Future<void> _pullRefreshMaintenance() async {
     ref.invalidate(maintenanceDashboardProvider);
     ref.invalidate(pendingMaintenanceProvider);
+    ref.invalidate(maintenanceHistoryProvider);
+    ref.invalidate(billingFinancialYearsProvider);
+    final fy = ref.read(maintenanceDashboardFilterProvider).financialYearId;
+    if (fy != null && fy.isNotEmpty) {
+      ref.invalidate(billingCyclesForFinancialYearProvider(fy));
+    }
+    ref.invalidate(residentBillingCycleProvider);
     try {
       await ref.read(maintenanceDashboardProvider.future);
     } catch (_) {}
     try {
       await ref.read(pendingMaintenanceProvider.future);
     } catch (_) {}
+    try {
+      await ref.read(maintenanceHistoryProvider.future);
+    } catch (_) {}
+  }
+
+  void _ensureBillingCycleMatchesFilter(
+    String fyId,
+    List<Map<String, dynamic>> cycles,
+  ) {
+    if (cycles.isEmpty) return;
+    final cur = ref.read(maintenanceDashboardFilterProvider);
+    if (cur.financialYearId != fyId) return;
+
+    final byId = <String, Map<String, dynamic>>{
+      for (final c in cycles)
+        if (c['id'] != null) c['id'].toString(): c,
+    };
+
+    final Map<String, dynamic> chosen;
+    final sel = cur.billingCycleId;
+    if (sel != null && byId.containsKey(sel)) {
+      chosen = byId[sel]!;
+    } else {
+      final def = _pickDefaultBillingCycleId(cycles);
+      if (def != null && byId.containsKey(def)) {
+        chosen = byId[def]!;
+      } else {
+        chosen = cycles.last;
+      }
+    }
+
+    final key = chosen['cycleKey']?.toString() ?? '';
+    final my = _monthYearFromCycleKey(key);
+    if (my == null) return;
+
+    final idStr = chosen['id']?.toString();
+    if (cur.billingCycleId == idStr &&
+        cur.month == my.month &&
+        cur.year == my.year) {
+      return;
+    }
+
+    ref.read(maintenanceDashboardFilterProvider.notifier).state =
+        cur.copyWith(
+          billingCycleId: idStr,
+          month: my.month,
+          year: my.year,
+          clearBillingCycleId: false,
+          clearFinancialYearId: false,
+          financialYearId: fyId,
+          clearCollectionCycleId: true,
+        );
+    ref.invalidate(maintenanceDashboardProvider);
   }
 
   Widget _wrapTabWithRefresh(Widget scrollable) {
@@ -89,13 +302,49 @@ class _MaintenancePaymentScreenState
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(maintenanceDashboardProvider);
-    final billingCycleAsync = ref.watch(residentBillingCycleProvider);
     final user = ref.watch(authProvider).user;
     final isAdmin = user?.role == UserRole.admin;
     final filter = ref.watch(maintenanceDashboardFilterProvider);
-    const tabs = ['All Residents', 'My Payments', 'My Dues'];
+    final tabs = isAdmin
+        ? const ['All residents', 'My payments', 'Year review']
+        : const ['Overview', 'My payments', 'Year review'];
     final periodLabel =
-        '${DateFormat('MMMM').format(DateTime(2000, filter.month))} ${filter.year}';
+        '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
+
+    ref.listen(billingFinancialYearsProvider, (prev, next) {
+      next.whenData((fys) {
+        final cur = ref.read(maintenanceDashboardFilterProvider);
+        if (fys.isEmpty || cur.financialYearId != null) return;
+        final id = _pickDefaultFinancialYearId(fys);
+        if (id == null || id.isEmpty) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final c2 = ref.read(maintenanceDashboardFilterProvider);
+          if (c2.financialYearId != null) return;
+          ref.read(maintenanceDashboardFilterProvider.notifier).state =
+              c2.copyWith(financialYearId: id);
+        });
+      });
+    });
+
+    final fyListenId = filter.financialYearId;
+    if (fyListenId != null && fyListenId.isNotEmpty) {
+      ref.listen(billingCyclesForFinancialYearProvider(fyListenId), (prev, next) {
+        next.whenData((body) {
+          final raw = body['cycles'];
+          final cycles = raw is List
+              ? raw
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[];
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _ensureBillingCycleMatchesFilter(fyListenId, cycles);
+          });
+        });
+      });
+    }
 
     return DefaultTabController(
       length: tabs.length,
@@ -125,6 +374,11 @@ class _MaintenancePaymentScreenState
                 ),
               ),
             ],
+          ),
+          actions: _buildAppBarActions(
+            dashboardState.valueOrNull,
+            filter,
+            isAdmin,
           ),
           bottom: TabBar(
             isScrollable: true,
@@ -184,10 +438,7 @@ class _MaintenancePaymentScreenState
                             ),
                             const SizedBox(height: 18),
                             FilledButton.icon(
-                              onPressed: () {
-                                ref.invalidate(maintenanceDashboardProvider);
-                                ref.invalidate(pendingMaintenanceProvider);
-                              },
+                              onPressed: () => _pullRefreshMaintenance(),
                               icon: const Icon(Icons.refresh_rounded),
                               label: const Text('Retry'),
                             ),
@@ -205,31 +456,77 @@ class _MaintenancePaymentScreenState
             final userSummary = Map<String, dynamic>.from(
               (root['userSummary'] ?? root['summary'] ?? const {}) as Map,
             );
+            // Collect FY billing cycle keys (e.g. "2025-04") to filter
+            // paymentHistory to only the selected financial year.
+            final fyCycleKeys = <String>{};
+            if (filter.financialYearId != null &&
+                filter.financialYearId!.isNotEmpty) {
+              final cyclesData = ref
+                  .read(billingCyclesForFinancialYearProvider(
+                      filter.financialYearId!))
+                  .valueOrNull;
+              if (cyclesData != null) {
+                final raw = cyclesData['cycles'];
+                if (raw is List) {
+                  for (final c in raw) {
+                    if (c is Map) {
+                      final key = c['cycleKey']?.toString() ?? '';
+                      if (key.isNotEmpty) fyCycleKeys.add(key);
+                    }
+                  }
+                }
+              }
+            }
+
             final paymentHistory = ((root['paymentHistory'] ?? const []) as List)
                 .whereType<Map>()
                 .map((e) => Map<String, dynamic>.from(e))
+                .where((e) {
+                  // If we have FY cycle keys, only include entries
+                  // whose month/year match one of the FY's cycles.
+                  if (fyCycleKeys.isEmpty) return true;
+                  final m = (e['month'] as num?)?.toInt() ?? 0;
+                  final y = (e['year'] as num?)?.toInt() ?? 0;
+                  final key = '$y-${m.toString().padLeft(2, '0')}';
+                  return fyCycleKeys.contains(key);
+                })
                 .map((e) {
                   final paymentDate = DateTime.tryParse(
                     e['paymentDate']?.toString() ?? '',
                   );
+                  final status = (e['status']?.toString() ?? 'PAID')
+                      .toUpperCase();
                   final month = (e['month'] as num?)?.toInt() ?? 0;
                   final year = (e['year'] as num?)?.toInt() ?? 0;
                   final amount = (e['amount'] as num?)?.toDouble() ?? 0;
+                  final expected =
+                      (e['expectedAmount'] as num?)?.toDouble() ?? amount;
+                  final creditApplied =
+                      (e['creditApplied'] as num?)?.toDouble() ?? 0;
+                  final remainingDue =
+                      (e['remainingDue'] as num?)?.toDouble() ?? 0;
+                  final subtitle = switch (status) {
+                    'AUTO_SETTLED' =>
+                      'Adjusted from previous credit${creditApplied > 0 ? ' · ₹${creditApplied.toStringAsFixed(0)} used' : ''}',
+                    'PARTIAL' =>
+                      'Paid ₹${amount.toStringAsFixed(0)} of ₹${expected.toStringAsFixed(0)}',
+                    'OVERDUE' || 'PENDING' =>
+                      '₹${remainingDue.toStringAsFixed(0)} still due',
+                    _ =>
+                      paymentDate == null
+                          ? 'Payment date unavailable'
+                          : 'Paid on ${DateFormat('dd MMM yyyy').format(paymentDate.toLocal())}',
+                  };
                   return {
                     ...e,
                     'label': (month >= 1 && month <= 12)
                         ? '${DateFormat('MMM').format(DateTime(year, month))} $year'
                         : '$year',
-                    'subtitle': paymentDate == null
-                        ? 'Payment date unavailable'
-                        : 'Paid on ${DateFormat('dd MMM yyyy').format(paymentDate.toLocal())}',
+                    'subtitle': subtitle,
                     'amount': amount,
+                    'status': status,
                   };
                 })
-                .toList();
-            final pendingDues = ((root['pendingDues'] ?? const []) as List)
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
                 .toList();
             final residents = ((root['residents'] ?? const []) as List)
                 .whereType<Map>()
@@ -241,253 +538,536 @@ class _MaintenancePaymentScreenState
             final expenses = Map<String, dynamic>.from(
               (root['monthlyExpenseBreakdown'] ?? const {}) as Map,
             );
-
             final overviewStrip = _buildTopOverviewStrip(
               periodLabel: periodLabel,
               residentsSummary: residentsSummary,
               userSummary: userSummary,
               expenses: expenses,
               isAdmin: isAdmin,
-              billingCycle: billingCycleAsync.valueOrNull,
+            );
+
+            // When FY mode is active but no billing cycle is selected,
+            // show a prompt instead of default/empty data.
+            final hasFyWithoutCycle = filter.financialYearId != null &&
+                filter.financialYearId!.isNotEmpty &&
+                (filter.billingCycleId == null ||
+                    filter.billingCycleId!.isEmpty);
+
+            final selectCyclePlaceholder = _wrapTabWithRefresh(
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: DesignColors.primary.withValues(alpha: 0.07),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_outlined,
+                          size: 48,
+                          color: DesignColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Select a billing cycle',
+                        style: DesignTypography.headingM.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Choose a billing month from the dropdown above to view maintenance data for that period.',
+                        textAlign: TextAlign.center,
+                        style: DesignTypography.bodySmall.copyWith(
+                          color: DesignColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             );
 
             final pages = <Widget>[
-              _buildResidentsTab(
-                context,
-                residents,
-                residentsSummary,
-                overviewStrip,
-              ),
-              _buildPaymentHistoryTab(
-                context,
-                paymentHistory,
-                overviewStrip,
-              ),
-              _buildPendingDuesTab(
-                context,
-                pendingDues,
-                overviewStrip,
-              ),
+              if (hasFyWithoutCycle)
+                selectCyclePlaceholder
+              else if (isAdmin)
+                _buildResidentsTab(
+                  context,
+                  residents,
+                  residentsSummary,
+                  overviewStrip,
+                )
+              else
+                _buildOverviewTab(
+                  context,
+                  userSummary,
+                  residentsSummary,
+                  expenses,
+                  residents,
+                  overviewStrip,
+                  periodLabel,
+                ),
+
+              if (hasFyWithoutCycle)
+                _wrapTabWithRefresh(
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: DesignColors.primary.withValues(alpha: 0.07),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.event_busy_rounded,
+                              size: 48,
+                              color: DesignColors.primary.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No billing cycles in this year',
+                            style: DesignTypography.headingM.copyWith(
+                              color: DesignColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Payment records will appear once billing cycles are created for the selected financial year.',
+                            textAlign: TextAlign.center,
+                            style: DesignTypography.bodySmall.copyWith(
+                              color: DesignColors.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                _buildPaymentHistoryTab(
+                    context,
+                    paymentHistory,
+                    overviewStrip,
+                    filter,
+                ),
+
+              // Year review tab
+              _buildYearReviewTab(context, filter),
             ];
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Material(
-                  color: DesignColors.surface,
-                  elevation: 0,
-                  child: _buildStickyFilterBar(context, filter, isAdmin, root),
-                ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: DesignColors.borderLight.withValues(alpha: 0.6),
-                ),
-                Expanded(child: TabBarView(children: pages)),
-              ],
+            return Builder(
+              builder: (ctx) {
+                final tabCtrl = DefaultTabController.of(ctx);
+                return AnimatedBuilder(
+                  animation: tabCtrl,
+                  builder: (ctx2, _) {
+                    final tabIdx = tabCtrl.index;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Material(
+                          color: DesignColors.surface,
+                          elevation: 0,
+                          child: _buildStickyFilterBar(
+                              ctx2, filter, isAdmin, root,
+                              hidesCycleDropdown: tabIdx >= 1),
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              DesignColors.borderLight.withValues(alpha: 0.6),
+                        ),
+                        Expanded(child: TabBarView(children: pages)),
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         ),
-        bottomNavigationBar: isAdmin
-            ? null
-            : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: ref.watch(pendingMaintenanceProvider).when(
-                        loading: () => const SizedBox.shrink(),
-                        error: (e, _) => const SizedBox.shrink(),
-                        data: (pending) =>
-                            _legacyPayColumn(context, pending),
-                      ),
-                ),
-              ),
       ),
     );
+  }
+
+  List<Widget> _buildAppBarActions(
+    Map<String, dynamic>? dashboard,
+    MaintenanceDashboardFilter filter,
+    bool isAdmin,
+  ) {
+    return [
+      IconButton(
+        tooltip: 'Refresh',
+        icon: const Icon(Icons.refresh_rounded, color: DesignColors.textSecondary),
+        onPressed: _pullRefreshMaintenance,
+      ),
+      IconButton(
+        tooltip: 'Download PDF',
+        icon: const Icon(Icons.picture_as_pdf_outlined, color: DesignColors.textSecondary),
+        onPressed: dashboard == null
+            ? null
+            : () => _downloadPdfReport(context, dashboard, filter),
+      ),
+      IconButton(
+        tooltip: 'Analytics',
+        icon: const Icon(Icons.insights_outlined, color: DesignColors.textSecondary),
+        onPressed: dashboard == null
+            ? null
+            : () => _openFinancialOverview(context, dashboard),
+      ),
+      if (isAdmin)
+        IconButton(
+          tooltip: 'Send reminders',
+          icon: const Icon(Icons.notifications_active_outlined, color: DesignColors.textSecondary),
+          onPressed: () => _sendReminders(context, filter),
+        ),
+    ];
   }
 
   Widget _buildStickyFilterBar(
     BuildContext context,
     MaintenanceDashboardFilter filter,
     bool isAdmin,
-    Map<String, dynamic> dashboard,
-  ) {
-    final years = List<int>.generate(6, (index) => DateTime.now().year - index);
+    Map<String, dynamic> dashboard, {
+    bool hidesCycleDropdown = false,
+  }) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: DesignColors.borderLight),
     );
+    final fyAsync = ref.watch(billingFinancialYearsProvider);
+
     return Material(
       color: DesignColors.surface,
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    key: ValueKey('maint-month-${filter.month}'),
-                    initialValue: filter.month,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: DesignColors.surfaceSoft,
-                      labelText: 'Month',
-                      labelStyle: DesignTypography.labelSmall.copyWith(
-                        color: DesignColors.textSecondary,
-                      ),
-                      border: border,
-                      enabledBorder: border,
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: DesignColors.primary,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                    dropdownColor: DesignColors.surface,
-                    items: List.generate(
-                      12,
-                      (index) => DropdownMenuItem(
-                        value: index + 1,
-                        child: Text(
-                          DateFormat('MMMM').format(DateTime(2024, index + 1)),
-                        ),
-                      ),
-                    ),
-                    onChanged: (m) {
-                      if (m == null) return;
-                      ref
-                          .read(maintenanceDashboardFilterProvider.notifier)
-                          .state = filter.copyWith(
-                        month: m,
-                      );
-                      ref.invalidate(maintenanceDashboardProvider);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    key: ValueKey('maint-year-${filter.year}'),
-                    initialValue: filter.year,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: DesignColors.surfaceSoft,
-                      labelText: 'Year',
-                      labelStyle: DesignTypography.labelSmall.copyWith(
-                        color: DesignColors.textSecondary,
-                      ),
-                      border: border,
-                      enabledBorder: border,
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: DesignColors.primary,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                    dropdownColor: DesignColors.surface,
-                    items: years
-                        .map(
-                          (y) => DropdownMenuItem(value: y, child: Text('$y')),
-                        )
-                        .toList(),
-                    onChanged: (y) {
-                      if (y == null) return;
-                      ref
-                          .read(maintenanceDashboardFilterProvider.notifier)
-                          .state = filter.copyWith(
-                        year: y,
-                      );
-                      ref.invalidate(maintenanceDashboardProvider);
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton.filledTonal(
-                  style: IconButton.styleFrom(
-                    foregroundColor: DesignColors.textPrimary,
-                    backgroundColor: DesignColors.surfaceSoft,
-                  ),
-                  tooltip: 'Download report PDF',
-                  onPressed: () =>
-                      _downloadPdfReport(context, dashboard, filter),
-                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 22),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  style: IconButton.styleFrom(
-                    foregroundColor: DesignColors.primary,
-                    backgroundColor: DesignColors.primary.withValues(
-                      alpha: 0.12,
-                    ),
-                  ),
-                  tooltip: 'Society collections vs expenses',
-                  onPressed: () => _openFinancialOverview(context, dashboard),
-                  icon: const Icon(Icons.insights_outlined, size: 22),
-                ),
-                if (isAdmin) ...[
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: 'Send reminders',
-                    onPressed: () => _sendReminders(context, filter),
-                    icon: const Icon(
-                      Icons.notifications_active_outlined,
-                      size: 22,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
+        child: fyAsync.when(
+          loading: () => _legacyCalendarMonthYearPickers(filter, border),
+          error: (err, stack) => _legacyCalendarMonthYearPickers(filter, border),
+          data: (fys) {
+            if (fys.isEmpty) {
+              return _legacyCalendarMonthYearPickers(filter, border);
+            }
+            return _financialYearBillingCyclePickers(
+              filter,
+              fys,
+              border,
+              hidesCycleDropdown: hidesCycleDropdown,
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _legacyPayColumn(
-    BuildContext context,
-    List<MaintenanceDueModel> pending,
+  Widget _legacyCalendarMonthYearPickers(
+    MaintenanceDashboardFilter filter,
+    OutlineInputBorder border,
   ) {
-    if (pending.isEmpty) return const SizedBox.shrink();
-    final totalDue = pending.fold<double>(0, (sum, item) => sum + item.amount);
+    final years = List<int>.generate(6, (index) => DateTime.now().year - index);
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Your unit · items under My Dues (legacy ledger)',
-          textAlign: TextAlign.center,
-          style: DesignTypography.bodySmall.copyWith(
-            color: DesignColors.textSecondary,
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                key: ValueKey('maint-month-${filter.month}'),
+                initialValue: filter.month,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: DesignColors.surfaceSoft,
+                  labelText: 'Calendar month',
+                  labelStyle: DesignTypography.labelSmall.copyWith(
+                    color: DesignColors.textSecondary,
+                  ),
+                  border: border,
+                  enabledBorder: border,
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: DesignColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                dropdownColor: DesignColors.surface,
+                items: List.generate(
+                  12,
+                  (index) => DropdownMenuItem(
+                    value: index + 1,
+                    child: Text(
+                      DateFormat('MMMM').format(DateTime(2024, index + 1)),
+                    ),
+                  ),
+                ),
+                onChanged: (m) {
+                  if (m == null) return;
+                  final cur = ref.read(maintenanceDashboardFilterProvider);
+                  ref.read(maintenanceDashboardFilterProvider.notifier).state =
+                      cur.copyWith(
+                    month: m,
+                    clearCollectionCycleId: true,
+                    clearFinancialYearId: true,
+                    clearBillingCycleId: true,
+                  );
+                  ref.invalidate(maintenanceDashboardProvider);
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                key: ValueKey('maint-year-${filter.year}'),
+                initialValue: filter.year,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: DesignColors.surfaceSoft,
+                  labelText: 'Calendar year',
+                  labelStyle: DesignTypography.labelSmall.copyWith(
+                    color: DesignColors.textSecondary,
+                  ),
+                  border: border,
+                  enabledBorder: border,
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: DesignColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                dropdownColor: DesignColors.surface,
+                items: years
+                    .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
+                    .toList(),
+                onChanged: (y) {
+                  if (y == null) return;
+                  final cur = ref.read(maintenanceDashboardFilterProvider);
+                  ref.read(maintenanceDashboardFilterProvider.notifier).state =
+                      cur.copyWith(
+                    year: y,
+                    clearCollectionCycleId: true,
+                    clearFinancialYearId: true,
+                    clearBillingCycleId: true,
+                  );
+                  ref.invalidate(maintenanceDashboardProvider);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _financialYearBillingCyclePickers(
+    MaintenanceDashboardFilter filter,
+    List<Map<String, dynamic>> financialYears,
+    OutlineInputBorder border, {
+    bool hidesCycleDropdown = false,
+  }) {
+    final fyId = filter.financialYearId;
+    final cyclesAsync = fyId != null && fyId.isNotEmpty
+        ? ref.watch(billingCyclesForFinancialYearProvider(fyId))
+        : null;
+
+    String cycleMenuLabel(Map<String, dynamic> c) {
+      final key = c['cycleKey']?.toString() ?? '';
+      final my = _monthYearFromCycleKey(key);
+      final period = my != null
+          ? DateFormat('MMMM yyyy').format(DateTime(my.year, my.month))
+          : key;
+      final st = c['status']?.toString() ?? '';
+      return st.isEmpty ? period : '$period · $st';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          key: ValueKey('maint-fy-${filter.financialYearId}'),
+          initialValue: filter.financialYearId != null &&
+                  financialYears.any(
+                    (fy) => fy['id']?.toString() == filter.financialYearId,
+                  )
+              ? filter.financialYearId
+              : null,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: DesignColors.surfaceSoft,
+            labelText: 'Financial year',
+            labelStyle: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+            ),
+            border: border,
+            enabledBorder: border,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: DesignColors.primary,
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
           ),
+          dropdownColor: DesignColors.surface,
+          items: financialYears
+              .map(
+                (fy) => DropdownMenuItem(
+                  value: fy['id']?.toString(),
+                  child: Text(fy['label']?.toString() ?? 'Year'),
+                ),
+              )
+              .toList(),
+          onChanged: (id) {
+            if (id == null) return;
+            final cur = ref.read(maintenanceDashboardFilterProvider);
+            ref.read(maintenanceDashboardFilterProvider.notifier).state =
+                cur.copyWith(
+              financialYearId: id,
+              clearBillingCycleId: true,
+              clearCollectionCycleId: true,
+            );
+            ref.invalidate(billingCyclesForFinancialYearProvider(id));
+            ref.invalidate(maintenanceDashboardProvider);
+          },
         ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          onPressed: () => _showPaymentDialog(context, ref, pending, totalDue),
-          icon: const Icon(Icons.payments_outlined),
-          label: Text('Pay ₹${totalDue.toStringAsFixed(0)}'),
-        ),
+        if (!hidesCycleDropdown) ...[
+          const SizedBox(height: 10),
+          if (cyclesAsync == null)
+            Text(
+              'Choose a financial year to load billing months.',
+              style: DesignTypography.bodySmall.copyWith(
+                color: DesignColors.textSecondary,
+                fontSize: 11,
+              ),
+            )
+          else
+            cyclesAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(),
+              ),
+              error: (e, _) => Text(
+                userFacingMessage(e, 'Could not load billing cycles'),
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.error,
+                  fontSize: 11,
+                ),
+              ),
+              data: (body) {
+                final raw = body['cycles'];
+                final cycles = raw is List
+                    ? raw
+                        .whereType<Map>()
+                        .map((e) => Map<String, dynamic>.from(e))
+                        .toList()
+                    : <Map<String, dynamic>>[];
+                if (cycles.isEmpty) {
+                  return Text(
+                    'No billing cycles exist for this financial year yet.',
+                    style: DesignTypography.bodySmall.copyWith(
+                      color: DesignColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  );
+                }
+                final selectedId =
+                    filter.billingCycleId != null &&
+                            cycles.any(
+                              (c) => c['id']?.toString() == filter.billingCycleId,
+                            )
+                        ? filter.billingCycleId
+                        : null;
+                return DropdownButtonFormField<String>(
+                  key: ValueKey('maint-cycle-$selectedId'),
+                  initialValue: selectedId,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: DesignColors.surfaceSoft,
+                    labelText: 'Billing month (cycle)',
+                    labelStyle: DesignTypography.labelSmall.copyWith(
+                      color: DesignColors.textSecondary,
+                    ),
+                    border: border,
+                    enabledBorder: border,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: DesignColors.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  dropdownColor: DesignColors.surface,
+                  items: cycles
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c['id']?.toString(),
+                          child: Text(cycleMenuLabel(c)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (id) {
+                    if (id == null) return;
+                    final c = cycles.firstWhere(
+                      (x) => x['id']?.toString() == id,
+                    );
+                    final key = c['cycleKey']?.toString() ?? '';
+                    final my = _monthYearFromCycleKey(key);
+                    if (my == null) return;
+                    final cur = ref.read(maintenanceDashboardFilterProvider);
+                    ref.read(maintenanceDashboardFilterProvider.notifier).state =
+                        cur.copyWith(
+                      billingCycleId: id,
+                      month: my.month,
+                      year: my.year,
+                      clearBillingCycleId: false,
+                      clearFinancialYearId: false,
+                      financialYearId: fyId,
+                      clearCollectionCycleId: true,
+                    );
+                    ref.invalidate(maintenanceDashboardProvider);
+                  },
+                );
+              },
+            ),
+        ],
       ],
     );
   }
@@ -498,212 +1078,87 @@ class _MaintenancePaymentScreenState
     required Map<String, dynamic> userSummary,
     required Map<String, dynamic> expenses,
     required bool isAdmin,
-    BillingCycleCurrent? billingCycle,
   }) {
-    final totalResidents =
-        (residentsSummary['totalResidents'] as num?)?.toInt() ?? 0;
-    final paidCount = (residentsSummary['paidCount'] as num?)?.toInt() ?? 0;
-    final unpaidCount = (residentsSummary['unpaidCount'] as num?)?.toInt() ?? 0;
+    final expected =
+        (residentsSummary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
     final collected =
         (residentsSummary['totalCollected'] as num?)?.toDouble() ?? 0;
+    final pending =
+        (residentsSummary['totalPending'] as num?)?.toDouble() ?? 0;
     final totalExpense = (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
-    final myPending = (userSummary['totalPending'] as num?)?.toDouble() ?? 0;
+    final collectionRate = expected > 0 ? (collected / expected * 100) : 0.0;
     final inr = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
       decimalDigits: 0,
     );
 
-    final snapshotHint = isAdmin
-        ? 'Counts and money are society-wide. “My balance due” is your own unit if linked.'
-        : 'Society-wide totals. “My balance due” is your residents only (see My Dues).';
+    final rateColor = collectionRate >= 80
+        ? DesignColors.success
+        : collectionRate >= 50
+            ? DesignColors.warning
+            : DesignColors.error;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Material(
-        color: DesignColors.surface,
-        elevation: 0,
-        shadowColor: DesignColors.textPrimary.withValues(alpha: 0.04),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: DesignColors.borderLight),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesignColors.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.insights_outlined,
-                    size: 18,
-                    color: DesignColors.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Society snapshot · $periodLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: DesignTypography.labelSmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: DesignColors.textPrimary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  Tooltip(
-                    message: snapshotHint,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: DesignColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _snapshotChip(
-                    label: 'Residents',
-                    value: '$totalResidents',
-                    color: DesignColors.primary,
-                  ),
-                  _snapshotChip(
-                    label: 'Paid',
-                    value: '$paidCount',
-                    color: DesignColors.success,
-                  ),
-                  _snapshotChip(
-                    label: 'Unpaid',
-                    value: '$unpaidCount',
-                    color: DesignColors.error,
-                  ),
-                  _snapshotChip(
-                    label: 'Collected',
-                    value: inr.format(collected),
-                    color: DesignColors.success,
-                  ),
-                  _snapshotChip(
-                    label: 'Expenses',
-                    value: inr.format(totalExpense),
-                    color: DesignColors.textSecondary,
-                  ),
-                  _snapshotChip(
-                    label: 'My due',
-                    value: inr.format(myPending),
-                    color: DesignColors.error,
-                  ),
-                ],
-              ),
-              if (!isAdmin && billingCycle != null && billingCycle.hasCycle) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _snapshotChip(
-                      label: 'Expected',
-                      value: inr.format(billingCycle.expectedAmount ?? billingCycle.amount ?? 0),
-                      color: DesignColors.primary,
-                    ),
-                    _snapshotChip(
-                      label: 'Paid',
-                      value: inr.format(billingCycle.paidAmount ?? 0),
-                      color: DesignColors.success,
-                    ),
-                    _snapshotChip(
-                      label: 'Delta',
-                      value: inr.format(billingCycle.deltaAmount ?? 0),
-                      color: (billingCycle.deltaAmount ?? 0) >= 0
-                          ? DesignColors.success
-                          : DesignColors.error,
-                    ),
-                    _snapshotChip(
-                      label: 'Available credit',
-                      value: inr.format(billingCycle.availableCredit ?? 0),
-                      color: DesignColors.success,
-                    ),
-                    _snapshotChip(
-                      label: 'Remaining due',
-                      value: inr.format(billingCycle.remainingDue ?? billingCycle.totalDue ?? 0),
-                      color: DesignColors.warning,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
+        child: Column(
+          children: [
+            // 4-stat inline row
+            Row(
+              children: [
+                _compactStat('Expected', inr.format(expected), DesignColors.primary),
+                _compactStat('Collected', inr.format(collected), DesignColors.success),
+                _compactStat('Pending', inr.format(pending), DesignColors.error),
+                _compactStat('Expenses', inr.format(totalExpense), const Color(0xFF546E7A)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Compact collection progress bar
+            Row(
+              children: [
                 Text(
-                  'Credit will auto-adjust in the next cycle. Any remaining due carries forward until settled.',
-                  style: DesignTypography.bodySmall.copyWith(
+                  'Collection',
+                  style: DesignTypography.labelSmall.copyWith(
                     color: DesignColors.textSecondary,
                     fontSize: 11,
-                    height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: (collectionRate / 100).clamp(0.0, 1.0),
+                      color: rateColor,
+                      backgroundColor: DesignColors.surfaceSoft,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  'Need manual adjustment? Contact office/admin to record a manual settlement.',
-                  style: DesignTypography.bodySmall.copyWith(
-                    color: DesignColors.primary,
+                  '${collectionRate.toStringAsFixed(0)}%',
+                  style: DesignTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w800,
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
+                    color: rateColor,
                   ),
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _snapshotChip({
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 72, maxWidth: 120),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.22)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                height: 1.15,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: DesignTypography.bodySmall.copyWith(
-                fontSize: 10,
-                height: 1.1,
-                color: DesignColors.textSecondary,
-              ),
             ),
           ],
         ),
@@ -711,54 +1166,31 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _tabContextBanner({
-    required IconData icon,
-    required String title,
-    required String body,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: DesignColors.primary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: DesignColors.borderLight.withValues(alpha: 0.9),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 18, color: DesignColors.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: DesignTypography.labelSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: DesignColors.textPrimary,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    body,
-                    style: DesignTypography.bodySmall.copyWith(
-                      color: DesignColors.textSecondary,
-                      height: 1.3,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
+  Widget _compactStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+              fontSize: 13,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -767,161 +1199,1288 @@ class _MaintenancePaymentScreenState
     BuildContext context,
     List<Map<String, dynamic>> history,
     Widget overviewStrip,
+    MaintenanceDashboardFilter filter,
   ) {
-    final sorted = [...history]
-      ..sort((a, b) {
-        final ad =
-            DateTime.tryParse(a['paymentDate']?.toString() ?? '') ??
-            DateTime(2000);
-        final bd =
-            DateTime.tryParse(b['paymentDate']?.toString() ?? '') ??
-            DateTime(2000);
-        return bd.compareTo(ad);
-      });
-    final filtered = _historyFilterMode == _HistoryFilterMode.monthly
-        ? sorted
-        : _aggregateYearly(sorted);
+    // Sort by year desc, month desc
+    final sorted = [...history]..sort((a, b) {
+      final ya = (a['year'] as num?)?.toInt() ?? 0;
+      final yb = (b['year'] as num?)?.toInt() ?? 0;
+      if (ya != yb) return yb.compareTo(ya);
+      final ma = (a['month'] as num?)?.toInt() ?? 0;
+      final mb = (b['month'] as num?)?.toInt() ?? 0;
+      return mb.compareTo(ma);
+    });
     final inr = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
       decimalDigits: 0,
     );
 
+    // Compute yearly totals
+    double totalPaid = 0;
+    double totalExpected = 0;
+    double totalAdvance = 0;
+    double totalPending = 0;
+    int paidCycles = 0;
+    int pendingCycles = 0;
+    for (final item in sorted) {
+      // Use paidAmount (total applied = cash + credit + online) as primary.
+      // Fallback chain: paidAmount → cashPaidAmount → amount.
+      // cashPaidAmount alone is 0 for auto-settled/credit cycles.
+      final paidAmt = (item['paidAmount'] as num?)?.toDouble() ?? 0;
+      final cashAmt = (item['cashPaidAmount'] as num?)?.toDouble() ?? 0;
+      final paid = paidAmt > 0
+          ? paidAmt
+          : (cashAmt > 0
+              ? cashAmt
+              : ((item['amount'] as num?)?.toDouble() ?? 0));
+      final expected = (item['expectedAmount'] as num?)?.toDouble() ?? paid;
+      final remaining = (item['remainingDue'] as num?)?.toDouble() ?? 0;
+      final status = (item['status']?.toString() ?? '').toUpperCase();
+      totalPaid += paid;
+      totalExpected += expected;
+      if (paid > expected + 0.005) totalAdvance += (paid - expected);
+      totalPending += remaining;
+      if (status == 'PAID' || status == 'AUTO_SETTLED') {
+        paidCycles++;
+      } else {
+        pendingCycles++;
+      }
+    }
+
+    final completionRate =
+        sorted.isEmpty ? 0.0 : paidCycles / sorted.length;
+
     return _wrapTabWithRefresh(
       ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.only(bottom: 32),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          overviewStrip,
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SegmentedButton<_HistoryFilterMode>(
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                backgroundColor: WidgetStateProperty.resolveWith((s) {
-                  if (s.contains(WidgetState.selected)) {
-                    return DesignColors.primary.withValues(alpha: 0.14);
-                  }
-                  return DesignColors.surfaceSoft;
-                }),
-                foregroundColor: WidgetStateProperty.resolveWith((s) {
-                  if (s.contains(WidgetState.selected)) {
-                    return DesignColors.primary;
-                  }
-                  return DesignColors.textSecondary;
-                }),
-              ),
-              segments: const [
-                ButtonSegment(
-                  value: _HistoryFilterMode.monthly,
-                  label: Text('Monthly'),
-                ),
-                ButtonSegment(
-                  value: _HistoryFilterMode.yearly,
-                  label: Text('Yearly'),
-                ),
-              ],
-              selected: {_historyFilterMode},
-              onSelectionChanged: (selected) {
-                setState(() => _historyFilterMode = selected.first);
-              },
-            ),
-          ),
-          if (filtered.isEmpty)
-            SizedBox(
-              height: 280,
-              child: Center(
-                child: _emptyState(
-                  icon: Icons.payments_outlined,
-                  title: 'No payments on file for you',
-                  subtitle:
-                      'After you pay maintenance (or the office records it), entries will show here month by month.',
-                ),
-              ),
-            )
-          else
-            ...filtered.map((item) {
-              final amount = (item['amount'] as num?)?.toDouble() ?? 0;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Material(
-                  color: DesignColors.surface,
-                  elevation: 0,
-                  shadowColor: DesignColors.textPrimary.withValues(alpha: 0.08),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: DesignColors.borderLight),
+          // ── Year summary hero ──
+          if (sorted.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF1E293B),
+                      Color(0xFF334155),
+                    ],
                   ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _showPaymentHistoryDetails(context, item),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.18),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: DesignColors.success.withValues(
-                                alpha: 0.12,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(
-                              Icons.receipt_long_rounded,
-                              color: DesignColors.success,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item['label']?.toString() ?? '-',
-                                  style: DesignTypography.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
+                                  'Your annual summary',
+                                  style: DesignTypography.labelSmall.copyWith(
+                                    color: Colors.white60,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
-                                  item['subtitle']?.toString() ?? '',
-                                  style: DesignTypography.bodySmall.copyWith(
-                                    color: DesignColors.textSecondary,
+                                  inr.format(totalPaid),
+                                  style: DesignTypography.headingL.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'total paid',
+                                  style: DesignTypography.labelSmall.copyWith(
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                inr.format(amount),
-                                style: DesignTypography.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: DesignColors.success,
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: pendingCycles > 0
+                                  ? DesignColors.warning.withValues(alpha: 0.2)
+                                  : DesignColors.success.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$paidCycles / ${sorted.length} paid',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: pendingCycles > 0
+                                    ? DesignColors.warning
+                                    : DesignColors.success,
+                                fontWeight: FontWeight.w700,
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Paid',
-                                style: DesignTypography.labelSmall.copyWith(
-                                  color: DesignColors.success,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    // Progress bar
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: completionRate,
+                              minHeight: 5,
+                              backgroundColor: Colors.white12,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                completionRate >= 1.0
+                                    ? DesignColors.success
+                                    : DesignColors.warning,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Stats row
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                      child: Row(
+                        children: [
+                          _darkMiniStat(
+                              'Expected', inr.format(totalExpected)),
+                          const SizedBox(width: 16),
+                          _darkMiniStat(
+                            'Pending',
+                            inr.format(totalPending),
+                            color: totalPending > 0.005
+                                ? DesignColors.warning
+                                : null,
+                          ),
+                          if (totalAdvance > 0.005) ...[
+                            const SizedBox(width: 16),
+                            _darkMiniStat(
+                              'Advance',
+                              '+${inr.format(totalAdvance)}',
+                              color: DesignColors.success,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Cycle-wise breakdown header ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+            child: Row(
+              children: [
+                Text(
+                  'Cycle-wise breakdown',
+                  style: DesignTypography.label.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: DesignColors.textPrimary,
                   ),
                 ),
-              );
-            }),
+                const Spacer(),
+                if (sorted.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: DesignColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${sorted.length} ${sorted.length == 1 ? 'cycle' : 'cycles'}',
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: DesignColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          if (sorted.isEmpty)
+            SizedBox(
+              height: 240,
+              child: Center(
+                child: _emptyState(
+                  icon: Icons.payments_outlined,
+                  title: 'No payments on file',
+                  subtitle:
+                      'Select a financial year to see your payment history.',
+                ),
+              ),
+            )
+          else
+            // Timeline-style cycle list
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: DesignColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: DesignColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    for (int i = 0; i < sorted.length; i++)
+                      _paymentCycleRow(sorted[i], inr, i == sorted.length - 1),
+                  ],
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _paymentCycleRow(
+    Map<String, dynamic> item,
+    NumberFormat inr,
+    bool isLast,
+  ) {
+    final month = (item['month'] as num?)?.toInt() ?? 0;
+    final year = (item['year'] as num?)?.toInt() ?? 0;
+    // Use paidAmount (total applied = cash + credit) as primary display.
+    // cashPaidAmount alone is 0 for auto-settled/credit cycles.
+    final paidAmt = (item['paidAmount'] as num?)?.toDouble() ?? 0;
+    final cashPaidRaw = (item['cashPaidAmount'] as num?)?.toDouble() ?? 0;
+    final cashPaid = paidAmt > 0
+        ? paidAmt
+        : (cashPaidRaw > 0
+            ? cashPaidRaw
+            : ((item['amount'] as num?)?.toDouble() ?? 0));
+    final expected =
+        (item['expectedAmount'] as num?)?.toDouble() ?? cashPaid;
+    final creditApplied =
+        (item['creditApplied'] as num?)?.toDouble() ?? 0;
+    final remaining = (item['remainingDue'] as num?)?.toDouble() ?? 0;
+    final status =
+        (item['status']?.toString() ?? 'PAID').toUpperCase();
+    final advance =
+        cashPaid > expected + 0.005 ? cashPaid - expected : 0.0;
+
+    final accent = switch (status) {
+      'AUTO_SETTLED' => DesignColors.primary,
+      'PARTIAL' => DesignColors.warning,
+      'OVERDUE' => DesignColors.error,
+      'PENDING' => DesignColors.warning,
+      _ => DesignColors.success,
+    };
+    final statusLabel = switch (status) {
+      'AUTO_SETTLED' => 'Credit',
+      'PARTIAL' => 'Partial',
+      'OVERDUE' => 'Overdue',
+      'PENDING' => 'Due',
+      _ => 'Paid',
+    };
+    final periodLabel = (month >= 1 && month <= 12)
+        ? DateFormat('MMM yyyy').format(DateTime(year, month))
+        : '$year';
+
+    return InkWell(
+      onTap: () => _showPaymentHistoryDetails(context, item),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  bottom: BorderSide(
+                    color: DesignColors.borderLight.withValues(alpha: 0.6),
+                  ),
+                ),
+        ),
+        child: Row(
+          children: [
+            // Status dot
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: accent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Period + expected
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    periodLabel,
+                    style: DesignTypography.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(
+                        'Expected ${inr.format(expected)}',
+                        style: DesignTypography.labelSmall.copyWith(
+                          color: DesignColors.textTertiary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                      if (advance > 0.005) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color:
+                                DesignColors.success.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '+${inr.format(advance)}',
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: DesignColors.success,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (remaining > 0.005 && advance <= 0.005) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color:
+                                DesignColors.warning.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Due ${inr.format(remaining)}',
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: DesignColors.warning,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (creditApplied > 0.005) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color:
+                                DesignColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Credit ${inr.format(creditApplied)}',
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: DesignColors.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Amount + status badge
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  inr.format(cashPaid),
+                  style: DesignTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _darkMiniStat(String label, String value, {Color? color}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: Colors.white38,
+              fontWeight: FontWeight.w500,
+              fontSize: 10.5,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color ?? Colors.white70,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYearReviewTab(
+    BuildContext context,
+    MaintenanceDashboardFilter filter,
+  ) {
+    final inr = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
+
+    final fyId = filter.financialYearId;
+    final cyclesAsync = fyId != null && fyId.isNotEmpty
+        ? ref.watch(billingCyclesForFinancialYearProvider(fyId))
+        : null;
+
+    if (cyclesAsync == null) {
+      return _wrapTabWithRefresh(
+        Center(
+          child: _emptyState(
+            icon: Icons.calendar_today_outlined,
+            title: 'Select a financial year',
+            subtitle: 'Choose a financial year from the dropdown above.',
+          ),
+        ),
+      );
+    }
+
+    return cyclesAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (e, _) => _wrapTabWithRefresh(
+        Center(
+          child: _emptyState(
+            icon: Icons.error_outline,
+            title: 'Failed to load cycles',
+            subtitle: e.toString(),
+          ),
+        ),
+      ),
+      data: (body) {
+        final rawCycles = body['cycles'];
+        final cycles = rawCycles is List
+            ? rawCycles
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
+            : <Map<String, dynamic>>[];
+
+        // Determine which calendar years the FY's cycles span.
+        final neededYears = <int>{};
+        for (final c in cycles) {
+          final my = _monthYearFromCycleKey(c['cycleKey']?.toString() ?? '');
+          if (my != null) neededYears.add(my.year);
+        }
+
+        // Fetch yearlyBreakdown for each calendar year and merge
+        // into a single lookup keyed by "YYYY-MM".
+        final breakdownByKey = <String, Map<String, dynamic>>{};
+        bool allYearsLoaded = true;
+        for (final yr in neededYears) {
+          final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
+          yrAsync.whenData((rows) {
+            for (final row in rows) {
+              final m = (row['month'] as num?)?.toInt() ?? 0;
+              final y = (row['year'] as num?)?.toInt() ?? 0;
+              if (m > 0 && y > 0) {
+                breakdownByKey['$y-${m.toString().padLeft(2, '0')}'] = row;
+              }
+            }
+          });
+          if (yrAsync is! AsyncData) allYearsLoaded = false;
+        }
+
+        // Show loading if year breakdowns haven't arrived yet.
+        if (!allYearsLoaded && neededYears.isNotEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(48),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        // Build cycle rows with financial data.
+        final cycleRows = <Map<String, dynamic>>[];
+        for (final c in cycles) {
+          final cycleKey = c['cycleKey']?.toString() ?? '';
+          final my = _monthYearFromCycleKey(cycleKey);
+          final breakdown = breakdownByKey[cycleKey];
+          final cycleAmount = (c['amount'] as num?)?.toDouble() ?? 0;
+
+          double mExp, mColl, mExpense;
+          int paidC, unpaidC;
+          if (breakdown != null) {
+            mExp = (breakdown['totalExpected'] as num?)?.toDouble() ?? 0;
+            mColl = (breakdown['totalCollected'] as num?)?.toDouble() ?? 0;
+            mExpense = (breakdown['totalExpense'] as num?)?.toDouble() ?? 0;
+            paidC = (breakdown['paidCount'] as num?)?.toInt() ?? 0;
+            unpaidC = (breakdown['unpaidCount'] as num?)?.toInt() ?? 0;
+          } else {
+            mExp = cycleAmount;
+            mColl = 0;
+            mExpense = 0;
+            paidC = 0;
+            unpaidC = 0;
+          }
+
+          // Extract expense breakdown by category
+          final rawBreakdown = breakdown?['expenseBreakdown'];
+          final expenseBreakdown = <String, double>{};
+          if (rawBreakdown is Map) {
+            for (final entry in rawBreakdown.entries) {
+              final val = (entry.value as num?)?.toDouble() ?? 0;
+              if (val > 0) expenseBreakdown[entry.key.toString()] = val;
+            }
+          }
+
+          cycleRows.add({
+            'month': my?.month ?? 0,
+            'year': my?.year ?? 0,
+            'cycleKey': cycleKey,
+            'amount': cycleAmount,
+            'totalExpected': mExp,
+            'totalCollected': mColl,
+            'totalExpense': mExpense,
+            'paidCount': paidC,
+            'unpaidCount': unpaidC,
+            'expenseBreakdown': expenseBreakdown,
+          });
+        }
+
+        // Aggregate totals
+        double totalExpected = 0;
+        double totalCollected = 0;
+        double totalExpense = 0;
+        for (final row in cycleRows) {
+          totalExpected += (row['totalExpected'] as num?)?.toDouble() ?? 0;
+          totalCollected += (row['totalCollected'] as num?)?.toDouble() ?? 0;
+          totalExpense += (row['totalExpense'] as num?)?.toDouble() ?? 0;
+        }
+        final totalPending =
+            (totalExpected - totalCollected).clamp(0.0, double.infinity);
+        final collectionRate =
+            totalExpected > 0 ? (totalCollected / totalExpected * 100) : 0.0;
+        final rateColor = collectionRate >= 80
+            ? DesignColors.success
+            : collectionRate >= 50
+                ? DesignColors.warning
+                : DesignColors.error;
+
+        return _wrapTabWithRefresh(
+          ListView(
+            padding: const EdgeInsets.only(bottom: 32),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              // ── Year summary card ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1E293B), Color(0xFF334155)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E293B).withValues(alpha: 0.15),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.analytics_outlined,
+                                color: Colors.white70,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Year review',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: Colors.white60,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${cycleRows.length} cycle${cycleRows.length == 1 ? '' : 's'}',
+                                style: DesignTypography.labelSmall.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            _yearReviewStat(
+                                'Expected', inr.format(totalExpected), Colors.white),
+                            _yearReviewStat('Collected', inr.format(totalCollected),
+                                const Color(0xFF4ADE80)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            _yearReviewStat('Pending', inr.format(totalPending),
+                                const Color(0xFFFBBF24)),
+                            _yearReviewStat('Expenses', inr.format(totalExpense),
+                                const Color(0xFF94A3B8)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Text(
+                              'Collection rate',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  minHeight: 6,
+                                  value: (collectionRate / 100).clamp(0.0, 1.0),
+                                  color: rateColor,
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.12),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${collectionRate.toStringAsFixed(0)}%',
+                              style: DesignTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                color: rateColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // ── Billing cycles list ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Billing cycles',
+                  style: DesignTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              if (cycleRows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: DesignColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: DesignColors.borderLight),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.event_busy_rounded,
+                          size: 40,
+                          color: DesignColors.textSecondary.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'No billing cycles in this year',
+                          style: DesignTypography.bodySmall.copyWith(
+                            color: DesignColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...cycleRows.map((row) {
+                  final m = (row['month'] as num?)?.toInt() ?? 1;
+                  final yr = (row['year'] as num?)?.toInt() ?? filter.year;
+                  final mExp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
+                  final mColl = (row['totalCollected'] as num?)?.toDouble() ?? 0;
+                  final mPending = (mExp - mColl).clamp(0.0, double.infinity);
+                  final mExpense = (row['totalExpense'] as num?)?.toDouble() ?? 0;
+                  final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
+                  final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
+                  final mRate = mExp > 0 ? (mColl / mExp * 100) : 0.0;
+                  final mRateColor = mRate >= 80
+                      ? DesignColors.success
+                      : mRate >= 50
+                          ? DesignColors.warning
+                          : DesignColors.error;
+                  final isCurrentMonth =
+                      m == DateTime.now().month && yr == DateTime.now().year;
+                  final breakdown =
+                      (row['expenseBreakdown'] as Map<String, double>?) ??
+                          const <String, double>{};
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: GestureDetector(
+                      onTap: () => _showExpenseBreakdownSheet(
+                        context,
+                        month: m,
+                        year: yr,
+                        totalExpense: mExpense,
+                        breakdown: breakdown,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: DesignColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCurrentMonth
+                                ? DesignColors.primary.withValues(alpha: 0.5)
+                                : DesignColors.borderLight,
+                            width: isCurrentMonth ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    DateFormat('MMMM yyyy')
+                                        .format(DateTime(yr, m)),
+                                    style: DesignTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  if (isCurrentMonth) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: DesignColors.primary
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'Current',
+                                        style: DesignTypography.labelSmall.copyWith(
+                                          color: DesignColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const Spacer(),
+                                  Text(
+                                    '$paidC paid · $unpaidC unpaid',
+                                    style: DesignTypography.labelSmall.copyWith(
+                                      color: DesignColors.textSecondary,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 16,
+                                    color: DesignColors.textSecondary
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  _cycleReviewStat(
+                                      'Expected', inr.format(mExp), DesignColors.primary),
+                                  _cycleReviewStat(
+                                      'Collected', inr.format(mColl), DesignColors.success),
+                                  _cycleReviewStat(
+                                      'Pending', inr.format(mPending), DesignColors.error),
+                                  _cycleReviewStat(
+                                      'Expenses', inr.format(mExpense), const Color(0xFF546E7A)),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        minHeight: 5,
+                                        value: (mRate / 100).clamp(0.0, 1.0),
+                                        color: mRateColor,
+                                        backgroundColor: DesignColors.surfaceSoft,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${mRate.toStringAsFixed(0)}%',
+                                    style: DesignTypography.labelSmall.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 10,
+                                      color: mRateColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _yearReviewStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: Colors.white54,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+              fontSize: 15,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cycleReviewStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+              fontSize: 12,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Expense breakdown bottom sheet ──
+
+  static const _categoryIcons = <String, IconData>{
+    'Electricity': Icons.bolt_rounded,
+    'Water': Icons.water_drop_rounded,
+    'Garbage Collection': Icons.delete_rounded,
+    'Security Salary': Icons.shield_rounded,
+    'Housekeeping Salary': Icons.cleaning_services_rounded,
+    'Maintenance Staff': Icons.engineering_rounded,
+    'Gardening': Icons.yard_rounded,
+    'Pest Control': Icons.bug_report_rounded,
+    'Lift Maintenance': Icons.elevator_rounded,
+    'Generator Maintenance': Icons.power_rounded,
+    'Pump Maintenance': Icons.plumbing_rounded,
+    'Common Area Repair': Icons.handyman_rounded,
+    'Legal Fees': Icons.gavel_rounded,
+    'Insurance': Icons.health_and_safety_rounded,
+    'Taxes': Icons.receipt_long_rounded,
+    'Bank Charges': Icons.account_balance_rounded,
+    'Software Subscription': Icons.computer_rounded,
+  };
+
+  static const _categoryColors = <String, Color>{
+    'Electricity': Color(0xFFF59E0B),
+    'Water': Color(0xFF3B82F6),
+    'Garbage Collection': Color(0xFF10B981),
+    'Security Salary': Color(0xFF8B5CF6),
+    'Housekeeping Salary': Color(0xFFEC4899),
+    'Maintenance Staff': Color(0xFF6366F1),
+    'Gardening': Color(0xFF22C55E),
+    'Pest Control': Color(0xFFEF4444),
+    'Lift Maintenance': Color(0xFF14B8A6),
+    'Generator Maintenance': Color(0xFFF97316),
+    'Pump Maintenance': Color(0xFF06B6D4),
+    'Common Area Repair': Color(0xFF78716C),
+    'Legal Fees': Color(0xFF64748B),
+    'Insurance': Color(0xFF0EA5E9),
+    'Taxes': Color(0xFFA855F7),
+    'Bank Charges': Color(0xFF84CC16),
+    'Software Subscription': Color(0xFF2563EB),
+  };
+
+  static const _fallbackColors = [
+    Color(0xFF6366F1),
+    Color(0xFFF59E0B),
+    Color(0xFF10B981),
+    Color(0xFFEF4444),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+    Color(0xFFF97316),
+    Color(0xFFEC4899),
+  ];
+
+  void _showExpenseBreakdownSheet(
+    BuildContext context, {
+    required int month,
+    required int year,
+    required double totalExpense,
+    required Map<String, double> breakdown,
+  }) {
+    final inr = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '\u20B9',
+      decimalDigits: 0,
+    );
+    final monthLabel = DateFormat('MMMM yyyy').format(DateTime(year, month));
+
+    // Sort categories by amount descending
+    final sorted = breakdown.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: DesignColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF546E7A).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: Color(0xFF546E7A),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Expense breakdown',
+                          style: DesignTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          monthLabel,
+                          style: DesignTypography.labelSmall.copyWith(
+                            color: DesignColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF546E7A).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      inr.format(totalExpense),
+                      style: DesignTypography.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF546E7A),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              if (sorted.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_rounded,
+                          size: 40,
+                          color: DesignColors.textSecondary
+                              .withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'No expense data for this month',
+                          style: DesignTypography.bodySmall.copyWith(
+                            color: DesignColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                // Category bars
+                ...sorted.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final cat = entry.value.key;
+                  final amount = entry.value.value;
+                  final pct =
+                      totalExpense > 0 ? (amount / totalExpense * 100) : 0.0;
+                  final icon = _categoryIcons[cat] ??
+                      Icons.category_rounded;
+                  final color = _categoryColors[cat] ??
+                      _fallbackColors[idx % _fallbackColors.length];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(icon, size: 16, color: color),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      cat,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: DesignTypography.bodySmall
+                                          .copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    inr.format(amount),
+                                    style: DesignTypography.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        minHeight: 5,
+                                        value: (pct / 100).clamp(0.0, 1.0),
+                                        color: color,
+                                        backgroundColor:
+                                            color.withValues(alpha: 0.1),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${pct.toStringAsFixed(0)}%',
+                                    style: DesignTypography.labelSmall.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                      color: DesignColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -968,128 +2527,909 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _buildPendingDuesTab(
+
+  Widget _buildOverviewTab(
     BuildContext context,
-    List<Map<String, dynamic>> pending,
+    Map<String, dynamic> userSummary,
+    Map<String, dynamic> residentsSummary,
+    Map<String, dynamic> expenses,
+    List<Map<String, dynamic>> residents,
     Widget overviewStrip,
+    String periodLabel,
   ) {
     final inr = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
       decimalDigits: 0,
     );
+    double dn(String key) =>
+        (userSummary[key] as num?)?.toDouble() ?? 0;
+
+    final expected = dn('expectedAmount');
+    final cashPaid = dn('cashPaidAmount');
+    final creditApplied = dn('creditApplied');
+    final paidApplied = dn('paidAmount');
+    final remaining = dn('remainingDue');
+    final carry = dn('carryForwardBalance');
+    final previous = dn('previousDue');
+
+    // Society-level summary numbers
+    final totalResidents =
+        (residentsSummary['totalResidents'] as num?)?.toInt() ?? residents.length;
+    final paidCount = (residentsSummary['paidCount'] as num?)?.toInt() ??
+        residents.where((r) => (r['status']?.toString() ?? '').toUpperCase() == 'PAID').length;
+    final unpaidCount = (residentsSummary['unpaidCount'] as num?)?.toInt() ??
+        (totalResidents - paidCount);
+    final partialCount = (residentsSummary['partialCount'] as num?)?.toInt() ?? 0;
+    final overdueCount = (residentsSummary['overdueCount'] as num?)?.toInt() ?? 0;
+    final totalCollected =
+        (residentsSummary['totalCollected'] as num?)?.toDouble() ?? 0;
+    final totalExpected =
+        (residentsSummary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
+    final totalPending =
+        (residentsSummary['totalPending'] as num?)?.toDouble() ?? 0;
+    final totalExpense =
+        (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
+    final net = totalCollected - totalExpense;
+
+    // Sort residents: unpaid/overdue first, then paid
+    final sortedResidents = [...residents]..sort((a, b) {
+      const order = {'OVERDUE': 0, 'PARTIAL': 1, 'UNPAID': 2, 'PENDING': 3, 'PAID': 4};
+      final sa = order[(a['status']?.toString() ?? 'UNPAID').toUpperCase()] ?? 2;
+      final sb = order[(b['status']?.toString() ?? 'UNPAID').toUpperCase()] ?? 2;
+      if (sa != sb) return sa.compareTo(sb);
+      final aa = (a['paidTowardCycle'] as num?)?.toDouble() ?? 0;
+      final ab = (b['paidTowardCycle'] as num?)?.toDouble() ?? 0;
+      return ab.compareTo(aa);
+    });
 
     return _wrapTabWithRefresh(
       ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.only(bottom: 32),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           overviewStrip,
-          _tabContextBanner(
-            icon: Icons.person_outline,
-            title: 'Your maintenance only',
-            body:
-                'Each row is for your registered resident account. The full society list is under All Residents.',
-          ),
-          if (pending.isEmpty)
-            SizedBox(
-              height: 260,
-              child: Center(
-                child: _emptyState(
-                  icon: Icons.task_alt_rounded,
-                  title: 'No pending dues for you',
-                  subtitle:
-                      'When your unit has open months, they show here and in My balance due in the snapshot.',
-                ),
-              ),
-            )
-          else
-            ...pending.map((d) {
-              final due = DateTime.tryParse(
-                d['dueDate']?.toString() ?? '',
-              )?.toLocal();
-              final overdue =
-                  (d['isOverdue'] == true) ||
-                  (due != null && due.isBefore(DateTime.now()));
-              final amount = (d['amount'] as num?)?.toDouble() ?? 0;
-              final accent = overdue
-                  ? DesignColors.error
-                  : DesignColors.warning;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Material(
-                  color: DesignColors.surface,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: accent.withValues(alpha: 0.35)),
+
+          // ── Your ledger ──
+          _sectionHeader('Your ledger', periodLabel),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: DesignColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: DesignColors.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Hero amount
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                    decoration: BoxDecoration(
+                      color: remaining > 0.005
+                          ? DesignColors.warning.withValues(alpha: 0.06)
+                          : DesignColors.success.withValues(alpha: 0.06),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18),
+                      ),
+                    ),
                     child: Row(
                       children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              remaining > 0.005 ? 'Due this period' : 'All settled',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: remaining > 0.005
+                                    ? DesignColors.warning
+                                    : DesignColors.success,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              inr.format(remaining > 0.005 ? remaining : paidApplied),
+                              style: DesignTypography.headingL.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: remaining > 0.005
+                                    ? DesignColors.warning
+                                    : DesignColors.success,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
                         Container(
-                          width: 4,
-                          height: 56,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
-                            color: accent,
-                            borderRadius: BorderRadius.circular(4),
+                            color: remaining > 0.005
+                                ? DesignColors.warning.withValues(alpha: 0.12)
+                                : DesignColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('MMMM yyyy').format(
-                                  DateTime(
-                                    (d['year'] as num?)?.toInt() ??
-                                        DateTime.now().year,
-                                    (d['month'] as num?)?.toInt() ??
-                                        DateTime.now().month,
-                                  ),
-                                ),
-                                style: DesignTypography.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                due == null
-                                    ? 'Due date unavailable'
-                                    : 'Due ${DateFormat('dd MMM yyyy').format(due)}',
-                                style: DesignTypography.bodySmall.copyWith(
-                                  color: DesignColors.textSecondary,
-                                ),
-                              ),
-                              if (overdue) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  'OVERDUE',
-                                  style: DesignTypography.labelSmall.copyWith(
-                                    color: DesignColors.error,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        Text(
-                          inr.format(amount),
-                          style: DesignTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: accent,
+                          child: Text(
+                            remaining > 0.005 ? 'Pending' : 'Paid',
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: remaining > 0.005
+                                  ? DesignColors.warning
+                                  : DesignColors.success,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+                    child: Column(
+                      children: [
+                        _ledgerRow('Expected', inr.format(expected)),
+                        _ledgerRow('Cash paid', inr.format(cashPaid),
+                            valueColor: cashPaid > 0.005
+                                ? DesignColors.success
+                                : null),
+                        if (creditApplied > 0.005)
+                          _ledgerRow('Credit applied', inr.format(creditApplied),
+                              valueColor: DesignColors.success),
+                        _ledgerRow('Total applied', inr.format(paidApplied),
+                            valueColor: DesignColors.success),
+                        if (remaining > 0.005)
+                          _ledgerRow('Remaining', inr.format(remaining),
+                              valueColor: DesignColors.warning),
+                        if (previous.abs() > 0.005 || carry.abs() > 0.005) ...[
+                          const Divider(height: 20),
+                          if (previous.abs() > 0.005)
+                            _ledgerRow('Prior balance', inr.format(previous),
+                                subtle: true),
+                          if (carry.abs() > 0.005)
+                            _ledgerRow('Carry-forward', inr.format(carry),
+                                subtle: true),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Advance payments ──
+          Builder(
+            builder: (_) {
+              final advanceResidents = <Map<String, dynamic>>[];
+              for (final r in residents) {
+                final paid = (r['paidTowardCycle'] as num?)?.toDouble() ?? 0;
+                final exp = (r['amount'] as num?)?.toDouble() ?? 0;
+                final adv = paid - exp;
+                if (adv > 0.005) {
+                  advanceResidents.add({...r, '_advance': adv});
+                }
+              }
+              if (advanceResidents.isEmpty) return const SizedBox.shrink();
+
+              advanceResidents.sort((a, b) =>
+                  ((b['_advance'] as double)).compareTo(a['_advance'] as double));
+              final totalAdv = advanceResidents.fold<double>(
+                  0, (sum, r) => sum + (r['_advance'] as double));
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader(
+                      'Advance payments', '${advanceResidents.length} members'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: DesignColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: DesignColors.borderLight),
+                        boxShadow: [
+                          BoxShadow(
+                            color: DesignColors.textPrimary
+                                .withValues(alpha: 0.03),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Total advance header
+                          Container(
+                            width: double.infinity,
+                            padding:
+                                const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB)
+                                  .withValues(alpha: 0.06),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(18)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2563EB)
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.trending_up_rounded,
+                                    color: Color(0xFF2563EB),
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total advance collected',
+                                        style: DesignTypography.labelSmall
+                                            .copyWith(
+                                          color: DesignColors.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        inr.format(totalAdv),
+                                        style: DesignTypography.headingM
+                                            .copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF2563EB),
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2563EB)
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '${advanceResidents.length}',
+                                    style: DesignTypography.labelSmall
+                                        .copyWith(
+                                      color: const Color(0xFF2563EB),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Individual advance entries
+                          ...advanceResidents.map((r) {
+                            final name =
+                                '${r['name'] ?? r['ownerName'] ?? 'Unknown'}'
+                                    .trim();
+                            final unit =
+                                '${r['flatNumber'] ?? r['villaNumber'] ?? '-'}';
+                            final paid =
+                                (r['paidTowardCycle'] as num?)?.toDouble() ??
+                                    0;
+                            final exp =
+                                (r['amount'] as num?)?.toDouble() ?? 0;
+                            final adv = r['_advance'] as double;
+
+                            return Container(
+                              padding:
+                                  const EdgeInsets.fromLTRB(18, 10, 18, 10),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: DesignColors.borderLight
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2563EB)
+                                          .withValues(alpha: 0.08),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      unit,
+                                      style: DesignTypography.labelSmall
+                                          .copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF2563EB),
+                                        fontSize: 10,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: DesignTypography.bodySmall
+                                              .copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Expected ${inr.format(exp)} · Paid ${inr.format(paid)}',
+                                          style: DesignTypography.labelSmall
+                                              .copyWith(
+                                            color:
+                                                DesignColors.textTertiary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 10.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: DesignColors.success
+                                          .withValues(alpha: 0.08),
+                                      borderRadius:
+                                          BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: DesignColors.success
+                                            .withValues(alpha: 0.15),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '+${inr.format(adv)}',
+                                      style: DesignTypography.labelSmall
+                                          .copyWith(
+                                        color: DesignColors.success,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               );
-            }),
+            },
+          ),
+
+          // ── Expense by category ──
+          Builder(
+            builder: (_) {
+              final raw = expenses['categoryBreakdown'];
+              if (raw is! Map) return const SizedBox.shrink();
+              final entries = <MapEntry<String, double>>[];
+              raw.forEach((k, v) {
+                final key = k.toString();
+                final val = (v is num)
+                    ? v.toDouble()
+                    : double.tryParse(v.toString()) ?? 0;
+                if (val > 0) entries.add(MapEntry(key, val));
+              });
+              if (entries.isEmpty) return const SizedBox.shrink();
+              entries.sort((a, b) => b.value.compareTo(a.value));
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader('Expense by category', periodLabel),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: DesignColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: DesignColors.borderLight),
+                      ),
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < entries.length; i++) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: DesignColors.textSecondary
+                                          .withValues(alpha: 0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      entries[i]
+                                          .key
+                                          .replaceAll('_', ' '),
+                                      style: DesignTypography.bodySmall
+                                          .copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    inr.format(entries[i].value),
+                                    style: DesignTypography.bodySmall
+                                        .copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF546E7A),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (i < entries.length - 1)
+                              Divider(
+                                height: 1,
+                                indent: 16,
+                                endIndent: 16,
+                                color: DesignColors.borderLight
+                                    .withValues(alpha: 0.6),
+                              ),
+                          ],
+                          // Total row
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF546E7A)
+                                  .withValues(alpha: 0.05),
+                              borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(16)),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Total expenses',
+                                  style: DesignTypography.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  inr.format(totalExpense),
+                                  style: DesignTypography.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF546E7A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          // ── Society summary ──
+          _sectionHeader('Society summary', periodLabel),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: DesignColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: DesignColors.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Resident status chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _summaryChip(
+                          '$totalResidents',
+                          'Residents',
+                          DesignColors.primary,
+                        ),
+                        _summaryChip(
+                          '$paidCount',
+                          'Paid',
+                          DesignColors.success,
+                        ),
+                        _summaryChip(
+                          '$unpaidCount',
+                          'Unpaid',
+                          unpaidCount > 0
+                              ? DesignColors.error
+                              : DesignColors.textSecondary,
+                        ),
+                        if (partialCount > 0)
+                          _summaryChip(
+                            '$partialCount',
+                            'Partial',
+                            DesignColors.warning,
+                          ),
+                        if (overdueCount > 0)
+                          _summaryChip(
+                            '$overdueCount',
+                            'Overdue',
+                            DesignColors.error,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 14),
+                    _ledgerRow('Expected', inr.format(totalExpected)),
+                    _ledgerRow('Collected', inr.format(totalCollected),
+                        valueColor: DesignColors.success),
+                    _ledgerRow('Pending', inr.format(totalPending),
+                        valueColor: totalPending > 0.005
+                            ? DesignColors.warning
+                            : DesignColors.textPrimary),
+                    _ledgerRow('Expenses', inr.format(totalExpense)),
+                    _ledgerRow(
+                      'Net position',
+                      '${net >= 0 ? '+' : ''}${inr.format(net)}',
+                      valueColor: net >= 0
+                          ? DesignColors.success
+                          : DesignColors.error,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── All residents ──
+          if (sortedResidents.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'All residents',
+                      style: DesignTypography.label.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$paidCount / $totalResidents paid',
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: DesignColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...sortedResidents.map(
+              (r) => _residentPaymentTile(r, inr),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: DesignTypography.label.copyWith(
+              fontWeight: FontWeight.w800,
+              color: DesignColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            subtitle,
+            style: DesignTypography.bodySmall.copyWith(
+              color: DesignColors.textTertiary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryChip(String value, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontWeight: FontWeight.w500,
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _residentPaymentTile(Map<String, dynamic> r, NumberFormat inr) {
+    final rawStatus = (r['status']?.toString() ?? 'UNPAID').toUpperCase();
+    final isPaid = rawStatus == 'PAID';
+    final expectedAmount = (r['amount'] as num?)?.toDouble() ?? 0;
+    final actualPaid = (r['paidTowardCycle'] as num?)?.toDouble() ?? 0;
+    final displayName =
+        '${r['name'] ?? r['ownerName'] ?? 'Unknown'}'.trim();
+    final unit = '${r['flatNumber'] ?? r['villaNumber'] ?? '-'}';
+    final statusText = switch (rawStatus) {
+      'PARTIAL' => 'Partial',
+      'OVERDUE' => 'Overdue',
+      'PAID' => 'Paid',
+      _ => 'Unpaid',
+    };
+    final accent = switch (rawStatus) {
+      'PARTIAL' => DesignColors.warning,
+      'OVERDUE' => DesignColors.error,
+      'PAID' => DesignColors.success,
+      _ => DesignColors.error,
+    };
+    final extra = actualPaid - expectedAmount;
+    final hasExtra = extra > 0.005 && isPaid;
+    final hasShortfall = actualPaid > 0.005 && !isPaid;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  // Left accent bar
+                  Container(
+                    width: 3,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Name + unit
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DesignTypography.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Unit $unit',
+                          style: DesignTypography.labelSmall.copyWith(
+                            color: DesignColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Amount + status
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        inr.format(actualPaid),
+                        style: DesignTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isPaid ? DesignColors.success : DesignColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          statusText,
+                          style: DesignTypography.labelSmall.copyWith(
+                            color: accent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Breakdown row — when paid extra or has partial payment
+            if (hasExtra || hasShortfall)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(30, 0, 14, 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: hasExtra
+                        ? DesignColors.success.withValues(alpha: 0.05)
+                        : DesignColors.warning.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: hasExtra
+                          ? DesignColors.success.withValues(alpha: 0.12)
+                          : DesignColors.warning.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Text(
+                    hasExtra
+                        ? 'Expected ${inr.format(expectedAmount)} · Paid ${inr.format(actualPaid)} · Extra +${inr.format(extra)}'
+                        : 'Expected ${inr.format(expectedAmount)} · Paid ${inr.format(actualPaid)} · Due ${inr.format(expectedAmount - actualPaid)}',
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: hasExtra
+                          ? DesignColors.success
+                          : DesignColors.warning,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ledgerRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool subtle = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: DesignTypography.bodySmall.copyWith(
+                color: subtle
+                    ? DesignColors.textTertiary
+                    : DesignColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: DesignTypography.bodySmall.copyWith(
+              color: valueColor ??
+                  (subtle
+                      ? DesignColors.textTertiary
+                      : DesignColors.textPrimary),
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
         ],
       ),
     );
@@ -1102,10 +3442,7 @@ class _MaintenancePaymentScreenState
     Widget overviewStrip,
   ) {
     if (residents.isEmpty) {
-      return _buildResidentsEmptyState(
-        summary,
-        overviewStrip,
-      );
+      return _buildResidentsEmptyState(summary, overviewStrip);
     }
     final filtered = residents.where((r) {
       final status = (r['status']?.toString() ?? 'UNPAID').toUpperCase();
@@ -1144,12 +3481,6 @@ class _MaintenancePaymentScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _tabContextBanner(
-                  icon: Icons.apartment_outlined,
-                  title: 'Whole society',
-                  body:
-                      'Every resident entry for the month you chose. For only your unit, open My Payments or My Dues.',
-                ),
                 Text(
                   'All Residents',
                   style: DesignTypography.label.copyWith(
@@ -1159,7 +3490,16 @@ class _MaintenancePaymentScreenState
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '$totalResidents residents · $paidCount paid · ${totalResidents - paidCount} unpaid this period',
+                  () {
+                    final partialCount =
+                        (summary['partialCount'] as num?)?.toInt() ?? 0;
+                    final overdueCount =
+                        (summary['overdueCount'] as num?)?.toInt() ?? 0;
+                    final base =
+                        '$totalResidents residents · $paidCount paid · ${totalResidents - paidCount} unpaid this period';
+                    if (partialCount <= 0 && overdueCount <= 0) return base;
+                    return '$base · $partialCount partial · $overdueCount overdue';
+                  }(),
                   style: DesignTypography.bodySmall.copyWith(
                     color: DesignColors.textSecondary,
                   ),
@@ -1215,118 +3555,9 @@ class _MaintenancePaymentScreenState
             ),
           ),
           if (filtered.isNotEmpty)
-            ...filtered.map((r) {
-              final rawStatus = (r['status']?.toString() ?? 'UNPAID')
-                  .toUpperCase();
-              final paid = rawStatus == 'PAID';
-              final statusText = paid ? 'Paid' : 'Unpaid';
-              final amount = (r['amount'] as num?)?.toDouble() ?? 0;
-              final accent = paid ? DesignColors.success : DesignColors.error;
-              final displayName = '${r['name'] ?? r['ownerName'] ?? 'Unknown'}'
-                  .trim();
-              final unit = '${r['flatNumber'] ?? r['villaNumber'] ?? '-'}';
-
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Material(
-                  color: DesignColors.surface,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: DesignColors.borderLight),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () {},
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: accent,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: accent.withValues(alpha: 0.14),
-                            child: Icon(
-                              paid
-                                  ? Icons.check_rounded
-                                  : Icons.pending_outlined,
-                              color: accent,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: DesignTypography.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Unit $unit · Maintenance',
-                                  style: DesignTypography.bodySmall.copyWith(
-                                    color: DesignColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                inr.format(amount),
-                                style: DesignTypography.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: accent.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: accent.withValues(alpha: 0.28),
-                                  ),
-                                ),
-                                child: Text(
-                                  statusText,
-                                  style: DesignTypography.labelSmall.copyWith(
-                                    color: accent,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
+            ...filtered.map(
+              (r) => _residentPaymentTile(r, inr),
+            ),
         ],
       ),
     );
@@ -1354,13 +3585,6 @@ class _MaintenancePaymentScreenState
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _tabContextBanner(
-                  icon: Icons.apartment_outlined,
-                  title: 'Whole society',
-                  body:
-                      'When resident entries exist for this month, they appear below. Use My Payments or My Dues for your unit only.',
-                ),
-                const SizedBox(height: 8),
                 _emptyState(
                   icon: Icons.groups_2_outlined,
                   title: 'No residents listed for this period',
@@ -1422,27 +3646,6 @@ class _MaintenancePaymentScreenState
     ).animate().fadeIn(duration: 220.ms);
   }
 
-  List<Map<String, dynamic>> _aggregateYearly(
-    List<Map<String, dynamic>> monthly,
-  ) {
-    final map = <int, double>{};
-    for (final item in monthly) {
-      final year = (item['year'] as num?)?.toInt() ?? 0;
-      final amount = (item['amount'] as num?)?.toDouble() ?? 0;
-      map[year] = (map[year] ?? 0) + amount;
-    }
-    final years = map.keys.toList()..sort((a, b) => b.compareTo(a));
-    return years
-        .map(
-          (y) => {
-            'label': '$y',
-            'subtitle': 'Yearly total',
-            'amount': map[y] ?? 0,
-          },
-        )
-        .toList();
-  }
-
   void _openFinancialOverview(
     BuildContext context,
     Map<String, dynamic> dashboard,
@@ -1459,14 +3662,19 @@ class _MaintenancePaymentScreenState
     Map<String, dynamic> item,
   ) {
     final amount = (item['amount'] as num?)?.toDouble() ?? 0;
-    final paidAmount = amount;
-    const pendingAmount = 0.0;
+    final paidAmount = (item['paidAmount'] as num?)?.toDouble() ?? amount;
+    final creditApplied = (item['creditApplied'] as num?)?.toDouble() ?? 0;
+    final expectedAmount =
+        (item['expectedAmount'] as num?)?.toDouble() ?? paidAmount;
+    final pendingAmount = (item['remainingDue'] as num?)?.toDouble() ?? 0;
+    final carryForwardBalance =
+        (item['carryForwardBalance'] as num?)?.toDouble() ?? 0;
     final paymentMode = item['paymentMode']?.toString() ?? '—';
     final notes = item['notes']?.toString();
     final paymentDate = DateTime.tryParse(
       item['paymentDate']?.toString() ?? '',
     );
-    const status = 'PAID';
+    final status = (item['status']?.toString() ?? 'PAID').toUpperCase();
     final inr = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
@@ -1477,13 +3685,15 @@ class _MaintenancePaymentScreenState
       context: context,
       showDragHandle: true,
       backgroundColor: DesignColors.surface,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Text(
                 item['label']?.toString() ?? 'Payment details',
                 style: DesignTypography.headingM.copyWith(
@@ -1498,46 +3708,75 @@ class _MaintenancePaymentScreenState
                 ),
               ),
               const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: DesignColors.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: DesignColors.success.withValues(alpha: 0.25),
+              Builder(builder: (_) {
+                final isSettled = status == 'PAID' || status == 'AUTO_SETTLED';
+                final heroAmount = paidAmount > 0 ? paidAmount : expectedAmount;
+                final heroLabel = isSettled ? 'Amount settled' : 'Expected amount';
+                final heroColor = isSettled
+                    ? DesignColors.success
+                    : (status == 'OVERDUE'
+                        ? DesignColors.error
+                        : DesignColors.warning);
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: heroColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: heroColor.withValues(alpha: 0.25),
+                    ),
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Amount received',
-                      style: DesignTypography.labelSmall.copyWith(
-                        color: DesignColors.textSecondary,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        heroLabel,
+                        style: DesignTypography.labelSmall.copyWith(
+                          color: DesignColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      inr.format(amount),
-                      style: DesignTypography.headingL.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: DesignColors.success,
+                      const SizedBox(height: 4),
+                      Text(
+                        inr.format(heroAmount),
+                        style: DesignTypography.headingL.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: heroColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    ],
+                  ),
+                );
+              }),
               const SizedBox(height: 16),
-              _detailRow('Status', status, valueColor: DesignColors.success),
+              _detailRow(
+                'Status',
+                status.replaceAll('_', ' '),
+                valueColor: status == 'OVERDUE'
+                    ? DesignColors.error
+                    : status == 'PARTIAL' || status == 'PENDING'
+                    ? DesignColors.warning
+                    : DesignColors.success,
+              ),
               _detailRow(
                 'Payment date',
                 paymentDate == null
                     ? '—'
                     : DateFormat('dd MMM yyyy').format(paymentDate.toLocal()),
               ),
-              _detailRow('Paid amount', inr.format(paidAmount)),
+              _detailRow('Expected amount', inr.format(expectedAmount)),
+              _detailRow('Cash received', inr.format(amount)),
+              _detailRow('Applied to cycle', inr.format(paidAmount)),
+              if (creditApplied > 0.005)
+                _detailRow('Credit used', inr.format(creditApplied)),
               _detailRow('Pending amount', inr.format(pendingAmount)),
+              _detailRow(
+                'Carry forward',
+                inr.format(carryForwardBalance),
+                valueColor: carryForwardBalance < 0
+                    ? DesignColors.error
+                    : DesignColors.textPrimary,
+              ),
               _detailRow('Method', paymentMode),
               _detailRow(
                 'Notes',
@@ -1545,6 +3784,7 @@ class _MaintenancePaymentScreenState
                 multiline: true,
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -1628,12 +3868,18 @@ class _MaintenancePaymentScreenState
             month: filter.month,
             year: filter.year,
             isAdmin: isAdmin,
+            maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
           );
       if (bytes.isEmpty) throw Exception('Empty report received');
+      final suffix =
+          filter.maintenanceCollectionCycleId != null &&
+              filter.maintenanceCollectionCycleId!.isNotEmpty
+          ? '_${filter.maintenanceCollectionCycleId!.length >= 8 ? filter.maintenanceCollectionCycleId!.substring(0, 8) : filter.maintenanceCollectionCycleId}'
+          : '';
       await _sharePdfBytes(
         Uint8List.fromList(bytes),
         filename:
-            'maintenance_report_${filter.year}_${filter.month.toString().padLeft(2, '0')}.pdf',
+            'maintenance_report_${filter.year}_${filter.month.toString().padLeft(2, '0')}$suffix.pdf',
       );
       return;
     } catch (_) {
@@ -1755,64 +4001,6 @@ class _MaintenancePaymentScreenState
     await Share.shareXFiles([XFile(file.path)], text: 'Maintenance report');
   }
 
-  void _showPaymentDialog(
-    BuildContext context,
-    WidgetRef ref,
-    List<MaintenanceDueModel> pending,
-    double amount,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Payment'),
-        content: Text('Pay ₹${amount.toStringAsFixed(0)} for maintenance?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              bool allSuccess = true;
-              for (final due in pending) {
-                final ok = await ref
-                    .read(maintenancePaymentProvider.notifier)
-                    .pay(
-                      villaId: due.villaId,
-                      month: due.month,
-                      year: due.year,
-                      amount: due.amount,
-                      paymentMode: 'ONLINE',
-                    );
-                if (!ok) {
-                  allSuccess = false;
-                  break;
-                }
-              }
-              ref.invalidate(residentBillingCycleProvider);
-              ref.invalidate(pendingMaintenanceProvider);
-              ref.invalidate(maintenanceDashboardProvider);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    allSuccess
-                        ? 'Payment recorded successfully'
-                        : 'Payment failed. Please try again.',
-                  ),
-                  backgroundColor: allSuccess
-                      ? DesignColors.success
-                      : DesignColors.error,
-                ),
-              );
-            },
-            child: const Text('Proceed'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 pw.TableRow _pdfRow(String key, String value) {
@@ -1857,67 +4045,6 @@ class _CollectionExpenseOverviewScreenState
     return out;
   }
 
-  Widget _statTile({
-    required String label,
-    required double value,
-    required Color color,
-    required IconData icon,
-  }) {
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: DesignColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DesignColors.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: DesignColors.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            inr.format(value),
-            style: DesignTypography.headingM.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _comparisonBlock({
     required double collected,
@@ -2055,10 +4182,17 @@ class _CollectionExpenseOverviewScreenState
     final expenses = Map<String, dynamic>.from(
       (widget.dashboard['monthlyExpenseBreakdown'] ?? const {}) as Map,
     );
+    // Only months where a billing cycle actually exists.
     final yearlyBreakdown =
         ((widget.dashboard['yearlyBreakdown'] ?? const []) as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
+            .where((row) {
+              final exp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
+              final paid = (row['paidCount'] as num?)?.toInt() ?? 0;
+              final unpaid = (row['unpaidCount'] as num?)?.toInt() ?? 0;
+              return exp > 0 || (paid + unpaid) > 0;
+            })
             .toList();
 
     final expected =
@@ -2068,7 +4202,12 @@ class _CollectionExpenseOverviewScreenState
     final pending = (residentsSummary['totalPending'] as num?)?.toDouble() ?? 0;
     final totalExpense = (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
     final net = collected - totalExpense;
+    final collectionRate = expected > 0 ? (collected / expected * 100) : 0.0;
 
+    final yearlyExpected = yearlyBreakdown.fold<double>(
+      0,
+      (sum, row) => sum + ((row['totalExpected'] as num?)?.toDouble() ?? 0),
+    );
     final yearlyCollected = yearlyBreakdown.fold<double>(
       0,
       (sum, row) => sum + ((row['totalCollected'] as num?)?.toDouble() ?? 0),
@@ -2077,7 +4216,10 @@ class _CollectionExpenseOverviewScreenState
       0,
       (sum, row) => sum + ((row['totalExpense'] as num?)?.toDouble() ?? 0),
     );
+    final yearlyPending = yearlyExpected - yearlyCollected;
     final yearlyNet = yearlyCollected - yearlyExpense;
+    final yearlyCollRate =
+        yearlyExpected > 0 ? (yearlyCollected / yearlyExpected * 100) : 0.0;
 
     final categories = _categoryEntries(expenses).take(8).toList();
     final inr = NumberFormat.currency(
@@ -2085,6 +4227,74 @@ class _CollectionExpenseOverviewScreenState
       symbol: '₹',
       decimalDigits: 0,
     );
+
+    Widget compactStats({
+      required double exp,
+      required double coll,
+      required double pend,
+      required double expn,
+      required double rate,
+    }) {
+      final rateColor = rate >= 80
+          ? DesignColors.success
+          : rate >= 50
+              ? DesignColors.warning
+              : DesignColors.error;
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesignColors.borderLight),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                _inlineStat('Expected', inr.format(exp), DesignColors.primary),
+                _inlineStat('Collected', inr.format(coll), DesignColors.success),
+                _inlineStat('Pending', inr.format(pend), DesignColors.error),
+                _inlineStat(
+                    'Expenses', inr.format(expn), const Color(0xFF546E7A)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  'Collection',
+                  style: DesignTypography.labelSmall.copyWith(
+                    color: DesignColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: (rate / 100).clamp(0.0, 1.0),
+                      color: rateColor,
+                      backgroundColor: DesignColors.surfaceSoft,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${rate.toStringAsFixed(0)}%',
+                  style: DesignTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    color: rateColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: DesignColors.background,
@@ -2144,73 +4354,38 @@ class _CollectionExpenseOverviewScreenState
               setState(() => _mode = selected.first);
             },
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           if (_mode == _OverviewMode.monthly) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _statTile(
-                    label: 'Expected',
-                    value: expected,
-                    color: DesignColors.primary,
-                    icon: Icons.flag_outlined,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _statTile(
-                    label: 'Collected',
-                    value: collected,
-                    color: DesignColors.success,
-                    icon: Icons.savings_outlined,
-                  ),
-                ),
-              ],
+            compactStats(
+              exp: expected,
+              coll: collected,
+              pend: pending,
+              expn: totalExpense,
+              rate: collectionRate,
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _statTile(
-                    label: 'Pending',
-                    value: pending,
-                    color: DesignColors.error,
-                    icon: Icons.pending_actions_outlined,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _statTile(
-                    label: 'Expenses',
-                    value: totalExpense,
-                    color: DesignColors.textSecondary,
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _comparisonBlock(
               collected: collected,
               expense: totalExpense,
               net: net,
             ),
           ] else ...[
+            compactStats(
+              exp: yearlyExpected,
+              coll: yearlyCollected,
+              pend: yearlyPending > 0 ? yearlyPending : 0,
+              expn: yearlyExpense,
+              rate: yearlyCollRate,
+            ),
+            const SizedBox(height: 14),
             _comparisonBlock(
               collected: yearlyCollected,
               expense: yearlyExpense,
               net: yearlyNet,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Sums every month in $year for a quick annual read.',
-              style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
-              ),
-            ),
           ],
           if (_mode == _OverviewMode.monthly && categories.isNotEmpty) ...[
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
             Text(
               'Expense by category',
               style: DesignTypography.bodyMedium.copyWith(
@@ -2252,16 +4427,17 @@ class _CollectionExpenseOverviewScreenState
               );
             }),
           ],
-          const SizedBox(height: 22),
+          // Billing cycle breakdown
+          const SizedBox(height: 18),
           Text(
-            'Month-by-month',
+            'Billing cycles',
             style: DesignTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            'Paid counts and cash movement across the year.',
+            '${yearlyBreakdown.length} cycle${yearlyBreakdown.length == 1 ? '' : 's'} in selected year',
             style: DesignTypography.bodySmall.copyWith(
               color: DesignColors.textSecondary,
             ),
@@ -2276,7 +4452,7 @@ class _CollectionExpenseOverviewScreenState
                 border: Border.all(color: DesignColors.borderLight),
               ),
               child: Text(
-                'No breakdown yet for this year.',
+                'No billing cycles created for this year yet.',
                 style: DesignTypography.bodySmall.copyWith(
                   color: DesignColors.textSecondary,
                 ),
@@ -2287,22 +4463,37 @@ class _CollectionExpenseOverviewScreenState
               final m = (row['month'] as num?)?.toInt() ?? 1;
               final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
               final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
-              final monthCollected =
+              final mExp =
+                  (row['totalExpected'] as num?)?.toDouble() ?? 0;
+              final mColl =
                   (row['totalCollected'] as num?)?.toDouble() ?? 0;
-              final monthExpense =
+              final mExpense =
                   (row['totalExpense'] as num?)?.toDouble() ?? 0;
-              final monthNet = monthCollected - monthExpense;
+              final mPending = mExp - mColl;
+              final monthNet = mColl - mExpense;
               final netColor = monthNet >= 0
                   ? DesignColors.success
                   : DesignColors.error;
+              final mRate = mExp > 0 ? (mColl / mExp * 100) : 0.0;
+              final mRateColor = mRate >= 80
+                  ? DesignColors.success
+                  : mRate >= 50
+                      ? DesignColors.warning
+                      : DesignColors.error;
+              final isCurrentPeriod =
+                  m == month && year == (filter['year'] as num?)?.toInt();
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Material(
-                  color: DesignColors.surface,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: DesignColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: DesignColors.borderLight),
+                    border: Border.all(
+                      color: isCurrentPeriod
+                          ? DesignColors.primary.withValues(alpha: 0.5)
+                          : DesignColors.borderLight,
+                      width: isCurrentPeriod ? 1.5 : 1,
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(14),
@@ -2312,11 +4503,32 @@ class _CollectionExpenseOverviewScreenState
                         Row(
                           children: [
                             Text(
-                              DateFormat('MMMM').format(DateTime(2024, m)),
+                              DateFormat('MMMM').format(DateTime(year, m)),
                               style: DesignTypography.bodyMedium.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
+                            if (isCurrentPeriod) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: DesignColors.primary
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Current',
+                                  style:
+                                      DesignTypography.labelSmall.copyWith(
+                                    color: DesignColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
                             const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -2324,7 +4536,7 @@ class _CollectionExpenseOverviewScreenState
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: netColor.withValues(alpha: 0.12),
+                                color: netColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
@@ -2338,28 +4550,52 @@ class _CollectionExpenseOverviewScreenState
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          '$paidC paid · $unpaidC unpaid',
-                          style: DesignTypography.bodySmall.copyWith(
-                            color: DesignColors.textSecondary,
-                          ),
+                        // Compact 4-value row
+                        Row(
+                          children: [
+                            _miniFoot('Expected', mExp, DesignColors.primary),
+                            const SizedBox(width: 8),
+                            _miniFoot('Collected', mColl, DesignColors.success),
+                            const SizedBox(width: 8),
+                            _miniFoot(
+                                'Pending',
+                                mPending > 0 ? mPending : 0,
+                                DesignColors.error),
+                            const SizedBox(width: 8),
+                            _miniFoot('Expense', mExpense,
+                                const Color(0xFF546E7A)),
+                          ],
                         ),
                         const SizedBox(height: 10),
+                        // Collection progress + counts
                         Row(
                           children: [
                             Expanded(
-                              child: _miniFoot(
-                                'Collected',
-                                monthCollected,
-                                DesignColors.success,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  minHeight: 5,
+                                  value: (mRate / 100).clamp(0.0, 1.0),
+                                  color: mRateColor,
+                                  backgroundColor: DesignColors.surfaceSoft,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _miniFoot(
-                                'Expense',
-                                monthExpense,
-                                DesignColors.textSecondary,
+                            const SizedBox(width: 8),
+                            Text(
+                              '${mRate.toStringAsFixed(0)}%',
+                              style: DesignTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 10,
+                                color: mRateColor,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '$paidC paid · $unpaidC unpaid',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: DesignColors.textSecondary,
+                                fontSize: 10,
                               ),
                             ),
                           ],
@@ -2376,30 +4612,65 @@ class _CollectionExpenseOverviewScreenState
     );
   }
 
+  Widget _inlineStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+              fontSize: 13,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _miniFoot(String label, double value, Color c) {
     final inr = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹',
       decimalDigits: 0,
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: DesignTypography.labelSmall.copyWith(
-            color: DesignColors.textSecondary,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontSize: 10,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          inr.format(value),
-          style: DesignTypography.bodyMedium.copyWith(
-            fontWeight: FontWeight.w800,
-            color: c,
+          const SizedBox(height: 2),
+          Text(
+            inr.format(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: DesignTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: c,
+              fontSize: 12,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

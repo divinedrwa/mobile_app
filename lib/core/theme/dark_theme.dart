@@ -12,10 +12,10 @@ class DarkTheme {
       fontFamily: AppTypography.fontFamily,
 
       // Color Scheme
-      colorScheme: ColorScheme.dark(
+      colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
-        surface: const Color(0xFF1E1E1E),
+        surface: Color(0xFF1E1E1E),
         error: AppColors.error,
         onSurface: Colors.white,
         onPrimary: Colors.white,
@@ -67,7 +67,7 @@ class DarkTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.primary),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
 

@@ -121,10 +121,10 @@ class _GuardPreApprovedArrivalScreenState
     if (!_hasActiveShift(shifts)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: GuardTokens.warning,
-          content: const Text(
+          content: Text(
             'No active shift found. Ask admin to assign your shift first.',
           ),
         ),
@@ -201,6 +201,7 @@ class _GuardPreApprovedArrivalScreenState
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
@@ -248,7 +249,7 @@ class _GuardPreApprovedArrivalScreenState
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Icon(
+                                              const Icon(
                                                 Icons.schedule_rounded,
                                                 color: GuardTokens.warning,
                                               ),
@@ -288,7 +289,7 @@ class _GuardPreApprovedArrivalScreenState
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.verified_outlined,
                                       color: GuardTokens.guardAccentDeep,
                                       size: 22,
@@ -325,7 +326,7 @@ class _GuardPreApprovedArrivalScreenState
                             const SizedBox(height: GuardTokens.sectionGap),
                             Row(
                               children: [
-                                _StatusPill(
+                                const _StatusPill(
                                   label: 'Pending arrival',
                                   color: GuardTokens.warning,
                                 ),
@@ -398,7 +399,7 @@ class _GuardPreApprovedArrivalScreenState
                                         context,
                                         label: 'Mobile number',
                                         hint: '10+ digits',
-                                        prefix: Icon(
+                                        prefix: const Icon(
                                           Icons.phone_android_rounded,
                                           color: GuardTokens.guardAccent,
                                         ),
@@ -422,7 +423,7 @@ class _GuardPreApprovedArrivalScreenState
                                       decoration: _fieldDecoration(
                                         context,
                                         label: 'Full name',
-                                        prefix: Icon(
+                                        prefix: const Icon(
                                           Icons.badge_outlined,
                                           color: GuardTokens.guardAccent,
                                         ),
@@ -483,7 +484,7 @@ class _GuardPreApprovedArrivalScreenState
                                       ),
                                       child: Row(
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.home_work_outlined,
                                             color: GuardTokens.guardAccent,
                                             size: 22,

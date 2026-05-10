@@ -1,0 +1,17 @@
+# Android release-signing config. Copy this file to `android/key.properties`
+# (which is gitignored) and fill in the real values. CI should write the same
+# four keys from secret storage before invoking `flutter build apk --release`
+# / `flutter build appbundle --release`.
+#
+# Generating a fresh keystore (once per app, then preserved forever):
+#
+#   keytool -genkey -v -keystore divine-app.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias divine-app
+#
+# Place the resulting .jks at `android/app/divine-app.jks` (also gitignored)
+# and reference it via `storeFile` below.
+
+storeFile=divine-app.jks
+storePassword=
+keyAlias=divine-app
+keyPassword=

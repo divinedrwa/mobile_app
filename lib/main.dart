@@ -7,9 +7,12 @@ import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/dark_theme.dart';
+import 'core/theme/theme_mode_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'core/routing/app_navigator_keys.dart';
 import 'core/session/account_deactivated_handler.dart';
+import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
 
@@ -55,6 +58,19 @@ class _DivineAppState extends ConsumerState<DivineApp> {
           GoRouter.of(ctx).go('/login');
         }
       });
+      // Same shape, but for plain expired/revoked tokens (no "deactivated"
+      // server message). Fires once per burst — see SessionExpiredHandler.
+      SessionExpiredHandler.register(() async {
+        try {
+          await ref.read(authProvider.notifier).logout();
+        } catch (_) {
+          // Local session must clear even if logout API fails.
+        }
+        final ctx = appRootNavigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          GoRouter.of(ctx).go('/login');
+        }
+      });
     });
   }
 
@@ -73,18 +89,17 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       _routerRefresh.notify();
     });
 
+    // Theme preference is persisted via [ThemeModeNotifier] (system / light /
+    // dark). MaterialApp will swap between [theme] and [darkTheme] based on
+    // the resolved mode — `system` defers to the platform brightness.
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light,
-      builder: (context, child) {
-        final media = MediaQuery.of(context);
-        return MediaQuery(
-          data: media.copyWith(textScaler: TextScaler.noScaling),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
+      darkTheme: DarkTheme.themeData,
+      themeMode: themeMode,
       routerConfig: _router!,
     );
   }

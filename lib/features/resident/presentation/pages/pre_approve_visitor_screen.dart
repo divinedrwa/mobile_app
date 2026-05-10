@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -219,6 +221,8 @@ class _PreApproveVisitorScreenState
         const DivineFlowSectionLabel('Contact'),
         TextFormField(
           controller: _nameController,
+          autofocus: true,
+          textInputAction: TextInputAction.next,
           textCapitalization: TextCapitalization.words,
           decoration: DesignComponents.inputDecoration(
             label: 'Full name',
@@ -238,6 +242,7 @@ class _PreApproveVisitorScreenState
         const SizedBox(height: DesignSpacing.md),
         TextFormField(
           controller: _phoneController,
+          textInputAction: TextInputAction.next,
           decoration: DesignComponents.inputDecoration(
             label: 'Mobile number',
             hint: '10-digit number',
@@ -265,6 +270,7 @@ class _PreApproveVisitorScreenState
         const DivineFlowSectionLabel('Visit'),
         TextFormField(
           controller: _purposeController,
+          textInputAction: TextInputAction.done,
           decoration: DesignComponents.inputDecoration(
             label: 'Purpose',
             hint: 'e.g. Dinner, parcel pickup, AC service',
@@ -354,6 +360,7 @@ class _PreApproveVisitorScreenState
         const DivineFlowSectionLabel('Notes for security (optional)'),
         TextFormField(
           controller: _notesController,
+          textInputAction: TextInputAction.done,
           decoration: DesignComponents.inputDecoration(
             label: 'Additional notes',
             hint: 'Vehicle number, escort name, special instructions…',
@@ -388,7 +395,7 @@ class _PreApproveVisitorScreenState
             children: [
               Row(
                 children: [
-                  Icon(Icons.fact_check_rounded, color: DesignColors.primary, size: 22),
+                  const Icon(Icons.fact_check_rounded, color: DesignColors.primary, size: 22),
                   const SizedBox(width: DesignSpacing.sm),
                   Text(
                     'Summary',
@@ -465,10 +472,12 @@ class _PreApproveVisitorScreenState
 
       if (mounted) {
         ref.invalidate(preApprovedVisitorsProvider);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VisitorSuccessScreen(visitor: result),
+        unawaited(
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VisitorSuccessScreen(visitor: result),
+            ),
           ),
         );
       }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/poll_model.dart';
 import '../../data/providers/content_provider.dart';
@@ -272,12 +274,12 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                       color: isSelected ? DesignColors.primary : Colors.grey,
                     )
                   else if (isMyVote)
-                    Icon(
+                    const Icon(
                       Icons.check_circle,
                       color: DesignColors.success,
                     )
                   else
-                    Icon(
+                    const Icon(
                       Icons.circle_outlined,
                       color: Colors.grey,
                     ),
@@ -312,7 +314,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         ),
                         Text(
                           '${option.votes} votes',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             color: DesignColors.textSecondary,
                           ),
@@ -328,13 +330,20 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 ClipRRect(
                   borderRadius: DesignRadius.borderXS,
-                  child: LinearProgressIndicator(
-                    value: percentage / 100,
-                    backgroundColor: DesignColors.borderLight,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isMyVote ? DesignColors.success : DesignColors.primary,
-                    ),
-                    minHeight: 8,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: percentage / 100),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) {
+                      return LinearProgressIndicator(
+                        value: value,
+                        backgroundColor: DesignColors.borderLight,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isMyVote ? DesignColors.success : DesignColors.primary,
+                        ),
+                        minHeight: 8,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -344,7 +353,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
       ),
     ).animate().fadeIn(
           duration: 300.ms,
-          delay: ((index + 2) * 100).ms,
+          delay: DesignAnimations.staggerFor(index + 2),
         );
   }
 
@@ -382,6 +391,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
     ref.invalidate(pollsProvider);
 
     if (mounted) {
+      if (errorMsg == null) DesignHaptics.success();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

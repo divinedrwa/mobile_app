@@ -42,6 +42,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Go back',
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
         ),
@@ -59,7 +60,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
             if (upcomingCount > 0)
               Text(
                 '$upcomingCount upcoming',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: DesignColors.textSecondary,
                   fontWeight: FontWeight.normal,
@@ -161,7 +162,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Failed to load bookings',
                 style: TextStyle(fontSize: 16, color: DesignColors.textSecondary),
               ),
@@ -411,7 +412,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: DesignColors.textSecondary,
               ),
@@ -506,7 +507,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.event_busy, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No Bookings',
             style: TextStyle(
               fontSize: 20,
@@ -537,7 +538,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.event_available, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No Upcoming Bookings',
             style: TextStyle(
               fontSize: 20,
@@ -562,7 +563,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.history, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No Past Bookings',
             style: TextStyle(
               fontSize: 20,

@@ -100,7 +100,7 @@ abstract final class GuardTokens {
         color: Theme.of(context).colorScheme.onSurface,
       );
 
-  static TextStyle _fallbackBody() => TextStyle(
+  static TextStyle _fallbackBody() => const TextStyle(
         fontSize: body,
         color: textSecondary,
       );

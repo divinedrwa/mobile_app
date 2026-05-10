@@ -12,6 +12,7 @@ class MaintenanceRepository {
     required int month,
     required int year,
     required bool isAdmin,
+    String? maintenanceCollectionCycleId,
   }) async {
     try {
       final path = isAdmin
@@ -19,7 +20,14 @@ class MaintenanceRepository {
           : '/residents/maintenance-dashboard';
       final response = await _dio.get(
         path,
-        queryParameters: {'month': month, 'year': year},
+        queryParameters: {
+          'month': month,
+          'year': year,
+          if (isAdmin &&
+              maintenanceCollectionCycleId != null &&
+              maintenanceCollectionCycleId.isNotEmpty)
+            'cycleId': maintenanceCollectionCycleId,
+        },
       );
       final data = response.data;
       if (data is Map<String, dynamic>) return data;
@@ -29,17 +37,92 @@ class MaintenanceRepository {
     }
   }
 
-  Future<void> sendDuesReminders({
+  /// Sends due-reminder notifications for the given period. Returns the
+  /// raw response body so callers can surface counters like
+  /// `{ notified: 7 }` in toasts.
+  Future<Map<String, dynamic>> sendDuesReminders({
     required int month,
     required int year,
+    String? maintenanceCollectionCycleId,
   }) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/maintenance-management/send-dues-reminders',
-        data: {'month': month, 'year': year},
+        data: {
+          'month': month,
+          'year': year,
+          if (maintenanceCollectionCycleId != null &&
+              maintenanceCollectionCycleId.isNotEmpty)
+            'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
+        },
       );
+      final body = response.data;
+      return body is Map<String, dynamic>
+          ? body
+          : <String, dynamic>{};
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to send due reminders');
+    }
+  }
+
+  /// Records a cash payment against a villa for the given month/year. Maps
+  /// to the admin-only `POST /maintenance-management/mark-paid` endpoint —
+  /// the same one the web admin uses, so behavior (snapshot + cash ledger
+  /// reconciliation via the credit walker) stays consistent.
+  Future<Map<String, dynamic>> markPaidCash({
+    required String villaId,
+    required int month,
+    required int year,
+    required double amount,
+    String paymentMode = 'CASH',
+    String? remarks,
+    String? maintenanceCollectionCycleId,
+    String? bankAccountId,
+    bool applyCredit = false,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/maintenance-management/mark-paid',
+        data: {
+          'villaId': villaId,
+          'month': month,
+          'year': year,
+          'amount': amount,
+          'paymentMode': paymentMode,
+          'paymentDate': DateTime.now().toUtc().toIso8601String(),
+          if (remarks != null && remarks.isNotEmpty) 'remarks': remarks,
+          if (maintenanceCollectionCycleId != null &&
+              maintenanceCollectionCycleId.isNotEmpty)
+            'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
+          if (bankAccountId != null && bankAccountId.isNotEmpty)
+            'bankAccountId': bankAccountId,
+          if (applyCredit) 'applyCredit': true,
+        },
+      );
+      final body = response.data;
+      return body is Map<String, dynamic> ? body : <String, dynamic>{};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to record cash payment');
+    }
+  }
+
+  /// Applies advance credit from prior overpayments to a billing cycle.
+  Future<Map<String, dynamic>> applyCredit({
+    required String villaId,
+    required String maintenanceCollectionCycleId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/maintenance-management/apply-credit',
+        data: {
+          'villaId': villaId,
+          'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
+        },
+      );
+      final body = response.data;
+      return body is Map<String, dynamic> ? body : <String, dynamic>{};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to apply advance credit');
     }
   }
 
@@ -47,6 +130,7 @@ class MaintenanceRepository {
     required int month,
     required int year,
     required bool isAdmin,
+    String? maintenanceCollectionCycleId,
   }) async {
     try {
       final path = isAdmin
@@ -54,7 +138,14 @@ class MaintenanceRepository {
           : '/residents/maintenance-dashboard/report-pdf';
       final response = await _dio.get<List<int>>(
         path,
-        queryParameters: {'month': month, 'year': year},
+        queryParameters: {
+          'month': month,
+          'year': year,
+          if (isAdmin &&
+              maintenanceCollectionCycleId != null &&
+              maintenanceCollectionCycleId.isNotEmpty)
+            'cycleId': maintenanceCollectionCycleId,
+        },
         options: Options(responseType: ResponseType.bytes),
       );
       return response.data ?? const [];
@@ -103,10 +194,65 @@ class MaintenanceRepository {
     }
   }
 
-  Future<BillingCycleCurrent> getCurrentBillingCycle(String societyId) async {
+  /// Society financial years (`GET /v1/financial-years`) — same source as admin billing UI.
+  Future<List<Map<String, dynamic>>> getBillingFinancialYears() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.billingFinancialYears);
+      final data = response.data;
+      if (data is! Map<String, dynamic>) return [];
+      final list = data['financialYears'] as List? ?? const [];
+      return list
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load financial years');
+    }
+  }
+
+  /// Single cycle context for deep links (`GET /v1/billing-cycles/context`).
+  Future<Map<String, dynamic>?> getBillingCycleContext(String billingCycleId) async {
     try {
       final response = await _dio.get(
-        ApiEndpoints.billingCyclesCurrent(societyId: societyId),
+        ApiEndpoints.billingCycleContext,
+        queryParameters: {'billingCycleId': billingCycleId},
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw mapDioException(e, 'Failed to resolve billing cycle');
+    }
+  }
+
+  /// Billing cycles created for a financial year (`GET /v1/billing-cycles`).
+  Future<Map<String, dynamic>> getBillingCyclesForFinancialYear(
+    String financialYearId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.billingCyclesForYear,
+        queryParameters: {'financialYearId': financialYearId},
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load billing cycles');
+    }
+  }
+
+  Future<BillingCycleCurrent> getCurrentBillingCycle(
+    String societyId, {
+    String? billingCycleId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.billingCyclesCurrent(
+          societyId: societyId,
+          billingCycleId: billingCycleId,
+        ),
       );
       final data = response.data;
       if (data is Map<String, dynamic>) {

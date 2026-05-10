@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/storage_service.dart';
 
@@ -28,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigateToNext() async {
     await Future<void>.delayed(_holdDuration);
 
-    final token = StorageService.getToken();
+    final token = await StorageService.getToken();
     final hasSession = token != null && token.isNotEmpty;
 
     String target = '/society-select';
@@ -115,14 +116,14 @@ class _SplashScreenState extends State<SplashScreen> {
                   )
                       .animate()
                       .fadeIn(
-                        delay: 120.ms,
+                        delay: DesignAnimations.sectionStaggerFor(1),
                         duration: 550.ms,
                         curve: Curves.easeOut,
                       )
                       .slideY(
-                        begin: 0.12,
+                        begin: DesignAnimations.slideNormal,
                         end: 0,
-                        delay: 120.ms,
+                        delay: DesignAnimations.sectionStaggerFor(1),
                         duration: 550.ms,
                         curve: Curves.easeOutCubic,
                       ),
@@ -137,15 +138,15 @@ class _SplashScreenState extends State<SplashScreen> {
                       letterSpacing: 0.1,
                       color: Colors.white.withValues(alpha: 0.88),
                     ),
-                  ).animate().fadeIn(delay: 240.ms, duration: 550.ms),
+                  ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 550.ms),
                   const SizedBox(height: 18),
                   _SplashCapabilityRow()
                       .animate()
-                      .fadeIn(delay: 300.ms, duration: 500.ms),
+                      .fadeIn(delay: DesignAnimations.sectionStaggerFor(3), duration: 500.ms),
                   const Spacer(flex: 2),
                   _SplashProgressBar()
                       .animate()
-                      .fadeIn(delay: 320.ms, duration: 400.ms),
+                      .fadeIn(delay: DesignAnimations.sectionStaggerFor(4), duration: 400.ms),
                   const SizedBox(height: 8),
                   Text(
                     'Secure · Resident · Gate',

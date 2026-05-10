@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_elevations.dart';
 import '../theme/app_spacing.dart';
+import '../theme/design_animations.dart';
+import '../theme/design_haptics.dart';
+import '../theme/design_tokens.dart';
 
 /// Ultra-polished button with native feel
 class PolishedButton extends StatefulWidget {
@@ -37,28 +40,24 @@ class _PolishedButtonState extends State<PolishedButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final buttonColor = widget.color ?? theme.primaryColor;
-    final textColor = widget.textColor ?? Colors.white;
+    final textColor = widget.textColor ?? DesignColors.surface;
     final isEnabled = widget.onPressed != null && !widget.isLoading;
 
     return GestureDetector(
       onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: isEnabled ? (_) {
         setState(() => _isPressed = false);
+        DesignHaptics.impact();
         widget.onPressed!();
       } : null,
       onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..scaleByDouble(_isPressed ? 0.95 : 1.0, _isPressed ? 0.95 : 1.0, 1.0, 1.0),
-        child: Container(
+      child: Container(
           width: widget.isFullWidth ? double.infinity : null,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isEnabled
                   ? [buttonColor, buttonColor.withValues(alpha: 0.85)]
-                  : [Colors.grey.shade400, Colors.grey.shade500],
+                  : [DesignColors.textTertiary, DesignColors.secondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -70,7 +69,6 @@ class _PolishedButtonState extends State<PolishedButton> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isEnabled ? widget.onPressed : null,
               borderRadius: BorderRadius.circular(widget.borderRadius),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -100,9 +98,8 @@ class _PolishedButtonState extends State<PolishedButton> {
                           ],
                           Text(
                             widget.text,
-                            style: TextStyle(
+                            style: DesignTypography.button.copyWith(
                               color: textColor,
-                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.3,
                             ),
@@ -113,13 +110,12 @@ class _PolishedButtonState extends State<PolishedButton> {
             ),
           ),
         ),
-      ),
     )
         .animate(target: _isPressed ? 1 : 0)
         .scaleXY(
           begin: 1,
-          end: 0.95,
-          duration: 150.ms,
+          end: DesignAnimations.scalePressed,
+          duration: DesignAnimations.durationInteraction,
         );
   }
 }
@@ -160,28 +156,28 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
       onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: isEnabled ? (_) {
         setState(() => _isPressed = false);
+        DesignHaptics.impact();
         widget.onPressed!();
       } : null,
       onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
+        duration: DesignAnimations.durationInteraction,
+        curve: DesignAnimations.curveInteraction,
         transform: Matrix4.identity()
-          ..scaleByDouble(_isPressed ? 0.95 : 1.0, _isPressed ? 0.95 : 1.0, 1.0, 1.0),
+          ..scaleByDouble(_isPressed ? DesignAnimations.scalePressed : 1.0, _isPressed ? DesignAnimations.scalePressed : 1.0, 1.0, 1.0),
         child: Container(
           width: widget.isFullWidth ? double.infinity : null,
           decoration: BoxDecoration(
             color: _isPressed ? buttonColor.withValues(alpha: 0.1) : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isEnabled ? buttonColor : Colors.grey.shade400,
+              color: isEnabled ? buttonColor : DesignColors.textTertiary,
               width: 2,
             ),
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isEnabled ? widget.onPressed : null,
               borderRadius: BorderRadius.circular(14),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -211,9 +207,8 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
                           ],
                           Text(
                             widget.text,
-                            style: TextStyle(
+                            style: DesignTypography.button.copyWith(
                               color: buttonColor,
-                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.3,
                             ),

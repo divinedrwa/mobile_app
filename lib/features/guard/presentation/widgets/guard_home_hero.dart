@@ -17,6 +17,15 @@ class GuardHomeHero extends StatelessWidget {
   final String? gateLocation;
   final VoidCallback? onNotificationsTap;
 
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 5) return 'Late Night';
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    if (h < 21) return 'Good Evening';
+    return 'Good Night';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -76,7 +85,7 @@ class GuardHomeHero extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Hello, $guardName',
+                            '${_greeting()}, $guardName',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -121,6 +130,7 @@ class GuardHomeHero extends StatelessWidget {
               ),
               if (onNotificationsTap != null)
                 IconButton(
+                  tooltip: 'Notifications',
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(8),
                   constraints: const BoxConstraints(minWidth: 40, minHeight: 40),

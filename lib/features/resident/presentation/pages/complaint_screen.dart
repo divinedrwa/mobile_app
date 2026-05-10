@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../data/providers/complaint_provider.dart' show
@@ -25,7 +23,6 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
   String _selectedPriority = 'MEDIUM';
-  final List<XFile> _selectedImages = [];
   bool _isSubmitting = false;
 
   final categories = [
@@ -111,6 +108,8 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
             const DivineFlowSectionLabel('Summary'),
             TextFormField(
               controller: _titleController,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               textCapitalization: TextCapitalization.sentences,
               decoration: DesignComponents.inputDecoration(
                 label: 'Title',
@@ -133,6 +132,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
             const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _descriptionController,
+              textInputAction: TextInputAction.done,
               decoration: DesignComponents.inputDecoration(
                 label: 'Description',
                 hint: 'What happened, where, and when?',
@@ -177,93 +177,6 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
               title: 'Low',
               subtitle: 'Non-urgent — schedule when convenient',
               onTap: () => setState(() => _selectedPriority = 'LOW'),
-            ),
-            const SizedBox(height: DesignSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(DesignSpacing.md),
-              decoration: DesignComponents.cardDecoration(
-                boxShadow: DesignElevation.sm,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Photos (optional)',
-                          style: DesignTypography.label.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _pickImage,
-                        icon: Icon(
-                          Icons.add_a_photo_rounded,
-                          size: 20,
-                          color: DesignColors.primary,
-                        ),
-                        label: Text(
-                          'Add',
-                          style: DesignTypography.label.copyWith(
-                            color: DesignColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: DesignSpacing.sm),
-                  if (_selectedImages.isNotEmpty)
-                    Wrap(
-                      spacing: DesignSpacing.sm,
-                      runSpacing: DesignSpacing.sm,
-                      children: _selectedImages.map((image) {
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            ClipRRect(
-                              borderRadius: DesignRadius.borderMD,
-                              child: Image.file(
-                                File(image.path),
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned(
-                              top: -4,
-                              right: -4,
-                              child: Material(
-                                color: DesignColors.surface,
-                                shape: const CircleBorder(),
-                                elevation: 1,
-                                child: IconButton(
-                                  visualDensity: VisualDensity.compact,
-                                  icon: Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: DesignColors.error,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedImages.remove(image);
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    )
-                  else
-                    Text(
-                      'Photos can help maintenance diagnose faster.',
-                      style: DesignTypography.caption,
-                    ),
-                ],
-              ),
             ),
           ],
         ),
@@ -324,16 +237,6 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
     );
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera);
-    if (image != null) {
-      setState(() {
-        _selectedImages.add(image);
-      });
-    }
-  }
-
   Future<void> _submitComplaint() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -352,18 +255,19 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
 
     if (mounted) {
       if (success) {
+        DesignHaptics.success();
         ref.invalidate(myComplaintsProvider);
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             behavior: SnackBarBehavior.floating,
-            content: const Text('Complaint submitted successfully'),
+            content: Text('Complaint submitted successfully'),
             backgroundColor: DesignColors.success,
           ),
         );
-        Navigator.pop(context);
+        context.pop();
       } else {
         final err = ref.read(complaintSubmitProvider).error;
         final message =

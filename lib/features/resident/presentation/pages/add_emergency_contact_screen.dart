@@ -61,6 +61,8 @@ class _AddEmergencyContactScreenState
             const SizedBox(height: AppSpacing.lg),
             TextFormField(
               controller: _nameController,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Name',
                 prefixIcon: Icon(Icons.person),
@@ -70,6 +72,7 @@ class _AddEmergencyContactScreenState
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _relationController,
+              textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Relation',
                 hintText: 'e.g., Brother, Friend',
@@ -81,6 +84,7 @@ class _AddEmergencyContactScreenState
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _phoneController,
+              textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 labelText: 'Phone Number',
                 prefixIcon: Icon(Icons.phone),

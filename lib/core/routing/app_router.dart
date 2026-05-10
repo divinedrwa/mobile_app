@@ -7,13 +7,16 @@ import '../../features/auth/presentation/pages/splash_screen.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/society_selection_screen.dart';
 import '../../core/utils/storage_service.dart';
-import '../../features/auth/presentation/pages/invite_register_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/resident/presentation/pages/resident_shell.dart';
 import '../../features/resident/presentation/pages/pre_approve_visitor_screen.dart';
 import '../../features/resident/presentation/pages/sos_screen.dart';
 import '../../features/resident/presentation/pages/active_sos_screen.dart';
 import '../../features/resident/presentation/pages/maintenance_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/cycle_detail_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/maintenance_history_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/maintenance_hub_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/my_dues_screen.dart';
 import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
 import '../../features/resident/presentation/pages/my_complaints_screen.dart';
@@ -39,7 +42,6 @@ class AppRouter {
           final isSplash = loc == '/';
           final isLogin = loc == '/login';
           final isSocietySelect = loc == '/society-select';
-          final isInviteRegister = loc.startsWith('/invite-register');
           final isGuardRoute = loc.startsWith('/guard');
           final isAdminRoute = loc.startsWith('/admin');
           final isResidentRoute = loc.startsWith('/resident');
@@ -52,10 +54,7 @@ class AppRouter {
             if (isLogin && !hasLoginSociety) {
               return '/society-select';
             }
-            if (!isSplash &&
-                !isSocietySelect &&
-                !isLogin &&
-                !isInviteRegister) {
+            if (!isSplash && !isSocietySelect && !isLogin) {
               return '/society-select';
             }
           }
@@ -65,19 +64,6 @@ class AppRouter {
 
             if (role == UserRole.superAdmin) {
               return '/login';
-            }
-
-            if (isInviteRegister) {
-              switch (role) {
-                case UserRole.superAdmin:
-                  return '/login';
-                case UserRole.resident:
-                  return '/resident';
-                case UserRole.guard:
-                  return '/guard/dashboard';
-                case UserRole.admin:
-                  return '/admin';
-              }
             }
 
             if (role == UserRole.resident && (isGuardRoute || isAdminRoute)) {
@@ -128,14 +114,6 @@ class AppRouter {
           builder: (context, state) => const SocietySelectionScreen(),
         ),
 
-        GoRoute(
-          path: '/invite-register',
-          builder: (context, state) {
-            final token = state.uri.queryParameters['token'];
-            return InviteRegisterScreen(initialToken: token);
-          },
-        ),
-
         // Resident App Routes
         GoRoute(
           path: '/resident',
@@ -160,6 +138,32 @@ class AppRouter {
                 ),
               ],
             ),
+            // Resident maintenance hub. Lands on the redesigned overview;
+            // admins are routed back to MaintenancePaymentScreen inside the
+            // hub itself (the multi-tab finance view stays available until
+            // its own redesign lands).
+            GoRoute(
+              path: 'maintenance',
+              builder: (context, state) => const MaintenanceHubScreen(),
+              routes: [
+                GoRoute(
+                  path: 'history',
+                  builder: (context, state) => const MaintenanceHistoryScreen(),
+                ),
+                GoRoute(
+                  path: 'dues',
+                  builder: (context, state) => const MyDuesScreen(),
+                ),
+                GoRoute(
+                  path: 'cycle/:cycleId',
+                  builder: (context, state) => CycleDetailScreen(
+                    cycleId: state.pathParameters['cycleId'] ?? '',
+                  ),
+                ),
+              ],
+            ),
+            // Legacy URL kept so any deep links / push notifications that
+            // reference the old path still resolve. Redirects to the hub.
             GoRoute(
               path: 'maintenance-payment',
               builder: (context, state) => const MaintenancePaymentScreen(),

@@ -1,10 +1,24 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../constants/app_constants.dart';
 
-/// Local storage service using SharedPreferences
+/// Local storage service.
+///
+/// User-data, role, society and similar non-secret keys live in
+/// [SharedPreferences] (fast, synchronous reads after [init]). The auth
+/// token lives in [FlutterSecureStorage] (Keychain on iOS, encrypted
+/// SharedPreferences on Android) so that a backed-up or rooted device
+/// cannot trivially extract it.
 class StorageService {
   static SharedPreferences? _prefs;
+
+  /// Token storage uses the same options as [SecureCredentialsStore] so the
+  /// behavior on locked / first-unlock screens matches across the app.
+  static const FlutterSecureStorage _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -17,16 +31,33 @@ class StorageService {
     return _prefs!;
   }
 
-  // Token management
+  // Token management — secure storage only. Existing devices that upgraded
+  // from a build that wrote the JWT to plain prefs will hit the legacy
+  // migration path inside [getToken] exactly once and then live in secure
+  // storage from then on.
   static Future<void> saveToken(String token) async {
-    await prefs.setString(AppConstants.keyToken, token);
+    await _secure.write(key: AppConstants.keyToken, value: token);
+    // Defensive: a previous build may have left a plaintext copy here.
+    await prefs.remove(AppConstants.keyToken);
   }
 
-  static String? getToken() {
-    return prefs.getString(AppConstants.keyToken);
+  static Future<String?> getToken() async {
+    final secure = await _secure.read(key: AppConstants.keyToken);
+    if (secure != null && secure.isNotEmpty) return secure;
+    // One-shot migration: copy any plaintext token from older builds into
+    // secure storage, then wipe the plaintext so it doesn't linger in
+    // backups or on rooted devices.
+    final legacy = prefs.getString(AppConstants.keyToken);
+    if (legacy != null && legacy.isNotEmpty) {
+      await _secure.write(key: AppConstants.keyToken, value: legacy);
+      await prefs.remove(AppConstants.keyToken);
+      return legacy;
+    }
+    return null;
   }
 
   static Future<void> removeToken() async {
+    await _secure.delete(key: AppConstants.keyToken);
     await prefs.remove(AppConstants.keyToken);
   }
 
@@ -128,15 +159,20 @@ class StorageService {
     await prefs.remove(AppConstants.keySocietyId);
   }
 
-  // Clear all data (logout)
+  // Clear all data (logout). Preserves device-level settings (API base URL,
+  // biometric/notification toggles) but does NOT preserve the preferred login
+  // society — keeping it across logout caused requests in the window between
+  // logout and the next saveUserData() to carry the prior tenant's
+  // X-Society-Id (society_context_interceptor falls back to preferred id).
+  // The login screen handles re-selecting a society explicitly.
   static Future<void> clearAll() async {
     final apiBase = prefs.getString(AppConstants.keyApiBaseUrl);
-    final preferredSocietyId = prefs.getString(AppConstants.keyPreferredLoginSocietyId);
-    final preferredSocietyName = prefs.getString(AppConstants.keyPreferredLoginSocietyName);
     final biometricPref = prefs.getBool(AppConstants.keyBiometricLoginEnabled);
     final notificationsEnabled = prefs.getBool(AppConstants.keyNotificationsEnabled);
     final pushEnabled = prefs.getBool(AppConstants.keyPushNotificationsEnabled);
     await prefs.clear();
+    // The JWT lives in secure storage; prefs.clear() doesn't reach it.
+    await _secure.delete(key: AppConstants.keyToken);
     if (apiBase != null && apiBase.isNotEmpty) {
       await prefs.setString(AppConstants.keyApiBaseUrl, apiBase);
     }
@@ -148,12 +184,6 @@ class StorageService {
     }
     if (pushEnabled != null) {
       await prefs.setBool(AppConstants.keyPushNotificationsEnabled, pushEnabled);
-    }
-    if (preferredSocietyId != null && preferredSocietyId.isNotEmpty) {
-      await prefs.setString(AppConstants.keyPreferredLoginSocietyId, preferredSocietyId);
-    }
-    if (preferredSocietyName != null && preferredSocietyName.isNotEmpty) {
-      await prefs.setString(AppConstants.keyPreferredLoginSocietyName, preferredSocietyName);
     }
   }
 

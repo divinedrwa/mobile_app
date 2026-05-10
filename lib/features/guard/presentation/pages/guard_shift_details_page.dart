@@ -20,6 +20,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
@@ -92,11 +93,11 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                       itemCount: rows.length + 1,
                       itemBuilder: (context, i) {
                         if (i == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.only(
+                          return const Padding(
+                            padding: EdgeInsets.only(
                               bottom: GuardTokens.sectionGap,
                             ),
-                            child: const GuardScreenSectionHeader(
+                            child: GuardScreenSectionHeader(
                               icon: Icons.schedule_rounded,
                               title: 'Your roster',
                               subtitle: 'Pull down to refresh',
@@ -241,7 +242,7 @@ class _ShiftErrorBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
+              const Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
               const SizedBox(width: GuardTokens.g2),
               Expanded(child: Text(message)),
             ],

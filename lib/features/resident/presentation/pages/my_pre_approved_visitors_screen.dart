@@ -183,7 +183,7 @@ class _MyPreApprovedVisitorsScreenState
                 color: DesignColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.person_add_alt_1_rounded,
                 color: DesignColors.primary,
                 size: 22,
@@ -255,7 +255,7 @@ class _MyPreApprovedVisitorsScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.wifi_off_rounded,
                   size: 48,
                   color: DesignColors.textTertiary,
@@ -295,7 +295,7 @@ class _MyPreApprovedVisitorsScreenState
                   SizedBox(height: MediaQuery.sizeOf(context).height * 0.1),
                   Container(
                     padding: const EdgeInsets.all(DesignSpacing.lg),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: DesignColors.surfaceSoft,
                       shape: BoxShape.circle,
                     ),
@@ -638,7 +638,7 @@ class _PreApprovalVisitorCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.vpn_key_rounded,
                           size: 22,
                           color: DesignColors.primaryDark,

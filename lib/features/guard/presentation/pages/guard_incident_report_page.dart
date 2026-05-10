@@ -83,6 +83,7 @@ class _GuardIncidentReportPageState
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),

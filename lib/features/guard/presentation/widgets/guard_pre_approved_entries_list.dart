@@ -127,7 +127,7 @@ class _GuardPreApprovedEntriesListContentState
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.notifications_active_rounded,
                       color: GuardTokens.guardAccentDeep,
                       size: 22,
@@ -204,7 +204,7 @@ class _GuardPreApprovedEntriesListContentState
                                   Container(
                                     width: 44,
                                     height: 44,
-                                    decoration: BoxDecoration(
+                                    decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
                                       gradient: LinearGradient(
                                         colors: [
@@ -296,7 +296,7 @@ class _GuardPreApprovedEntriesListContentState
                                 const SizedBox(height: 10),
                                 Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.touch_app_rounded,
                                       size: 16,
                                       color: GuardTokens.textSecondary,

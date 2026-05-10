@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/providers/complaint_provider.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../widgets/list_skeleton.dart';
 
 /// Lists complaints from GET /residents/my-complaints (replaces former mock screen).
 class MyComplaintsScreen extends ConsumerWidget {
@@ -46,6 +49,7 @@ class MyComplaintsScreen extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Go back',
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
         ),
@@ -66,7 +70,7 @@ class MyComplaintsScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(),
         error: (err, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -91,41 +95,13 @@ class MyComplaintsScreen extends ConsumerWidget {
         ),
         data: (items) {
           if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.inbox_outlined,
-                      size: 72,
-                      color: DesignColors.textSecondary.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'No complaints yet',
-                      style: DesignTypography.headingM.copyWith(
-                        color: DesignColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Submit a complaint from Home or tap below.',
-                      textAlign: TextAlign.center,
-                      style: DesignTypography.bodySmall.copyWith(
-                        color: DesignColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    FilledButton.icon(
-                      onPressed: () => context.push('/resident/complaint'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('File a complaint'),
-                    ),
-                  ],
-                ),
-              ),
+            return EmptyStateWidget(
+              icon: Icons.check_circle_outline_rounded,
+              title: 'No complaints filed',
+              subtitle: 'That\'s a good sign! If something comes up, you can file a complaint from the home screen.',
+              iconColor: DesignColors.success,
+              actionLabel: 'File a complaint',
+              onAction: () => context.push('/resident/complaint'),
             );
           }
           return RefreshIndicator(
@@ -173,7 +149,7 @@ class MyComplaintsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             c.category,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 13,
                               color: DesignColors.textSecondary,
                             ),
@@ -206,7 +182,7 @@ class MyComplaintsScreen extends ConsumerWidget {
                     ),
                     isThreeLine: true,
                   ),
-                ).animate().fadeIn(duration: 250.ms, delay: (index * 40).ms);
+                ).animate().fadeIn(duration: 250.ms, delay: DesignAnimations.staggerFor(index));
               },
             ),
           );

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/widgets/polished_button.dart';
@@ -38,6 +39,15 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
 
   int get _selectableCount =>
       _societies.where((s) => s.isSelectable).length;
+
+  String? get _selectedSocietyName {
+    final id = _selectedId;
+    if (id == null) return null;
+    for (final s in _societies) {
+      if (s.id == id) return s.name;
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -145,7 +155,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
           ),
         ),
         const SizedBox(width: 14),
-        Expanded(
+        const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -158,7 +168,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 'Your account and data are scoped to one society. You can change this before you sign in.',
                 style: TextStyle(
@@ -174,7 +184,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     )
         .animate()
         .fadeIn(duration: 400.ms)
-        .slideY(begin: 0.06, end: 0);
+        .slideY(begin: DesignAnimations.slideNormal, end: 0);
   }
 
   Widget _buildError() {
@@ -186,7 +196,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
           children: [
             Icon(Icons.cloud_off_rounded, size: 56, color: DesignColors.error.withValues(alpha: 0.85)),
             const SizedBox(height: AppSpacing.md),
-            Text(
+            const Text(
               'Could not load societies',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -199,7 +209,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: DesignColors.textSecondary,
@@ -257,7 +267,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: DesignColors.textPrimary,
@@ -267,7 +277,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                     Text(
                       detail,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: DesignColors.textSecondary,
@@ -370,7 +380,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                                       color: DesignColors.borderLight,
                                     ),
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'Inactive',
                                     style: TextStyle(
                                       fontSize: 11,
@@ -387,7 +397,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                             s.id,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontFamily: 'monospace',
                               color: DesignColors.textTertiary,
@@ -397,7 +407,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(
+                    const Icon(
                       Icons.chevron_right_rounded,
                       color: DesignColors.textTertiary,
                     ),
@@ -440,25 +450,25 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                     _selectableCount == _societies.length
                         ? '${_societies.length} ${_societies.length == 1 ? 'society' : 'societies'}'
                         : '$_selectableCount of ${_societies.length} available for sign-in',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: DesignColors.textTertiary,
                     ),
-                  ).animate().fadeIn(delay: 80.ms, duration: 350.ms),
+                  ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 350.ms),
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 Expanded(
                   child: _loading
-                      ? Center(
+                      ? const Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const CircularProgressIndicator(
+                              CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 color: DesignColors.primary,
                               ),
-                              const SizedBox(height: AppSpacing.lg),
+                              SizedBox(height: AppSpacing.lg),
                               Text(
                                 'Loading societies…',
                                 style: TextStyle(
@@ -480,17 +490,14 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                             ),
                 ),
                 PolishedButton(
-                  text: 'Continue to sign in',
+                  text: _selectedSocietyName != null
+                      ? 'Sign in to $_selectedSocietyName'
+                      : 'Continue to sign in',
                   icon: Icons.arrow_forward_rounded,
                   onPressed: _loading || !_canContinue ? null : _continue,
                   isFullWidth: true,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextButton(
-                  onPressed: () => context.push('/invite-register'),
-                  child: const Text('Have an invite code? Register'),
-                ),
-                const SizedBox(height: AppSpacing.sm),
               ],
             ),
           ),

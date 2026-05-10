@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -45,7 +47,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
   Future<void> _broadcast() async {
     if (_sending) return;
     setState(() => _sending = true);
-    HapticFeedback.heavyImpact();
+    unawaited(HapticFeedback.heavyImpact());
     final span = GuardFlowTelemetry.start('guard_soc_broadcast');
     try {
       await ref
@@ -58,6 +60,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
           );
       span.complete();
       if (!mounted) return;
+      DesignHaptics.success();
       ref.invalidate(guardDashboardProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -87,6 +90,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _sending ? null : () => context.pop(),
           ),

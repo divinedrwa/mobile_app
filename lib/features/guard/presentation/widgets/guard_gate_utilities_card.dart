@@ -244,7 +244,7 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
               ),
             )
           else ...[
-            _UtilitySectionLabel(
+            const _UtilitySectionLabel(
               title: 'Water supply',
               hint: 'Tell residents if supply is running or stopped.',
             ),
@@ -281,7 +281,7 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
               ],
             ),
             const SizedBox(height: 16),
-            _UtilitySectionLabel(
+            const _UtilitySectionLabel(
               title: 'Garbage pickup',
               hint: 'Use when the collection vehicle reaches the gate.',
             ),
@@ -490,7 +490,7 @@ class _PremiumGarbageArrivalButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: loading
-                ? Center(
+                ? const Center(
                     child: SizedBox(
                       width: 26,
                       height: 26,

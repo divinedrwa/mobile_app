@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../data/guard_visitor_type.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -104,10 +105,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     if (!_hasActiveShift(shifts)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: GuardTokens.warning,
-          content: const Text(
+          content: Text(
             'No active shift found. Ask admin to assign/start your shift first.',
           ),
         ),
@@ -118,8 +119,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_villaIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Select at least one flat to visit'),
+        const SnackBar(
+          content: Text('Select at least one flat to visit'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: GuardTokens.warning,
         ),
@@ -141,6 +142,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       );
       final result = await ref.read(guardCheckInSubmitProvider)(params);
       if (!mounted) return;
+      DesignHaptics.success();
       ref.invalidate(guardDashboardProvider);
       ref.invalidate(guardTodayVisitorsProvider);
       ref.invalidate(guardPendingVisitorsProvider);
@@ -242,6 +244,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => Navigator.of(context).pop(),
           ),
@@ -269,7 +272,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                         data: (rows) => _hasActiveShift(rows)
                             ? const SizedBox.shrink()
                             : Padding(
-                                padding: EdgeInsets.only(top: GuardTokens.g2),
+                                padding: const EdgeInsets.only(top: GuardTokens.g2),
                                 child: _NoActiveShiftBanner(
                                   onViewShift: () => context.push(GuardRoutes.shift),
                                 ),
@@ -364,7 +367,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   context,
                                   label: 'Mobile number',
                                   hint: '10+ digits',
-                                  prefix: Icon(
+                                  prefix: const Icon(
                                     Icons.phone_android_rounded,
                                     color: GuardTokens.guardAccent,
                                   ),
@@ -387,7 +390,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                 decoration: _fieldDecoration(
                                   context,
                                   label: 'Full name',
-                                  prefix: Icon(
+                                  prefix: const Icon(
                                     Icons.badge_outlined,
                                     color: GuardTokens.guardAccent,
                                   ),
@@ -422,7 +425,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.check_circle_outline_rounded,
                                         size: 20,
                                         color: GuardTokens.success,
@@ -461,7 +464,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.info_outline_rounded,
                                         size: 18,
                                         color: GuardTokens.warning,
@@ -522,7 +525,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.wifi_off_rounded,
                                         color: GuardTokens.warning,
                                       ),
@@ -708,7 +711,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                             ),
                                                           ),
                                                           if (selected)
-                                                            Icon(
+                                                            const Icon(
                                                               Icons
                                                                   .done_rounded,
                                                               size: 20,
@@ -771,7 +774,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   context,
                                   label: 'Vehicle number',
                                   hint: 'e.g. MH01 AB 1234',
-                                  prefix: Icon(
+                                  prefix: const Icon(
                                     Icons.directions_car_outlined,
                                     color: GuardTokens.guardAccent,
                                   ),
@@ -827,7 +830,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                       onPressed: _submitting
                                           ? null
                                           : _clearPhoto,
-                                      icon: Icon(
+                                      icon: const Icon(
                                         Icons.delete_outline_rounded,
                                         color: GuardTokens.dangerBrand,
                                       ),
@@ -1018,7 +1021,7 @@ class _NoActiveShiftBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.schedule_rounded, color: GuardTokens.warning),
+          const Icon(Icons.schedule_rounded, color: GuardTokens.warning),
           const SizedBox(width: GuardTokens.g2),
           Expanded(
             child: Text(

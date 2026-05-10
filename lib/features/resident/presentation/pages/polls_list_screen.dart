@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/providers/content_provider.dart';
 
 /// Modern Professional Polls List Screen
@@ -114,7 +116,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: DesignColors.textPrimary,
@@ -122,7 +124,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
               ),
               Text(
                 subtitle,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: DesignColors.textSecondary,
                 ),
@@ -252,7 +254,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                 ),
               ],
               const Spacer(),
-              Icon(
+              const Icon(
                 Icons.people_outline,
                 size: 18,
                 color: DesignColors.textSecondary,
@@ -260,7 +262,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
               const SizedBox(width: 4),
               Text(
                 '${poll['votes']} votes',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: DesignColors.textSecondary,
                   fontWeight: FontWeight.w500,
@@ -293,10 +295,10 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                 borderRadius: DesignRadius.borderLG,
                 border: Border.all(color: DesignColors.primary.withValues(alpha: 0.25)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
                   Icon(Icons.lock_outline_rounded, size: 18, color: DesignColors.primary),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Your flat already voted. Your choice is highlighted below.',
@@ -405,7 +407,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                 const SizedBox(width: 6),
                 Text(
                   'Ends ${poll['endDate']}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: DesignColors.textSecondary,
                   ),
@@ -415,7 +417,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
           ],
         ],
       ),
-    ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.1, end: 0);
+    ).animate().fadeIn(delay: DesignAnimations.durationFast, duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideNormal, end: 0);
   }
 
   Widget _buildPollOption(
@@ -533,34 +535,10 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(DesignSpacing.xl),
-            decoration: BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.poll_outlined, size: 64, color: Colors.grey[400]),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No Polls Available',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Check back later for new polls',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.how_to_vote_outlined,
+      title: 'No active polls right now',
+      subtitle: 'When your society creates a poll, you can vote on it here.',
     );
   }
 

@@ -129,11 +129,11 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                             child: const Icon(Icons.groups_rounded, color: DesignColors.primary, size: 22),
                           ),
                           const SizedBox(width: 10),
-                          Expanded(
+                          const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Community',
                                   style: TextStyle(
                                     fontSize: 22,
@@ -143,7 +143,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                                     height: 1.15,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   'Stay connected with your society',
                                   style: TextStyle(

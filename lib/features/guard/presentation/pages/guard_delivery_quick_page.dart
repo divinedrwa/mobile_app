@@ -68,6 +68,7 @@ class _GuardDeliveryQuickPageState
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
@@ -146,7 +147,7 @@ class _GuardDeliveryQuickPageState
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
-                                        Icon(
+                                        const Icon(
                                           Icons.storefront_rounded,
                                           color: GuardTokens.guardAccent,
                                           size: 28,
@@ -211,7 +212,7 @@ class _GuardDeliveryQuickPageState
                         ),
                         child: Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.error_outline_rounded,
                               color: GuardTokens.warning,
                             ),
@@ -352,7 +353,7 @@ class _GuardDeliveryQuickPageState
                           onPressed: _busy(villasAsync)
                               ? null
                               : () => _submit(true),
-                          child: Text(
+                          child: const Text(
                             'Keep at gate',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,

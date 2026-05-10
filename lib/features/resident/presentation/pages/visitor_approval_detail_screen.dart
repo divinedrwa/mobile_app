@@ -68,7 +68,7 @@ class _VisitorApprovalDetailScreenState
           padding: const EdgeInsets.all(DesignSpacing.xl),
           children: [
             SizedBox(height: MediaQuery.sizeOf(context).height * 0.12),
-            Icon(
+            const Icon(
               Icons.wifi_tethering_error_rounded,
               size: 56,
               color: DesignColors.warning,
@@ -758,7 +758,7 @@ class _RuleCallout extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.groups_2_outlined,
             color: DesignColors.textSecondary,
             size: 22,
@@ -989,7 +989,7 @@ _DetailStatusPillStyle _statusPillForAggregate(String? raw) {
           icon: Icons.help_outline_rounded,
         );
       }
-      return _DetailStatusPillStyle(
+      return const _DetailStatusPillStyle(
         foreground: DesignColors.textSecondary,
         background: DesignColors.surfaceSoft,
         border: DesignColors.borderLight,

@@ -96,6 +96,7 @@ class GuardVisitorDetailPage extends ConsumerWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
+            tooltip: 'Go back',
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => context.pop(),
           ),
@@ -153,7 +154,7 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                             height: 52,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 colors: [
                                   GuardTokens.guardAccent,
                                   GuardTokens.guardAccentDeep,
@@ -235,7 +236,7 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.info_outline_rounded,
                               color: GuardTokens.warning,
                               size: 20,
@@ -330,7 +331,7 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.phone_android_rounded,
                                 size: 20,
                                 color: GuardTokens.guardAccent,
@@ -445,11 +446,11 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                               );
                             }
                           },
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.phone_outlined,
                             color: GuardTokens.guardAccentDeep,
                           ),
-                          label: Text(
+                          label: const Text(
                             'Call visitor',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,

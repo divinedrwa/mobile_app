@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -5,9 +7,11 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/providers/notification_provider.dart';
+import '../widgets/notification_skeleton.dart';
 
 /// In-app notification history (push + server-persisted rows). Used by residents and guards.
 class NotificationsCenterScreen extends ConsumerStatefulWidget {
@@ -107,6 +111,7 @@ class _NotificationsCenterScreenState
         backgroundColor: surface,
         foregroundColor: scheme.onSurface,
         leading: IconButton(
+          tooltip: 'Go back',
           onPressed: () => context.pop(),
           icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
         ),
@@ -232,9 +237,7 @@ class _NotificationsCenterScreenState
             ],
           );
         },
-        loading: () => Center(
-          child: CircularProgressIndicator(color: scheme.primary),
-        ),
+        loading: () => const NotificationSkeleton(),
         error: (error, stack) => _ErrorState(
           scheme: scheme,
           onRetry: () => ref.invalidate(notificationProvider),
@@ -286,7 +289,7 @@ class _NotificationsCenterScreenState
     if (!mounted) return;
     final path = raw.startsWith('/') ? raw : '/$raw';
     try {
-      context.push(path);
+      unawaited(context.push(path));
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -304,6 +307,37 @@ class _NotificationsCenterScreenState
     ColorScheme scheme,
     bool isDark,
   ) {
+    // Group by Today / Yesterday / Earlier
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final grouped = <String, List<NotificationModel>>{};
+    for (final n in notifications) {
+      final d = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      final label = d.isAtSameMomentAs(today)
+          ? 'Today'
+          : d.isAtSameMomentAs(yesterday)
+              ? 'Yesterday'
+              : 'Earlier';
+      (grouped[label] ??= []).add(n);
+    }
+
+    final sections = <String>[];
+    for (final key in ['Today', 'Yesterday', 'Earlier']) {
+      if (grouped.containsKey(key)) sections.add(key);
+    }
+
+    // Flatten into a mixed list of headers + cards
+    final items = <_NotifListItem>[];
+    int cardIndex = 0;
+    for (final section in sections) {
+      items.add(_NotifListItem.header(section));
+      for (final n in grouped[section]!) {
+        items.add(_NotifListItem.card(n, cardIndex++));
+      }
+    }
+
     return RefreshIndicator(
       color: scheme.primary,
       onRefresh: () =>
@@ -315,12 +349,28 @@ class _NotificationsCenterScreenState
           DesignSpacing.lg,
           DesignSpacing.xl,
         ),
-        itemCount: notifications.length,
-        separatorBuilder: (context, i) => const SizedBox(height: 10),
+        itemCount: items.length,
+        separatorBuilder: (context, i) => SizedBox(
+          height: items[i].isHeader ? 4 : 10,
+        ),
         itemBuilder: (context, index) {
+          final item = items[index];
+          if (item.isHeader) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: Text(
+                item.headerLabel!,
+                style: DesignTypography.labelSmall.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            );
+          }
           return _buildNotificationCard(
-            notifications[index],
-            index,
+            item.notification!,
+            item.cardIndex!,
             scheme,
             isDark,
           );
@@ -356,8 +406,19 @@ class _NotificationsCenterScreenState
 
     return Dismissible(
       key: ValueKey('notification-${notification.id}-$index'),
-      direction: DismissDirection.endToStart,
+      direction: notification.isRead
+          ? DismissDirection.endToStart
+          : DismissDirection.horizontal,
       background: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: DesignSpacing.lg),
+        decoration: BoxDecoration(
+          color: scheme.primary,
+          borderRadius: DesignRadius.borderXL,
+        ),
+        child: Icon(Icons.mark_email_read_rounded, color: scheme.onPrimary),
+      ),
+      secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: DesignSpacing.lg),
         decoration: BoxDecoration(
@@ -366,6 +427,18 @@ class _NotificationsCenterScreenState
         ),
         child: Icon(Icons.delete_outline_rounded, color: scheme.onError),
       ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe right = mark as read (don't actually dismiss)
+          if (!notification.isRead && notification.id.isNotEmpty) {
+            await ref
+                .read(notificationProvider.notifier)
+                .markAsRead(notification.id);
+          }
+          return false; // Don't remove from list
+        }
+        return true; // Allow delete
+      },
       onDismissed: (_) {
         ref
             .read(notificationProvider.notifier)
@@ -561,9 +634,9 @@ class _NotificationsCenterScreenState
         ),
       ),
     )
-        .animate(delay: (40 * index).ms)
+        .animate(delay: DesignAnimations.staggerFor(index))
         .fadeIn(duration: 240.ms)
-        .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic);
+        .slideY(begin: DesignAnimations.slideNormal, end: 0, curve: Curves.easeOutCubic);
   }
 
   bool _navigateFromInlineDataPreview(NotificationModel n) {
@@ -718,6 +791,23 @@ class _ErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Lightweight union for building a mixed header + card list.
+class _NotifListItem {
+  final String? headerLabel;
+  final NotificationModel? notification;
+  final int? cardIndex;
+
+  const _NotifListItem._({this.headerLabel, this.notification, this.cardIndex});
+
+  factory _NotifListItem.header(String label) =>
+      _NotifListItem._(headerLabel: label);
+
+  factory _NotifListItem.card(NotificationModel n, int index) =>
+      _NotifListItem._(notification: n, cardIndex: index);
+
+  bool get isHeader => headerLabel != null;
 }
 
 /// Resident shell preset — use for home, community, and activity shortcuts.

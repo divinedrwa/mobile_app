@@ -227,6 +227,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
                   ],
                 ),
                 trailing: IconButton(
+                  tooltip: 'Call',
                   onPressed: vendor.phone.trim().isEmpty ? null : () => _makeCall(vendor.phone.trim()),
                   icon: const Icon(Icons.call, color: Colors.green),
                 ),
@@ -302,6 +303,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
                   ],
                 ),
                 trailing: IconButton(
+                  tooltip: 'Call',
                   onPressed: helper.phone.trim().isEmpty ? null : () => _makeCall(helper.phone.trim()),
                   icon: const Icon(Icons.call, color: Colors.green),
                 ),

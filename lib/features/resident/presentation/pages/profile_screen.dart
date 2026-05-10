@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/user_model.dart';
@@ -112,7 +113,7 @@ class ProfileScreen extends ConsumerWidget {
                     _ProfileTile(
                       icon: Icons.directions_car_outlined,
                       title: 'Vehicles',
-                      subtitle: '${user?.villaNumber ?? 'Registered'} vehicles',
+                      subtitle: 'View and manage your vehicles',
                       iconColor: const Color(0xFFEA580C),
                       onTap: () => Navigator.push(
                         context,
@@ -137,17 +138,19 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'Payments & History',
                   delayMs: 80,
                   children: [
-                    _ProfileTile(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'Payment History',
-                      subtitle: 'View all transactions',
-                      iconColor: const Color(0xFF16A34A),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const PaymentHistoryScreen()),
+                    if (!(user?.isBillingExcluded ?? false)) ...[
+                      _ProfileTile(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'Payment History',
+                        subtitle: 'View all transactions',
+                        iconColor: const Color(0xFF16A34A),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(builder: (_) => const PaymentHistoryScreen()),
+                        ),
                       ),
-                    ),
-                    _divider,
+                      _divider,
+                    ],
                     _ProfileTile(
                       icon: Icons.report_problem_outlined,
                       title: 'My Complaints',
@@ -223,35 +226,92 @@ class ProfileScreen extends ConsumerWidget {
   );
 
   void _handleLogout(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderXL),
-        title: Text('Logout', style: DesignTypography.headingM),
-        content: Text(
-          'Are you sure you want to logout?',
-          style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: DesignSpacing.lg),
+                decoration: BoxDecoration(
+                  color: DesignColors.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: DesignColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: DesignColors.error,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: DesignSpacing.lg),
+              Text('Sign out?', style: DesignTypography.headingM),
+              const SizedBox(height: DesignSpacing.sm),
+              Text(
+                'You will need to sign in again to access your society dashboard.',
+                textAlign: TextAlign.center,
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: DesignSpacing.xl),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: DesignRadius.borderLG,
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: DesignSpacing.md),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          if (context.mounted) context.go('/login');
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DesignColors.error,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: DesignRadius.borderLG,
+                        ),
+                      ),
+                      child: const Text('Sign out'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: DesignTypography.label.copyWith(color: DesignColors.textSecondary)),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.pop(context);
-                context.go('/login');
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: DesignColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
       ),
     );
   }
@@ -281,12 +341,12 @@ class _ProfileHeroHeader extends StatelessWidget {
           DesignSpacing.screenPaddingH,
           DesignSpacing.xl,
         ),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: DesignColors.primaryGradient,
-          borderRadius: const BorderRadius.vertical(
+          borderRadius: BorderRadius.vertical(
             bottom: Radius.circular(24),
           ),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
               color: Color(0x1A2563EB),
               blurRadius: 20,
@@ -347,40 +407,12 @@ class _ProfileHeroHeader extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      width: 2.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.white,
-                    backgroundImage:
-                        avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                    child: avatarUrl != null
-                        ? null
-                        : Text(
-                            _initialsFromName(user?.name),
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: DesignColors.primary,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                  ),
+                _ProfileAvatar(
+                  avatarUrl: avatarUrl,
+                  initials: _initialsFromName(user?.name),
+                  completionFraction: _profileCompletion(user),
                 ),
-                SizedBox(width: DesignSpacing.lg),
+                const SizedBox(width: DesignSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,9 +428,11 @@ class _ProfileHeroHeader extends StatelessWidget {
                           letterSpacing: -0.35,
                         ),
                       ),
-                      SizedBox(height: DesignSpacing.sm),
+                      const SizedBox(height: DesignSpacing.sm),
                       Text(
                         _profileSubtitle(user),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
                         style: DesignTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.9),
                           height: 1.35,
@@ -406,7 +440,7 @@ class _ProfileHeroHeader extends StatelessWidget {
                         ),
                       ),
                       if (hasEmail) ...[
-                        SizedBox(height: DesignSpacing.sm),
+                        const SizedBox(height: DesignSpacing.sm),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -418,7 +452,7 @@ class _ProfileHeroHeader extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: 0.75),
                               ),
                             ),
-                            SizedBox(width: DesignSpacing.xs),
+                            const SizedBox(width: DesignSpacing.xs),
                             Expanded(
                               child: Text(
                                 email,
@@ -450,16 +484,40 @@ class _ProfileHeroHeader extends StatelessWidget {
 }
 
 String _profileSubtitle(UserModel? user) {
-  final role = _roleLabel(user?.role);
-  final unit = user?.villaNumber?.trim();
-  final society = user?.societyName?.trim();
-  if (unit != null && unit.isNotEmpty) {
-    return '$role · Unit $unit';
+  if (user == null) {
+    return '${_roleLabel(null)} · Your society';
   }
+
+  if (user.role != UserRole.resident) {
+    final role = _roleLabel(user.role);
+    final society = user.societyName?.trim();
+    if (society != null && society.isNotEmpty) {
+      return '$role · $society';
+    }
+    return role;
+  }
+
+  final chunks = <String>[];
+  final prop = user.effectivePropertyDisplay;
+  if (prop != null && prop.isNotEmpty) chunks.add(prop);
+
+  final unit = user.effectiveUnitDisplay;
+  if (unit != null && unit.isNotEmpty) chunks.add(unit);
+
+  final occ = user.effectiveOccupantDisplay;
+  if (occ != null && occ.isNotEmpty) chunks.add(occ);
+
+  if (chunks.isNotEmpty) {
+    final society = user.societyName?.trim();
+    if (society != null && society.isNotEmpty) chunks.add(society);
+    return chunks.join(' · ');
+  }
+
+  final society = user.societyName?.trim();
   if (society != null && society.isNotEmpty) {
-    return '$role · $society';
+    return '${_roleLabel(user.role)} · $society';
   }
-  return '$role · Your society';
+  return '${_roleLabel(user.role)} · Your society';
 }
 
 String _roleLabel(UserRole? role) {
@@ -474,6 +532,19 @@ String _roleLabel(UserRole? role) {
     case null:
       return 'Resident';
   }
+}
+
+double _profileCompletion(UserModel? user) {
+  if (user == null) return 0.0;
+  int filled = 0;
+  const total = 6;
+  if (user.name.trim().isNotEmpty) filled++;
+  if (user.email.trim().isNotEmpty) filled++;
+  if (user.phone != null && user.phone!.trim().isNotEmpty) filled++;
+  if (user.photoUrl != null && user.photoUrl!.trim().isNotEmpty) filled++;
+  if (user.effectivePropertyDisplay != null) filled++;
+  if (user.effectiveUnitDisplay != null) filled++;
+  return filled / total;
 }
 
 String _initialsFromName(String? name) {
@@ -542,8 +613,8 @@ class _ProfileSection extends StatelessWidget {
       ],
     )
         .animate()
-        .fadeIn(delay: (delayMs).ms, duration: 320.ms)
-        .slideY(begin: 0.05, end: 0, duration: 320.ms, curve: Curves.easeOutCubic);
+        .fadeIn(delay: DesignAnimations.staggerFor(delayMs ~/ 40), duration: 320.ms)
+        .slideY(begin: DesignAnimations.slideSubtle, end: 0, duration: 320.ms, curve: Curves.easeOutCubic);
   }
 }
 
@@ -616,7 +687,7 @@ class _ProfileTile extends StatelessWidget {
                   color: DesignColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.chevron_right_rounded,
                   color: DesignColors.textTertiary,
                   size: 22,
@@ -628,4 +699,129 @@ class _ProfileTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Avatar with an animated completion ring around it.
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.avatarUrl,
+    required this.initials,
+    required this.completionFraction,
+  });
+
+  final String? avatarUrl;
+  final String initials;
+  final double completionFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = 40.0;
+    const ringWidth = 3.0;
+    const outerSize = (radius + ringWidth) * 2;
+
+    return SizedBox(
+      width: outerSize,
+      height: outerSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Completion ring
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: completionFraction),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) {
+              return SizedBox(
+                width: outerSize,
+                height: outerSize,
+                child: CustomPaint(
+                  painter: _RingPainter(
+                    progress: value,
+                    ringWidth: ringWidth,
+                    activeColor: Colors.white,
+                    trackColor: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Avatar
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              radius: radius,
+              backgroundColor: Colors.white,
+              backgroundImage:
+                  avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+              child: avatarUrl != null
+                  ? null
+                  : Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: DesignColors.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.progress,
+    required this.ringWidth,
+    required this.activeColor,
+    required this.trackColor,
+  });
+
+  final double progress;
+  final double ringWidth;
+  final Color activeColor;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = (size.width - ringWidth) / 2;
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ringWidth
+      ..strokeCap = StrokeCap.round;
+    final activePaint = Paint()
+      ..color = activeColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ringWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, r, trackPaint);
+    const startAngle = -1.5708; // -π/2  (12 o'clock)
+    final sweep = 2 * 3.14159265 * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: r),
+      startAngle,
+      sweep,
+      false,
+      activePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress || old.activeColor != activeColor;
 }

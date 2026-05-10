@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/models/notice_model.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/providers/content_provider.dart';
 import 'notice_detail_screen.dart';
 
@@ -303,7 +304,7 @@ class NoticesListScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     _getRelativeDate(notice.publishedAt),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       color: DesignColors.textSecondary,
                     ),
@@ -333,7 +334,7 @@ class NoticesListScreen extends ConsumerWidget {
             // Content Preview
             Text(
               notice.content,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 color: DesignColors.textSecondary,
                 height: 1.5,
@@ -344,14 +345,14 @@ class NoticesListScreen extends ConsumerWidget {
 
             if (notice.attachmentUrl != null) ...[
               const SizedBox(height: 12),
-              Row(
+              const Row(
                 children: [
                   Icon(
                     Icons.attach_file,
                     size: 16,
                     color: DesignColors.primary,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     'Attachment included',
                     style: TextStyle(
@@ -370,38 +371,10 @@ class NoticesListScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(DesignSpacing.xl),
-            decoration: BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.notifications_off_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No Notices',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'There are no notices in this category',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.campaign_outlined,
+      title: 'No notices posted',
+      subtitle: 'Important announcements from your society will appear here.',
     );
   }
 

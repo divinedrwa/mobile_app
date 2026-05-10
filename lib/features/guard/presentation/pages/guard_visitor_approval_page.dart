@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -147,6 +149,7 @@ class _GuardVisitorApprovalPageState
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
@@ -186,7 +189,7 @@ class _GuardVisitorApprovalPageState
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.schedule_rounded,
                                     color: GuardTokens.warning,
                                   ),
@@ -238,7 +241,7 @@ class _GuardVisitorApprovalPageState
                     TextField(
                       controller: _name,
                       textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Visitor name',
                         prefixIcon: Icon(
                           Icons.badge_outlined,
@@ -259,7 +262,7 @@ class _GuardVisitorApprovalPageState
                         fontWeight: FontWeight.w600,
                         fontSize: 17,
                       ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Visitor phone',
                         prefixIcon: Icon(
                           Icons.phone_android_rounded,
@@ -435,7 +438,7 @@ class _GuardVisitorApprovalPageState
                                 ? null
                                 : _notifyResident,
                             icon: _submittingNotify
-                                ? SizedBox(
+                                ? const SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
@@ -573,7 +576,7 @@ class _GuardVisitorApprovalPageState
         content: Text('Opening directory — tap Call next to flat.'),
       ),
     );
-    context.push(GuardRoutes.directory);
+    unawaited(context.push(GuardRoutes.directory));
   }
 
   Future<void> _verifyOtp() async {

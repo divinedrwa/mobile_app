@@ -59,8 +59,6 @@ dependencies:
   intl: any
   
   # Utils
-  equatable: ^2.0.7
-  dartz: ^0.10.1
   logger: ^2.5.0
   
   # Image Picker & Camera
@@ -86,6 +84,7 @@ dependencies:
 
   # In-app legal pages
   webview_flutter: ^4.10.0
+  flutter_markdown: ^0.7.7
   
   # Pull to Refresh
   pull_to_refresh: ^2.0.0
@@ -113,7 +112,6 @@ dev_dependencies:
 
   # Code generation & testing
   build_runner: ^2.4.15
-  mockito: ^5.4.4
   mocktail: ^1.0.4
 
 # path_provider_foundation 2.6.x uses package:objective_c (FFI). On some iOS 26.x
@@ -132,6 +130,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/legal/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

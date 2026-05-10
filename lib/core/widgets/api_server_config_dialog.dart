@@ -1,8 +1,26 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../network/dio_client.dart';
 import '../theme/design_tokens.dart';
 import '../utils/storage_service.dart';
+
+/// RFC 1918 / loopback / link-local — hosts where http:// is acceptable for
+/// LAN development. Anything else is treated as a public host that must use
+/// HTTPS, otherwise login credentials and JWTs travel in the clear.
+bool _isPrivateOrLoopbackHost(String host) {
+  final h = host.toLowerCase();
+  if (h.isEmpty) return false;
+  if (h == 'localhost' || h == '127.0.0.1' || h == '::1') return true;
+  // Android emulator alias for the dev host machine.
+  if (h == '10.0.2.2') return true;
+  if (h.startsWith('10.')) return true;
+  if (h.startsWith('192.168.')) return true;
+  if (RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(h)) return true;
+  if (h.startsWith('169.254.')) return true;
+  if (h.endsWith('.local')) return true;
+  return false;
+}
 
 /// Lets the user point the app at any reachable API (LAN, VPN, cellular, public HTTPS).
 Future<void> showApiServerConfigDialog(BuildContext context) {
@@ -42,6 +60,59 @@ class _ApiServerDialogState extends State<_ApiServerDialog> {
       await StorageService.remove(AppConstants.keyApiBaseUrl);
       AppConstants.setRuntimeBaseUrlOverride(null);
     } else {
+      // Reject plain-HTTP URLs to public hosts. The default normalization
+      // adds `http://` when no scheme is typed, which would silently let
+      // the user point the app at an attacker-controlled host (e.g. via
+      // QR code) and have credentials/JWTs travel in the clear.
+      final lower = v.toLowerCase();
+      final explicitlyHttps = lower.startsWith('https://');
+      String host = '';
+      try {
+        final parsed = Uri.parse(
+          lower.startsWith('http://') || lower.startsWith('https://')
+              ? lower
+              : 'http://$lower',
+        );
+        host = parsed.host;
+      } catch (_) {
+        host = '';
+      }
+      if (!explicitlyHttps && !_isPrivateOrLoopbackHost(host)) {
+        if (kReleaseMode) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Refusing non-HTTPS API URL. Use https:// or a private LAN host.',
+              ),
+            ),
+          );
+          return;
+        }
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Insecure API URL'),
+            content: Text(
+              'You entered "$v" which would be reached over plain HTTP. '
+              'Login credentials and the auth token will travel unencrypted. '
+              'Continue anyway? (Allowed in debug builds only.)',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Use anyway'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+      }
+
       final n = AppConstants.normalizeApiBaseUrl(v);
       await StorageService.setString(AppConstants.keyApiBaseUrl, n);
       AppConstants.setRuntimeBaseUrlOverride(n);
@@ -75,13 +146,13 @@ class _ApiServerDialogState extends State<_ApiServerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Simulators (leave empty or Clear saved): Android → ${AppConstants.simulatorAndroidApiBase}, iOS → ${AppConstants.simulatorIosApiBase}. A saved URL overrides these.',
               style: TextStyle(fontSize: 12, color: DesignColors.textSecondary),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Other devices: any reachable URL (Wi‑Fi, cellular, VPN). Include /api when your server uses it.',
+            const Text(
+              'Production: use your HTTPS API host (scheme + domain). `/api` is added automatically if omitted.',
               style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -97,7 +168,7 @@ class _ApiServerDialogState extends State<_ApiServerDialog> {
             const SizedBox(height: 12),
             Text(
               'Active: ${AppConstants.baseUrl}',
-              style: TextStyle(fontSize: 12, color: DesignColors.textSecondary),
+              style: const TextStyle(fontSize: 12, color: DesignColors.textSecondary),
             ),
           ],
         ),

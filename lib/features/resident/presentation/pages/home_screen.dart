@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/widgets/animated_counter.dart';
 import '../../../../shared/models/user_model.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/visitor_provider.dart';
@@ -71,15 +73,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(notificationProvider);
     ref.invalidate(visitorApprovalRequestsProvider('pending'));
     ref.invalidate(visitorApprovalRequestsProvider('all'));
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) setState(() {});
   }
 
   String _greeting() {
     final h = DateTime.now().hour;
+    if (h < 5) return 'Late Night';
     if (h < 12) return 'Good Morning';
     if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (h < 21) return 'Good Evening';
+    return 'Good Night';
   }
 
   String _roleLabel(UserRole role) {
@@ -95,6 +97,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// Home header pill: show Owner / Tenant / Family member when `/residents/me` provides it.
+  String _headerOccupantOrRoleBadge(UserRole role, UserModel? user) {
+    if (role == UserRole.resident) {
+      final occ = user?.effectiveOccupantDisplay;
+      if (occ != null && occ.isNotEmpty) return occ;
+    }
+    return _roleLabel(role);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -105,6 +116,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final billingAsync = ref.watch(residentBillingCycleProvider);
     final securityContactsAsync = ref.watch(securityContactsProvider);
     final user = authState.user;
+    final billingExcludedFromCycle = billingAsync.maybeWhen(
+      data: (c) => c.maintenanceBillingExcluded,
+      orElse: () => false,
+    );
+    final isBillingExcluded = (user?.isBillingExcluded ?? false) || billingExcludedFromCycle;
     final unreadNotifications = notificationsState.maybeWhen(
       data: (list) => list.where((n) => !n.isRead).length,
       orElse: () => 0,
@@ -118,7 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return null;
         }
         final s = c.status;
-        if (s?.isOpen == true || s?.isUpcoming == true) {
+        if (s?.isOpen == true || s?.isUpcoming == true || s?.isClosed == true) {
           return c;
         }
         return null;
@@ -151,22 +167,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildDashboardStatsRow(context, dashboardAsync),
+                    _buildDashboardStatsRow(context, dashboardAsync, isBillingExcluded: isBillingExcluded),
                     const SizedBox(height: _kSectionGap),
-                    _buildSocietyFundBalanceCard(context, dashboardAsync),
-                    const SizedBox(height: _kSectionGap),
+                    if (!isBillingExcluded) ...[
+                      _buildSocietyFundBalanceCard(context, dashboardAsync),
+                      const SizedBox(height: _kSectionGap),
+                    ],
                     _buildQuickActions(context),
                     const SizedBox(height: _kSectionGap),
-                    if (activeBillingCycle != null) ...[
+                    if (!isBillingExcluded && activeBillingCycle != null) ...[
                       _buildOpenBillingStripe(context, activeBillingCycle),
                       const SizedBox(height: _kSectionGap),
                     ],
-                    if (pendingBillingDues.isNotEmpty) ...[
+                    if (!isBillingExcluded && pendingBillingDues.isNotEmpty) ...[
                       _buildMonthWiseBillingDues(context, pendingBillingDues),
                       const SizedBox(height: _kSectionGap),
                     ],
-                    _buildMaintenanceInsightsEntry(context),
-                    const SizedBox(height: _kSectionGap),
+                    if (!isBillingExcluded) ...[
+                      _buildMaintenanceInsightsEntry(context),
+                      const SizedBox(height: _kSectionGap),
+                    ],
                     if (hasImportantNotices) ...[
                       _buildImportantNotices(context, noticesState),
                       const SizedBox(height: _kSectionGap),
@@ -175,8 +195,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: _kSectionGap),
                     _buildVisitorsAndGateSection(context),
                     const SizedBox(height: _kSectionGap),
-                    _buildOutstandingDues(context, pendingState),
-                    const SizedBox(height: _kSectionGap),
+                    if (!isBillingExcluded) ...[
+                      _buildOutstandingDues(context, pendingState),
+                      const SizedBox(height: _kSectionGap),
+                    ],
                     _buildSupportStripWithFab(context, securityContactsAsync),
                     const SizedBox(height: _kSectionGap),
                     _buildRecentActivity(context, notificationsState),
@@ -197,15 +219,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     UserModel? user,
     int unreadNotifications,
   ) {
-    final unitNo = user?.villaNumber?.trim();
-    final unitLabel =
-        unitNo != null && unitNo.isNotEmpty ? 'Unit $unitNo' : null;
-    final block = user?.villaBlock?.trim();
     final society = user?.societyName?.trim();
 
     final unitBlockLabel = <String>[];
-    if (unitLabel != null) unitBlockLabel.add(unitLabel);
-    if (block != null && block.isNotEmpty) unitBlockLabel.add('Block $block');
+    final propLine = user?.effectivePropertyDisplay;
+    final unitLine = user?.effectiveUnitDisplay;
+    if (propLine != null && propLine.isNotEmpty) unitBlockLabel.add(propLine);
+    if (unitLine != null && unitLine.isNotEmpty) unitBlockLabel.add(unitLine);
+    if (unitBlockLabel.isEmpty) {
+      final unitNo = user?.villaNumber?.trim();
+      if (unitNo != null && unitNo.isNotEmpty) {
+        unitBlockLabel.add('Unit $unitNo');
+      }
+      final block = user?.villaBlock?.trim();
+      if (block != null && block.isNotEmpty) unitBlockLabel.add('Block $block');
+    }
     final unitBlockText = unitBlockLabel.join(' · ');
 
     final badgeText = unreadNotifications > 99
@@ -321,7 +349,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                SizedBox(width: gap),
+                                const SizedBox(width: gap),
                                 _buildHeaderActivePill(),
                               ],
                             );
@@ -342,10 +370,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.badge_outlined, size: 12, color: DesignColors.primary),
+                                  const Icon(Icons.badge_outlined, size: 12, color: DesignColors.primary),
                                   const SizedBox(width: 3),
                                   Text(
-                                    _roleLabel(role),
+                                    _headerOccupantOrRoleBadge(role, user),
                                     style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
@@ -369,7 +397,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.apartment_rounded,
                                       size: 12,
                                       color: DesignColors.primary,
@@ -467,7 +495,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 .animate()
                                 .fadeIn(duration: 380.ms, curve: Curves.easeOut)
                                 .slideY(
-                                  begin: 0.06,
+                                  begin: DesignAnimations.slideNormal,
                                   end: 0,
                                   duration: 380.ms,
                                   curve: Curves.easeOutCubic,
@@ -639,9 +667,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Overview — single card, 2×2 grid with inner dividers (tighter than separate tiles).
   Widget _buildDashboardStatsRow(
     BuildContext context,
-    AsyncValue<ResidentDashboardModel> dash,
-  ) {
-    final fallbackStats = const ResidentDashboardStats(
+    AsyncValue<ResidentDashboardModel> dash, {
+    bool isBillingExcluded = false,
+  }) {
+    const fallbackStats = ResidentDashboardStats(
       pendingMaintenance: 0,
       activeComplaints: 0,
       pendingParcels: 0,
@@ -651,7 +680,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data: (d) => d.stats,
       orElse: () => fallbackStats,
     );
-    final divider = DesignColors.borderLight;
+    const divider = DesignColors.borderLight;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -673,8 +702,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             InkWell(
               onTap: () => context.push('/resident/overview'),
               borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Text(
                   'View all >',
                   style: TextStyle(
@@ -706,16 +735,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: _overviewStatCell(
-                          label: 'Maintenance',
-                          value: s.pendingMaintenance,
-                          color: _kOrange,
-                          icon: Icons.payments_outlined,
-                          onTap: () => context.push('/resident/maintenance-payment'),
+                      if (!isBillingExcluded) ...[
+                        Expanded(
+                          child: _overviewStatCell(
+                            label: 'Maintenance',
+                            value: s.pendingMaintenance,
+                            color: _kOrange,
+                            icon: Icons.payments_outlined,
+                            onTap: () => context.push('/resident/maintenance'),
+                          ),
                         ),
-                      ),
-                      Container(width: 1, color: divider),
+                        Container(width: 1, color: divider),
+                      ],
                       Expanded(
                         child: _overviewStatCell(
                           label: 'Complaints',
@@ -728,7 +759,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                 ),
-                Divider(height: 1, thickness: 1, color: divider),
+                const Divider(height: 1, thickness: 1, color: divider),
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -820,15 +851,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 20,
                     color: DesignColors.primary,
                   ),
-                  const SizedBox(width: 8),
-                  const Expanded(
+                  SizedBox(width: 8),
+                  Expanded(
                     child: Text(
                       'Current society fund balance',
                       style: TextStyle(
@@ -862,7 +893,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const Spacer(),
                     Text(
                       '${DateFormat('MMM yyyy').format(DateTime(fund.year > 0 ? fund.year : DateTime.now().year, fund.month >= 1 && fund.month <= 12 ? fund.month : DateTime.now().month))} snapshot',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: _kTextSecondary,
@@ -904,7 +935,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required int value,
     required Color color,
     required IconData icon,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.transparent,
@@ -935,7 +966,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: DesignColors.textSecondary,
@@ -943,8 +974,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '$value',
+                    AnimatedCounter(
+                      value: value,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -956,11 +987,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: DesignColors.textTertiary.withValues(alpha: 0.78),
-              ),
+              if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: DesignColors.textTertiary.withValues(alpha: 0.78),
+                ),
             ],
           ),
         ),
@@ -981,8 +1013,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final availableCredit = cycle.availableCredit ?? 0;
     final remainingDue = cycle.remainingDue ?? total;
     final isPayableNow = cycle.status?.isOpen == true;
+    final isClosed = cycle.status?.isClosed == true;
+    final statusLabel = cycle.status?.isOpen == true
+        ? 'OPEN'
+        : cycle.status?.isUpcoming == true
+        ? 'UPCOMING'
+        : cycle.status?.isClosed == true
+        ? 'CLOSED'
+        : 'BILLING';
 
-    if (!isPayableNow && cycle.status?.isUpcoming != true) {
+    if (!isPayableNow && cycle.status?.isUpcoming != true && !isClosed) {
       return const SizedBox.shrink();
     }
 
@@ -1000,7 +1040,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       amountLine = availableCredit > 0
           ? '$subtitle · ${inr.format(remainingDue)} due after ${inr.format(availableCredit)} credit'
           : '$subtitle · ${inr.format(total)} due';
-    } else {
+    } else if (cycle.status?.isUpcoming == true) {
       accentColor = DesignColors.primary;
       accentIcon = Icons.schedule_rounded;
       final start = cycle.paymentStartUtc;
@@ -1010,6 +1050,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       amountLine = start != null
           ? 'Opens ${DateFormat('dd MMM, HH:mm').format(start.toLocal())} · $dueText'
           : 'Opening soon · $dueText';
+    } else {
+      accentColor = DesignColors.error;
+      accentIcon = Icons.lock_clock_outlined;
+      amountLine = remainingDue > 0
+          ? 'Window closed · ${inr.format(remainingDue)} remains due'
+          : 'Window closed';
     }
 
     return Material(
@@ -1047,6 +1093,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+                          ),
+                          child: Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: accentColor,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                        if ((cycle.cycleKey ?? '').isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            cycle.cycleKey!,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: _kTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
                       cycle.title ?? 'Maintenance billing',
                       maxLines: 2,
@@ -1186,7 +1265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton(
-                onPressed: () => context.push('/resident/maintenance-payment'),
+                onPressed: () => context.push('/resident/maintenance'),
                 style: FilledButton.styleFrom(
                   backgroundColor: DesignColors.primary,
                   foregroundColor: Colors.white,
@@ -1223,13 +1302,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final qMonth = parts.length == 2 ? int.tryParse(parts[1]) : null;
     final targetPath = (qYear != null && qMonth != null && qMonth >= 1 && qMonth <= 12)
         ? Uri(
-            path: '/resident/maintenance-payment',
+            path: '/resident/maintenance',
             queryParameters: {
               'year': qYear.toString(),
               'month': qMonth.toString(),
             },
           ).toString()
-        : '/resident/maintenance-payment';
+        : '/resident/maintenance';
 
     return Material(
       color: Colors.transparent,
@@ -1311,7 +1390,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _pushMaintenanceFinance(BuildContext context) {
-    context.push('/resident/maintenance-payment');
+    context.push('/resident/maintenance');
   }
 
   Future<void> _confirmPayThenMaintenance(BuildContext context) async {
@@ -1332,7 +1411,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              context.push('/resident/maintenance-payment');
+              context.push('/resident/maintenance');
             },
             child: const Text('Open maintenance'),
           ),
@@ -1456,6 +1535,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showMoreServicesSheet(BuildContext context) {
+    final userExcluded = ref.read(authProvider).user?.isBillingExcluded ?? false;
+    final cycleExcluded = ref.read(residentBillingCycleProvider).maybeWhen(
+      data: (c) => c.maintenanceBillingExcluded,
+      orElse: () => false,
+    );
+    final excluded = userExcluded || cycleExcluded;
+    final overflowActions = excluded
+        ? residentQuickActionsOverflow.where((a) => a.id != 'maintenance_expenses').toList()
+        : residentQuickActionsOverflow;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
@@ -1491,11 +1579,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Parcels, maintenance & expenses, and community notices',
-                  style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
+                  excluded
+                      ? 'Parcels and community notices'
+                      : 'Parcels, maintenance & expenses, and community notices',
+                  style: const TextStyle(fontSize: 13, color: DesignColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
-                ...residentQuickActionsOverflow.map(
+                ...overflowActions.map(
                   (action) => _moreSheetTile(
                     icon: action.icon,
                     title: action.label,
@@ -1533,7 +1623,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Icon(icon, color: color, size: 22),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: DesignColors.textSecondary)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 13, color: DesignColors.textSecondary)),
       trailing: const Icon(Icons.chevron_right, color: DesignColors.textTertiary),
       onTap: onTap,
     );
@@ -1545,9 +1635,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        const Text(
           'Gate visitor requests',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: DesignColors.textPrimary,
@@ -1716,9 +1806,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
+        const Text(
           'Visitors & gate',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
             color: DesignColors.textPrimary,
@@ -1727,7 +1817,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           'Pre-approve guests and passes for your flat',
           style: TextStyle(
             fontSize: 13,
@@ -1800,7 +1890,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
+        const Text(
           'Quick Actions',
           style: TextStyle(
             fontSize: 17,
@@ -1814,8 +1904,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         InkWell(
           onTap: () => _showAllQuickActionsSheet(context),
           borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 2, 2, 2),
+          child: const Padding(
+            padding: EdgeInsets.fromLTRB(8, 2, 2, 2),
             child: Text(
               'View All >',
               style: TextStyle(
@@ -1921,7 +2011,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(_kRadiusLg),
           onTap: () {
-            context.push('/resident/maintenance-payment');
+            context.push('/resident/maintenance');
           },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
@@ -1937,11 +2027,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: const Icon(Icons.insights_rounded, color: DesignColors.primary),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Maintenance & Expenses',
                         style: TextStyle(
                           fontSize: 15.5,
@@ -1950,7 +2040,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           letterSpacing: -0.25,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Month-wise paid/unpaid, society expense, and your pending dues',
                         style: TextStyle(
@@ -2106,7 +2196,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         final countHint = count > 1 ? ' · $count charges' : '';
 
-        void openPayments() => context.push('/resident/maintenance-payment');
+        void openPayments() => context.push('/resident/maintenance');
 
         return Material(
           color: Colors.white,
@@ -2142,7 +2232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
+                            const Text(
                               'Outstanding dues',
                               style: TextStyle(
                                 fontSize: 12,
@@ -2175,7 +2265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '$scheduleLine$countHint',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                             color: _kTextSecondary,
@@ -2201,7 +2291,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         'Pay',
                         style: TextStyle(
                           fontSize: 12,
@@ -2284,7 +2374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     if (i != latest.length - 1)
-                      Divider(height: 1, color: DesignColors.borderLight),
+                      const Divider(height: 1, color: DesignColors.borderLight),
                   ],
                 ],
               );
@@ -2340,7 +2430,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: _kTextSecondary,
@@ -2389,6 +2479,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showAllQuickActionsSheet(BuildContext context) {
+    final userExcluded = ref.read(authProvider).user?.isBillingExcluded ?? false;
+    final cycleExcluded = ref.read(residentBillingCycleProvider).maybeWhen(
+      data: (c) => c.maintenanceBillingExcluded,
+      orElse: () => false,
+    );
+    final excluded = userExcluded || cycleExcluded;
+    final viewAllActions = excluded
+        ? residentQuickActionsViewAll.where((a) => a.id != 'maintenance_expenses').toList()
+        : residentQuickActionsViewAll;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
@@ -2423,14 +2522,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
+                const Text(
                   'These are not on your home quick row',
                   style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
                 ),
                 const SizedBox(height: 12),
-                if (residentQuickActionsViewAll.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                if (viewAllActions.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'No extra shortcuts right now.',
                       style: TextStyle(fontSize: 14, color: DesignColors.textSecondary),
@@ -2440,7 +2539,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: residentQuickActionsViewAll.map((action) {
+                    children: viewAllActions.map((action) {
                       return SizedBox(
                         width: (MediaQuery.of(ctx).size.width - 60) / 2,
                         child: OutlinedButton.icon(
@@ -2512,7 +2611,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             }
             final top = notices.take(2).toList();
-            final borderLight = DesignColors.borderLight;
+            const borderLight = DesignColors.borderLight;
             return Material(
               color: Colors.white,
               borderRadius: BorderRadius.circular(_kRadiusMd),
@@ -2529,7 +2628,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     for (int i = 0; i < top.length; i++) ...[
                       if (i > 0)
-                        Divider(height: 1, thickness: 1, color: borderLight),
+                        const Divider(height: 1, thickness: 1, color: borderLight),
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -2581,12 +2680,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: _kTextSecondary),
+          const Icon(Icons.info_outline, color: _kTextSecondary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: _kTextSecondary,
@@ -2792,7 +2891,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.shield_outlined, color: DesignColors.primary, size: 26),
+                  const Icon(Icons.shield_outlined, color: DesignColors.primary, size: 26),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Padding(
@@ -2814,7 +2913,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(height: 4),
                           Text(
                             securityLine,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
                               color: _kTextSecondary,
@@ -2847,7 +2946,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? 'Tap Call to reach your society security desk.'
                     : 'No active guard contact found. Calling emergency line 100.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w500,
                   color: DesignColors.textSecondary,

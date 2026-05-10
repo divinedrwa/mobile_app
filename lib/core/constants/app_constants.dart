@@ -11,7 +11,7 @@ class AppConstants {
 
   /// Full base URL at build time, e.g. `https://api.example.com/api`.
   /// Overrides saved URL. Example:
-  /// `flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api`
+  /// `flutter build apk --dart-define=API_BASE_URL=https://backend-8yq0.onrender.com/api`
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
@@ -26,8 +26,8 @@ class AppConstants {
 
   /// When no `API_HOST` dart-define and no saved URL: physical phones/tablets use this host
   /// (your Mac/PC LAN IP on the current Wi‑Fi). Update if your network IP changes.
-  /// Last detected on this machine (en0): `172.16.8.65`.
-  static const String defaultPhysicalLanHost = '172.16.8.65';
+  /// Last detected on this machine (en0): `192.168.1.5`.
+  static const String defaultPhysicalLanHost = '192.168.1.5';
 
   /// Android Emulator: special alias to the host machine’s loopback (same as your PC’s `localhost:4000`).
   static const String simulatorAndroidApiBase = 'http://10.0.2.2:4000/api';
@@ -42,6 +42,16 @@ class AppConstants {
   /// Set from `main()` using [device_info_plus] — env vars like `SIMULATOR_DEVICE_NAME`
   /// are usually **not** visible to Dart on Flutter iOS, so detection would wrongly use LAN IP.
   static bool? _iosSimulatorResolved;
+
+  /// Set from `main()` using [device_info_plus] on Android — `Platform.environment` is
+  /// unavailable inside Flutter, so the env-var check in [_isAndroidEmulator] always fails.
+  static bool? _androidEmulatorResolved;
+
+  /// Call once at startup on Android after [DeviceInfoPlugin].androidInfo is available.
+  static void setAndroidEmulatorResolved(bool isEmulator) {
+    if (!Platform.isAndroid) return;
+    _androidEmulatorResolved = isEmulator;
+  }
 
   /// Set from [StorageService] in `main` or after user saves in settings / login dialog.
   static void setRuntimeBaseUrlOverride(String? raw) {
@@ -58,7 +68,8 @@ class AppConstants {
     _iosSimulatorResolved = isSimulator;
   }
 
-  /// Adds `http://` if missing and strips trailing slashes.
+  /// Adds `http(s)://` if missing, strips trailing slashes, and ensures the path ends with `/api`
+  /// (Express mounts REST under `/api`, same as admin web `NEXT_PUBLIC_API_URL`).
   static String normalizeApiBaseUrl(String input) {
     var u = input.trim();
     if (u.isEmpty) return u;
@@ -67,6 +78,9 @@ class AppConstants {
     }
     while (u.endsWith('/')) {
       u = u.substring(0, u.length - 1);
+    }
+    if (!u.endsWith('/api')) {
+      u = '$u/api';
     }
     return u;
   }
@@ -87,6 +101,9 @@ class AppConstants {
 
   static bool get _isAndroidEmulator {
     if (!Platform.isAndroid) return false;
+    if (_androidEmulatorResolved != null) return _androidEmulatorResolved!;
+    // Fallback: Platform.environment is generally empty in Flutter on Android,
+    // so this rarely succeeds — prefer setAndroidEmulatorResolved() from main().
     if (Platform.environment['ANDROID_EMULATOR'] == '1') return true;
     final model = (Platform.environment['MODEL'] ?? '').toLowerCase();
     if (model.contains('sdk_gphone') || model.contains('emulator')) {
@@ -155,6 +172,9 @@ class AppConstants {
   /// Display name for [keyPreferredLoginSocietyId] (set on society selection screen).
   static const String keyPreferredLoginSocietyName = 'preferred_login_society_name';
 
+  /// "Remember me" checkbox on login — persists username + password in secure storage.
+  static const String keyRememberMe = 'remember_me';
+
   /// User opted in to biometric unlock on the login screen (credentials in secure storage).
   static const String keyBiometricLoginEnabled = 'biometric_login_enabled';
 
@@ -164,9 +184,24 @@ class AppConstants {
   /// Push channel preference (FCM registration); persisted across sessions.
   static const String keyPushNotificationsEnabled = 'pref_push_notifications_enabled';
 
-  /// Placeholder legal URLs — replace with production links when ready.
-  static const String privacyPolicyUrl = 'https://www.google.com';
-  static const String termsConditionsUrl = 'https://www.google.com';
+  /// Theme mode preference. Stored values: 'system' | 'light' | 'dark'.
+  /// Falls back to `system` when missing or unrecognized.
+  static const String keyThemeMode = 'pref_theme_mode';
+
+  /// In-app legal documents (Markdown bundled via `pubspec.yaml` → `assets/legal/`).
+  /// Keep in sync with `docs/legal/` in the monorepo when you update policy text.
+  static const String privacyPolicyAsset = 'assets/legal/privacy_policy.md';
+  static const String termsConditionsAsset = 'assets/legal/terms_and_conditions.md';
+
+  /// Optional: public HTTPS URL for the same policy (Play Store / website). In-app uses [privacyPolicyAsset].
+  static const String privacyPolicyPublicUrl = String.fromEnvironment(
+    'PRIVACY_POLICY_URL',
+    defaultValue: '',
+  );
+  static const String termsConditionsPublicUrl = String.fromEnvironment(
+    'TERMS_CONDITIONS_URL',
+    defaultValue: '',
+  );
 
   /// Google Play listing (`applicationId` from Android `build.gradle.kts`).
   static const String androidApplicationId = 'com.app.society';
@@ -231,6 +266,18 @@ enum ResidentType {
       (t) => t.value == type.toUpperCase(),
       orElse: () => ResidentType.owner,
     );
+  }
+
+  /// Human-readable occupant label (server also sends `occupantRoleLabel` on `/residents/me`).
+  String get displayLabel {
+    switch (this) {
+      case ResidentType.owner:
+        return 'Owner';
+      case ResidentType.tenant:
+        return 'Tenant';
+      case ResidentType.familyMember:
+        return 'Family member';
+    }
   }
 }
 

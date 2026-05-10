@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../data/models/quick_action_model.dart';
 
 /// Ultra-polished Quick Action Card with native feel
@@ -120,8 +121,8 @@ class _QuickActionCardState extends State<QuickActionCard> {
     )
         .animate()
         .fadeIn(
-          duration: 500.ms,
-          delay: (widget.index * 80).ms,
+          duration: DesignAnimations.durationEntrance,
+          delay: DesignAnimations.staggerFor(widget.index),
           curve: Curves.easeOut,
         )
         .scale(

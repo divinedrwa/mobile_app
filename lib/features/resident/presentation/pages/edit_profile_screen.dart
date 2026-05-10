@@ -10,6 +10,7 @@ import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/utils/media_url.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -106,6 +107,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               backgroundColor: DesignColors.surface,
               surfaceTintColor: Colors.transparent,
               leading: IconButton(
+                tooltip: 'Go back',
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 color: DesignColors.textPrimary,
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -136,14 +138,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   _sectionHeader(
                     title: 'Profile photo',
                     subtitle: 'Visible to your society directory',
-                  ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.05, end: 0),
+                  ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0),
                   const SizedBox(height: DesignSpacing.md),
-                  _photoCard(context, user).animate().fadeIn(duration: 320.ms).slideY(begin: 0.06, end: 0),
+                  _photoCard(context, user).animate().fadeIn(duration: 320.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
                   const SizedBox(height: DesignSpacing.xxl),
                   _sectionHeader(
                     title: 'Personal details',
                     subtitle: 'We use this for notices and billing',
-                  ).animate().fadeIn(delay: 40.ms, duration: 280.ms),
+                  ).animate().fadeIn(delay: DesignAnimations.staggerFor(1), duration: DesignAnimations.durationEntrance),
                   const SizedBox(height: DesignSpacing.md),
                   _whiteCard(
                     child: Column(
@@ -157,6 +159,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             icon: Icons.person_outline_rounded,
                           ),
                           textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
                           validator: (v) =>
                               v?.trim().isEmpty ?? true ? 'Please enter your name' : null,
                         ),
@@ -169,6 +172,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             icon: Icons.alternate_email_rounded,
                           ),
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
                           autocorrect: false,
                           validator: (v) =>
                               v?.trim().isEmpty ?? true ? 'Please enter your email' : null,
@@ -183,15 +187,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             hint: 'Optional',
                           ),
                           keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.done,
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 60.ms, duration: 320.ms).slideY(begin: 0.04, end: 0),
+                  ).animate().fadeIn(delay: DesignAnimations.staggerFor(1), duration: 320.ms).slideY(begin: DesignAnimations.slideSubtle, end: 0),
                   const SizedBox(height: DesignSpacing.xxl),
                   _sectionHeader(
                     title: 'Account',
                     subtitle: 'Managed by your society admin',
-                  ).animate().fadeIn(delay: 80.ms, duration: 280.ms),
+                  ).animate().fadeIn(delay: DesignAnimations.staggerFor(2), duration: DesignAnimations.durationEntrance),
                   const SizedBox(height: DesignSpacing.md),
                   _whiteCard(
                     child: Column(
@@ -200,9 +205,35 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           icon: Icons.home_work_outlined,
                           iconBg: const Color(0xFFE8F0FE),
                           iconColor: DesignColors.primary,
-                          label: 'Unit number',
-                          value: user?.villaNumber?.trim().isNotEmpty == true
-                              ? user!.villaNumber!
+                          label: 'Property',
+                          value: user?.effectivePropertyDisplay?.trim().isNotEmpty == true
+                              ? user!.effectivePropertyDisplay!.trim()
+                              : '—',
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm),
+                          child: Divider(height: 1, color: DesignColors.borderLight.withValues(alpha: 0.9)),
+                        ),
+                        _readOnlyRow(
+                          icon: Icons.layers_outlined,
+                          iconBg: const Color(0xFFF3E8FF),
+                          iconColor: const Color(0xFF7C3AED),
+                          label: 'Unit / floor',
+                          value: user?.effectiveUnitDisplay?.trim().isNotEmpty == true
+                              ? user!.effectiveUnitDisplay!.trim()
+                              : '—',
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm),
+                          child: Divider(height: 1, color: DesignColors.borderLight.withValues(alpha: 0.9)),
+                        ),
+                        _readOnlyRow(
+                          icon: Icons.badge_outlined,
+                          iconBg: const Color(0xFFE0F2FE),
+                          iconColor: const Color(0xFF0284C7),
+                          label: 'Occupant type',
+                          value: user?.effectiveOccupantDisplay?.trim().isNotEmpty == true
+                              ? user!.effectiveOccupantDisplay!.trim()
                               : '—',
                         ),
                         Padding(
@@ -220,7 +251,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 100.ms, duration: 320.ms).slideY(begin: 0.04, end: 0),
+                  ).animate().fadeIn(delay: DesignAnimations.staggerFor(2), duration: 320.ms).slideY(begin: DesignAnimations.slideSubtle, end: 0),
                   const SizedBox(height: DesignSpacing.xxl),
                   SizedBox(
                     width: double.infinity,
@@ -261,7 +292,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ],
                             ),
                     ),
-                  ).animate().fadeIn(delay: 120.ms, duration: 320.ms),
+                  ).animate().fadeIn(delay: DesignAnimations.staggerFor(3), duration: 320.ms),
                   const SizedBox(height: DesignSpacing.lg),
                   Text(
                     'Changes apply to your resident profile immediately.',

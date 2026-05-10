@@ -60,7 +60,7 @@ features/<name>/
 ### Key Patterns
 
 - **State management**: Riverpod (`flutter_riverpod`). Providers live in each feature's `presentation/providers/`. Shared providers in `lib/shared/providers/`.
-- **Error handling**: `dartz` `Either<Failure, T>` pattern. Failure types in `lib/core/errors/failures.dart`.
+- **Error handling**: repositories throw typed `AppException` subclasses defined in `lib/core/errors/exceptions.dart`. [ErrorInterceptor](lib/core/network/interceptors/error_interceptor.dart) maps Dio errors to those exceptions; presenter providers (Riverpod) catch them and surface user-friendly messages. There is no `Either<Failure, T>` / `dartz` layer despite older docs that claimed otherwise.
 - **HTTP client**: Singleton `DioClient` (`lib/core/network/dio_client.dart`) with AuthInterceptor (JWT from StorageService) and ErrorInterceptor. Always access via `DioClient.dio` — never cache the instance. Call `DioClient.reset()` after logout or base URL change.
 - **Routing**: GoRouter (`lib/core/routing/app_router.dart`) with role-based redirect. Three top-level route trees: `/resident/*`, `/guard/*`, `/admin/*`. Shell navigators provide bottom navigation.
 - **Local storage**: Hive for cached data, SharedPreferences via `StorageService` for auth tokens and settings.

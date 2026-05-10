@@ -262,7 +262,7 @@ class DivineChoiceCard extends StatelessWidget {
                 ),
               ),
               if (selected)
-                Icon(
+                const Icon(
                   Icons.check_circle_rounded,
                   color: DesignColors.primary,
                   size: 22,
@@ -341,7 +341,7 @@ class DivinePickerRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
+              const Icon(
                 Icons.chevron_right_rounded,
                 color: DesignColors.textTertiary,
               ),

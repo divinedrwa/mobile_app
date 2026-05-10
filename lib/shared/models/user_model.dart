@@ -19,6 +19,19 @@ class UserModel {
   final String? villaNumber;
   /// From `villa.block` when the API includes nested `villa`.
   final String? villaBlock;
+  /// Billing / floor-plan unit from `/residents/me` (`user.unitId`).
+  final String? unitId;
+  final String? unitCode;
+  /// `unit.label` when nested `unit` is present.
+  final String? unitLabel;
+  /// Denormalized on `/residents/me` (block · villa number).
+  final String? propertyDisplayName;
+  /// Denormalized on `/residents/me` (typically `unit.label`).
+  final String? unitDisplayName;
+  /// Denormalized on `/residents/me` (Owner / Tenant / Family member).
+  final String? occupantRoleLabel;
+  /// Maintenance billing role from `/residents/me` (PRIMARY, EXCLUDED, etc.).
+  final String? maintenanceBillingRole;
   /// Server path or absolute URL for profile image (`/uploads/avatars/...`).
   final String? photoUrl;
   final DateTime? moveInDate;
@@ -40,6 +53,13 @@ class UserModel {
     this.villaId,
     this.villaNumber,
     this.villaBlock,
+    this.unitId,
+    this.unitCode,
+    this.unitLabel,
+    this.propertyDisplayName,
+    this.unitDisplayName,
+    this.occupantRoleLabel,
+    this.maintenanceBillingRole,
     this.photoUrl,
     this.moveInDate,
     this.moveOutDate,
@@ -49,6 +69,14 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     try {
+      final unitRaw = json['unit'];
+      Map<String, dynamic>? unitMap;
+      if (unitRaw is Map) {
+        unitMap = Map<String, dynamic>.from(unitRaw);
+      }
+      final unitIdFromUser = json['unitId']?.toString();
+      final linkedUnitId = json['linkedUnitId']?.toString();
+
       return UserModel(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
@@ -62,7 +90,8 @@ class UserModel {
             : null,
         societyId: json['societyId']?.toString() ?? '',
         societyName: _parseSocietyName(json),
-        villaId: json['villaId']?.toString(),
+        villaId: json['villaId']?.toString() ??
+            json['linkedPropertyId']?.toString(),
         villaNumber: json['villaNumber']?.toString() ??
             json['flatNumber']?.toString() ??
             json['unitNumber']?.toString() ??
@@ -70,6 +99,13 @@ class UserModel {
             json['villa']?['villaNumber']?.toString() ??
             json['villa']?['number']?.toString(),
         villaBlock: _parseVillaBlock(json),
+        unitId: unitMap?['id']?.toString() ?? unitIdFromUser ?? linkedUnitId,
+        unitCode: unitMap?['unitCode']?.toString(),
+        unitLabel: unitMap?['label']?.toString(),
+        propertyDisplayName: json['propertyDisplayName']?.toString(),
+        unitDisplayName: json['unitDisplayName']?.toString(),
+        occupantRoleLabel: json['occupantRoleLabel']?.toString(),
+        maintenanceBillingRole: json['maintenanceBillingRole']?.toString(),
         photoUrl: json['photoUrl']?.toString(),
         moveInDate: json['moveInDate'] != null
             ? DateTime.tryParse(json['moveInDate'] as String)
@@ -89,6 +125,42 @@ class UserModel {
     }
   }
 
+  /// Prefer server [propertyDisplayName], else block · villa number from nested villa fields.
+  String? get effectivePropertyDisplay {
+    final s = propertyDisplayName?.trim();
+    if (s != null && s.isNotEmpty) return s;
+    final parts = <String>[];
+    final b = villaBlock?.trim();
+    final n = villaNumber?.trim();
+    if (b != null && b.isNotEmpty) parts.add(b);
+    if (n != null && n.isNotEmpty) parts.add(n);
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
+  /// Prefer server [unitDisplayName], else nested unit label / code.
+  String? get effectiveUnitDisplay {
+    for (final raw in [unitDisplayName, unitLabel, unitCode]) {
+      final s = raw?.trim();
+      if (s != null && s.isNotEmpty) return s;
+    }
+    return null;
+  }
+
+  /// Prefer server [occupantRoleLabel], else [ResidentType.displayLabel] for residents.
+  String? get effectiveOccupantDisplay {
+    final o = occupantRoleLabel?.trim();
+    if (o != null && o.isNotEmpty) return o;
+    if (role == UserRole.resident && residentType != null) {
+      return residentType!.displayLabel;
+    }
+    return null;
+  }
+
+  /// True when this resident is excluded from maintenance billing
+  /// (another occupant of the same villa is the PRIMARY payer).
+  bool get isBillingExcluded => maintenanceBillingRole == 'EXCLUDED';
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -104,6 +176,13 @@ class UserModel {
       'villaId': villaId,
       'villaNumber': villaNumber,
       'villaBlock': villaBlock,
+      'unitId': unitId,
+      'unitCode': unitCode,
+      'unitLabel': unitLabel,
+      'propertyDisplayName': propertyDisplayName,
+      'unitDisplayName': unitDisplayName,
+      'occupantRoleLabel': occupantRoleLabel,
+      'maintenanceBillingRole': maintenanceBillingRole,
       'photoUrl': photoUrl,
       'moveInDate': moveInDate?.toIso8601String(),
       'moveOutDate': moveOutDate?.toIso8601String(),
@@ -126,6 +205,13 @@ class UserModel {
     String? villaId,
     String? villaNumber,
     String? villaBlock,
+    String? unitId,
+    String? unitCode,
+    String? unitLabel,
+    String? propertyDisplayName,
+    String? unitDisplayName,
+    String? occupantRoleLabel,
+    String? maintenanceBillingRole,
     String? photoUrl,
     DateTime? moveInDate,
     DateTime? moveOutDate,
@@ -146,6 +232,13 @@ class UserModel {
       villaId: villaId ?? this.villaId,
       villaNumber: villaNumber ?? this.villaNumber,
       villaBlock: villaBlock ?? this.villaBlock,
+      unitId: unitId ?? this.unitId,
+      unitCode: unitCode ?? this.unitCode,
+      unitLabel: unitLabel ?? this.unitLabel,
+      propertyDisplayName: propertyDisplayName ?? this.propertyDisplayName,
+      unitDisplayName: unitDisplayName ?? this.unitDisplayName,
+      occupantRoleLabel: occupantRoleLabel ?? this.occupantRoleLabel,
+      maintenanceBillingRole: maintenanceBillingRole ?? this.maintenanceBillingRole,
       photoUrl: photoUrl ?? this.photoUrl,
       moveInDate: moveInDate ?? this.moveInDate,
       moveOutDate: moveOutDate ?? this.moveOutDate,

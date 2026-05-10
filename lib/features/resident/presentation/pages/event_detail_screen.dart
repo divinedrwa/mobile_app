@@ -34,6 +34,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         title: const Text('Event Details'),
         actions: [
           IconButton(
+            tooltip: 'Share',
             icon: const Icon(Icons.share),
             onPressed: () {
               Share.share(
@@ -248,7 +249,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 color: DesignColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),

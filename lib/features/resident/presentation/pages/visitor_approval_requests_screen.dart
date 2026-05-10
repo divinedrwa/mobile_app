@@ -149,7 +149,7 @@ class _VisitorApprovalRequestsScreenState
                 padding: const EdgeInsets.all(24),
                 children: [
                   SizedBox(height: MediaQuery.sizeOf(context).height * 0.14),
-                  Icon(
+                  const Icon(
                     Icons.wifi_tethering_error_rounded,
                     size: 56,
                     color: DesignColors.warning,
@@ -209,7 +209,7 @@ class _VisitorApprovalRequestsScreenState
                           SizedBox(
                             height: MediaQuery.sizeOf(context).height * 0.12,
                           ),
-                          Icon(
+                          const Icon(
                             Icons.inbox_rounded,
                             size: 64,
                             color: DesignColors.textTertiary,
@@ -528,7 +528,7 @@ class _RequestCard extends StatelessWidget {
                   ),
                   child: Text(
                     _initial(displayName),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
                       color: DesignColors.primary,
@@ -558,7 +558,7 @@ class _RequestCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(
+                          const Icon(
                             Icons.chevron_right_rounded,
                             color: DesignColors.textTertiary,
                             size: 22,
@@ -585,7 +585,7 @@ class _RequestCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.schedule_rounded,
                               size: 15,
                               color: DesignColors.textTertiary,
@@ -610,7 +610,7 @@ class _RequestCard extends StatelessWidget {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.phone_outlined,
                               size: 15,
                               color: DesignColors.textTertiary,

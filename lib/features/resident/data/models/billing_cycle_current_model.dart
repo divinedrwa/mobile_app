@@ -38,6 +38,7 @@ class BillingCycleCurrent {
     this.lateFee,
     this.effectiveLateFeeComponent,
     this.expectedAmount,
+    this.cashPaidAmount,
     this.paidAmount,
     this.deltaAmount,
     this.availableCredit,
@@ -50,6 +51,8 @@ class BillingCycleCurrent {
     this.isPaid = false,
     this.cycleKey,
     this.pendingDues = const [],
+    this.maintenanceBillingRole,
+    this.maintenanceBillingExcluded = false,
   });
 
   final String? cycleId;
@@ -59,6 +62,7 @@ class BillingCycleCurrent {
   final double? lateFee;
   final double? effectiveLateFeeComponent;
   final double? expectedAmount;
+  final double? cashPaidAmount;
   final double? paidAmount;
   final double? deltaAmount;
   final double? availableCredit;
@@ -72,6 +76,8 @@ class BillingCycleCurrent {
   final bool isPaid;
   final String? cycleKey;
   final List<BillingPendingDue> pendingDues;
+  final String? maintenanceBillingRole;
+  final bool maintenanceBillingExcluded;
 
   bool get hasCycle => cycleId != null && cycleId!.isNotEmpty;
 
@@ -95,6 +101,7 @@ class BillingCycleCurrent {
       lateFee: dv(json['lateFee']),
       effectiveLateFeeComponent: dv(json['effectiveLateFeeComponent']),
       expectedAmount: dv(json['expectedAmount']),
+      cashPaidAmount: dv(json['cashPaidAmount']),
       paidAmount: dv(json['paidAmount']),
       deltaAmount: dv(json['deltaAmount']),
       availableCredit: dv(json['availableCredit']),
@@ -107,6 +114,8 @@ class BillingCycleCurrent {
       isPaid: json['isPaid'] == true,
       cycleKey: json['cycleKey']?.toString(),
       pendingDues: pendingDues,
+      maintenanceBillingRole: json['maintenanceBillingRole']?.toString(),
+      maintenanceBillingExcluded: json['maintenanceBillingExcluded'] == true,
     );
   }
 
@@ -118,6 +127,7 @@ class BillingCycleCurrent {
         lateFee: lateFee,
         effectiveLateFeeComponent: effectiveLateFeeComponent,
         expectedAmount: expectedAmount,
+        cashPaidAmount: cashPaidAmount,
         paidAmount: paidAmount,
         deltaAmount: deltaAmount,
         availableCredit: availableCredit,
@@ -130,6 +140,8 @@ class BillingCycleCurrent {
         isPaid: isPaid ?? this.isPaid,
         cycleKey: cycleKey,
         pendingDues: pendingDues,
+        maintenanceBillingRole: maintenanceBillingRole,
+        maintenanceBillingExcluded: maintenanceBillingExcluded,
       );
 }
 

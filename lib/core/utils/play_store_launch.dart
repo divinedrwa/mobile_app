@@ -27,7 +27,7 @@ Future<bool> _openIosAppStore() async {
 }
 
 Future<bool> _openAndroidPlayStore() async {
-  final package = AppConstants.androidApplicationId;
+  const package = AppConstants.androidApplicationId;
   final market = Uri.parse('market://details?id=$package');
   final https = Uri.parse(
     'https://play.google.com/store/apps/details?id=$package',

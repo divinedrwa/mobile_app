@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/parcel_model.dart';
 import '../../data/providers/parcel_provider.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../widgets/list_skeleton.dart';
 
 /// Modern Professional Parcel Management Screen
 class ParcelManagementScreen extends ConsumerStatefulWidget {
@@ -42,6 +45,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Go back',
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
         ),
@@ -59,7 +63,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
             if (pendingCount > 0)
               Text(
                 '$pendingCount pending collection',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: DesignColors.textSecondary,
                   fontWeight: FontWeight.normal,
@@ -135,14 +139,14 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(itemHeight: 100),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Failed to load parcels',
                 style: TextStyle(fontSize: 16, color: DesignColors.textSecondary),
               ),
@@ -233,7 +237,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                     const SizedBox(height: 4),
                     Text(
                       parcel.trackingNumber,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: DesignColors.textSecondary,
                         fontFamily: 'monospace',
@@ -299,12 +303,12 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
               ),
               child: Row(
                 children: [
-                  Icon(Icons.note, size: 16, color: DesignColors.textSecondary),
+                  const Icon(Icons.note, size: 16, color: DesignColors.textSecondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       parcel.notes!,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: DesignColors.textSecondary,
                       ),
@@ -335,7 +339,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
           ],
         ],
       ),
-    ).animate(delay: (50 * index).ms).fadeIn().slideX(begin: 0.2, end: 0);
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn().slideX(begin: DesignAnimations.slideSubtle, end: 0);
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
@@ -345,7 +349,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 13,
             color: DesignColors.textSecondary,
           ),
@@ -402,77 +406,27 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.local_shipping_outlined, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'No Parcels',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No parcels to display',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.inventory_2_outlined,
+      title: 'No parcels waiting',
+      subtitle: 'We\'ll notify you as soon as one arrives at the gate.',
     );
   }
 
   Widget _buildNoPendingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_outline, size: 80, color: Colors.green[300]),
-          const SizedBox(height: 16),
-          Text(
-            'All Collected!',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No pending parcels',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.check_circle_outline_rounded,
+      title: 'All collected!',
+      subtitle: 'No pending parcels right now. We\'ll let you know when one arrives.',
+      iconColor: DesignColors.success,
     );
   }
 
   Widget _buildNoHistoryState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'No History',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'No parcel history available',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.history_rounded,
+      title: 'No parcel history',
+      subtitle: 'Collected parcels will show up here for your reference.',
     );
   }
 }

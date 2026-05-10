@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/daily_help_model.dart';
 import '../../data/providers/daily_help_provider.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../widgets/list_skeleton.dart';
 import 'add_daily_help_screen.dart';
 
 /// Vendors screen (daily help / household services).
@@ -19,7 +22,7 @@ class DailyHelpScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Vendors')),
       body: helpersState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(itemHeight: 72),
         error: (error, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -40,7 +43,20 @@ class DailyHelpScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (helpers) => ListView.builder(
+        data: (helpers) => helpers.isEmpty
+            ? EmptyStateWidget(
+                icon: Icons.support_agent_outlined,
+                title: 'No daily help added yet',
+                subtitle: 'Add your regular service providers like maids, cooks, or drivers.',
+                actionLabel: 'Add helper',
+                onAction: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AddDailyHelpScreen()),
+                  );
+                },
+              )
+            : ListView.builder(
           padding: const EdgeInsets.all(AppSpacing.md),
           itemCount: helpers.length,
           itemBuilder: (context, index) {
@@ -100,7 +116,7 @@ class DailyHelpScreen extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.phone,
                                 size: 14,
                                 color: DesignColors.textSecondary,
@@ -108,7 +124,7 @@ class DailyHelpScreen extends ConsumerWidget {
                               const SizedBox(width: 4),
                               Text(
                                 helper.phone,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: DesignColors.textSecondary,
                                 ),
@@ -118,7 +134,7 @@ class DailyHelpScreen extends ConsumerWidget {
                           if (helper.timings != null)
                             Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.access_time,
                                   size: 14,
                                   color: DesignColors.textSecondary,
@@ -126,7 +142,7 @@ class DailyHelpScreen extends ConsumerWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   helper.timings!,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 13,
                                     color: DesignColors.textSecondary,
                                   ),
@@ -140,6 +156,7 @@ class DailyHelpScreen extends ConsumerWidget {
                     Column(
                       children: [
                         IconButton(
+                          tooltip: 'Call',
                           icon: const Icon(Icons.call, color: Colors.green),
                           onPressed: () => _makeCall(helper.phone),
                         ),
@@ -173,7 +190,7 @@ class DailyHelpScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-            ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms);
+            ).animate().fadeIn(duration: 300.ms, delay: DesignAnimations.staggerFor(index));
           },
         ),
       ),

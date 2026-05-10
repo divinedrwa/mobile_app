@@ -57,6 +57,15 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     StorageService.getString(AppConstants.keyApiBaseUrl),
   );
 
+  if (Platform.isAndroid) {
+    try {
+      final android = await DeviceInfoPlugin().androidInfo;
+      AppConstants.setAndroidEmulatorResolved(!android.isPhysicalDevice);
+    } catch (e) {
+      debugPrint('⚠️  Could not detect Android emulator vs device: $e');
+    }
+    DioClient.reset();
+  }
   if (Platform.isIOS) {
     try {
       final ios = await DeviceInfoPlugin().iosInfo;

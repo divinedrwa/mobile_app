@@ -65,6 +65,7 @@ class _GuardResidentsDirectoryPageState
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
@@ -280,7 +281,7 @@ class _ResidentCard extends StatelessWidget {
                       GuardRoutes.visitorApprovalWithQuery('dir', q),
                     );
                   },
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.how_to_reg_outlined,
                     color: GuardTokens.guardAccentDeep,
                   ),
@@ -306,7 +307,7 @@ class _ResidentCard extends StatelessWidget {
                       );
                     }
                   },
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.phone_outlined,
                     color: GuardTokens.guardAccentDeep,
                   ),
@@ -341,7 +342,7 @@ class _DirectoryErrorBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
+              const Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
               const SizedBox(width: GuardTokens.g2),
               Expanded(child: Text(message)),
             ],

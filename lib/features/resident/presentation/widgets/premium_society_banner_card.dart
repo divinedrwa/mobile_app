@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/society_banner_type.dart';
 
@@ -93,11 +94,11 @@ Widget _linkChip(BuildContext context, String url) {
           border: Border.all(color: DesignColors.primary.withValues(alpha: 0.35)),
           color: DesignColors.primary.withValues(alpha: 0.06),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.link_rounded, size: 18, color: DesignColors.primary),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               'Open link',
               style: TextStyle(
@@ -106,7 +107,7 @@ Widget _linkChip(BuildContext context, String url) {
                 color: DesignColors.primary,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Icon(Icons.open_in_new_rounded, size: 15, color: DesignColors.primary),
           ],
         ),
@@ -203,7 +204,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final live = event['isUpcoming'] as bool;
-    final type = SocietyBannerType.emergency;
+    const type = SocietyBannerType.emergency;
     final title = event['title'] as String;
     final desc = event['description'] as String?;
     final actionUrl = event['actionUrl'] as String?;
@@ -251,7 +252,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 26),
+                        child: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 26),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -309,7 +310,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
                     const SizedBox(height: 14),
                     Text(
                       desc,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: DesignColors.textSecondary,
@@ -327,7 +328,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -340,7 +341,7 @@ Widget _metaLine(IconData icon, String text, Color accent) {
       Expanded(
         child: Text(
           text,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: DesignColors.textSecondary,
@@ -362,7 +363,7 @@ class _MaintenancePremiumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final live = event['isUpcoming'] as bool;
-    final type = SocietyBannerType.maintenance;
+    const type = SocietyBannerType.maintenance;
     final accent = type.accentColor;
 
     return Container(
@@ -420,7 +421,7 @@ class _MaintenancePremiumCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         'Works & schedules',
                         style: TextStyle(
                           fontSize: 13,
@@ -441,7 +442,7 @@ class _MaintenancePremiumCard extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -454,7 +455,7 @@ class _AnnouncementPremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = SocietyBannerType.announcement;
+    const type = SocietyBannerType.announcement;
     final accent = type.accentColor;
     final live = event['isUpcoming'] as bool;
 
@@ -551,7 +552,7 @@ class _AnnouncementPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -564,7 +565,7 @@ class _ScheduledEventPremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = SocietyBannerType.event;
+    const type = SocietyBannerType.event;
     final accent = type.accentColor;
     final live = event['isUpcoming'] as bool;
     final gStart = accent;
@@ -651,7 +652,7 @@ class _ScheduledEventPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -664,7 +665,7 @@ class _FestivalPremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = SocietyBannerType.festival;
+    const type = SocietyBannerType.festival;
     final live = event['isUpcoming'] as bool;
 
     return Container(
@@ -742,7 +743,7 @@ class _FestivalPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -755,7 +756,7 @@ class _CommunityPremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = SocietyBannerType.community;
+    const type = SocietyBannerType.community;
     final accent = type.accentColor;
     final live = event['isUpcoming'] as bool;
 
@@ -840,7 +841,7 @@ class _CommunityPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -853,16 +854,16 @@ class _OfferPremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = SocietyBannerType.offer;
+    const type = SocietyBannerType.offer;
     final accent = type.accentColor;
     final live = event['isUpcoming'] as bool;
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            const Color(0xFFE8F5E9),
+            Color(0xFFE8F5E9),
             Colors.white,
           ],
           begin: Alignment.topCenter,
@@ -963,7 +964,7 @@ class _OfferPremiumCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+    ).animate().fadeIn(duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideSubtle, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -1012,7 +1013,7 @@ Widget _standardBody(
           ),
           child: Text(
             desc,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               height: 1.45,
               fontWeight: FontWeight.w500,

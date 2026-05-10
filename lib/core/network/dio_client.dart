@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../constants/app_constants.dart';
 import 'interceptors/auth_interceptor.dart';
@@ -24,20 +25,22 @@ class DioClient {
       ),
     );
 
-    // Add interceptors
+    // Add interceptors. Logger only in debug — release builds must not write
+    // JWTs, request bodies, or PII to device logs.
     _dio!.interceptors.addAll([
       SocietyContextInterceptor(),
       AuthInterceptor(),
       ErrorInterceptor(),
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseHeader: false,
-        responseBody: true,
-        error: true,
-        compact: true,
-        maxWidth: 90,
-      ),
+      if (kDebugMode)
+        PrettyDioLogger(
+          requestHeader: true,
+          requestBody: true,
+          responseHeader: false,
+          responseBody: true,
+          error: true,
+          compact: true,
+          maxWidth: 90,
+        ),
     ]);
 
     return _dio!;
@@ -48,6 +51,8 @@ class DioClient {
   static void reset() {
     _dio?.close();
     _dio = null;
+    AuthInterceptor.clearCache();
+    SocietyContextInterceptor.clearCache();
   }
 
   /// GET request

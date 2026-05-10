@@ -5,6 +5,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
+import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/widgets/polished_button.dart';
@@ -45,12 +47,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _syncSocietyFromStorage();
+    _loadRememberMe();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshBiometricLoginUi();
       if (!mounted) return;
       if (_selectedSocietyId.isEmpty) {
         context.go('/society-select');
       }
+    });
+  }
+
+  Future<void> _loadRememberMe() async {
+    final remembered =
+        StorageService.getBool(AppConstants.keyRememberMe) == true;
+    if (!remembered) return;
+    final creds = await SecureCredentialsStore.instance.readRememberMe();
+    if (creds == null || !mounted) return;
+    setState(() {
+      _rememberMe = true;
+      _usernameOrEmailController.text = creds.username;
+      _passwordController.text = creds.password;
     });
   }
 
@@ -195,11 +211,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Forgot Password
                     _buildForgotPassword(),
 
-                    const SizedBox(height: AppSpacing.xl),
-
-                    // Sign Up Link
-                    _buildSignUpLink(),
-
                     const SizedBox(height: AppSpacing.lg),
                   ],
                 ),
@@ -217,7 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Container(
           padding: const EdgeInsets.all(DesignSpacing.lg),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               colors: [DesignColors.primary, DesignColors.primaryLight],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -241,7 +252,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .fadeIn(duration: 600.ms)
             .scale(begin: const Offset(0.5, 0.5), curve: Curves.easeOutBack),
         const SizedBox(height: AppSpacing.md),
-        Text(
+        const Text(
           'DIVINE APP',
           style: TextStyle(
             fontSize: 28,
@@ -249,7 +260,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: DesignColors.primary,
             letterSpacing: 2,
           ),
-        ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
+        ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 600.ms),
       ],
     );
   }
@@ -257,9 +268,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildWelcomeText() {
     return Column(
       children: [
-        Text(
+        const Text(
           'Welcome Back',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
             height: 1.2,
@@ -267,10 +278,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textAlign: TextAlign.center,
         )
             .animate()
-            .fadeIn(delay: 300.ms, duration: 600.ms)
-            .slideY(begin: 0.3, end: 0),
+            .fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 600.ms)
+            .slideY(begin: DesignAnimations.slideNormal, end: 0),
         const SizedBox(height: AppSpacing.sm),
-        Text(
+        const Text(
           'Sign in to access your society dashboard',
           style: TextStyle(
             fontSize: 16,
@@ -280,8 +291,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textAlign: TextAlign.center,
         )
             .animate()
-            .fadeIn(delay: 400.ms, duration: 600.ms)
-            .slideY(begin: 0.3, end: 0),
+            .fadeIn(delay: DesignAnimations.sectionStaggerFor(3), duration: 600.ms)
+            .slideY(begin: DesignAnimations.slideNormal, end: 0),
       ],
     );
   }
@@ -313,13 +324,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.apartment_rounded, color: DesignColors.primary, size: 28),
+                const Icon(Icons.apartment_rounded, color: DesignColors.primary, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Your society',
                         style: TextStyle(
                           fontSize: 12,
@@ -344,7 +355,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             _selectedSocietyId,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
                               fontFamily: 'monospace',
                               color: DesignColors.textSecondary,
@@ -381,13 +392,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     )
         .animate()
-        .fadeIn(delay: 500.ms, duration: 600.ms)
-        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic);
+        .fadeIn(delay: DesignAnimations.sectionStaggerFor(4), duration: 600.ms)
+        .slideY(begin: DesignAnimations.slideNormal, end: 0, curve: Curves.easeOutCubic);
   }
 
   Widget _buildEmailField() {
     return TextFormField(
       controller: _usernameOrEmailController,
+      autofocus: true,
+      textInputAction: TextInputAction.next,
       keyboardType: TextInputType.text,
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
@@ -400,7 +413,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: DesignColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(Icons.person_outline, color: DesignColors.primary, size: 20),
+          child: const Icon(Icons.person_outline, color: DesignColors.primary, size: 20),
         ),
         filled: true,
         fillColor: DesignColors.background,
@@ -414,7 +427,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: BorderSide(color: DesignColors.primary, width: 2),
+          borderSide: const BorderSide(color: DesignColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
@@ -445,6 +458,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: (_) => _handleLogin(),
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
         labelText: 'Password',
@@ -456,7 +471,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: DesignColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(Icons.lock_outline, color: DesignColors.primary, size: 20),
+          child: const Icon(Icons.lock_outline, color: DesignColors.primary, size: 20),
         ),
         suffixIcon: IconButton(
           icon: Icon(
@@ -479,7 +494,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: BorderSide(color: DesignColors.primary, width: 2),
+          borderSide: const BorderSide(color: DesignColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
@@ -524,7 +539,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Text(
+        const Text(
           'Remember me',
           style: TextStyle(
             fontSize: 14,
@@ -559,7 +574,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           vertical: AppSpacing.sm,
         ),
       ),
-      child: Text(
+      child: const Text(
         'Forgot Password?',
         style: TextStyle(
           color: DesignColors.primary,
@@ -567,36 +582,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           fontWeight: FontWeight.w600,
         ),
       ),
-    ).animate().fadeIn(delay: 600.ms);
-  }
-
-  Widget _buildSignUpLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Don't have an account? ",
-          style: TextStyle(
-            color: DesignColors.textSecondary,
-            fontSize: 15,
-          ),
-        ),
-        TextButton(
-          onPressed: () => context.push('/invite-register'),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-          child: Text(
-            'Join with invite',
-            style: TextStyle(
-              color: DesignColors.primary,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    ).animate().fadeIn(delay: 900.ms);
+    ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(5));
   }
 
   Future<void> _handleLogin() async {
@@ -616,6 +602,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (success) {
+        DesignHaptics.success();
+        // Remember-me: persist or clear credentials in secure storage.
+        if (_rememberMe) {
+          await StorageService.setBool(AppConstants.keyRememberMe, true);
+          await SecureCredentialsStore.instance.saveRememberMe(
+            username: _usernameOrEmailController.text.trim(),
+            password: _passwordController.text,
+          );
+        } else {
+          await StorageService.setBool(AppConstants.keyRememberMe, false);
+          await SecureCredentialsStore.instance.clearRememberMe();
+        }
+
         if (StorageService.getBool(AppConstants.keyBiometricLoginEnabled) ==
             true) {
           await SecureCredentialsStore.instance.saveCredentials(
@@ -638,9 +637,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         }
       } else {
+        DesignHaptics.error();
         // Show error from auth provider
         final errorMessage = ref.read(authProvider).errorMessage ?? 'Login failed';
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -650,6 +650,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (e) {
+      DesignHaptics.error();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -667,8 +668,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showForgotPasswordDialog() {
-    final emailController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -683,7 +682,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 color: DesignColors.primary.withValues(alpha: 0.1),
                 borderRadius: DesignRadius.borderLG,
               ),
-              child: Icon(Icons.lock_reset, color: DesignColors.primary),
+              child: const Icon(Icons.lock_reset, color: DesignColors.primary),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -692,68 +691,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Enter your email address and we\'ll send you a link to reset your password.',
-              style: TextStyle(
-                color: DesignColors.textSecondary,
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Email Address',
-                hintText: 'Enter your email',
-                prefixIcon: Icon(Icons.email_outlined, color: DesignColors.primary),
-                filled: true,
-                fillColor: DesignColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: DesignRadius.borderLG,
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: DesignRadius.borderLG,
-                  borderSide: BorderSide(color: DesignColors.primary, width: 2),
-                ),
-              ),
-            ),
-          ],
+        content: const Text(
+          'Please contact your society admin to reset your password.',
+          style: TextStyle(
+            color: DesignColors.textSecondary,
+            fontSize: 14,
+            height: 1.5,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: DesignColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (emailController.text.isNotEmpty) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Password reset link sent to your email!'),
-                    backgroundColor: DesignColors.success,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DesignColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: DesignRadius.borderLG,
-              ),
-            ),
-            child: const Text('Send Link'),
+            child: const Text('OK'),
           ),
         ],
       ),
