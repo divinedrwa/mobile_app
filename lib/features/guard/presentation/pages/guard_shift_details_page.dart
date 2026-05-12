@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
+import '../../utils/shift_active_helper.dart';
 import '../widgets/guard_screen_section_header.dart';
 
 class GuardShiftDetailsPage extends ConsumerWidget {
@@ -113,10 +114,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                             ? (raw['gate'] as Map)['name']?.toString()
                             : null;
                         final active =
-                            start != null &&
-                            end != null &&
-                            !now.isBefore(start) &&
-                            !now.isAfter(end);
+                            ShiftActiveHelper.isShiftActive(raw, now);
                         final title =
                             '${_titleCase(shiftType)}${gate == null ? '' : ' · $gate'}';
                         final line =

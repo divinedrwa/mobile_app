@@ -9,6 +9,7 @@ import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
+import '../../utils/shift_active_helper.dart';
 import '../widgets/guard_screen_section_header.dart';
 
 /// Confirm gate check-in for a resident pre-approval — same visual language as
@@ -32,22 +33,8 @@ class _GuardPreApprovedArrivalScreenState
 
   bool _submitting = false;
 
-  static DateTime? _parseShiftBoundary(dynamic v) {
-    if (v == null) return null;
-    if (v is String) return DateTime.tryParse(v);
-    return DateTime.tryParse(v.toString());
-  }
-
-  static bool _hasActiveShift(List<Map<String, dynamic>> rows) {
-    final now = DateTime.now();
-    for (final raw in rows) {
-      final start = _parseShiftBoundary(raw['startTime']);
-      final end = _parseShiftBoundary(raw['endTime']);
-      if (start == null || end == null) continue;
-      if (!now.isBefore(start) && !now.isAfter(end)) return true;
-    }
-    return false;
-  }
+  static bool _hasActiveShift(List<Map<String, dynamic>> rows) =>
+      ShiftActiveHelper.hasActiveShift(rows);
 
   String _visitorTypeLabel(String? api) {
     switch ((api ?? '').trim().toUpperCase()) {

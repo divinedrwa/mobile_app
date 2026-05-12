@@ -24,17 +24,21 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
   final _villaQuery = TextEditingController();
   final _notes = TextEditingController();
 
-  bool _resident = false;
-  VillaPickerItem? _villa;
+  bool _isResident = false;
+  ResidentPickerItem? _selectedResident;
   bool _submitting = false;
 
-  List<VillaPickerItem> _filter(List<VillaPickerItem> all) {
+  List<ResidentPickerItem> _filter(List<ResidentPickerItem> all) {
     final q = _villaQuery.text.trim().toLowerCase();
     if (q.isEmpty) return all;
-    return all.where((v) {
-      final block = (v.block ?? '').toLowerCase();
-      final num = v.villaNumber.toLowerCase();
-      return block.contains(q) || num.contains(q) || '$block $num'.contains(q);
+    return all.where((r) {
+      final block = (r.block ?? '').toLowerCase();
+      final num = r.villaNumber.toLowerCase();
+      final name = r.name.toLowerCase();
+      return block.contains(q) ||
+          num.contains(q) ||
+          '$block $num'.contains(q) ||
+          name.contains(q);
     }).toList();
   }
 
@@ -66,8 +70,8 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
           .read(guardRepositoryProvider)
           .logGateVehicleEntry(
             registrationNumber: reg,
-            kind: _resident ? 'RESIDENT' : 'VISITOR',
-            villaId: _villa?.id,
+            kind: _isResident ? 'RESIDENT' : 'VISITOR',
+            villaId: _selectedResident?.villaId,
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
       span.complete();
@@ -94,7 +98,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(guardVillasProvider);
+    ref.watch(guardResidentsPickerProvider);
 
     return GuardThemeScope(
       child: Scaffold(
@@ -184,11 +188,11 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                           icon: Icon(Icons.home_work_rounded),
                         ),
                       ],
-                      selected: {_resident},
+                      selected: {_isResident},
                       emptySelectionAllowed: false,
                       onSelectionChanged: _submitting
                           ? (_) {}
-                          : (s) => setState(() => _resident = s.first),
+                          : (s) => setState(() => _isResident = s.first),
                     ),
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
@@ -203,7 +207,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                       enabled: !_submitting,
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: 'Search block / flat…',
+                        hintText: 'Block, flat, or name…',
                         prefixIcon: const Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
@@ -215,49 +219,151 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     ref
-                        .watch(guardVillasProvider)
+                        .watch(guardResidentsPickerProvider)
                         .when(
                           loading: () => const Padding(
                             padding: EdgeInsets.all(GuardTokens.g3),
                             child: Center(child: CircularProgressIndicator()),
                           ),
                           error: (e, _) => Text(
-                            userFacingMessage(e, 'Flats unavailable'),
+                            userFacingMessage(e, 'Residents unavailable'),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.error,
                             ),
                           ),
-                          data: (villas) {
-                            if (villas.isEmpty) {
+                          data: (residents) {
+                            if (residents.isEmpty) {
                               return Text(
-                                'No flats.',
+                                'No residents.',
                                 style: GuardTokens.bodyStyle(context),
                               );
                             }
-                            final filtered = _filter(villas);
-                            return Wrap(
-                              spacing: GuardTokens.g2,
-                              runSpacing: GuardTokens.g2,
-                              children: filtered.map((v) {
-                                final label =
-                                    v.block != null && v.block!.isNotEmpty
-                                    ? '${v.block} · ${v.villaNumber}'
-                                    : v.villaNumber;
-                                final sel = _villa?.id == v.id;
-                                return ChoiceChip(
-                                  label: Text(label),
-                                  selected: sel,
-                                  onSelected: _submitting
-                                      ? null
-                                      : (_) {
-                                          setState(() {
-                                            _villa = sel ? null : v;
-                                          });
-                                        },
-                                  selectedColor: GuardTokens.guardAccent
-                                      .withValues(alpha: 0.2),
-                                );
-                              }).toList(),
+                            final filtered = _filter(residents);
+                            return DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(
+                                  GuardTokens.radiusCard,
+                                ),
+                                border: Border.all(
+                                  color: GuardTokens.borderSubtle,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  GuardTokens.radiusCard,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 280),
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    itemCount: filtered.length,
+                                    separatorBuilder: (_, _) => Divider(
+                                      height: 1,
+                                      indent: GuardTokens.g2,
+                                      endIndent: GuardTokens.g2,
+                                      color: GuardTokens.borderSubtle
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                    itemBuilder: (_, i) {
+                                      final r = filtered[i];
+                                      final sel = _selectedResident?.userId ==
+                                          r.userId;
+                                      return Material(
+                                        color: sel
+                                            ? GuardTokens.guardAccent
+                                                .withValues(alpha: 0.08)
+                                            : Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _submitting
+                                              ? null
+                                              : () {
+                                                  setState(() {
+                                                    _selectedResident =
+                                                        sel ? null : r;
+                                                  });
+                                                },
+                                          child: Padding(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: GuardTokens.g2,
+                                              vertical: 10,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  sel
+                                                      ? Icons
+                                                          .radio_button_checked_rounded
+                                                      : Icons
+                                                          .radio_button_off_rounded,
+                                                  size: 22,
+                                                  color: sel
+                                                      ? GuardTokens
+                                                          .guardAccent
+                                                      : Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurface
+                                                          .withValues(
+                                                            alpha: 0.4,
+                                                          ),
+                                                ),
+                                                const SizedBox(
+                                                  width: GuardTokens.g2,
+                                                ),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        r.name,
+                                                        style: TextStyle(
+                                                          fontWeight: sel
+                                                              ? FontWeight.w700
+                                                              : FontWeight.w500,
+                                                          fontSize:
+                                                              GuardTokens.body,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        r.tag.isNotEmpty
+                                                            ? '${r.flatLabel} · ${r.tag}'
+                                                            : r.flatLabel,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .onSurface
+                                                              .withValues(
+                                                                alpha: 0.6,
+                                                              ),
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                if (sel)
+                                                  const Icon(
+                                                    Icons.done_rounded,
+                                                    size: 20,
+                                                    color: GuardTokens
+                                                        .guardAccent,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
                             );
                           },
                         ),

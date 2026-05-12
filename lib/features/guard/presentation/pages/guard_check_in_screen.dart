@@ -15,6 +15,7 @@ import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
+import '../../utils/shift_active_helper.dart';
 import '../widgets/guard_screen_section_header.dart';
 
 /// Premium **Add visitor** — card sections, large inputs, searchable flats, optional vehicle & photo.
@@ -33,13 +34,13 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   final _villaQuery = TextEditingController();
 
   GuardCheckInVisitorType _type = GuardCheckInVisitorType.guest;
-  final Set<String> _villaIds = {};
+  final Set<String> _selectedUserIds = {};
 
   Uint8List? _photoBytes;
   bool _submitting = false;
 
   static const _maxFlatRowsVisible = 8;
-  static const _flatRowHeight = 52.0;
+  static const _flatRowHeight = 68.0;
 
   @override
   void dispose() {
@@ -82,22 +83,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     return 'data:image/jpeg;base64,${base64Encode(_photoBytes!)}';
   }
 
-  DateTime? _parseShiftBoundary(dynamic v) {
-    if (v == null) return null;
-    if (v is String) return DateTime.tryParse(v);
-    return DateTime.tryParse(v.toString());
-  }
-
-  bool _hasActiveShift(List<Map<String, dynamic>> rows) {
-    final now = DateTime.now();
-    for (final raw in rows) {
-      final start = _parseShiftBoundary(raw['startTime']);
-      final end = _parseShiftBoundary(raw['endTime']);
-      if (start == null || end == null) continue;
-      if (!now.isBefore(start) && !now.isAfter(end)) return true;
-    }
-    return false;
-  }
+  bool _hasActiveShift(List<Map<String, dynamic>> rows) =>
+      ShiftActiveHelper.hasActiveShift(rows);
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
@@ -117,10 +104,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     }
     if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_villaIds.isEmpty) {
+    if (_selectedUserIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Select at least one flat to visit'),
+          content: Text('Select at least one resident'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: GuardTokens.warning,
         ),
@@ -129,10 +116,17 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     }
     setState(() => _submitting = true);
     try {
+      // Build visitTargets from selected residents.
+      final allResidents =
+          ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
+      final targets = allResidents
+          .where((r) => _selectedUserIds.contains(r.userId))
+          .map((r) => VisitTarget.fromResident(r))
+          .toList();
       final params = GuardCheckInSubmitParams(
         name: _name.text.trim(),
         phone: _phone.text.trim(),
-        villaIds: _villaIds.toList(),
+        visitTargets: targets,
         visitorTypeApi: _type.apiValue,
         purpose: null,
         vehicleNumber: _vehicle.text.trim().isEmpty
@@ -176,13 +170,17 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     }
   }
 
-  List<VillaPickerItem> _filterVillas(List<VillaPickerItem> all) {
+  List<ResidentPickerItem> _filterResidents(List<ResidentPickerItem> all) {
     final q = _villaQuery.text.trim().toLowerCase();
     if (q.isEmpty) return all;
-    return all.where((v) {
-      final block = (v.block ?? '').toLowerCase();
-      final num = v.villaNumber.toLowerCase();
-      return block.contains(q) || num.contains(q) || '$block $num'.contains(q);
+    return all.where((r) {
+      final block = (r.block ?? '').toLowerCase();
+      final num = r.villaNumber.toLowerCase();
+      final name = r.name.toLowerCase();
+      return block.contains(q) ||
+          num.contains(q) ||
+          '$block $num'.contains(q) ||
+          name.contains(q);
     }).toList();
   }
 
@@ -222,14 +220,14 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final villasAsync = ref.watch(guardVillasProvider);
+    final residentsAsync = ref.watch(guardResidentsPickerProvider);
     final shiftsAsync = ref.watch(guardMyShiftsProvider);
     final residentDirectoryAsync = ref.watch(guardResidentsDirectoryProvider(''));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final selectedCount = _villaIds.length;
+    final selectedCount = _selectedUserIds.length;
     final selectedHasMappedResident = residentDirectoryAsync.maybeWhen(
-      data: (rows) => rows.any((r) => r.villaId != null && _villaIds.contains(r.villaId)),
+      data: (rows) => rows.any((r) => r.villaId != null && _selectedUserIds.isNotEmpty),
       orElse: () => true,
     );
     final hasActiveShift = shiftsAsync.maybeWhen(
@@ -412,10 +410,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const GuardScreenSectionHeader(
-                                icon: Icons.apartment_rounded,
-                                title: 'Visiting flat',
+                                icon: Icons.people_rounded,
+                                title: 'Visiting resident',
                                 subtitle:
-                                    'Search, then tap to select — multiple allowed',
+                                    'Search by name or flat — tap to select',
                               ),
                               const SizedBox(height: GuardTokens.g2),
                               if (selectedCount > 0)
@@ -490,8 +488,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                 onChanged: (_) => setState(() {}),
                                 decoration: _fieldDecoration(
                                   context,
-                                  label: 'Search flats',
-                                  hint: 'Block, wing, flat number…',
+                                  label: 'Search residents',
+                                  hint: 'Name, flat number, or block…',
                                   prefix: const Icon(
                                     Icons.search_rounded,
                                     size: 22,
@@ -499,7 +497,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                 ),
                               ),
                               const SizedBox(height: GuardTokens.g2),
-                              villasAsync.when(
+                              residentsAsync.when(
                                 loading: () => const Padding(
                                   padding: EdgeInsets.symmetric(
                                     vertical: GuardTokens.g3,
@@ -534,7 +532,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                         child: Text(
                                           userFacingMessage(
                                             e,
-                                            'Could not load flats',
+                                            'Could not load residents',
                                           ),
                                           style: GuardTokens.bodyStyle(context)
                                               .copyWith(
@@ -558,12 +556,12 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                         vertical: 12,
                                       ),
                                       child: Text(
-                                        'No flats configured for this society.',
+                                        'No residents found.',
                                         style: GuardTokens.bodyStyle(context),
                                       ),
                                     );
                                   }
-                                  final filtered = _filterVillas(list);
+                                  final filtered = _filterResidents(list);
                                   if (_villaQuery.text.trim().isNotEmpty &&
                                       filtered.isEmpty) {
                                     return Padding(
@@ -622,14 +620,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                         .withValues(alpha: 0.7),
                                                   ),
                                               itemBuilder: (_, i) {
-                                                final v = display[i];
-                                                final selected = _villaIds
-                                                    .contains(v.id);
-                                                final label =
-                                                    v.block != null &&
-                                                        v.block!.isNotEmpty
-                                                    ? '${v.block} · ${v.villaNumber}'
-                                                    : v.villaNumber;
+                                                final r = display[i];
+                                                final selected =
+                                                    _selectedUserIds
+                                                        .contains(r.userId);
                                                 return Material(
                                                   color: Colors.transparent,
                                                   child: InkWell(
@@ -638,14 +632,15 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                         : () {
                                                             setState(() {
                                                               if (selected) {
-                                                                _villaIds
+                                                                _selectedUserIds
                                                                     .remove(
-                                                                      v.id,
+                                                                      r.userId,
                                                                     );
                                                               } else {
-                                                                _villaIds.add(
-                                                                  v.id,
-                                                                );
+                                                                _selectedUserIds
+                                                                    .add(
+                                                                      r.userId,
+                                                                    );
                                                               }
                                                             });
                                                           },
@@ -678,12 +673,12 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                                   : (_) {
                                                                       setState(() {
                                                                         if (selected) {
-                                                                          _villaIds.remove(
-                                                                            v.id,
+                                                                          _selectedUserIds.remove(
+                                                                            r.userId,
                                                                           );
                                                                         } else {
-                                                                          _villaIds.add(
-                                                                            v.id,
+                                                                          _selectedUserIds.add(
+                                                                            r.userId,
                                                                           );
                                                                         }
                                                                       });
@@ -695,19 +690,49 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                                 GuardTokens.g2,
                                                           ),
                                                           Expanded(
-                                                            child: Text(
-                                                              label,
-                                                              style: TextStyle(
-                                                                fontWeight:
-                                                                    selected
-                                                                    ? FontWeight
-                                                                          .w700
-                                                                    : FontWeight
-                                                                          .w500,
-                                                                fontSize:
-                                                                    GuardTokens
-                                                                        .body,
-                                                              ),
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Text(
+                                                                  r.name,
+                                                                  style:
+                                                                      TextStyle(
+                                                                    fontWeight:
+                                                                        selected
+                                                                            ? FontWeight
+                                                                                .w700
+                                                                            : FontWeight
+                                                                                .w500,
+                                                                    fontSize:
+                                                                        GuardTokens
+                                                                            .body,
+                                                                  ),
+                                                                ),
+                                                                Text(
+                                                                  r.tag.isNotEmpty
+                                                                      ? '${r.flatLabel} · ${r.tag}'
+                                                                      : r.flatLabel,
+                                                                  style:
+                                                                      TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    color: Theme.of(
+                                                                            context)
+                                                                        .colorScheme
+                                                                        .onSurface
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.6,
+                                                                        ),
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                              ],
                                                             ),
                                                           ),
                                                           if (selected)

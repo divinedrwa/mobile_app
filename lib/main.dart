@@ -90,7 +90,9 @@ class _DivineAppState extends ConsumerState<DivineApp> {
     // Theme preference is persisted via [gp_theme.ThemeModeNotifier]
     // (system / light / dark). `themeTokensProvider` holds the active
     // palette and is ready to accept an API-driven override later.
-    final themeMode = ref.watch(gp_theme.themeModeProvider);
+    //
+    // TODO: Re-enable dark/system theme support when ready.
+    // final themeMode = ref.watch(gp_theme.themeModeProvider);
     final tokens = ref.watch(gp_theme.themeTokensProvider);
 
     return MaterialApp.router(
@@ -98,7 +100,7 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       debugShowCheckedModeBanner: false,
       theme: gp_theme.AppTheme.light(palette: tokens.light),
       darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       routerConfig: _router!,
     );
   }

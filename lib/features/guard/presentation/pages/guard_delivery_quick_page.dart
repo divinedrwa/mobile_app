@@ -35,7 +35,7 @@ class _GuardDeliveryQuickPageState
   final _description = TextEditingController();
 
   String _brand = 'Zomato';
-  VillaPickerItem? _villa;
+  ResidentPickerItem? _resident;
   bool _submitting = false;
 
   @override
@@ -47,19 +47,23 @@ class _GuardDeliveryQuickPageState
     super.dispose();
   }
 
-  List<VillaPickerItem> _filter(List<VillaPickerItem> all) {
+  List<ResidentPickerItem> _filter(List<ResidentPickerItem> all) {
     final q = _flatQuery.text.trim().toLowerCase();
     if (q.isEmpty) return all;
-    return all.where((v) {
-      final block = (v.block ?? '').toLowerCase();
-      final num = v.villaNumber.toLowerCase();
-      return block.contains(q) || num.contains(q) || '$block $num'.contains(q);
+    return all.where((r) {
+      final block = (r.block ?? '').toLowerCase();
+      final num = r.villaNumber.toLowerCase();
+      final name = r.name.toLowerCase();
+      return block.contains(q) ||
+          num.contains(q) ||
+          '$block $num'.contains(q) ||
+          name.contains(q);
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final villasAsync = ref.watch(guardVillasProvider);
+    final residentsAsync = ref.watch(guardResidentsPickerProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -176,9 +180,9 @@ class _GuardDeliveryQuickPageState
                     ),
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
-                      icon: Icons.apartment_rounded,
-                      title: 'Deliver to flat',
-                      subtitle: 'Search and tap one destination',
+                      icon: Icons.people_rounded,
+                      title: 'Deliver to resident',
+                      subtitle: 'Search by name or flat — tap to select',
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     TextField(
@@ -186,7 +190,7 @@ class _GuardDeliveryQuickPageState
                       onChanged: (_) => setState(() {}),
                       enabled: !_submitting,
                       decoration: InputDecoration(
-                        hintText: 'Search block / flat…',
+                        hintText: 'Block, flat, or name…',
                         prefixIcon: const Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
@@ -197,7 +201,7 @@ class _GuardDeliveryQuickPageState
                       ),
                     ),
                     const SizedBox(height: GuardTokens.g2),
-                    villasAsync.when(
+                    residentsAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.all(GuardTokens.g3),
                         child: Center(child: CircularProgressIndicator()),
@@ -226,39 +230,128 @@ class _GuardDeliveryQuickPageState
                           ],
                         ),
                       ),
-                      data: (villas) {
-                        if (villas.isEmpty) {
+                      data: (residents) {
+                        if (residents.isEmpty) {
                           return Text(
-                            'No flats configured.',
+                            'No residents found.',
                             style: GuardTokens.bodyStyle(context),
                           );
                         }
-                        final filtered = _filter(villas);
-                        return Wrap(
-                          spacing: GuardTokens.g2,
-                          runSpacing: GuardTokens.g2,
-                          children: filtered.map((v) {
-                            final label = v.block != null && v.block!.isNotEmpty
-                                ? '${v.block} · ${v.villaNumber}'
-                                : v.villaNumber;
-                            final sel = _villa?.id == v.id;
-                            return ChoiceChip(
-                              label: Text(label),
-                              selected: sel,
-                              onSelected: _submitting
-                                  ? null
-                                  : (_) => setState(() => _villa = v),
-                              selectedColor: GuardTokens.success.withValues(
-                                alpha: 0.2,
+                        final filtered = _filter(residents);
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              GuardTokens.radiusCard,
+                            ),
+                            border: Border.all(
+                              color: isDark
+                                  ? GuardTokens.darkBorder
+                                  : GuardTokens.borderSubtle,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              GuardTokens.radiusCard,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 280),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, _) => Divider(
+                                  height: 1,
+                                  indent: GuardTokens.g2,
+                                  endIndent: GuardTokens.g2,
+                                  color: GuardTokens.borderSubtle
+                                      .withValues(alpha: 0.7),
+                                ),
+                                itemBuilder: (_, i) {
+                                  final r = filtered[i];
+                                  final sel = _resident?.userId == r.userId;
+                                  return Material(
+                                    color: sel
+                                        ? GuardTokens.success
+                                            .withValues(alpha: 0.08)
+                                        : Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _submitting
+                                          ? null
+                                          : () =>
+                                              setState(() => _resident = r),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: GuardTokens.g2,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              sel
+                                                  ? Icons
+                                                      .radio_button_checked_rounded
+                                                  : Icons
+                                                      .radio_button_off_rounded,
+                                              size: 22,
+                                              color: sel
+                                                  ? GuardTokens.success
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.4),
+                                            ),
+                                            const SizedBox(
+                                              width: GuardTokens.g2,
+                                            ),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    r.name,
+                                                    style: TextStyle(
+                                                      fontWeight: sel
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w500,
+                                                      fontSize:
+                                                          GuardTokens.body,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    r.tag.isNotEmpty
+                                                        ? '${r.flatLabel} · ${r.tag}'
+                                                        : r.flatLabel,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurface
+                                                          .withValues(
+                                                            alpha: 0.6,
+                                                          ),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (sel)
+                                              const Icon(
+                                                Icons.done_rounded,
+                                                size: 20,
+                                                color: GuardTokens.success,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              checkmarkColor: GuardTokens.success,
-                              labelStyle: TextStyle(
-                                fontWeight: sel
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            );
-                          }).toList(),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -328,7 +421,7 @@ class _GuardDeliveryQuickPageState
                         height: GuardTokens.btnPrimaryH + 2,
                         child: FilledButton(
                           style: GuardTokens.primaryFilled(context),
-                          onPressed: _busy(villasAsync)
+                          onPressed: _busy(residentsAsync)
                               ? null
                               : () => _submit(false),
                           child: _submitting
@@ -350,7 +443,7 @@ class _GuardDeliveryQuickPageState
                       SizedBox(
                         height: GuardTokens.btnPrimaryH,
                         child: OutlinedButton(
-                          onPressed: _busy(villasAsync)
+                          onPressed: _busy(residentsAsync)
                               ? null
                               : () => _submit(true),
                           child: const Text(
@@ -373,15 +466,16 @@ class _GuardDeliveryQuickPageState
     );
   }
 
-  bool _busy(AsyncValue<List<VillaPickerItem>> villasAsync) {
+  bool _busy(AsyncValue<List<ResidentPickerItem>> async) {
     return _submitting ||
-        !villasAsync.maybeWhen(data: (v) => v.isNotEmpty, orElse: () => false);
+        !async.maybeWhen(data: (v) => v.isNotEmpty, orElse: () => false);
   }
 
   Future<void> _submit(bool leftAtGate) async {
-    final villasList = await ref.read(guardVillasProvider.future);
-    if (villasList.isEmpty) return;
-    final villa = _villa ?? villasList.first;
+    final residentsList =
+        await ref.read(guardResidentsPickerProvider.future);
+    if (residentsList.isEmpty) return;
+    final selected = _resident ?? residentsList.first;
 
     setState(() => _submitting = true);
     try {
@@ -391,7 +485,7 @@ class _GuardDeliveryQuickPageState
       ];
       await ref.read(guardDeliverySubmitProvider)(
         GuardDeliverySubmitParams(
-          villaId: villa.id,
+          villaId: selected.villaId,
           deliveryService: _brand,
           trackingNumber: _tracking.text.trim().isEmpty
               ? null

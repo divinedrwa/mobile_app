@@ -262,18 +262,153 @@ class GuardVisitorRow {
   }
 }
 
+/// Minimal resident info nested inside a villa picker row.
+class VillaResident {
+  const VillaResident({
+    required this.id,
+    required this.name,
+    this.role,
+    this.residentType,
+    this.unitId,
+    this.unitLabel,
+  });
+
+  final String id;
+  final String name;
+  final String? role;
+  final String? residentType;
+  final String? unitId;
+  /// Unit/floor label (e.g. "1F", "GF", "Unit A").
+  final String? unitLabel;
+
+  /// Display tag, e.g. "Owner · 1F" or "Tenant".
+  String get tag {
+    final parts = <String>[];
+    if (residentType != null && residentType!.isNotEmpty) {
+      parts.add(_humanType(residentType!));
+    }
+    if (unitLabel != null && unitLabel!.isNotEmpty) parts.add(unitLabel!);
+    return parts.join(' · ');
+  }
+
+  static String _humanType(String raw) {
+    switch (raw.toUpperCase()) {
+      case 'OWNER':
+        return 'Owner';
+      case 'TENANT':
+        return 'Tenant';
+      case 'FAMILY_MEMBER':
+        return 'Family';
+      default:
+        return raw[0].toUpperCase() + raw.substring(1).toLowerCase();
+    }
+  }
+
+  factory VillaResident.fromJson(Map<String, dynamic> json) {
+    final unit = _jsonMap(json['unit']);
+    return VillaResident(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      role: _jsonString(json['role']),
+      residentType: _jsonString(json['residentType']),
+      unitId: _jsonString(json['unitId']) ?? _jsonString(unit?['id']),
+      unitLabel: _jsonString(unit?['label']) ?? _jsonString(unit?['unitCode']),
+    );
+  }
+}
+
+/// A single resident entry for the guard picker — one row per person.
+/// Carries enough context to build `visitTargets[{villaId, unitId, residentUserId}]`.
+class ResidentPickerItem {
+  const ResidentPickerItem({
+    required this.userId,
+    required this.name,
+    required this.villaId,
+    required this.villaNumber,
+    this.block,
+    this.unitId,
+    this.unitLabel,
+    this.residentType,
+  });
+
+  final String userId;
+  final String name;
+  final String villaId;
+  final String villaNumber;
+  final String? block;
+  final String? unitId;
+  final String? unitLabel;
+  final String? residentType;
+
+  /// e.g. "A · V-12"
+  String get flatLabel => block != null && block!.isNotEmpty
+      ? '$block · $villaNumber'
+      : villaNumber;
+
+  /// e.g. "Owner · First Floor"
+  String get tag {
+    final parts = <String>[];
+    if (residentType != null && residentType!.isNotEmpty) {
+      parts.add(VillaResident._humanType(residentType!));
+    }
+    if (unitLabel != null && unitLabel!.isNotEmpty) parts.add(unitLabel!);
+    return parts.join(' · ');
+  }
+
+  /// Build from a [VillaPickerItem] + one of its [VillaResident] entries.
+  factory ResidentPickerItem.fromVillaAndResident(
+    VillaPickerItem villa,
+    VillaResident resident,
+  ) {
+    return ResidentPickerItem(
+      userId: resident.id,
+      name: resident.name,
+      villaId: villa.id,
+      villaNumber: villa.villaNumber,
+      block: villa.block,
+      unitId: resident.unitId,
+      unitLabel: resident.unitLabel,
+      residentType: resident.residentType,
+    );
+  }
+}
+
 class VillaPickerItem {
-  VillaPickerItem({required this.id, required this.villaNumber, this.block});
+  VillaPickerItem({
+    required this.id,
+    required this.villaNumber,
+    this.block,
+    this.residents = const [],
+  });
 
   final String id;
   final String villaNumber;
   final String? block;
+  final List<VillaResident> residents;
+
+  /// Flat label like "A · V-03".
+  String get flatLabel => block != null && block!.isNotEmpty
+      ? '$block · $villaNumber'
+      : villaNumber;
+
+  /// Comma-separated resident names for search matching.
+  String get residentNames =>
+      residents.map((r) => r.name).where((n) => n.isNotEmpty).join(', ');
 
   factory VillaPickerItem.fromJson(Map<String, dynamic> json) {
+    final usersRaw = json['users'];
+    final residents = <VillaResident>[];
+    if (usersRaw is List) {
+      for (final u in usersRaw) {
+        final m = _jsonMap(u);
+        if (m != null) residents.add(VillaResident.fromJson(m));
+      }
+    }
     return VillaPickerItem(
       id: json['id']?.toString() ?? '',
       villaNumber: json['villaNumber'] as String? ?? '',
       block: json['block'] as String?,
+      residents: residents,
     );
   }
 }

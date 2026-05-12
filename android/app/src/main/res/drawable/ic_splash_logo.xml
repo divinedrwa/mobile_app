@@ -4,10 +4,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Simplified gate barrier icon in slate-black on transparent background -->
+    <!-- Left post -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M20,28h68a10,10 0 0,1 10,10v36a10,10 0 0,1 -10,10H20a10,10 0 0,1 -10,-10V38a10,10 0 0,1 10,-10z" />
+        android:fillColor="#FF0F172A"
+        android:pathData="M30,32 L30,76 L38,76 L38,32 Z" />
+    <!-- Right post -->
     <path
-        android:fillColor="#FF0F766E"
-        android:pathData="M54,42 L38,54 L38,72 L46,72 L46,60 L62,60 L62,72 L70,72 L70,54 Z" />
+        android:fillColor="#FF0F172A"
+        android:pathData="M70,32 L70,76 L78,76 L78,32 Z" />
+    <!-- Top crossbar -->
+    <path
+        android:fillColor="#FF0F172A"
+        android:pathData="M28,32 L80,32 L80,40 L28,40 Z" />
+    <!-- Barrier arm (angled) -->
+    <path
+        android:fillColor="#FF0F172A"
+        android:pathData="M38,44 L78,44 L78,48 L38,48 Z" />
+    <!-- Barrier pivot circle -->
+    <path
+        android:fillColor="#FF0F172A"
+        android:pathData="M34,46 m-5,0 a5,5 0 1,1 10,0 a5,5 0 1,1 -10,0" />
 </vector>

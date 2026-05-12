@@ -295,7 +295,7 @@ class GuardRepository {
   Future<Map<String, dynamic>> checkInVisitor({
     required String name,
     required String phone,
-    required List<String> villaIds,
+    required List<Map<String, dynamic>> visitTargets,
     required String visitorTypeApi,
     String? purpose,
     String? vehicleNumber,
@@ -310,7 +310,7 @@ class GuardRepository {
         data: {
           'name': name,
           'phone': phone,
-          'villaIds': villaIds,
+          'visitTargets': visitTargets,
           'visitorType': visitorTypeApi,
           if (purpose != null && purpose.trim().isNotEmpty) 'purpose': purpose.trim(),
           if (vehicleNumber != null && vehicleNumber.trim().isNotEmpty)

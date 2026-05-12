@@ -11,10 +11,10 @@ class AppConstants {
 
   /// Full base URL at build time, e.g. `https://api.example.com/api`.
   /// Overrides saved URL. Example:
-  /// `flutter build apk --dart-define=API_BASE_URL=https://backend-8yq0.onrender.com/api`
+  /// `flutter build apk --dart-define=API_BASE_URL=https://gatepass-v037.onrender.com/api`
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://backend-8yq0.onrender.com/api',
+    defaultValue: 'https://gatepass-v037.onrender.com/api',
   );
 
   /// LAN host only (no scheme/port). Used when `API_BASE_URL` and saved URL are empty.
@@ -32,11 +32,11 @@ class AppConstants {
   /// Android Emulator fallback: points to the deployed Render backend so
   /// simulator builds work out-of-the-box without `--dart-define` overrides.
   /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://10.0.2.2:4000/api`.
-  static const String simulatorAndroidApiBase = 'https://backend-8yq0.onrender.com/api';
+  static const String simulatorAndroidApiBase = 'https://gatepass-v037.onrender.com/api';
 
   /// iOS Simulator fallback: same as Android -- points to deployed backend.
   /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://127.0.0.1:4000/api`.
-  static const String simulatorIosApiBase = 'https://backend-8yq0.onrender.com/api';
+  static const String simulatorIosApiBase = 'https://gatepass-v037.onrender.com/api';
 
   static String? _runtimeBaseUrlOverride;
 
@@ -145,7 +145,7 @@ class AppConstants {
       if (_isAndroidEmulator) {
         return simulatorAndroidApiBase;
       }
-      return 'https://backend-8yq0.onrender.com/api';
+      return 'https://gatepass-v037.onrender.com/api';
     }
     if (Platform.isIOS) {
       if (_apiHostFromEnv.isNotEmpty) {
@@ -154,9 +154,9 @@ class AppConstants {
       if (_isIosSimulator) {
         return simulatorIosApiBase;
       }
-      return 'https://backend-8yq0.onrender.com/api';
+      return 'https://gatepass-v037.onrender.com/api';
     }
-    return 'https://backend-8yq0.onrender.com/api';
+    return 'https://gatepass-v037.onrender.com/api';
   }
   
   // Storage Keys

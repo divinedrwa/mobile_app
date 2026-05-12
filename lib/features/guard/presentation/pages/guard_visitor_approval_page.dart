@@ -39,7 +39,7 @@ class _GuardVisitorApprovalPageState
   final _otp = TextEditingController();
   final _villaQuery = TextEditingController();
 
-  VillaPickerItem? _villa;
+  ResidentPickerItem? _resident;
   bool _submittingOtp = false;
   bool _submittingNotify = false;
   bool _submittingAllow = false;
@@ -79,17 +79,21 @@ class _GuardVisitorApprovalPageState
     }
   }
 
-  List<VillaPickerItem> _filter(List<VillaPickerItem> all) {
+  List<ResidentPickerItem> _filter(List<ResidentPickerItem> all) {
     final q = _villaQuery.text.trim().toLowerCase();
     if (q.isEmpty) return all;
-    return all.where((v) {
-      final block = (v.block ?? '').toLowerCase();
-      final num = v.villaNumber.toLowerCase();
-      return block.contains(q) || num.contains(q) || '$block $num'.contains(q);
+    return all.where((r) {
+      final block = (r.block ?? '').toLowerCase();
+      final num = r.villaNumber.toLowerCase();
+      final name = r.name.toLowerCase();
+      return block.contains(q) ||
+          num.contains(q) ||
+          '$block $num'.contains(q) ||
+          name.contains(q);
     }).toList();
   }
 
-  void _tryApplyInitialVillaExtra(List<VillaPickerItem> list) {
+  void _tryApplyInitialVillaExtra(List<ResidentPickerItem> list) {
     if (_didResolveInitialVilla || !mounted) return;
     final vid = widget.initialExtra?['villaId'];
     if (vid == null || vid.isEmpty) {
@@ -100,17 +104,18 @@ class _GuardVisitorApprovalPageState
       _didResolveInitialVilla = true;
       return;
     }
-    VillaPickerItem? found;
-    for (final v in list) {
-      if (v.id == vid) {
-        found = v;
+    // Find first resident in that villa.
+    ResidentPickerItem? found;
+    for (final r in list) {
+      if (r.villaId == vid) {
+        found = r;
         break;
       }
     }
     _didResolveInitialVilla = true;
     if (found != null) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _villa = found);
+        if (mounted) setState(() => _resident = found);
       });
     }
   }
@@ -135,11 +140,11 @@ class _GuardVisitorApprovalPageState
         ref.invalidate(guardVillasProvider);
       });
     }
-    ref.listen(guardVillasProvider, (prev, next) {
+    ref.listen(guardResidentsPickerProvider, (prev, next) {
       next.whenData(_tryApplyInitialVillaExtra);
     });
 
-    final villas = ref.watch(guardVillasProvider);
+    final villas = ref.watch(guardResidentsPickerProvider);
     final dashAsync = ref.watch(guardDashboardProvider);
     final theme = Theme.of(context);
 
@@ -281,7 +286,7 @@ class _GuardVisitorApprovalPageState
                       controller: _villaQuery,
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: 'Search block / flat…',
+                        hintText: 'Block, flat, or name…',
                         prefixIcon: const Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
@@ -323,39 +328,126 @@ class _GuardVisitorApprovalPageState
                       data: (list) {
                         if (list.isEmpty) {
                           return Text(
-                            'No flats.',
+                            'No residents.',
                             style: GuardTokens.bodyStyle(context),
                           );
                         }
                         final filtered = _filter(list);
-                        return Wrap(
-                          spacing: GuardTokens.g2,
-                          runSpacing: GuardTokens.g2,
-                          children: filtered.map((v) {
-                            final label = v.block != null && v.block!.isNotEmpty
-                                ? '${v.block} · ${v.villaNumber}'
-                                : v.villaNumber;
-                            final sel = _villa?.id == v.id;
-                            return ChoiceChip(
-                              label: Text(label),
-                              selected: sel,
-                              onSelected: (_) {
-                                setState(() {
-                                  _villa = v;
-                                  _otpVerified = null;
-                                });
-                              },
-                              selectedColor: GuardTokens.guardAccent.withValues(
-                                alpha: 0.2,
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              GuardTokens.radiusCard,
+                            ),
+                            border: Border.all(
+                              color: GuardTokens.borderSubtle,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              GuardTokens.radiusCard,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 280),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, _) => Divider(
+                                  height: 1,
+                                  indent: GuardTokens.g2,
+                                  endIndent: GuardTokens.g2,
+                                  color: GuardTokens.borderSubtle
+                                      .withValues(alpha: 0.7),
+                                ),
+                                itemBuilder: (_, i) {
+                                  final r = filtered[i];
+                                  final sel = _resident?.userId == r.userId;
+                                  return Material(
+                                    color: sel
+                                        ? GuardTokens.guardAccent
+                                            .withValues(alpha: 0.1)
+                                        : Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _resident = r;
+                                          _otpVerified = null;
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: GuardTokens.g2,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              sel
+                                                  ? Icons
+                                                      .radio_button_checked_rounded
+                                                  : Icons
+                                                      .radio_button_off_rounded,
+                                              size: 22,
+                                              color: sel
+                                                  ? GuardTokens.guardAccentDeep
+                                                  : theme
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.4),
+                                            ),
+                                            const SizedBox(
+                                              width: GuardTokens.g2,
+                                            ),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    r.name,
+                                                    style: TextStyle(
+                                                      fontWeight: sel
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w500,
+                                                      fontSize:
+                                                          GuardTokens.body,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    r.tag.isNotEmpty
+                                                        ? '${r.flatLabel} · ${r.tag}'
+                                                        : r.flatLabel,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurface
+                                                          .withValues(
+                                                            alpha: 0.6,
+                                                          ),
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (sel)
+                                              const Icon(
+                                                Icons.done_rounded,
+                                                size: 20,
+                                                color: GuardTokens
+                                                    .guardAccentDeep,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              checkmarkColor: GuardTokens.guardAccentDeep,
-                              labelStyle: TextStyle(
-                                fontWeight: sel
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            );
-                          }).toList(),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -580,12 +672,12 @@ class _GuardVisitorApprovalPageState
   }
 
   Future<void> _verifyOtp() async {
-    final villa = _villa ?? await _firstVilla();
+    final resident = _resident ?? await _firstResident();
     if (!mounted) return;
-    if (villa == null) {
+    if (resident == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Select a flat first')));
+      ).showSnackBar(const SnackBar(content: Text('Select a resident first')));
       return;
     }
     if (_otp.text.trim().length < 4) {
@@ -601,7 +693,7 @@ class _GuardVisitorApprovalPageState
     try {
       final res = await ref
           .read(guardRepositoryProvider)
-          .verifyVisitorOtp(otp: _otp.text.trim(), villaId: villa.id);
+          .verifyVisitorOtp(otp: _otp.text.trim(), villaId: resident.villaId);
       final ok = res['verified'] == true;
       setState(() => _otpVerified = ok);
       if (mounted) {
@@ -628,12 +720,12 @@ class _GuardVisitorApprovalPageState
   }
 
   Future<void> _notifyResident() async {
-    final villa = _villa ?? await _firstVilla();
+    final resident = _resident ?? await _firstResident();
     if (!mounted) return;
-    if (villa == null) {
+    if (resident == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Select a flat first')));
+      ).showSnackBar(const SnackBar(content: Text('Select a resident first')));
       return;
     }
     if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty) {
@@ -648,7 +740,7 @@ class _GuardVisitorApprovalPageState
       await ref
           .read(guardRepositoryProvider)
           .notifyVisitorAtGate(
-            villaId: villa.id,
+            villaId: resident.villaId,
             visitorName: _name.text.trim(),
             visitorPhone: _phone.text.trim(),
           );
@@ -671,12 +763,12 @@ class _GuardVisitorApprovalPageState
   }
 
   Future<void> _allowEntry() async {
-    final villa = _villa ?? await _firstVilla();
+    final resident = _resident ?? await _firstResident();
     if (!mounted) return;
-    if (villa == null) {
+    if (resident == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Select a flat')));
+      ).showSnackBar(const SnackBar(content: Text('Select a resident')));
       return;
     }
     final otp = _otp.text.trim();
@@ -694,7 +786,7 @@ class _GuardVisitorApprovalPageState
           .read(guardRepositoryProvider)
           .approveVisitorEntry(
             otp: otp,
-            villaId: villa.id,
+            villaId: resident.villaId,
             visitorName: _name.text.trim(),
             visitorPhone: _phone.text.trim(),
           );
@@ -735,9 +827,9 @@ class _GuardVisitorApprovalPageState
     }
   }
 
-  Future<VillaPickerItem?> _firstVilla() async {
+  Future<ResidentPickerItem?> _firstResident() async {
     try {
-      final list = await ref.read(guardVillasProvider.future);
+      final list = await ref.read(guardResidentsPickerProvider.future);
       return list.isEmpty ? null : list.first;
     } catch (_) {
       return null;

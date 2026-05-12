@@ -3,7 +3,7 @@
 /// Base URL for HTTP client: use [AppConstants.baseUrl] (not this placeholder).
 class ApiEndpoints {
   /// Dev default when reading this file only; live requests use [AppConstants.baseUrl].
-  static const String baseUrl = 'https://backend-8yq0.onrender.com/api';
+  static const String baseUrl = 'https://gatepass-v037.onrender.com/api';
   
   // Authentication
   static const String login = '/auth/login';

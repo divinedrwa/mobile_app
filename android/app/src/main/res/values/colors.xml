@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches DesignColors.primaryDark (0xFF115E59) — keep native + Flutter splash visually aligned -->
-    <color name="splash_primary">#FF115E59</color>
+    <!-- White splash background — Flutter splash handles branding -->
+    <color name="splash_primary">#FFFFFFFF</color>
     <!-- GatePass+ adaptive icon background (slate black from brand spec) -->
     <color name="ic_launcher_background">#FF0F172A</color>
 </resources>

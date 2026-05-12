@@ -82,11 +82,23 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
                 ? GuardTokens.darkCard
                 : Colors.white,
         surfaceTintColor: Colors.transparent,
-        title: Text(
-          'Security · Gate',
-          style: GuardTokens.headingStyle(context).copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.security_rounded,
+              size: 22,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? GuardTokens.guardAccent
+                  : GuardTokens.guardAccentDeep,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Security · Gate',
+              style: GuardTokens.headingStyle(context).copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
         centerTitle: false,
       ),

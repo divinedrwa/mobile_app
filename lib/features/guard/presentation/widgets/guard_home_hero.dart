@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../ui/guard_tokens.dart';
 
-/// Compact gate header — greeting, gate line, on-duty chip, notifications (less height than legacy hero).
+/// Compact gate header — greeting, gate line, on-duty chip, notifications,
+/// with subtle security-themed background illustration.
 class GuardHomeHero extends StatelessWidget {
   const GuardHomeHero({
     super.key,
@@ -59,88 +60,143 @@ class GuardHomeHero extends StatelessWidget {
           ),
           boxShadow: GuardTokens.softCardShadow(context),
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard + 2),
+          child: Stack(
             children: [
-              CircleAvatar(
-                radius: 21,
-                backgroundColor:
-                    Colors.white.withValues(alpha: isDark ? 0.12 : 0.2),
-                child: const Icon(
-                  Icons.shield_moon_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+              // Subtle security illustration (right side, behind content)
+              Positioned(
+                right: -8,
+                top: -10,
+                bottom: -10,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    width: 140,
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '${_greeting()}, $guardName',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
-                              letterSpacing: -0.35,
-                              height: 1.2,
-                            ),
+                        // Gate barrier
+                        Positioned(
+                          right: 12,
+                          top: 8,
+                          child: Icon(
+                            Icons.sensor_door_rounded,
+                            size: 52,
+                            color: Colors.white.withValues(alpha: 0.07),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        _OnDutyPill(isDark: isDark),
+                        // Shield
+                        Positioned(
+                          right: 56,
+                          bottom: 4,
+                          child: Icon(
+                            Icons.shield_rounded,
+                            size: 36,
+                            color: Colors.white.withValues(alpha: 0.09),
+                          ),
+                        ),
+                        // Lock
+                        Positioned(
+                          right: 8,
+                          bottom: 10,
+                          child: Icon(
+                            Icons.lock_rounded,
+                            size: 24,
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
+                        ),
                       ],
                     ),
-                    if (gateLine.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        gateLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
+                  ),
+                ),
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 21,
+                      backgroundColor:
+                          Colors.white.withValues(alpha: isDark ? 0.12 : 0.2),
+                      child: const Icon(
+                        Icons.shield_moon_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${_greeting()}, $guardName',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                    letterSpacing: -0.35,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _OnDutyPill(isDark: isDark),
+                            ],
+                          ),
+                          if (gateLine.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              gateLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.88),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                height: 1.2,
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Gate duty',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.88),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (onNotificationsTap != null)
+                      IconButton(
+                        tooltip: 'Notifications',
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.all(8),
+                        constraints:
+                            const BoxConstraints(minWidth: 40, minHeight: 40),
+                        onPressed: onNotificationsTap,
+                        icon: Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white.withValues(alpha: 0.92),
+                          size: 24,
                         ),
                       ),
-                    ] else ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Gate duty',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              if (onNotificationsTap != null)
-                IconButton(
-                  tooltip: 'Notifications',
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  onPressed: onNotificationsTap,
-                  icon: Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white.withValues(alpha: 0.92),
-                    size: 24,
-                  ),
-                ),
             ],
           ),
         ),

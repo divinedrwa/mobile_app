@@ -7,7 +7,8 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../theme/widgets/theme_mode_toggle.dart';
+// TODO: Re-enable when theme toggle is restored in the Appearance section.
+// import '../../../../theme/widgets/theme_mode_toggle.dart';
 import '../../../../core/utils/play_store_launch.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/utils/validators.dart';
@@ -194,6 +195,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // Appearance Section
+          // TODO: Re-enable theme toggle when dark/system theme support is ready.
+          // The ThemeModeToggle and theme picker are hidden for now; the app
+          // is locked to light theme in main.dart.
           Text(
             'Appearance',
             style: Theme.of(
@@ -204,39 +208,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Card(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.palette_outlined),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          'Theme',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    0,
-                    AppSpacing.md,
-                    AppSpacing.md,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: ThemeModeToggle(),
-                  ),
-                ),
-                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.language_rounded),
                   title: const Text('Language'),
