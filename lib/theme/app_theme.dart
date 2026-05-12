@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+
+import 'app_colors.dart';
+import 'app_typography.dart';
+import 'theme_extensions.dart';
+
+/// Builds the GatePass+ [ThemeData] for a given [AppColorPalette].
+///
+/// **Future API-driven theming:** the only inputs are a palette and a
+/// brightness. Once you have a `themeTokensProvider` that loads from your
+/// API, swap [AppColorPalette.light] / [AppColorPalette.dark] for the
+/// runtime values and rebuild `MaterialApp` — every screen reflects the
+/// change because they read tokens via `context.brand`, `context.surface`,
+/// `context.text`, `context.state`, `context.spacing`, `context.radius`.
+class AppTheme {
+  AppTheme._();
+
+  static ThemeData light({AppColorPalette palette = AppColorPalette.light}) =>
+      _build(palette: palette, brightness: Brightness.light);
+
+  static ThemeData dark({AppColorPalette palette = AppColorPalette.dark}) =>
+      _build(palette: palette, brightness: Brightness.dark);
+
+  static ThemeData _build({
+    required AppColorPalette palette,
+    required Brightness brightness,
+  }) {
+    final brand = BrandColors.fromPalette(palette);
+    final surface = SurfaceColors.fromPalette(palette);
+    final text = TextColors.fromPalette(palette);
+    final state = StateColors.fromPalette(palette);
+    const spacing = AppSpacing();
+    const radius = AppRadius();
+
+    final colorScheme = ColorScheme(
+      brightness: brightness,
+      primary: brand.primary,
+      onPrimary: text.inverse,
+      primaryContainer: surface.elevated,
+      onPrimaryContainer: text.primary,
+      secondary: brand.accent,
+      onSecondary: text.inverse,
+      secondaryContainer: state.approved.bg,
+      onSecondaryContainer: state.approved.fg,
+      tertiary: state.info.solid,
+      onTertiary: text.inverse,
+      error: brand.danger,
+      onError: text.inverse,
+      errorContainer: state.denied.bg,
+      onErrorContainer: state.denied.fg,
+      surface: surface.defaultSurface,
+      onSurface: text.primary,
+      surfaceContainerLowest: surface.background,
+      surfaceContainerLow: surface.defaultSurface,
+      surfaceContainer: surface.elevated,
+      surfaceContainerHigh: surface.elevated,
+      surfaceContainerHighest: surface.elevated,
+      onSurfaceVariant: text.secondary,
+      outline: surface.border,
+      outlineVariant: surface.border,
+      shadow: const Color(0x14000000),
+      scrim: const Color(0x66000000),
+      inverseSurface: brightness == Brightness.light
+          ? AppColorPalette.dark.surfaceDefault
+          : AppColorPalette.light.surfaceDefault,
+      onInverseSurface: text.inverse,
+      inversePrimary: brand.accent,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: surface.background,
+      canvasColor: surface.defaultSurface,
+      dividerColor: surface.border,
+      fontFamily: AppTypography.fontFamily,
+      textTheme: AppTypography.textTheme(text.primary),
+      extensions: <ThemeExtension<dynamic>>[
+        brand,
+        surface,
+        text,
+        state,
+        spacing,
+        radius,
+      ],
+      appBarTheme: AppBarTheme(
+        backgroundColor: surface.defaultSurface,
+        foregroundColor: text.primary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppTypography.textTheme(text.primary).titleLarge,
+      ),
+      cardTheme: CardThemeData(
+        color: surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.lg),
+          side: BorderSide(color: surface.border),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: brand.accent,
+          foregroundColor: text.inverse,
+          textStyle: AppTypography.textTheme(text.inverse).labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius.md),
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.s24,
+            vertical: spacing.s12,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: text.primary,
+          side: BorderSide(color: surface.border),
+          textStyle: AppTypography.textTheme(text.primary).labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius.md),
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.s24,
+            vertical: spacing.s12,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: brand.accent,
+          textStyle: AppTypography.textTheme(brand.accent).labelLarge,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface.defaultSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+          borderSide: BorderSide(color: surface.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+          borderSide: BorderSide(color: surface.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+          borderSide: BorderSide(color: brand.accent, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+          borderSide: BorderSide(color: brand.danger),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: spacing.s16,
+          vertical: spacing.s12,
+        ),
+        hintStyle: TextStyle(color: text.tertiary),
+        labelStyle: TextStyle(color: text.secondary),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: surface.elevated,
+        labelStyle: AppTypography.textTheme(text.primary).labelMedium,
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.sm),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: surface.border,
+        space: 1,
+        thickness: 1,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: brightness == Brightness.light
+            ? AppColorPalette.dark.surfaceDefault
+            : AppColorPalette.light.surfaceDefault,
+        contentTextStyle: TextStyle(color: text.inverse),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+        ),
+      ),
+    );
+  }
+}

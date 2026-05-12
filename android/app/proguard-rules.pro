@@ -31,7 +31,7 @@
 # --- AndroidX core --------------------------------------------------------
 -keep class androidx.core.app.CoreComponentFactory { *; }
 
-# --- App-specific (com.app.society) -----------------------------------------
+# --- App-specific (com.app.gatepass) ----------------------------------------
 # Plugins that use reflection on plugin-channel handler classes are usually
 # annotated @Keep upstream; if we add Java/Kotlin native code with reflective
 # entry points later, register their packages here so R8 doesn't strip them.

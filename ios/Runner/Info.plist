@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>My Society</string>
+	<string>GatePass+</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -83,7 +83,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow microphone access if you record video for attachments.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to sign in to My Society securely.</string>
+	<string>Use Face ID to sign in to GatePass+ securely.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>

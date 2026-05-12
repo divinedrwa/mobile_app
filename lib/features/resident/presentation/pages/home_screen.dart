@@ -141,10 +141,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
       orElse: () => null,
     );
-    final pendingBillingDues = billingAsync.maybeWhen(
-      data: (c) => c.pendingDues,
-      orElse: () => const <BillingPendingDue>[],
-    );
     return Scaffold(
       backgroundColor: _kPageBg,
       body: RefreshIndicator(
@@ -179,11 +175,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       _buildOpenBillingStripe(context, activeBillingCycle),
                       const SizedBox(height: _kSectionGap),
                     ],
-                    if (!isBillingExcluded && pendingBillingDues.isNotEmpty) ...[
-                      _buildMonthWiseBillingDues(context, pendingBillingDues),
-                      const SizedBox(height: _kSectionGap),
-                    ],
                     if (!isBillingExcluded) ...[
+                      _buildMaintenanceOverviewEntry(context),
+                      const SizedBox(height: _kSectionGap),
                       _buildMaintenanceInsightsEntry(context),
                       const SizedBox(height: _kSectionGap),
                     ],
@@ -1190,204 +1184,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildMonthWiseBillingDues(
-    BuildContext context,
-    List<BillingPendingDue> dues,
-  ) {
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-    final now = DateTime.now();
-    final totalDue = dues.fold<double>(0, (sum, d) => sum + d.amount);
-    final topDues = dues.take(4).toList();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_kRadiusLg),
-        border: Border.all(color: const Color(0xFFFECACA)),
-        boxShadow: _cardShadow(0.05),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.receipt_long_rounded,
-                  color: Color(0xFFB91C1C),
-                  size: 21,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Month-wise pending dues',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: DesignColors.textPrimary,
-                      letterSpacing: -0.25,
-                    ),
-                  ),
-                ),
-                Text(
-                  inr.format(totalDue),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFFB91C1C),
-                    letterSpacing: -0.35,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            for (var i = 0; i < topDues.length; i++) ...[
-              if (i > 0) const Divider(height: 14, thickness: 1, color: Color(0xFFF1F5F9)),
-              _dueRow(topDues[i], now, inr),
-            ],
-            if (dues.length > topDues.length) ...[
-              const SizedBox(height: 8),
-              Text(
-                '+${dues.length - topDues.length} more month(s)',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _kTextSecondary,
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: () => context.push('/resident/maintenance'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DesignColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  minimumSize: const Size(0, 38),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'View all dues',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dueRow(BillingPendingDue due, DateTime now, NumberFormat inr) {
-    final dueEnd = due.paymentEndUtc;
-    final isOverdue = due.isGraceOver || (dueEnd != null && dueEnd.isBefore(now));
-    final badgeBg = isOverdue ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7);
-    final badgeFg = isOverdue ? const Color(0xFFB91C1C) : const Color(0xFFB45309);
-    final badgeText = isOverdue ? 'Overdue' : 'Pending';
-    final line2 = dueEnd != null
-        ? 'Due by ${DateFormat('dd MMM yyyy').format(dueEnd.toLocal())}'
-        : (due.title.isNotEmpty ? due.title : 'Maintenance cycle');
-
-    final parts = due.cycleKey.split('-');
-    final qYear = parts.length == 2 ? int.tryParse(parts[0]) : null;
-    final qMonth = parts.length == 2 ? int.tryParse(parts[1]) : null;
-    final targetPath = (qYear != null && qMonth != null && qMonth >= 1 && qMonth <= 12)
-        ? Uri(
-            path: '/resident/maintenance',
-            queryParameters: {
-              'year': qYear.toString(),
-              'month': qMonth.toString(),
-            },
-          ).toString()
-        : '/resident/maintenance';
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () => context.push(targetPath),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      due.cycleKey.isNotEmpty ? due.cycleKey : 'Cycle',
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: DesignColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      line2,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                        color: _kTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    inr.format(due.amount),
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: DesignColors.textPrimary,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      badgeText,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: badgeFg,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 4),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: DesignColors.textTertiary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   void _pushMaintenanceFinance(BuildContext context) {
     context.push('/resident/maintenance');
@@ -1998,6 +1794,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
 
+  Widget _buildMaintenanceOverviewEntry(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_kRadiusLg),
+        border: Border.all(color: const Color(0xFFE8ECF0)),
+        boxShadow: _cardShadow(0.05),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_kRadiusLg),
+          onTap: () => context.push('/resident/maintenance'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF43A047).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_outlined,
+                      color: Color(0xFF43A047)),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Maintenance',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: DesignColors.textPrimary,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Dues, payments, credit balance, and billing status',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: _kTextSecondary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => context.push('/resident/maintenance'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF43A047),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'View',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMaintenanceInsightsEntry(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -2011,7 +1889,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(_kRadiusLg),
           onTap: () {
-            context.push('/resident/maintenance');
+            context.push('/resident/maintenance-payment');
           },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),

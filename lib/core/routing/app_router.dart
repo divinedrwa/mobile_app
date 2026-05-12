@@ -162,8 +162,6 @@ class AppRouter {
                 ),
               ],
             ),
-            // Legacy URL kept so any deep links / push notifications that
-            // reference the old path still resolve. Redirects to the hub.
             GoRoute(
               path: 'maintenance-payment',
               builder: (context, state) => const MaintenancePaymentScreen(),

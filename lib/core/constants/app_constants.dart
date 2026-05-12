@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 /// Application-wide constants
 class AppConstants {
   // App Info
-  static const String appName = 'My Society';
+  static const String appName = 'GatePass+';
   static const String appVersion = '1.0.0';
 
   /// Persisted override: full API base including `/api` when applicable.
@@ -14,7 +14,7 @@ class AppConstants {
   /// `flutter build apk --dart-define=API_BASE_URL=https://backend-8yq0.onrender.com/api`
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://backend-8yq0.onrender.com/api',
   );
 
   /// LAN host only (no scheme/port). Used when `API_BASE_URL` and saved URL are empty.
@@ -29,13 +29,14 @@ class AppConstants {
   /// Last detected on this machine (en0): `192.168.1.5`.
   static const String defaultPhysicalLanHost = '192.168.1.5';
 
-  /// Android Emulator: special alias to the host machine’s loopback (same as your PC’s `localhost:4000`).
-  static const String simulatorAndroidApiBase = 'http://10.0.2.2:4000/api';
+  /// Android Emulator fallback: points to the deployed Render backend so
+  /// simulator builds work out-of-the-box without `--dart-define` overrides.
+  /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://10.0.2.2:4000/api`.
+  static const String simulatorAndroidApiBase = 'https://backend-8yq0.onrender.com/api';
 
-  /// iOS Simulator: same network stack as your Mac; hits the API on your dev machine.
-  /// Use 127.0.0.1 so the client avoids IPv6-only `localhost` (::1) when the API is IPv4-only.
-  /// Do not use 10.0.2.2 here — that is Android-emulator-only.
-  static const String simulatorIosApiBase = 'http://127.0.0.1:4000/api';
+  /// iOS Simulator fallback: same as Android -- points to deployed backend.
+  /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://127.0.0.1:4000/api`.
+  static const String simulatorIosApiBase = 'https://backend-8yq0.onrender.com/api';
 
   static String? _runtimeBaseUrlOverride;
 
@@ -138,24 +139,24 @@ class AppConstants {
     }
 
     if (Platform.isAndroid) {
+      if (_apiHostFromEnv.isNotEmpty) {
+        return 'http://$_apiHostFromEnv:4000/api';
+      }
       if (_isAndroidEmulator) {
         return simulatorAndroidApiBase;
       }
-      final host = _apiHostFromEnv.isNotEmpty
-          ? _apiHostFromEnv
-          : defaultPhysicalLanHost;
-      return 'http://$host:4000/api';
+      return 'https://backend-8yq0.onrender.com/api';
     }
     if (Platform.isIOS) {
+      if (_apiHostFromEnv.isNotEmpty) {
+        return 'http://$_apiHostFromEnv:4000/api';
+      }
       if (_isIosSimulator) {
         return simulatorIosApiBase;
       }
-      final host = _apiHostFromEnv.isNotEmpty
-          ? _apiHostFromEnv
-          : defaultPhysicalLanHost;
-      return 'http://$host:4000/api';
+      return 'https://backend-8yq0.onrender.com/api';
     }
-    return 'http://localhost:4000/api';
+    return 'https://backend-8yq0.onrender.com/api';
   }
   
   // Storage Keys
@@ -193,18 +194,30 @@ class AppConstants {
   static const String privacyPolicyAsset = 'assets/legal/privacy_policy.md';
   static const String termsConditionsAsset = 'assets/legal/terms_and_conditions.md';
 
-  /// Optional: public HTTPS URL for the same policy (Play Store / website). In-app uses [privacyPolicyAsset].
+  /// Public HTTPS URLs for the legal documents, hosted on GitHub Pages.
+  ///
+  /// The Settings → Legal screen prefers a public URL when one is set
+  /// (loaded inside an in-app WebView via `LegalWebViewScreen`) and falls
+  /// back to the bundled markdown ([privacyPolicyAsset] /
+  /// [termsConditionsAsset]) only when the URL is empty. The bundled
+  /// markdown still ships in the app for offline browsing and for parity
+  /// with the canonical text submitted to the Play Store / App Store.
+  ///
+  /// Override per-build (e.g., staging) with
+  /// `--dart-define=PRIVACY_POLICY_URL=…`.
   static const String privacyPolicyPublicUrl = String.fromEnvironment(
     'PRIVACY_POLICY_URL',
-    defaultValue: '',
+    defaultValue:
+        'https://divinedrwa.github.io/GatePass-Legal/privacy_policy.html',
   );
   static const String termsConditionsPublicUrl = String.fromEnvironment(
     'TERMS_CONDITIONS_URL',
-    defaultValue: '',
+    defaultValue:
+        'https://divinedrwa.github.io/GatePass-Legal/terms_condition.html',
   );
 
   /// Google Play listing (`applicationId` from Android `build.gradle.kts`).
-  static const String androidApplicationId = 'com.app.society';
+  static const String androidApplicationId = 'com.app.gatepass';
 
   /// Apple App Store numeric ID from App Store Connect (URL contains `idXXXXXXXX`).
   /// If empty, opens the App Store home on iOS. Example:

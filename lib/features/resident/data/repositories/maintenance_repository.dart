@@ -13,6 +13,7 @@ class MaintenanceRepository {
     required int year,
     required bool isAdmin,
     String? maintenanceCollectionCycleId,
+    String? billingCycleId,
   }) async {
     try {
       final path = isAdmin
@@ -23,10 +24,11 @@ class MaintenanceRepository {
         queryParameters: {
           'month': month,
           'year': year,
-          if (isAdmin &&
-              maintenanceCollectionCycleId != null &&
+          if (maintenanceCollectionCycleId != null &&
               maintenanceCollectionCycleId.isNotEmpty)
             'cycleId': maintenanceCollectionCycleId,
+          if (billingCycleId != null && billingCycleId.isNotEmpty)
+            'billingCycleId': billingCycleId,
         },
       );
       final data = response.data;

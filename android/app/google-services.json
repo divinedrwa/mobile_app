@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:508579954527:android:f0ecfb8ba79778064300ea",
+        "android_client_info": {
+          "package_name": "com.app.gatepass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFDpDrnX9WqtkQpDNvVk0O7cb-NTDRVW8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:508579954527:android:b8329479772c10a14300ea",
         "android_client_info": {
           "package_name": "com.app.society"

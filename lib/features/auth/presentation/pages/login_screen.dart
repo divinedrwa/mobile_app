@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
@@ -226,26 +227,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(DesignSpacing.lg),
+          padding: const EdgeInsets.all(DesignSpacing.md),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [DesignColors.primary, DesignColors.primaryLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: const Color(0xFF0F172A),
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: DesignColors.primary.withValues(alpha: 0.4),
+                color: const Color(0xFF0F172A).withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.home_rounded,
-            size: 60,
-            color: Colors.white,
+          child: SvgPicture.asset(
+            'assets/branding/app_icon.svg',
+            width: 84,
+            height: 84,
           ),
         )
             .animate()
@@ -253,12 +250,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .scale(begin: const Offset(0.5, 0.5), curve: Curves.easeOutBack),
         const SizedBox(height: AppSpacing.md),
         const Text(
-          'DIVINE APP',
+          'GatePass+',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: DesignColors.primary,
-            letterSpacing: 2,
+            letterSpacing: 0.5,
           ),
         ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 600.ms),
       ],
@@ -282,7 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .slideY(begin: DesignAnimations.slideNormal, end: 0),
         const SizedBox(height: AppSpacing.sm),
         const Text(
-          'Sign in to access your society dashboard',
+          'Reside. Approve. Manage.',
           style: TextStyle(
             fontSize: 16,
             color: DesignColors.textSecondary,

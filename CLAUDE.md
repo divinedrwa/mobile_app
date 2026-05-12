@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Flutter mobile app for society/community management ("Divine Society Management App"). Supports three user roles: Resident, Guard, and Admin. Backend API runs separately on port 4000.
 
-- **Package ID**: `com.app.society`
+- **Package ID**: `com.app.gatepass`
 - **Dart SDK**: ^3.11.5
 - **Platforms**: iOS, Android
 

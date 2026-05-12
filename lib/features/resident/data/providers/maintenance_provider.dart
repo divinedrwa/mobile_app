@@ -183,5 +183,6 @@ final maintenanceDashboardProvider = FutureProvider<Map<String, dynamic>>((
         year: filter.year,
         isAdmin: isAdmin,
         maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
+        billingCycleId: filter.billingCycleId,
       );
 });

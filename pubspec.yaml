@@ -109,6 +109,9 @@ dev_dependencies:
 
   # Linting
   flutter_lints: ^6.0.0
+  custom_lint: ^0.7.6
+  gatepass_lints:
+    path: packages/gatepass_lints
 
   # Code generation & testing
   build_runner: ^2.4.15
@@ -133,6 +136,7 @@ flutter:
 
   assets:
     - assets/legal/
+    - assets/branding/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -10,7 +10,7 @@ The app expects Firebase config files next to the Flutter project:
 ## Production setup
 
 1. In [Firebase Console](https://console.firebase.google.com), create or select your project.
-2. Add an **Android** app with package name matching `applicationId` in `android/app/build.gradle.kts` (currently `com.app.society`). Download `google-services.json` into `android/app/`.
+2. Add an **Android** app with package name matching `applicationId` in `android/app/build.gradle.kts` (currently `com.app.gatepass`). Download `google-services.json` into `android/app/`.
 3. Add an **iOS** app with bundle ID matching Xcode (`Runner` target). Download `GoogleService-Info.plist` into `ios/Runner/`.
 4. Enable **Google Analytics** and **Cloud Messaging** for the project if you use those features.
 

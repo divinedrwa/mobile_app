@@ -21,7 +21,7 @@ if (hasReleaseSigning) {
 }
 
 android {
-    namespace = "com.app.society"
+    namespace = "com.app.gatepass"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -36,7 +36,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.app.society"
+        applicationId = "com.app.gatepass"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

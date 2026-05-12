@@ -6,9 +6,7 @@ import 'bootstrap/app_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
-import 'core/theme/app_theme.dart';
-import 'core/theme/dark_theme.dart';
-import 'core/theme/theme_mode_provider.dart';
+import 'theme/theme.dart' as gp_theme;
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'core/routing/app_navigator_keys.dart';
 import 'core/session/account_deactivated_handler.dart';
@@ -89,16 +87,17 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       _routerRefresh.notify();
     });
 
-    // Theme preference is persisted via [ThemeModeNotifier] (system / light /
-    // dark). MaterialApp will swap between [theme] and [darkTheme] based on
-    // the resolved mode — `system` defers to the platform brightness.
-    final themeMode = ref.watch(themeModeProvider);
+    // Theme preference is persisted via [gp_theme.ThemeModeNotifier]
+    // (system / light / dark). `themeTokensProvider` holds the active
+    // palette and is ready to accept an API-driven override later.
+    final themeMode = ref.watch(gp_theme.themeModeProvider);
+    final tokens = ref.watch(gp_theme.themeTokensProvider);
 
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: DarkTheme.themeData,
+      theme: gp_theme.AppTheme.light(palette: tokens.light),
+      darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
       themeMode: themeMode,
       routerConfig: _router!,
     );

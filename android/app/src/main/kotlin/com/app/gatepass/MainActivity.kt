@@ -1,4 +1,4 @@
-package com.app.society
+package com.app.gatepass
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

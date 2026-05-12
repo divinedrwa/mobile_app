@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="225" fill="#0F172A"/>
+  <rect x="240" y="540" width="80" height="260" rx="14" fill="#FFFFFF"/>
+  <rect x="704" y="540" width="80" height="260" rx="14" fill="#FFFFFF"/>
+  <rect x="200" y="780" width="624" height="48" rx="12" fill="#FFFFFF"/>
+  <g transform="translate(280 580) rotate(-30)">
+    <rect x="0" y="-22" width="520" height="44" rx="10" fill="#FFFFFF"/>
+    <rect x="40" y="-12" width="60" height="24" rx="3" fill="#EF4444"/>
+    <rect x="160" y="-12" width="60" height="24" rx="3" fill="#EF4444"/>
+    <rect x="280" y="-12" width="60" height="24" rx="3" fill="#EF4444"/>
+    <rect x="400" y="-12" width="60" height="24" rx="3" fill="#EF4444"/>
+  </g>
+  <circle cx="280" cy="580" r="28" fill="#0F172A" stroke="#FFFFFF" stroke-width="8"/>
+  <circle cx="820" cy="220" r="130" fill="#10B981"/>
+  <text x="820" y="270" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="160" font-weight="600" fill="#FFFFFF">+</text>
+</svg>

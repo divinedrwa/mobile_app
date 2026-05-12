@@ -668,6 +668,23 @@ class _MaintenancePaymentScreenState
               _buildYearReviewTab(context, filter),
             ];
 
+            // Block rendering until financial-year list has resolved so
+            // the UI doesn't flash default/zero values while the filter
+            // bar spinner is still running.
+            final fyList = ref.watch(billingFinancialYearsProvider);
+
+            if (fyList.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final hasNoFinancialYears = fyList.whenOrNull(
+              data: (fys) => fys.isEmpty,
+            ) ?? false;
+
+            if (hasNoFinancialYears) {
+              return _buildNoRecordsFullPage();
+            }
+
             return Builder(
               builder: (ctx) {
                 final tabCtrl = DefaultTabController.of(ctx);
@@ -757,11 +774,14 @@ class _MaintenancePaymentScreenState
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         child: fyAsync.when(
-          loading: () => _legacyCalendarMonthYearPickers(filter, border),
-          error: (err, stack) => _legacyCalendarMonthYearPickers(filter, border),
+          loading: () => const SizedBox(
+            height: 48,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          error: (err, stack) => _noFinancialYearMessage(),
           data: (fys) {
             if (fys.isEmpty) {
-              return _legacyCalendarMonthYearPickers(filter, border);
+              return _noFinancialYearMessage();
             }
             return _financialYearBillingCyclePickers(
               filter,
@@ -775,114 +795,69 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _legacyCalendarMonthYearPickers(
-    MaintenanceDashboardFilter filter,
-    OutlineInputBorder border,
-  ) {
-    final years = List<int>.generate(6, (index) => DateTime.now().year - index);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+  Widget _buildNoRecordsFullPage() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: DropdownButtonFormField<int>(
-                key: ValueKey('maint-month-${filter.month}'),
-                initialValue: filter.month,
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: DesignColors.surfaceSoft,
-                  labelText: 'Calendar month',
-                  labelStyle: DesignTypography.labelSmall.copyWith(
-                    color: DesignColors.textSecondary,
-                  ),
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: DesignColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                dropdownColor: DesignColors.surface,
-                items: List.generate(
-                  12,
-                  (index) => DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(
-                      DateFormat('MMMM').format(DateTime(2024, index + 1)),
-                    ),
-                  ),
-                ),
-                onChanged: (m) {
-                  if (m == null) return;
-                  final cur = ref.read(maintenanceDashboardFilterProvider);
-                  ref.read(maintenanceDashboardFilterProvider.notifier).state =
-                      cur.copyWith(
-                    month: m,
-                    clearCollectionCycleId: true,
-                    clearFinancialYearId: true,
-                    clearBillingCycleId: true,
-                  );
-                  ref.invalidate(maintenanceDashboardProvider);
-                },
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: DesignColors.primary.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 48,
+                color: DesignColors.primary,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: DropdownButtonFormField<int>(
-                key: ValueKey('maint-year-${filter.year}'),
-                initialValue: filter.year,
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: DesignColors.surfaceSoft,
-                  labelText: 'Calendar year',
-                  labelStyle: DesignTypography.labelSmall.copyWith(
-                    color: DesignColors.textSecondary,
-                  ),
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: DesignColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                dropdownColor: DesignColors.surface,
-                items: years
-                    .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
-                    .toList(),
-                onChanged: (y) {
-                  if (y == null) return;
-                  final cur = ref.read(maintenanceDashboardFilterProvider);
-                  ref.read(maintenanceDashboardFilterProvider.notifier).state =
-                      cur.copyWith(
-                    year: y,
-                    clearCollectionCycleId: true,
-                    clearFinancialYearId: true,
-                    clearBillingCycleId: true,
-                  );
-                  ref.invalidate(maintenanceDashboardProvider);
-                },
+            const SizedBox(height: 20),
+            Text(
+              'No records available',
+              style: DesignTypography.headingM.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Financial year has not been created yet. Records will appear here once your society admin sets up billing.',
+              textAlign: TextAlign.center,
+              style: DesignTypography.bodySmall.copyWith(
+                color: DesignColors.textSecondary,
+                height: 1.4,
               ),
             ),
           ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _noFinancialYearMessage() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: DesignColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: DesignColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: DesignColors.textSecondary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'No records available. Financial year has not been created yet.',
+              style: DesignTypography.bodySmall.copyWith(
+                color: DesignColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1792,7 +1767,8 @@ class _MaintenancePaymentScreenState
 
           double mExp, mColl, mExpense;
           int paidC, unpaidC;
-          if (breakdown != null) {
+          if (breakdown != null &&
+              ((breakdown['totalExpected'] as num?)?.toDouble() ?? 0) > 0) {
             mExp = (breakdown['totalExpected'] as num?)?.toDouble() ?? 0;
             mColl = (breakdown['totalCollected'] as num?)?.toDouble() ?? 0;
             mExpense = (breakdown['totalExpense'] as num?)?.toDouble() ?? 0;
@@ -1800,10 +1776,10 @@ class _MaintenancePaymentScreenState
             unpaidC = (breakdown['unpaidCount'] as num?)?.toInt() ?? 0;
           } else {
             mExp = cycleAmount;
-            mColl = 0;
-            mExpense = 0;
-            paidC = 0;
-            unpaidC = 0;
+            mColl = (breakdown?['totalCollected'] as num?)?.toDouble() ?? 0;
+            mExpense = (breakdown?['totalExpense'] as num?)?.toDouble() ?? 0;
+            paidC = (breakdown?['paidCount'] as num?)?.toInt() ?? 0;
+            unpaidC = (breakdown?['unpaidCount'] as num?)?.toInt() ?? 0;
           }
 
           // Extract expense breakdown by category
