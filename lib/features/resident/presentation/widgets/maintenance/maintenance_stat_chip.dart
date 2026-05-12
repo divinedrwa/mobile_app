@@ -23,7 +23,7 @@ class MaintenanceStatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = _toneColors(tone);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: DesignColors.surface,
         borderRadius: BorderRadius.circular(DesignRadius.lg),

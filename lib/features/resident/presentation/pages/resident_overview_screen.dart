@@ -10,7 +10,7 @@ import '../../data/providers/maintenance_provider.dart';
 import 'amenity_booking_history_screen.dart';
 import 'parcel_management_screen.dart';
 
-const Color _kPageBg = Color(0xFFF8F9FB);
+const Color _kPageBg = DesignColors.background;
 const Color _kOverviewOrange = Color(0xFFFF6D00);
 
 /// Full overview — opened from Home “View all”.
@@ -292,16 +292,16 @@ class _HeroSummaryCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   headline,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                     height: 1.2,
                     color: DesignColors.textPrimary,
                   ),
@@ -316,7 +316,7 @@ class _HeroSummaryCard extends StatelessWidget {
                     color: DesignColors.textSecondary.withValues(alpha: 0.95),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -453,18 +453,18 @@ class _OverviewMetricTile extends StatelessWidget {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(11),
+                          padding: const EdgeInsets.all(9),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.11),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(icon, color: color, size: 24),
+                          child: Icon(icon, color: color, size: 20),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,11 +499,11 @@ class _OverviewMetricTile extends StatelessWidget {
                             Text(
                               '$value',
                               style: const TextStyle(
-                                fontSize: 24,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: DesignColors.textPrimary,
                                 height: 1.0,
-                                letterSpacing: -0.6,
+                                letterSpacing: -0.5,
                               ),
                             ),
                             const SizedBox(height: 8),

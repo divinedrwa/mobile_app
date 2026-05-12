@@ -15,40 +15,40 @@ class MaintenanceHubSkeleton extends StatelessWidget {
       child: SingleChildScrollView(
         physics: NeverScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(
-          horizontal: DesignSpacing.screenPaddingH,
-          vertical: DesignSpacing.lg,
+          horizontal: DesignSpacing.lg + 4, // 20px
+          vertical: DesignSpacing.sm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // -- Hero status card --
-            ShimmerBox(height: 160, borderRadius: DesignRadius.xl),
+            ShimmerBox(height: 140, borderRadius: DesignRadius.xl),
 
-            SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.lg),
 
             // -- Stat chips row (3) --
             Row(
               children: [
-                Expanded(child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg)),
+                Expanded(child: ShimmerBox(height: 52, borderRadius: DesignRadius.lg)),
                 SizedBox(width: DesignSpacing.sm),
-                Expanded(child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg)),
+                Expanded(child: ShimmerBox(height: 52, borderRadius: DesignRadius.lg)),
                 SizedBox(width: DesignSpacing.sm),
-                Expanded(child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg)),
+                Expanded(child: ShimmerBox(height: 52, borderRadius: DesignRadius.lg)),
               ],
             ),
 
-            SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.lg),
 
             // -- Shortcut cards (2) --
             Row(
               children: [
-                Expanded(child: ShimmerBox(height: 80, borderRadius: DesignRadius.lg)),
+                Expanded(child: ShimmerBox(height: 52, borderRadius: DesignRadius.lg)),
                 SizedBox(width: DesignSpacing.sm),
-                Expanded(child: ShimmerBox(height: 80, borderRadius: DesignRadius.lg)),
+                Expanded(child: ShimmerBox(height: 52, borderRadius: DesignRadius.lg)),
               ],
             ),
 
-            SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.lg + 4),
 
             // -- Section header --
             ShimmerBox(height: 14, width: 140, borderRadius: DesignRadius.sm),
@@ -56,11 +56,11 @@ class MaintenanceHubSkeleton extends StatelessWidget {
             SizedBox(height: DesignSpacing.md),
 
             // -- Payment list items --
-            ShimmerBox(height: 80, borderRadius: DesignRadius.lg),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
             SizedBox(height: DesignSpacing.sm),
-            ShimmerBox(height: 80, borderRadius: DesignRadius.lg),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
             SizedBox(height: DesignSpacing.sm),
-            ShimmerBox(height: 80, borderRadius: DesignRadius.lg),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
           ],
         ),
       ),

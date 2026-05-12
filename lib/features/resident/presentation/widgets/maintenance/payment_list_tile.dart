@@ -48,7 +48,7 @@ class PaymentListTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(DesignRadius.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
           decoration: BoxDecoration(
             border: Border.all(color: DesignColors.borderLight),
             borderRadius: BorderRadius.circular(DesignRadius.lg),

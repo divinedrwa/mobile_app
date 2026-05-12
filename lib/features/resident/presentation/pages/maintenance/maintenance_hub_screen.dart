@@ -137,20 +137,20 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
               onRefresh: _refresh,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg + 4, // 20px
+                  AppSpacing.sm,
+                  AppSpacing.lg + 4,
                   AppSpacing.xl,
-                  AppSpacing.md,
-                  AppSpacing.xl,
-                  AppSpacing.xxl,
                 ),
                 children: [
                   _buildHero(cycleAsync, pendingAsync.valueOrNull ?? const []),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildStatRow(cycleAsync, pendingAsync.valueOrNull ?? const []),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildShortcutRow(pendingAsync.valueOrNull ?? const []),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg + 4), // 20px before sections
                   _buildPendingSection(pendingAsync),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.lg + 4),
                   _buildRecentSection(historyAsync),
                 ],
               ),
@@ -249,7 +249,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
   Widget _heroSkeleton() {
     return Container(
-      height: 220,
+      height: 160,
       decoration: BoxDecoration(
         color: DesignColors.surfaceSoft,
         borderRadius: BorderRadius.circular(DesignRadius.xl),
@@ -267,7 +267,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
   Widget _heroError(Object e) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: DesignColors.error.withValues(alpha: 0.06),
         border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
@@ -626,8 +626,8 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.xxl,
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xl,
       ),
       decoration: BoxDecoration(
         color: DesignColors.surface,
@@ -708,7 +708,7 @@ class _ShortcutCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(DesignRadius.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
           decoration: BoxDecoration(
             border: Border.all(color: DesignColors.borderLight),
             borderRadius: BorderRadius.circular(DesignRadius.lg),
@@ -716,15 +716,15 @@ class _ShortcutCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: tone.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(DesignRadius.md),
                 ),
-                child: Icon(icon, color: tone, size: 18),
+                child: Icon(icon, color: tone, size: 16),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   label,

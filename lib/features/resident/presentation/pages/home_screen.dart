@@ -43,7 +43,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 // —— Reference design spec (resident landing) ——
 const Color _kOrange = Color(0xFFFF6D00);
 const Color _kGreen = Color(0xFF4CAF50);
-const Color _kPageBg = Color(0xFFF8F9FB);
+const Color _kPageBg = DesignColors.background;
 const Color _kTextSecondary = Color(0xFF64748B);
 
 const double _kPadH = 20;

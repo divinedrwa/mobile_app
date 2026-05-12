@@ -90,10 +90,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: DesignColors.surface,
             borderRadius: BorderRadius.circular(DesignRadius.lg),
@@ -170,11 +170,11 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
           actionLabel: null,
           onAction: null,
         ),
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
         // Money breakdown — same numbers the residents page uses, framed
         // for the resident's view (cash + credit applied = total covered).
         Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: DesignColors.surface,
             borderRadius: BorderRadius.circular(DesignRadius.lg),

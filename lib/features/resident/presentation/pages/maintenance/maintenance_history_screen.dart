@@ -82,7 +82,7 @@ class _MaintenanceHistoryScreenState
 
     if (filtered.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           if (fyOptions.isNotEmpty) _filterRow(fyOptions),
           const SizedBox(height: AppSpacing.xxl),
@@ -254,10 +254,10 @@ class _MaintenanceHistoryScreenState
 
   Widget _errorView(Object e) {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: DesignColors.error.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(DesignRadius.lg),

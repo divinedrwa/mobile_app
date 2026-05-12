@@ -170,7 +170,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
         ? const [Color(0xFFEF4444), Color(0xFFB91C1C)]
         : const [Color(0xFFF97316), Color(0xFFC2410C)];
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradient,
@@ -180,9 +180,9 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
         borderRadius: BorderRadius.circular(DesignRadius.xl),
         boxShadow: [
           BoxShadow(
-            color: gradient.last.withValues(alpha: 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: gradient.last.withValues(alpha: 0.20),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -246,7 +246,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
 
   Widget _emptyState() {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         const SizedBox(height: AppSpacing.xxxl),
         Container(
@@ -298,10 +298,10 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
 
   Widget _errorView() {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: DesignColors.error.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(DesignRadius.lg),

@@ -157,19 +157,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              DesignColors.primary.withValues(alpha: 0.05),
-              Colors.white,
-              DesignColors.primaryLight.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
+      backgroundColor: DesignColors.background,
+      body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -218,7 +207,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-        ),
       ),
     );
   }
@@ -229,11 +217,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Container(
           padding: const EdgeInsets.all(DesignSpacing.md),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: DesignColors.textPrimary,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -254,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: DesignColors.primary,
+            color: DesignColors.textPrimary,
             letterSpacing: 0.5,
           ),
         ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 600.ms),

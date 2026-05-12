@@ -41,7 +41,7 @@ class MaintenanceStatusCard extends StatelessWidget {
     final palette = _palette(kind);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: palette.gradient,
@@ -51,9 +51,9 @@ class MaintenanceStatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(DesignRadius.xl),
         boxShadow: [
           BoxShadow(
-            color: palette.gradient.last.withValues(alpha: 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: palette.gradient.last.withValues(alpha: 0.22),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -63,24 +63,25 @@ class MaintenanceStatusCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(DesignRadius.lg),
+                  borderRadius: BorderRadius.circular(DesignRadius.md),
                 ),
-                child: Icon(palette.icon, color: Colors.white, size: 22),
+                child: Icon(palette.icon, color: Colors.white, size: 18),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: DesignTypography.headingM.copyWith(
+                      style: DesignTypography.bodyMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
+                        fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -96,22 +97,22 @@ class MaintenanceStatusCard extends StatelessWidget {
             ],
           ),
           if (amountValue != null) ...[
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.md),
             if (amountLabel != null)
               Text(
                 amountLabel!.toUpperCase(),
-                style: DesignTypography.caption.copyWith(
+                style: DesignTypography.captionSmall.copyWith(
                   color: Colors.white.withValues(alpha: 0.75),
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               amountValue!,
               style: DesignTypography.headingXL.copyWith(
                 color: Colors.white,
-                fontSize: 34,
+                fontSize: 26,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.6,
               ),
@@ -138,7 +139,7 @@ class MaintenanceStatusCard extends StatelessWidget {
             ),
           ],
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -146,7 +147,7 @@ class MaintenanceStatusCard extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: palette.gradient.last,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(DesignRadius.lg),
                   ),

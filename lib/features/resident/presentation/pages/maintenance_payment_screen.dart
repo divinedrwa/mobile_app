@@ -893,6 +893,10 @@ class _MaintenancePaymentScreenState
                   )
               ? filter.financialYearId
               : null,
+          style: DesignTypography.bodyMedium.copyWith(
+            color: DesignColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
           decoration: InputDecoration(
             isDense: true,
             filled: true,
@@ -987,6 +991,10 @@ class _MaintenancePaymentScreenState
                 return DropdownButtonFormField<String>(
                   key: ValueKey('maint-cycle-$selectedId'),
                   initialValue: selectedId,
+                  style: DesignTypography.bodyMedium.copyWith(
+                    color: DesignColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: InputDecoration(
                     isDense: true,
                     filled: true,

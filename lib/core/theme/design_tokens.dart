@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// 🎨 DIVINE APP - DESIGN TOKENS
-/// Centralized design system matching the design specification
-/// 
+/// 🎨 GATEPASS+ - DESIGN TOKENS (Legacy)
+/// Centralized design system — premium teal-and-gold palette.
+///
 /// This file contains all design tokens used throughout the app:
-/// - Colors (Primary, Secondary, Semantic, Neutral)
+/// - Colors (Primary Teal, Amber Accent, Semantic, Neutral)
 /// - Typography (Headings, Body, Labels, Captions)
 /// - Spacing (Based on 8pt grid)
 /// - Radius (Border radius values)
@@ -18,14 +18,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 class DesignColors {
   // PRIMARY COLORS
-  /// Primary Blue - Main brand color (#2563EB)
-  static const Color primary = Color(0xFF2563EB);
-  
-  /// Primary Blue Light (#3B82F6)
-  static const Color primaryLight = Color(0xFF3B82F6);
-  
-  /// Primary Blue Dark - For pressed states
-  static const Color primaryDark = Color(0xFF1E40AF);
+  /// Primary Teal - Main brand color (#0F766E)
+  static const Color primary = Color(0xFF0F766E);
+
+  /// Primary Teal Light (#14B8A6)
+  static const Color primaryLight = Color(0xFF14B8A6);
+
+  /// Primary Teal Dark - For pressed states (#115E59)
+  static const Color primaryDark = Color(0xFF115E59);
   
   // SECONDARY COLORS  
   /// Secondary color (#475569)
@@ -74,7 +74,7 @@ class DesignColors {
   /// Warning color (#F59E0B)
   static const Color warning = Color(0xFFF59E0B);
   
-  /// Info color (uses primary blue)
+  /// Info color (uses primary teal)
   static const Color info = primary;
   
   // SOCIAL COLORS
@@ -92,7 +92,7 @@ class DesignColors {
   static const Color pressedOverlay = Color(0x1A000000);
   
   /// Focus overlay (12% primary)
-  static const Color focusOverlay = Color(0x1F2563EB);
+  static const Color focusOverlay = Color(0x1F0F766E);
   
   /// Disabled overlay (38% white)
   static const Color disabledOverlay = Color(0x61FFFFFF);

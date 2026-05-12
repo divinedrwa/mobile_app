@@ -9,7 +9,7 @@ import 'notices_list_screen.dart';
 import 'notifications_center_screen.dart';
 import 'polls_list_screen.dart';
 
-const Color _kPageBg = Color(0xFFF8F9FB);
+const Color _kPageBg = DesignColors.background;
 const Color _kTextSecondary = Color(0xFF64748B);
 const double _kPadH = 20;
 

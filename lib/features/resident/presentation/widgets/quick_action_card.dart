@@ -55,9 +55,9 @@ class _QuickActionCardState extends State<QuickActionCard> {
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.action.color.withValues(alpha: 0.15),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: widget.action.color.withValues(alpha: 0.10),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -74,7 +74,7 @@ class _QuickActionCardState extends State<QuickActionCard> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -84,18 +84,18 @@ class _QuickActionCardState extends State<QuickActionCard> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: widget.action.color.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: widget.action.color.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
                       child: Icon(
                         widget.action.icon,
-                        size: 30,
+                        size: 22,
                         color: Colors.white,
                       ),
                     ),

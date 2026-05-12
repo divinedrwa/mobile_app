@@ -37,9 +37,9 @@ class FinancialAlertCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: color.withValues(alpha: 0.18),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -54,26 +54,26 @@ class FinancialAlertCard extends StatelessWidget {
                 children: [
                   // Icon Container
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [color.shade600, color.shade700],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withValues(alpha: 0.5),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: color.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
                     child: Icon(
                       isOverdue ? Icons.warning_rounded : Icons.receipt_long_rounded,
                       color: Colors.white,
-                      size: 32,
+                      size: 22,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),

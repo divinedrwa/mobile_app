@@ -424,19 +424,8 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              DesignColors.primary.withValues(alpha: 0.07),
-              DesignColors.background,
-              DesignColors.primaryLight.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
+      backgroundColor: DesignColors.background,
+      body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Column(
@@ -501,7 +490,6 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
               ],
             ),
           ),
-        ),
       ),
     );
   }
