@@ -495,6 +495,24 @@ class GuardActiveVisitorsTabData {
   bool get isEmpty => pendingVisitors.isEmpty && preApproved.isEmpty;
 }
 
+/// Single source of truth for the guard-facing visitor status copy. Keeps the
+/// active-entries pill and the visitor-detail header aligned so a status like
+/// "Approved · admit at gate" doesn't render as "Approved · admit" in one
+/// place and "Approved — admit at gate" in another. Pass [compact] for the
+/// small pill on the list; the detail page uses the full form.
+String guardVisitorStatusLabel(GuardVisitorRow v, {bool compact = false}) {
+  if (v.entryDenied) return 'Entry denied';
+  if (v.needsResidentApproval) {
+    return compact ? 'Awaiting resident' : 'Awaiting resident approval';
+  }
+  if (v.awaitingGuardAdmission) {
+    return compact ? 'Approved · admit' : 'Approved · admit at gate';
+  }
+  if (v.awaitingCheckout && v.status == 'CHECKED_IN') return 'On premises';
+  if (v.checkOutTime != null) return 'Checked out';
+  return v.status;
+}
+
 /// GET /guards/residents-directory
 class ResidentDirectoryRow {
   ResidentDirectoryRow({

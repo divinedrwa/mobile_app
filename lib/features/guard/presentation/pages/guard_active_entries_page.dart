@@ -140,13 +140,12 @@ class _VisitorsTab extends ConsumerStatefulWidget {
 }
 
 class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
-  String _statusLabel(GuardVisitorRow v) {
-    if (v.entryDenied) return 'Denied';
-    if (v.needsResidentApproval) return 'Awaiting resident';
-    if (v.awaitingGuardAdmission) return 'Approved · admit';
-    if (v.awaitingCheckout) return 'Inside';
-    return 'Exited';
-  }
+  // Per-row busy guard so a rapid double-tap on Admit/Mark exit can't fire
+  // two concurrent network calls for the same visitor.
+  final Set<String> _busyVisitorIds = <String>{};
+
+  String _statusLabel(GuardVisitorRow v) =>
+      guardVisitorStatusLabel(v, compact: true);
 
   Color _statusTone(BuildContext context, GuardVisitorRow v) {
     if (v.entryDenied) return GuardTokens.dangerBrand;
@@ -160,6 +159,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     BuildContext context,
     GuardVisitorRow v,
   ) async {
+    if (_busyVisitorIds.contains(v.id)) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -180,6 +180,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
       ),
     );
     if (ok != true || !context.mounted) return;
+    setState(() => _busyVisitorIds.add(v.id));
     try {
       await ref.read(guardRepositoryProvider).confirmVisitorEntryAfterApproval(v.id);
       ref.invalidate(guardActiveVisitorsTabProvider);
@@ -197,6 +198,8 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
           SnackBar(content: Text(userFacingMessage(e))),
         );
       }
+    } finally {
+      if (mounted) setState(() => _busyVisitorIds.remove(v.id));
     }
   }
 
@@ -474,6 +477,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     BuildContext context,
     GuardVisitorRow v,
   ) {
+    final busy = _busyVisitorIds.contains(v.id);
     if (v.awaitingGuardAdmission) {
       return FilledButton.icon(
         style: GuardTokens.primaryFilled(context).copyWith(
@@ -489,11 +493,19 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             ),
           ),
         ),
-        onPressed: () => _confirmAdmission(context, v),
-        icon: const Icon(Icons.how_to_reg_outlined, size: 18),
-        label: const Text(
-          'Admit at gate',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+        onPressed: busy ? null : () => _confirmAdmission(context, v),
+        icon: busy
+            ? const SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.verified_user_outlined, size: 18),
+        label: Text(
+          busy ? 'Admitting…' : 'Admit at gate',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
         ),
       );
     }
@@ -514,11 +526,19 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             ),
           ),
         ),
-        onPressed: () => _checkout(context, v),
-        icon: const Icon(Icons.logout_rounded, size: 18),
-        label: const Text(
-          'Mark exit',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+        onPressed: busy ? null : () => _checkout(context, v),
+        icon: busy
+            ? const SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: GuardTokens.guardAccentDeep,
+                ),
+              )
+            : const Icon(Icons.logout_rounded, size: 18),
+        label: Text(
+          busy ? 'Marking…' : 'Mark exit',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
         ),
       );
     }
@@ -529,6 +549,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     BuildContext context,
     GuardVisitorRow v,
   ) async {
+    if (_busyVisitorIds.contains(v.id)) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -548,6 +569,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
       ),
     );
     if (ok != true || !context.mounted) return;
+    setState(() => _busyVisitorIds.add(v.id));
     try {
       await ref.read(guardRepositoryProvider).checkOutVisitor(v.id);
       ref.invalidate(guardActiveVisitorsTabProvider);
@@ -560,6 +582,8 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
           context,
         ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
       }
+    } finally {
+      if (mounted) setState(() => _busyVisitorIds.remove(v.id));
     }
   }
 }
@@ -779,8 +803,10 @@ class _DeliveriesTab extends ConsumerWidget {
                     ),
                   ),
                   trailing: canCollect
-                      ? TextButton(
+                      ? _BusyTextActionButton(
                           style: GuardTokens.textLink(context),
+                          label: 'Collected',
+                          busyLabel: 'Marking…',
                           onPressed: () async {
                             try {
                               await ref
@@ -798,7 +824,6 @@ class _DeliveriesTab extends ConsumerWidget {
                               }
                             }
                           },
-                          child: const Text('Collected'),
                         )
                       : null,
                 ),
@@ -969,34 +994,31 @@ class _VehicleTab extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  trailing: !awaitingExit
+                  trailing: !awaitingExit || id == null || id.isEmpty
                       ? null
-                      : TextButton(
+                      : _BusyTextActionButton(
                           style: GuardTokens.textLink(context),
-                          onPressed:
-                              id == null || id.isEmpty
-                                  ? null
-                                  : () async {
-                                      try {
-                                        await ref
-                                            .read(guardRepositoryProvider)
-                                            .markGateVehicleExit(id);
-                                        ref.invalidate(
-                                          guardGateVehicleTodayProvider,
-                                        );
-                                      } catch (e) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content:
-                                                  Text(userFacingMessage(e)),
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                          child: const Text('Exit'),
+                          label: 'Exit',
+                          busyLabel: 'Recording…',
+                          onPressed: () async {
+                            try {
+                              await ref
+                                  .read(guardRepositoryProvider)
+                                  .markGateVehicleExit(id);
+                              ref.invalidate(
+                                guardGateVehicleTodayProvider,
+                              );
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  SnackBar(
+                                    content: Text(userFacingMessage(e)),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                         ),
                 ),
               );
@@ -1030,6 +1052,61 @@ String _vehicleKindLabel(String kind) {
 String _fmtTime(DateTime? dt) {
   if (dt == null) return '--:--';
   return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+}
+
+/// A small `TextButton` wrapper that owns its own busy state so per-row
+/// actions in the deliveries and vehicles tabs (which are still
+/// `ConsumerWidget`s) can show an inline spinner during the network call
+/// and reject double-taps without us having to lift state into a parent.
+class _BusyTextActionButton extends StatefulWidget {
+  const _BusyTextActionButton({
+    required this.label,
+    required this.busyLabel,
+    required this.onPressed,
+    this.style,
+  });
+
+  final String label;
+  final String busyLabel;
+  final Future<void> Function() onPressed;
+  final ButtonStyle? style;
+
+  @override
+  State<_BusyTextActionButton> createState() => _BusyTextActionButtonState();
+}
+
+class _BusyTextActionButtonState extends State<_BusyTextActionButton> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      style: widget.style,
+      onPressed: _busy
+          ? null
+          : () async {
+              setState(() => _busy = true);
+              try {
+                await widget.onPressed();
+              } finally {
+                if (mounted) setState(() => _busy = false);
+              }
+            },
+      child: _busy
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 6),
+                Text(widget.busyLabel),
+              ],
+            )
+          : Text(widget.label),
+    );
+  }
 }
 
 class _VisitorMetaLine extends StatelessWidget {

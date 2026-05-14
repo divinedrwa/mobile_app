@@ -23,7 +23,13 @@ if (hasReleaseSigning) {
 android {
     namespace = "com.app.gatepass"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pin to NDK r28+ explicitly so 16 KB memory-page support is always on.
+    // Google Play (May 31, 2026) requires apps targeting Android 15+ to ship
+    // 16 KB-aligned native libraries; NDK r28 produces 16 KB-aligned `.so`
+    // files by default. Reading `flutter.ndkVersion` is safe today (3.41 ships
+    // r28.2) but pinning here protects against a downgrade if a future Flutter
+    // SDK or a plugin overrides the project NDK.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -33,6 +39,17 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    // Pack `.so` files uncompressed and page-aligned inside the APK/AAB. AGP
+    // 8.x already defaults to uncompressed jniLibs, but making it explicit
+    // means the build will fail loudly if a plugin or future AGP toggles
+    // legacy packaging back on (legacy packaging compresses the libs and
+    // breaks 16 KB load alignment at install time).
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 
     defaultConfig {

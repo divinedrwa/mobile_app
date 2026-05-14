@@ -44,6 +44,28 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
     super.dispose();
   }
 
+  /// Single source of truth for the note that will be POSTed — mirrors the
+  /// fallback default when the textfield is empty so the preview banner and
+  /// the actual broadcast can never disagree.
+  String _broadcastNote() {
+    final trimmed = _note.text.trim();
+    return trimmed.isEmpty
+        ? 'Long-press escalation from guard app'
+        : trimmed;
+  }
+
+  Color _kindAccent(String kind) {
+    switch (kind) {
+      case 'Fire':
+        return GuardTokens.dangerBrand;
+      case 'Medical':
+        return GuardTokens.warning;
+      case 'Security':
+      default:
+        return GuardTokens.guardAccentDeep;
+    }
+  }
+
   Future<void> _broadcast() async {
     if (_sending) return;
     setState(() => _sending = true);
@@ -54,9 +76,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
           .read(guardRepositoryProvider)
           .postSocBroadcast(
             kind: _kindToApi(_kind),
-            note: _note.text.trim().isEmpty
-                ? 'Long-press escalation from guard app'
-                : _note.text.trim(),
+            note: _broadcastNote(),
           );
       span.complete();
       if (!mounted) return;
@@ -83,7 +103,6 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final size = min<double>(mq.size.width - 48.0, 260.0);
 
     return GuardThemeScope(
       child: Scaffold(
@@ -97,12 +116,38 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
           title: Text('Emergency', style: GuardTokens.headingStyle(context)),
           centerTitle: false,
         ),
+        // The body used to be a plain Column inside Padding, which overflowed
+        // by ~12px on shorter devices after the broadcast preview banner was
+        // added. Wrapping in LayoutBuilder + SingleChildScrollView +
+        // ConstrainedBox + IntrinsicHeight gives us the best of both worlds:
+        // on tall screens the Spacer() still pushes the red circle to the
+        // bottom of the viewport, and on short screens the content becomes
+        // scrollable instead of cutting off the disclaimer / overflow stripe.
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(GuardTokens.padScreen),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Adapt the long-press circle to whichever is smaller: the
+              // viewport width minus padding, the historical 260px cap, or
+              // ~32% of available height so the button still fits cleanly on
+              // ~5.5" devices without crowding the preview banner.
+              final size = [
+                mq.size.width - 48.0,
+                260.0,
+                constraints.maxHeight * 0.32,
+              ].reduce(min);
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.all(GuardTokens.padScreen),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                 const GuardScreenSectionHeader(
                   icon: Icons.crisis_alert_rounded,
                   title: 'What kind of emergency?',
@@ -162,6 +207,21 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
                   ),
                 ),
                 const Spacer(),
+                // Live preview of what the long-press will actually send so a
+                // guard can sanity-check the situation note (or the fallback
+                // default copy) before broadcasting. The banner rebuilds on
+                // every keystroke via the TextEditingController listener.
+                AnimatedBuilder(
+                  animation: _note,
+                  builder: (context, _) =>
+                      _BroadcastPreviewBanner(
+                    kindLabel: _kind,
+                    kindColor: _kindAccent(_kind),
+                    note: _broadcastNote(),
+                    noteIsDefault: _note.text.trim().isEmpty,
+                  ),
+                ),
+                const SizedBox(height: GuardTokens.g2),
                 Center(
                   child: Material(
                     elevation: 8,
@@ -243,10 +303,110 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
                   style: GuardTokens.captionStyle(context),
                 ),
                 const SizedBox(height: GuardTokens.g2),
-              ],
-            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compact summary card shown directly above the red broadcast button so the
+/// guard can verify both the selected kind chip and the situation note (or
+/// the auto-inserted fallback) before they long-press to send. Styling stays
+/// neutral so it doesn't compete with the red action target.
+class _BroadcastPreviewBanner extends StatelessWidget {
+  const _BroadcastPreviewBanner({
+    required this.kindLabel,
+    required this.kindColor,
+    required this.note,
+    required this.noteIsDefault,
+  });
+
+  final String kindLabel;
+  final Color kindColor;
+  final String note;
+  final bool noteIsDefault;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: GuardTokens.g2,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? GuardTokens.darkCard : GuardTokens.surfaceCard,
+        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+        border: Border.all(
+          color: kindColor.withValues(alpha: isDark ? 0.55 : 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.send_rounded, size: 16, color: kindColor),
+              const SizedBox(width: 6),
+              Text(
+                'Broadcast preview',
+                style: GuardTokens.captionStyle(context).copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: kindColor.withValues(alpha: isDark ? 0.22 : 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  kindLabel.toUpperCase(),
+                  style: TextStyle(
+                    color: kindColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            note,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: GuardTokens.bodyStyle(context).copyWith(
+              fontSize: 13.5,
+              fontStyle: noteIsDefault ? FontStyle.italic : FontStyle.normal,
+              color: noteIsDefault
+                  ? GuardTokens.textSecondary
+                  : (isDark ? Colors.white : Colors.black87),
+            ),
+          ),
+          if (noteIsDefault) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Add details above to override this default note.',
+              style: GuardTokens.captionStyle(context).copyWith(
+                color: GuardTokens.textSecondary,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

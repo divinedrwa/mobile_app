@@ -47,6 +47,9 @@ class _GuardVisitorApprovalPageState
   /// Ensures [initialExtra] `villaId` is applied even when [guardVillasProvider] is already loaded.
   bool _didResolveInitialVilla = false;
   bool _requestedVillasRefresh = false;
+  /// When non-null, the id of the pre-approved entry currently being admitted
+  /// (used to show a per-row spinner + disable the others).
+  String? _admittingPreApprovedId;
 
   @override
   void initState() {
@@ -126,9 +129,81 @@ class _GuardVisitorApprovalPageState
         return 'Walk-in / OTP — enter visitor details and flat below';
       case 'qr-scan':
         return 'From QR scan — confirm details and flat';
+      case 'dir':
+        return 'From Residents directory — confirm visitor details and OTP';
       default:
         return _mask(widget.visitorId);
     }
+  }
+
+  /// Header card. When launched from the Residents directory we already know
+  /// _which_ resident the guard tapped, so show their name + flat instead of
+  /// the generic "Request" copy. Falls back to the original card otherwise.
+  Widget _buildRequestCard(BuildContext context) {
+    final residentName = widget.initialExtra?['name']?.trim();
+    final hasResidentCtx =
+        widget.visitorId == 'dir' &&
+        residentName != null &&
+        residentName.isNotEmpty;
+    final selectedFlatLabel = _resident?.flatLabel;
+
+    final title = hasResidentCtx ? 'Approving for $residentName' : 'Request';
+    final subtitle = hasResidentCtx
+        ? (selectedFlatLabel != null
+              ? '$selectedFlatLabel · From Residents directory'
+              : 'From Residents directory')
+        : _requestSubtitle();
+    final leading = hasResidentCtx
+        ? Icons.verified_user_rounded
+        : Icons.assignment_outlined;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(GuardTokens.padScreen),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: GuardTokens.guardAccent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
+              ),
+              child: Icon(
+                leading,
+                color: GuardTokens.guardAccentDeep,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: GuardTokens.g2),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GuardTokens.headingStyle(
+                      context,
+                    ).copyWith(fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GuardTokens.captionStyle(context),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -214,28 +289,8 @@ class _GuardVisitorApprovalPageState
                       },
                       orElse: () => const SizedBox.shrink(),
                     ),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(GuardTokens.padScreen),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Request',
-                              style: GuardTokens.headingStyle(
-                                context,
-                              ).copyWith(fontSize: 15),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _requestSubtitle(),
-                              style: GuardTokens.captionStyle(context),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildRequestCard(context),
+                    _buildPreApprovedStrip(context),
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
                       icon: Icons.person_rounded,
@@ -453,6 +508,54 @@ class _GuardVisitorApprovalPageState
                     ),
               const SizedBox(height: GuardTokens.sectionGap),
               const GuardScreenSectionHeader(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Reach the resident',
+                      subtitle:
+                          'Confirm the visitor first — then ask for the OTP',
+                    ),
+                    const SizedBox(height: GuardTokens.g2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _submittingNotify
+                                ? null
+                                : _notifyResident,
+                            icon: _submittingNotify
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: GuardTokens.guardAccent,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.notifications_active_rounded,
+                                  ),
+                            label: Text(
+                              _submittingNotify ? 'Sending…' : 'Notify flat',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: GuardTokens.g2),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _callResident,
+                            icon: const Icon(Icons.call_rounded),
+                            label: const Text(
+                              'Call',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: GuardTokens.sectionGap),
+                    const GuardScreenSectionHeader(
                       icon: Icons.verified_user_rounded,
                       title: 'Resident OTP',
                       subtitle:
@@ -516,52 +619,6 @@ class _GuardVisitorApprovalPageState
                       const SizedBox(height: GuardTokens.g2),
                       _OtpStatusBanner(ok: _otpVerified == true),
                     ],
-                    const SizedBox(height: GuardTokens.sectionGap),
-                    const GuardScreenSectionHeader(
-                      icon: Icons.support_agent_rounded,
-                      title: 'Reach the resident',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _submittingNotify
-                                ? null
-                                : _notifyResident,
-                            icon: _submittingNotify
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: GuardTokens.guardAccent,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.notifications_active_rounded,
-                                  ),
-                            label: Text(
-                              _submittingNotify ? 'Sending…' : 'Notify flat',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: GuardTokens.g2),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _callResident,
-                            icon: const Icon(Icons.call_rounded),
-                            label: const Text(
-                              'Call',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: GuardTokens.sectionGap),
                   ],
                 ),
@@ -641,6 +698,152 @@ class _GuardVisitorApprovalPageState
         ),
       ),
     );
+  }
+
+  /// Prominent strip surfacing pre-approved visitors for the currently-known
+  /// flat — shown when launched from the Residents directory or after a QR
+  /// scan. Walk-in flows have no villa context yet, so the strip stays hidden
+  /// there to avoid suggesting unrelated residents. Tapping Admit fires the
+  /// same endpoint as the standalone arrival screen, skipping the OTP dance.
+  Widget _buildPreApprovedStrip(BuildContext context) {
+    if (widget.visitorId != 'dir' && widget.visitorId != 'qr-scan') {
+      return const SizedBox.shrink();
+    }
+
+    // Prefer the resolved resident's villa (handles manual changes); fall back
+    // to the villaId carried in by the directory tap.
+    final vid =
+        (_resident?.villaId ?? widget.initialExtra?['villaId'])?.trim();
+    if (vid == null || vid.isEmpty) return const SizedBox.shrink();
+
+    final async = ref.watch(guardPreApprovedEntriesProvider);
+    final matches = async.maybeWhen(
+      data: (rows) =>
+          rows.where((e) => e.villaId == vid).toList(growable: false),
+      orElse: () => const <GuardPreApprovedEntry>[],
+    );
+    if (matches.isEmpty) return const SizedBox.shrink();
+
+    const maxShown = 3;
+    final shown = matches.length > maxShown
+        ? matches.sublist(0, maxShown)
+        : matches;
+    final more = matches.length - shown.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: GuardTokens.g2),
+      child: Material(
+        color: GuardTokens.successMuted,
+        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+        child: Padding(
+          padding: const EdgeInsets.all(GuardTokens.g2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.event_available_rounded,
+                    color: GuardTokens.success,
+                    size: 22,
+                  ),
+                  const SizedBox(width: GuardTokens.g1),
+                  Expanded(
+                    child: Text(
+                      '${matches.length} pre-approved '
+                      '${matches.length == 1 ? 'visitor' : 'visitors'}',
+                      style: GuardTokens.bodyStyle(context).copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: GuardTokens.success,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Resident already approved these visitors — tap Admit to check '
+                'in without an OTP.',
+                style: GuardTokens.captionStyle(context),
+              ),
+              const SizedBox(height: GuardTokens.g2),
+              for (final e in shown)
+                _PreApprovedAdmitRow(
+                  entry: e,
+                  admitting: _admittingPreApprovedId == e.id,
+                  disabled: _admittingPreApprovedId != null &&
+                      _admittingPreApprovedId != e.id,
+                  onAdmit: () => _admitPreApprovedInline(e),
+                ),
+              if (more > 0) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '+ $more more — open the Pre-approved list to see all',
+                  style: GuardTokens.captionStyle(context).copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One-tap admit for a pre-approval row. Mirrors the cache invalidations
+  /// done by [_allowEntry] and the standalone arrival screen so the home,
+  /// active and today feeds all refresh.
+  Future<void> _admitPreApprovedInline(GuardPreApprovedEntry entry) async {
+    setState(() => _admittingPreApprovedId = entry.id);
+    final span = GuardFlowTelemetry.start(
+      'guard_admit_preapproved_from_approval',
+    );
+    try {
+      final map = await ref
+          .read(guardRepositoryProvider)
+          .admitPreApprovedEntry(entry.id);
+      final admitted = map['admitted'] == true;
+      if (!mounted) return;
+      if (admitted) {
+        span.complete();
+        ref.invalidate(guardPreApprovedEntriesProvider);
+        ref.invalidate(guardDashboardProvider);
+        ref.invalidate(guardTodayVisitorsProvider);
+        ref.invalidate(guardPendingVisitorsProvider);
+        ref.invalidate(guardActiveVisitorsTabProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              map['message']?.toString() ?? '${entry.name} checked in',
+            ),
+          ),
+        );
+        context.pop(true);
+        return;
+      }
+      span.complete(success: false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            map['message']?.toString() ?? 'Could not admit visitor',
+          ),
+        ),
+      );
+    } catch (e) {
+      span.complete(success: false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFacingMessage(e, 'Could not admit visitor.')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _admittingPreApprovedId = null);
+    }
   }
 
   Future<void> _callResident() async {
@@ -837,6 +1040,130 @@ class _GuardVisitorApprovalPageState
   }
 
   String _mask(String id) => id.length <= 4 ? id : '${id.substring(0, 4)}…';
+}
+
+/// Compact one-tap admit row used inside [_GuardVisitorApprovalPageState._buildPreApprovedStrip].
+class _PreApprovedAdmitRow extends StatelessWidget {
+  const _PreApprovedAdmitRow({
+    required this.entry,
+    required this.admitting,
+    required this.disabled,
+    required this.onAdmit,
+  });
+
+  final GuardPreApprovedEntry entry;
+  final bool admitting;
+  final bool disabled;
+  final VoidCallback onAdmit;
+
+  static String? _typeLabel(String? api) {
+    if (api == null || api.trim().isEmpty) return null;
+    switch (api.trim().toUpperCase()) {
+      case 'DELIVERY':
+        return 'Delivery';
+      case 'SERVICE_PROVIDER':
+        return 'Service';
+      case 'VENDOR':
+        return 'Vendor';
+      case 'GUEST':
+        return 'Guest';
+      default:
+        return api.trim();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = entry.name.isNotEmpty
+        ? entry.name.trim()[0].toUpperCase()
+        : '?';
+    final typeLabel = _typeLabel(entry.visitorType);
+    final subtitle = typeLabel != null
+        ? '$typeLabel · ${entry.phone}'
+        : entry.phone;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
+          border: Border.all(
+            color: GuardTokens.success.withValues(alpha: 0.30),
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: GuardTokens.success.withValues(alpha: 0.15),
+              foregroundColor: GuardTokens.success,
+              child: Text(
+                initial,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    entry.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GuardTokens.captionStyle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 36,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: GuardTokens.success,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      GuardTokens.radiusButton,
+                    ),
+                  ),
+                ),
+                onPressed: (admitting || disabled) ? null : onAdmit,
+                child: admitting
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Admit',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _OtpStatusBanner extends StatelessWidget {

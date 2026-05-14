@@ -101,43 +101,51 @@ class _GuardDeliveryQuickPageState
                       title: 'Courier / delivery app',
                       subtitle: 'Tap the brand handing over the parcel',
                     ),
-                    const SizedBox(height: GuardTokens.g2),
+                    const SizedBox(height: GuardTokens.g1 + 2),
+                    // Compact 3-column brand grid. Previously this was a
+                    // 2-column 108px-tall hero grid which used ~340px of
+                    // vertical real estate just to pick a brand. Same six
+                    // brands, smaller tiles — ~64px each, ~200px saved.
                     LayoutBuilder(
                       builder: (context, c) {
-                        final cellW = (c.maxWidth - GuardTokens.g2) / 2;
+                        const spacing = 8.0;
+                        final cellW = (c.maxWidth - spacing * 2) / 3;
                         return Wrap(
-                          spacing: GuardTokens.g2,
-                          runSpacing: GuardTokens.g2,
+                          spacing: spacing,
+                          runSpacing: spacing,
                           children: _brands.map((b) {
                             final sel = _brand == b.api;
                             return SizedBox(
-                              width: cellW.clamp(120, 200),
+                              width: cellW,
                               child: Material(
-                                color: isDark
-                                    ? GuardTokens.darkCard
-                                    : GuardTokens.surfaceCard,
+                                color: sel
+                                    ? GuardTokens.guardAccent
+                                        .withValues(alpha: 0.10)
+                                    : (isDark
+                                        ? GuardTokens.darkCard
+                                        : GuardTokens.surfaceCard),
                                 borderRadius: BorderRadius.circular(
-                                  GuardTokens.radiusLg,
+                                  GuardTokens.radiusButton,
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(
-                                    GuardTokens.radiusLg,
+                                    GuardTokens.radiusButton,
                                   ),
                                   onTap: _submitting
                                       ? null
                                       : () => setState(() => _brand = b.api),
                                   child: Container(
-                                    height:
-                                        GuardTokens.heroQuickActionMinHeight,
-                                    padding: const EdgeInsets.all(
-                                      GuardTokens.g2,
+                                    height: 64,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(
-                                        GuardTokens.radiusLg,
+                                        GuardTokens.radiusButton,
                                       ),
                                       border: Border.all(
-                                        width: sel ? 2 : 1,
+                                        width: sel ? 1.5 : 1,
                                         color: sel
                                             ? GuardTokens.guardAccent
                                             : (isDark
@@ -150,22 +158,28 @@ class _GuardDeliveryQuickPageState
                                           MainAxisAlignment.center,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.storefront_rounded,
-                                          color: GuardTokens.guardAccent,
-                                          size: 28,
+                                          color: sel
+                                              ? GuardTokens.guardAccentDeep
+                                              : GuardTokens.guardAccent,
+                                          size: 18,
                                         ),
-                                        const SizedBox(height: GuardTokens.g2),
+                                        const SizedBox(height: 4),
                                         Text(
                                           b.label,
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: GuardTokens.body,
+                                            fontWeight: sel
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                            fontSize: 12.5,
+                                            height: 1.1,
                                             color: theme.colorScheme.onSurface,
                                           ),
-                                          maxLines: 2,
+                                          maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ],

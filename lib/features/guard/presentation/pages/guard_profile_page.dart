@@ -174,10 +174,7 @@ class GuardProfilePage extends ConsumerWidget {
                 'End this guard session and return to sign in',
                 style: GuardTokens.captionStyle(context, color: subtitleColor),
               ),
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
-              },
+              onTap: () => _showSignOutSheet(context, ref),
             ),
           ),
         ],
@@ -222,6 +219,113 @@ class GuardProfilePage extends ConsumerWidget {
       style: GuardTokens.captionStyle(context).copyWith(
         fontWeight: FontWeight.w700,
         color: GuardTokens.textSecondary,
+      ),
+    );
+  }
+
+  /// Bottom sheet that confirms before clearing the auth session. Mirrors the
+  /// resident `profile_screen.dart` pattern so a fat-finger tap doesn't kick
+  /// a guard out of an active gate shift. Visual styling uses GuardTokens so
+  /// it matches the rest of the guard module instead of the resident palette.
+  Future<void> _showSignOutSheet(BuildContext context, WidgetRef ref) {
+    return showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: GuardTokens.sectionGap),
+                decoration: BoxDecoration(
+                  color: GuardTokens.borderSubtle,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: GuardTokens.dangerBrand.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: GuardTokens.dangerBrand,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: GuardTokens.sectionGap),
+              Text(
+                'Sign out?',
+                style: GuardTokens.headingStyle(context).copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: GuardTokens.g1),
+              Text(
+                'You will need to sign in again to record entries at this gate.',
+                textAlign: TextAlign.center,
+                style: GuardTokens.captionStyle(context).copyWith(
+                  height: 1.4,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: GuardTokens.sectionGap + 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(GuardTokens.radiusButton),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: GuardTokens.g2),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        if (context.mounted) context.go('/login');
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: GuardTokens.dangerBrand,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(GuardTokens.radiusButton),
+                        ),
+                      ),
+                      child: const Text(
+                        'Sign out',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

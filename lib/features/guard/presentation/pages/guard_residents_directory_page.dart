@@ -272,17 +272,24 @@ class _ResidentCard extends StatelessWidget {
                 IconButton.filledTonal(
                   style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                   onPressed: () {
+                    final residentPhone = row.phone?.trim() ?? '';
                     final q = <String, String>{
                       'name': row.name,
                       if (row.villaId != null && row.villaId!.isNotEmpty)
                         'villaId': row.villaId!,
+                      // Forward the resident's phone so the approval screen
+                      // can dial directly without bouncing back to the
+                      // directory. Read on the approval side by
+                      // [_GuardVisitorApprovalPageState._callResident].
+                      if (residentPhone.isNotEmpty)
+                        'residentPhone': residentPhone,
                     };
                     context.push(
                       GuardRoutes.visitorApprovalWithQuery('dir', q),
                     );
                   },
                   icon: const Icon(
-                    Icons.how_to_reg_outlined,
+                    Icons.verified_user_outlined,
                     color: GuardTokens.guardAccentDeep,
                   ),
                   tooltip: 'Visitor approval',

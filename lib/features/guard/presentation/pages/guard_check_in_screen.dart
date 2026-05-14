@@ -226,8 +226,21 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final selectedCount = _selectedUserIds.length;
+    // True when *every* selected resident appears in the directory with a
+    // non-null villaId. Falls back to true while the directory is loading or
+    // errored — we don't want to flash a scary banner on cold start. The
+    // previous implementation used `rows.any((r) => r.villaId != null && _selectedUserIds.isNotEmpty)`
+    // which always returned true if any directory row was mapped, so the
+    // warning never surfaced when a selected resident was unmapped.
     final selectedHasMappedResident = residentDirectoryAsync.maybeWhen(
-      data: (rows) => rows.any((r) => r.villaId != null && _selectedUserIds.isNotEmpty),
+      data: (rows) {
+        if (_selectedUserIds.isEmpty) return true;
+        final mappedSelectedIds = rows
+            .where((r) => r.villaId != null && r.villaId!.isNotEmpty)
+            .map((r) => r.userId)
+            .toSet();
+        return _selectedUserIds.every(mappedSelectedIds.contains);
+      },
       orElse: () => true,
     );
     final hasActiveShift = shiftsAsync.maybeWhen(

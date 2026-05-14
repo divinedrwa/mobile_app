@@ -132,6 +132,18 @@ class _DashboardContent extends ConsumerWidget {
   final Future<void> Function() onRefreshInvalidate;
   final ScrollController scrollController;
 
+  /// Keys the visitor-approval page actually consumes from a scanned payload.
+  /// Anything else in the QR (e.g. schema tag `source: 'resident_preapproved_v1'`
+  /// from [VisitorSuccessScreen]) is dropped so it doesn't pollute the URL or
+  /// trigger surprising side-effects later.
+  static const _qrPayloadKeys = {
+    'otp',
+    'name',
+    'phone',
+    'villaId',
+    'residentPhone',
+  };
+
   Map<String, String>? _scanPayload(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
@@ -142,6 +154,7 @@ class _DashboardContent extends ConsumerWidget {
         final out = <String, String>{};
         for (final entry in decoded.entries) {
           final key = entry.key.toString();
+          if (!_qrPayloadKeys.contains(key)) continue;
           final value = entry.value?.toString().trim() ?? '';
           if (value.isNotEmpty) out[key] = value;
         }
@@ -154,7 +167,10 @@ class _DashboardContent extends ConsumerWidget {
     if (RegExp(r'^\d{4,8}$').hasMatch(trimmed)) {
       return {'otp': trimmed};
     }
-    return {'qr': trimmed};
+    // Unrecognized payload — open the approval form anyway so the guard can
+    // fill details manually. We deliberately do not forward the raw string as
+    // a query param: it isn't read anywhere and could collide with future keys.
+    return const <String, String>{};
   }
 
   @override

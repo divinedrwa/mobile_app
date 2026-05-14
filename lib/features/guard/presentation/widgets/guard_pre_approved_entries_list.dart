@@ -337,7 +337,7 @@ class _GuardPreApprovedEntriesListContentState
                                 ),
                               ),
                             ),
-                            icon: const Icon(Icons.how_to_reg_outlined, size: 22),
+                            icon: const Icon(Icons.verified_user_outlined, size: 22),
                             label: const Text(
                               'Visitor arrived',
                               style: TextStyle(

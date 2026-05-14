@@ -166,38 +166,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildDashboardStatsRow(context, dashboardAsync, isBillingExcluded: isBillingExcluded),
+                    // === URGENCY zone — time-sensitive, only renders when relevant ===
+
+                    // Gate visitor requests: "someone is at the gate right
+                    // now". Self-hides when there are zero pending requests
+                    // so a quiet day doesn't waste prime real estate.
+                    _buildGateVisitorRequestsBanner(context),
                     const SizedBox(height: _kSectionGap),
-                    if (!isBillingExcluded) ...[
-                      _buildSocietyFundBalanceCard(context, dashboardAsync),
-                      const SizedBox(height: _kSectionGap),
-                    ],
-                    _buildQuickActions(context),
-                    const SizedBox(height: _kSectionGap),
-                    if (!isBillingExcluded && activeBillingCycle != null) ...[
-                      _buildOpenBillingStripe(context, activeBillingCycle),
-                      const SizedBox(height: _kSectionGap),
-                    ],
-                    if (!isBillingExcluded) ...[
-                      _buildMaintenanceOverviewEntry(context),
-                      const SizedBox(height: _kSectionGap),
-                      _buildMaintenanceInsightsEntry(context),
-                      const SizedBox(height: _kSectionGap),
-                    ],
+
+                    // Society notices flagged as important / urgent.
                     if (hasImportantNotices) ...[
                       _buildImportantNotices(context, noticesState),
                       const SizedBox(height: _kSectionGap),
                     ],
-                    _buildGateVisitorRequestsBanner(context),
+
+                    // === HABIT zone — actions the resident takes regularly ===
+
+                    // Pre-approve visitors, complaints, amenities, etc. The
+                    // single most-used section on the home screen.
+                    _buildQuickActions(context),
                     const SizedBox(height: _kSectionGap),
-                    _buildVisitorsAndGateSection(context),
-                    const SizedBox(height: _kSectionGap),
+
+                    // Personal money owed — `_buildOutstandingDues` returns
+                    // `SizedBox.shrink()` internally when there are no unpaid
+                    // bills, so it disappears on a clean ledger.
                     if (!isBillingExcluded) ...[
                       _buildOutstandingDues(context, pendingState),
                       const SizedBox(height: _kSectionGap),
                     ],
+
+                    // Active billing cycle status (current month progress).
+                    if (!isBillingExcluded && activeBillingCycle != null) ...[
+                      _buildOpenBillingStripe(context, activeBillingCycle),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+
+                    // === AWARENESS zone — passive at-a-glance numbers ===
+
+                    // 4-tile stats row — at-a-glance personal counts.
+                    _buildDashboardStatsRow(context, dashboardAsync, isBillingExcluded: isBillingExcluded),
+                    const SizedBox(height: _kSectionGap),
+
+                    // Maintenance: single card with two sub-CTAs (dues +
+                    // trends). Replaces the previous pair of separate
+                    // cards to save ~150px of vertical real estate while
+                    // keeping both destinations a single tap away.
+                    if (!isBillingExcluded) ...[
+                      _buildMaintenanceCard(context),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+
+                    // Community-level ledger — informational, not actionable.
+                    if (!isBillingExcluded) ...[
+                      _buildSocietyFundBalanceCard(context, dashboardAsync),
+                      const SizedBox(height: _kSectionGap),
+                    ],
+
+                    // === BROWSE zone — history and reference ===
+
+                    // Recent visitor history, my pre-approved list, gate logs.
+                    _buildVisitorsAndGateSection(context),
+                    const SizedBox(height: _kSectionGap),
+
+                    // Always-accessible support and security contacts.
                     _buildSupportStripWithFab(context, securityContactsAsync),
                     const SizedBox(height: _kSectionGap),
+
+                    // Low-priority notification feed (scrollable bottom).
                     _buildRecentActivity(context, notificationsState),
                   ],
                 ),
@@ -1345,6 +1380,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildGateVisitorRequestsBanner(BuildContext context) {
     final gateAsync = ref.watch(visitorApprovalRequestsProvider('pending'));
 
+    // Self-hide on a normal (no-pending) day. We only short-circuit on a
+    // definite empty list — loading/error keep the title visible so the
+    // resident gets feedback that we're checking.
+    final pendingList = gateAsync.valueOrNull;
+    if (pendingList != null && pendingList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1717,7 +1760,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
 
-  Widget _buildMaintenanceOverviewEntry(BuildContext context) {
+  /// Single Maintenance card with two sub-CTAs (dues + insights).
+  ///
+  /// Replaces the previous pair of separate cards
+  /// (`_buildMaintenanceOverviewEntry` + `_buildMaintenanceInsightsEntry`)
+  /// which both lived in the awareness zone and roughly doubled the
+  /// vertical real estate of the same domain. Each row keeps its own
+  /// destination route so no functionality is lost.
+  Widget _buildMaintenanceCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1725,159 +1775,115 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         border: Border.all(color: const Color(0xFFE8ECF0)),
         boxShadow: _cardShadow(0.05),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(_kRadiusLg),
-          onTap: () => context.push('/resident/maintenance'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF43A047).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.account_balance_wallet_outlined,
-                      color: Color(0xFF43A047)),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your Maintenance',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: DesignColors.textPrimary,
-                          letterSpacing: -0.25,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Dues, payments, credit balance, and billing status',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: _kTextSecondary,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => context.push('/resident/maintenance'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF43A047),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    minimumSize: const Size(0, 40),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'View',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Maintenance',
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+                color: DesignColors.textPrimary,
+                letterSpacing: -0.25,
+              ),
             ),
           ),
-        ),
+          _maintenanceCardRow(
+            context,
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: const Color(0xFF43A047),
+            title: 'Dues, payments & credit',
+            subtitle: 'Pay open bills, view history and credit balance',
+            onTap: () => context.push('/resident/maintenance'),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 46),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: Colors.black.withValues(alpha: 0.06),
+            ),
+          ),
+          _maintenanceCardRow(
+            context,
+            icon: Icons.insights_rounded,
+            iconColor: DesignColors.primary,
+            title: 'Trends & expenses',
+            subtitle: 'Month-wise paid/unpaid, society spend, pending dues',
+            onTap: () => context.push('/resident/maintenance-payment'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMaintenanceInsightsEntry(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_kRadiusLg),
-        border: Border.all(color: const Color(0xFFE8ECF0)),
-        boxShadow: _cardShadow(0.05),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(_kRadiusLg),
-          onTap: () {
-            context.push('/resident/maintenance-payment');
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: DesignColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.insights_rounded, color: DesignColors.primary),
+  Widget _maintenanceCardRow(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Maintenance & Expenses',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: DesignColors.textPrimary,
-                          letterSpacing: -0.25,
-                        ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        letterSpacing: -0.2,
+                        height: 1.2,
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Month-wise paid/unpaid, society expense, and your pending dues',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: _kTextSecondary,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () {
-                    context.push('/resident/maintenance-payment');
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: DesignColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    minimumSize: const Size(0, 40),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ),
-                  child: const Text(
-                    'View',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: _kTextSecondary,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: DesignColors.textSecondary.withValues(alpha: 0.7),
+                size: 22,
+              ),
+            ],
           ),
         ),
       ),

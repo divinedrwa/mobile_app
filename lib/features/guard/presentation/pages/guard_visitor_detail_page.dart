@@ -10,10 +10,26 @@ import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 
 /// Detail view for a visitor row (from active entries or related flows).
-class GuardVisitorDetailPage extends ConsumerWidget {
+class GuardVisitorDetailPage extends ConsumerStatefulWidget {
   const GuardVisitorDetailPage({super.key, required this.visitor});
 
   final GuardVisitorRow visitor;
+
+  @override
+  ConsumerState<GuardVisitorDetailPage> createState() =>
+      _GuardVisitorDetailPageState();
+}
+
+class _GuardVisitorDetailPageState
+    extends ConsumerState<GuardVisitorDetailPage> {
+  // Local busy flags so the underlying button stays disabled (and shows a
+  // spinner) while a network mutation is in flight. Without these, the guard
+  // could double-tap "Confirm guest entered" / "Mark exit" the moment the
+  // confirmation dialog dismisses and trigger duplicate POSTs.
+  bool _admitting = false;
+  bool _exiting = false;
+
+  GuardVisitorRow get visitor => widget.visitor;
 
   static String _fmtCheckInTimeOnly(BuildContext context, DateTime t) {
     final locale = Localizations.localeOf(context).toString();
@@ -31,14 +47,8 @@ class GuardVisitorDetailPage extends ConsumerWidget {
     return DateFormat('EEE, MMM d', locale).format(local);
   }
 
-  static String _statusLabel(GuardVisitorRow v) {
-    if (v.entryDenied) return 'Entry denied';
-    if (v.needsResidentApproval) return 'Awaiting resident approval';
-    if (v.awaitingGuardAdmission) return 'Approved — admit at gate';
-    if (v.awaitingCheckout && v.status == 'CHECKED_IN') return 'On premises';
-    if (v.checkOutTime != null) return 'Checked out';
-    return v.status;
-  }
+  static String _statusLabel(GuardVisitorRow v) =>
+      guardVisitorStatusLabel(v);
 
   static IconData _statusIcon(GuardVisitorRow v) {
     if (v.entryDenied) return Icons.block_rounded;
@@ -79,7 +89,7 @@ class GuardVisitorDetailPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final v = visitor;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -405,11 +415,21 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                               const Size(double.infinity, GuardTokens.btnPrimaryH),
                             ),
                           ),
-                          onPressed: () => _confirmCheckout(context, ref, v),
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text(
-                            'Mark exit',
-                            style: TextStyle(
+                          onPressed: _exiting
+                              ? null
+                              : () => _confirmCheckout(context, v),
+                          icon: _exiting
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.logout_rounded),
+                          label: Text(
+                            _exiting ? 'Marking exit…' : 'Mark exit',
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
@@ -496,11 +516,21 @@ class GuardVisitorDetailPage extends ConsumerWidget {
                               const Size(double.infinity, GuardTokens.btnPrimaryH),
                             ),
                           ),
-                          onPressed: () => _confirmAdmission(context, ref, v),
-                          icon: const Icon(Icons.how_to_reg_outlined),
-                          label: const Text(
-                            'Confirm guest entered',
-                            style: TextStyle(
+                          onPressed: _admitting
+                              ? null
+                              : () => _confirmAdmission(context, v),
+                          icon: _admitting
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.verified_user_outlined),
+                          label: Text(
+                            _admitting ? 'Admitting…' : 'Confirm guest entered',
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
@@ -520,9 +550,9 @@ class GuardVisitorDetailPage extends ConsumerWidget {
 
   Future<void> _confirmAdmission(
     BuildContext context,
-    WidgetRef ref,
     GuardVisitorRow v,
   ) async {
+    if (_admitting) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -544,19 +574,23 @@ class GuardVisitorDetailPage extends ConsumerWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
+    setState(() => _admitting = true);
     try {
-      await ref.read(guardRepositoryProvider).confirmVisitorEntryAfterApproval(v.id);
+      await ref
+          .read(guardRepositoryProvider)
+          .confirmVisitorEntryAfterApproval(v.id);
       ref.invalidate(guardPendingVisitorsProvider);
       ref.invalidate(guardActiveVisitorsTabProvider);
       ref.invalidate(guardPreApprovedEntriesProvider);
       ref.invalidate(guardTodayVisitorsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${v.name} checked in')),
-        );
-        context.pop();
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${v.name} checked in')),
+      );
+      context.pop();
     } catch (e) {
+      if (!mounted) return;
+      setState(() => _admitting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(userFacingMessage(e))),
@@ -567,9 +601,9 @@ class GuardVisitorDetailPage extends ConsumerWidget {
 
   Future<void> _confirmCheckout(
     BuildContext context,
-    WidgetRef ref,
     GuardVisitorRow v,
   ) async {
+    if (_exiting) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -589,22 +623,24 @@ class GuardVisitorDetailPage extends ConsumerWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
+    setState(() => _exiting = true);
     try {
       await ref.read(guardRepositoryProvider).checkOutVisitor(v.id);
       ref.invalidate(guardPendingVisitorsProvider);
       ref.invalidate(guardActiveVisitorsTabProvider);
       ref.invalidate(guardPreApprovedEntriesProvider);
       ref.invalidate(guardTodayVisitorsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${v.name} marked as exited'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        context.pop();
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${v.name} marked as exited'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.pop();
     } catch (e) {
+      if (!mounted) return;
+      setState(() => _exiting = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(userFacingMessage(e))),
