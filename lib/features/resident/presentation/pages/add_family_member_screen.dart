@@ -74,7 +74,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
             // Name
             TextFormField(
               controller: _nameController,
-              autofocus: true,
+              autofocus: false,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Name',

@@ -138,52 +138,61 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     setState(() => _selectedId = s.id);
   }
 
-  Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBrandHeader() {
+    return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: DesignColors.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.apartment_rounded,
-            color: DesignColors.primary,
-            size: 28,
-          ),
+        Image.asset(
+          'assets/splash/gp_logo.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
         ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Choose your society',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: DesignColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Your account and data are scoped to one society. You can change this before you sign in.',
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.45,
-                  color: DesignColors.textSecondary,
-                ),
-              ),
-            ],
+        const SizedBox(height: 10),
+        const Text(
+          'GatePass+',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.4,
           ),
         ),
       ],
     )
         .animate()
-        .fadeIn(duration: 400.ms)
+        .fadeIn(duration: 350.ms)
+        .slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
+  }
+
+  Widget _buildTitleBlock() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Choose your society',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.6,
+            height: 1.2,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Your account and data are scoped to one society.\nYou can change this before you sign in.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13.5,
+            height: 1.5,
+            color: DesignColors.textSecondary,
+          ),
+        ),
+      ],
+    )
+        .animate()
+        .fadeIn(duration: 400.ms, delay: 80.ms)
         .slideY(begin: DesignAnimations.slideNormal, end: 0);
   }
 
@@ -346,9 +355,28 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                               ? DesignColors.primary
                               : DesignColors.textSecondary)
                           : DesignColors.textTertiary,
-                      size: 26,
+                      size: 24,
                     ),
                     const SizedBox(width: 14),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: enabled
+                            ? DesignColors.primary.withValues(alpha: 0.10)
+                            : DesignColors.surfaceSoft,
+                      ),
+                      child: Icon(
+                        Icons.apartment_rounded,
+                        color: enabled
+                            ? DesignColors.primary
+                            : DesignColors.textTertiary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,9 +386,12 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                               Expanded(
                                 child: Text(
                                   s.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
                                     color: enabled
                                         ? DesignColors.textPrimary
                                         : DesignColors.textSecondary,
@@ -406,10 +437,11 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(
+                    const SizedBox(width: 6),
+                    Icon(
                       Icons.chevron_right_rounded,
-                      color: DesignColors.textTertiary,
+                      color: DesignColors.textTertiary.withValues(alpha: 0.85),
+                      size: 22,
                     ),
                   ],
                 ),
@@ -432,21 +464,26 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: AppSpacing.md),
-                _buildHeader(),
-                if (!_loading && _error == null && _societies.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    _selectableCount == _societies.length
-                        ? '${_societies.length} ${_societies.length == 1 ? 'society' : 'societies'}'
-                        : '$_selectableCount of ${_societies.length} available for sign-in',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: DesignColors.textTertiary,
-                    ),
-                  ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 350.ms),
-                ],
+                _buildBrandHeader(),
                 const SizedBox(height: AppSpacing.lg),
+                _buildTitleBlock(),
+                if (!_loading && _error == null && _societies.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _selectableCount == _societies.length
+                          ? '${_societies.length} ${_societies.length == 1 ? 'society' : 'societies'}'
+                          : '$_selectableCount of ${_societies.length} available for sign-in',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: DesignColors.textTertiary,
+                      ),
+                    ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 350.ms),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.md),
                 Expanded(
                   child: _loading
                       ? const Center(
@@ -483,6 +520,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                       ? 'Sign in to $_selectedSocietyName'
                       : 'Continue to sign in',
                   icon: Icons.arrow_forward_rounded,
+                  color: DesignColors.primary,
                   onPressed: _loading || !_canContinue ? null : _continue,
                   isFullWidth: true,
                 ),

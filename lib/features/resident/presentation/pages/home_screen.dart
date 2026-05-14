@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../core/widgets/animated_counter.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/visitor_provider.dart';
 import '../../data/models/maintenance_due_model.dart';
@@ -40,9 +43,9 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-// —— Reference design spec (resident landing) ——
-const Color _kOrange = Color(0xFFFF6D00);
-const Color _kGreen = Color(0xFF4CAF50);
+// —— Reference design spec (resident landing) — GatePass+ brand ——
+const Color _kOrange = Color(0xFFF39C12); // Brand warning amber
+const Color _kGreen = DesignColors.primary; // Brand forest green
 const Color _kPageBg = DesignColors.background;
 const Color _kTextSecondary = Color(0xFF64748B);
 
@@ -237,22 +240,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: [0.0, 0.38, 1.0],
-          colors: [
-            Color(0xFFEEF6FF),
-            Color(0xFFF3F0FF),
-            Colors.white,
-          ],
-        ),
+        color: context.surface.defaultSurface,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+        border: Border(
+          bottom: BorderSide(color: context.surface.border),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -267,41 +264,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          DesignColors.primary.withValues(alpha: 0.88),
-                          DesignColors.primary.withValues(alpha: 0.52),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: DesignColors.primary.withValues(alpha: 0.18),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : 'R',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.35,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                  ),
+                  _HeaderAvatar(name: name, photoUrl: user?.photoUrl),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -312,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           _greeting(),
                           style: TextStyle(
                             fontSize: 11,
-                            color: _kTextSecondary.withValues(alpha: 0.92),
+                            color: context.text.secondary,
                             fontWeight: FontWeight.w600,
                             height: 1.15,
                             letterSpacing: 0.02,
@@ -332,10 +295,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   width: nameW,
                                   child: Text(
                                     name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
-                                      color: DesignColors.textPrimary,
+                                      color: context.text.primary,
                                       height: 1.18,
                                       letterSpacing: -0.4,
                                     ),
@@ -358,20 +321,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: DesignColors.primary.withValues(alpha: 0.1),
+                                color: context.brand.primary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.badge_outlined, size: 12, color: DesignColors.primary),
+                                  Icon(Icons.badge_outlined, size: 12, color: context.brand.primary),
                                   const SizedBox(width: 3),
                                   Text(
                                     _headerOccupantOrRoleBadge(role, user),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
-                                      color: DesignColors.primary,
+                                      color: context.brand.primary,
                                       height: 1,
                                     ),
                                   ),
@@ -383,10 +346,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 constraints: const BoxConstraints(maxWidth: 200),
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.94),
+                                  color: context.surface.background,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: DesignColors.primary.withValues(alpha: 0.16),
+                                    color: context.surface.border,
                                   ),
                                 ),
                                 child: Row(
@@ -402,10 +365,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         unitBlockText,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w700,
-                                          color: DesignColors.textPrimary,
+                                          color: context.text.primary,
                                           height: 1,
                                         ),
                                       ),
@@ -423,18 +386,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.72),
+                                color: context.surface.background,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: DesignColors.primary.withValues(alpha: 0.08),
+                                  color: context.surface.border,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,13 +398,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
-                                      color: DesignColors.primary.withValues(alpha: 0.1),
+                                      color: context.brand.primary.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
                                       Icons.domain_rounded,
                                       size: 14,
-                                      color: DesignColors.primary.withValues(alpha: 0.85),
+                                      color: context.brand.primary,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -463,7 +419,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             fontSize: 10,
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: 0.4,
-                                            color: _kTextSecondary.withValues(alpha: 0.85),
+                                            color: context.text.secondary,
                                             height: 1,
                                           ),
                                         ),
@@ -472,10 +428,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           society,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12.5,
                                             fontWeight: FontWeight.w700,
-                                            color: DesignColors.textPrimary,
+                                            color: context.text.primary,
                                             height: 1.28,
                                             letterSpacing: -0.15,
                                           ),
@@ -501,7 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(width: 4),
                   Material(
-                    color: Colors.white,
+                    color: context.surface.defaultSurface,
                     elevation: 0,
                     shape: const CircleBorder(),
                     shadowColor: Colors.transparent,
@@ -519,14 +475,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         height: 40,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.035),
-                              blurRadius: 6,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
+                          border: Border.all(color: context.surface.border),
                         ),
                         child: Stack(
                           clipBehavior: Clip.none,
@@ -534,7 +483,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           children: [
                             Icon(
                               Icons.notifications_none_rounded,
-                              color: DesignColors.textPrimary.withValues(alpha: 0.85),
+                              color: context.text.primary,
                               size: 20,
                             ),
                             if (unreadNotifications > 0)
@@ -582,9 +531,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
+        color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kGreen.withValues(alpha: 0.28)),
+        border: Border.all(color: _kGreen.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -615,12 +564,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Subtle house + trees art (top-right), scaled down to reduce header height.
   Widget _buildHeaderIllustration() {
     return Positioned(
-      right: 2,
-      top: 26,
+      right: 8,
+      top: 34,
       child: IgnorePointer(
         child: SizedBox(
-          width: 108,
-          height: 78,
+          width: 88,
+          height: 64,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -629,26 +578,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 top: 14,
                 child: Icon(
                   Icons.grass_rounded,
-                  size: 28,
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.22),
+                  size: 22,
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
                 ),
               ),
               Positioned(
-                right: 30,
-                top: 4,
+                right: 24,
+                top: 6,
                 child: Icon(
                   Icons.park_rounded,
-                  size: 34,
-                  color: const Color(0xFF66BB6A).withValues(alpha: 0.26),
+                  size: 26,
+                  color: const Color(0xFF66BB6A).withValues(alpha: 0.16),
                 ),
               ),
               Positioned(
-                right: 38,
+                right: 28,
                 top: 22,
                 child: Icon(
                   Icons.holiday_village_rounded,
-                  size: 44,
-                  color: DesignColors.primary.withValues(alpha: 0.16),
+                  size: 34,
+                  color: DesignColors.primary.withValues(alpha: 0.1),
                 ),
               ),
             ],
@@ -658,7 +607,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Overview — single card, 2×2 grid with inner dividers (tighter than separate tiles).
+  /// Overview — 2×2 grid of independent tile-cards that visually match
+  /// the Quick Actions section (white card, border, shadow, tinted icon).
   Widget _buildDashboardStatsRow(
     BuildContext context,
     AsyncValue<ResidentDashboardModel> dash, {
@@ -674,7 +624,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data: (d) => d.stats,
       orElse: () => fallbackStats,
     );
-    const divider = DesignColors.borderLight;
+
+    final tiles = <_OverviewTileSpec>[
+      if (!isBillingExcluded)
+        _OverviewTileSpec(
+          label: 'Maintenance',
+          value: s.pendingMaintenance,
+          color: _kOrange,
+          icon: Icons.payments_outlined,
+          onTap: () => context.push('/resident/maintenance'),
+        ),
+      _OverviewTileSpec(
+        label: 'Complaints',
+        value: s.activeComplaints,
+        color: const Color(0xFFE65100),
+        icon: Icons.report_problem_outlined,
+        onTap: () => context.push('/resident/my-complaints'),
+      ),
+      _OverviewTileSpec(
+        label: 'Parcels',
+        value: s.pendingParcels,
+        color: DesignColors.primary,
+        icon: Icons.inventory_2_outlined,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ParcelManagementScreen(),
+            ),
+          );
+        },
+      ),
+      _OverviewTileSpec(
+        label: 'Bookings',
+        value: s.upcomingBookings,
+        color: const Color(0xFF00897B),
+        icon: Icons.event_available_outlined,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const AmenityBookingHistoryScreen(),
+            ),
+          );
+        },
+      ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -699,7 +692,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Text(
-                  'View all >',
+                  'View all',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -711,92 +704,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(_kRadiusMd),
-            border: Border.all(color: const Color(0xFFE8ECF0)),
-            boxShadow: _cardShadow(0.055),
+        const SizedBox(height: 10),
+        GridView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+            mainAxisExtent: 92,
           ),
-          clipBehavior: Clip.antiAlias,
+          itemCount: tiles.length,
+          itemBuilder: (context, index) => _overviewTile(context, tiles[index]),
+        ),
+      ],
+    );
+  }
+
+  Widget _overviewTile(BuildContext context, _OverviewTileSpec spec) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.surface.defaultSurface,
+        borderRadius: BorderRadius.circular(_kRadiusMd),
+        border: Border.all(color: context.surface.border),
+        boxShadow: _cardShadow(0.05),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_kRadiusMd),
+          onTap: spec.onTap,
           child: Padding(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!isBillingExcluded) ...[
-                        Expanded(
-                          child: _overviewStatCell(
-                            label: 'Maintenance',
-                            value: s.pendingMaintenance,
-                            color: _kOrange,
-                            icon: Icons.payments_outlined,
-                            onTap: () => context.push('/resident/maintenance'),
-                          ),
-                        ),
-                        Container(width: 1, color: divider),
-                      ],
-                      Expanded(
-                        child: _overviewStatCell(
-                          label: 'Complaints',
-                          value: s.activeComplaints,
-                          color: const Color(0xFFE65100),
-                          icon: Icons.report_problem_outlined,
-                          onTap: () => context.push('/resident/my-complaints'),
-                        ),
-                      ),
-                    ],
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: spec.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(spec.icon, color: spec.color, size: 17),
+                ),
+                const SizedBox(height: 6),
+                AnimatedCounter(
+                  value: spec.value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: DesignColors.textPrimary,
+                    height: 1.05,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const Divider(height: 1, thickness: 1, color: divider),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _overviewStatCell(
-                          label: 'Parcels',
-                          value: s.pendingParcels,
-                          color: DesignColors.primary,
-                          icon: Icons.inventory_2_outlined,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const ParcelManagementScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Container(width: 1, color: divider),
-                      Expanded(
-                        child: _overviewStatCell(
-                          label: 'Bookings',
-                          value: s.upcomingBookings,
-                          color: const Color(0xFF00897B),
-                          icon: Icons.event_available_outlined,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const AmenityBookingHistoryScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 2),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Text(
+                    spec.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: context.text.primary,
+                      height: 1.1,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -921,76 +908,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _overviewStatCell({
-    required String label,
-    required int value,
-    required Color color,
-    required IconData icon,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 11, 9, 11),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 17, color: color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: DesignColors.textSecondary,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    AnimatedCounter(
-                      value: value,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: DesignColors.textPrimary,
-                        height: 1.08,
-                        letterSpacing: -0.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onTap != null)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: DesignColors.textTertiary.withValues(alpha: 0.78),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -1686,31 +1603,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: DesignColors.textPrimary,
-            letterSpacing: -0.35,
-            height: 1.0,
-            leadingDistribution: TextLeadingDistribution.proportional,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: context.text.primary,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Most-used resident tasks',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.text.secondary,
+                  ),
+            ),
+          ],
         ),
         InkWell(
           onTap: () => _showAllQuickActionsSheet(context),
           borderRadius: BorderRadius.circular(8),
-          child: const Padding(
-            padding: EdgeInsets.fromLTRB(8, 2, 2, 2),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 2, 2),
             child: Text(
-              'View All >',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                height: 1.0,
-                color: DesignColors.primary,
-                leadingDistribution: TextLeadingDistribution.proportional,
-              ),
+              'View all',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: context.brand.primary,
+                  ),
             ),
           ),
         ),
@@ -1730,9 +1652,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            crossAxisSpacing: 10,
+            crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            mainAxisExtent: 54,
+            mainAxisExtent: 72,
           ),
           itemCount: residentHomeQuickActionsGrid.length,
           itemBuilder: (context, index) {
@@ -1746,8 +1668,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _quickActionTile(BuildContext context, QuickAction action) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surface.defaultSurface,
         borderRadius: BorderRadius.circular(_kRadiusMd),
+        border: Border.all(color: context.surface.border),
         boxShadow: _cardShadow(0.05),
       ),
       child: Material(
@@ -1756,33 +1679,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           borderRadius: BorderRadius.circular(_kRadiusMd),
           onTap: () => _openQuickAction(context, action),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 30,
+                  height: 30,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    color: action.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(action.icon, color: action.color, size: 19),
+                  child: Icon(action.icon, color: action.color, size: 17),
                 ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    action.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: DesignColors.textPrimary,
-                      height: 1.2,
-                      letterSpacing: -0.2,
-                    ),
+                const SizedBox(height: 6),
+                Text(
+                  action.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: context.text.primary,
+                    height: 1.15,
+                    letterSpacing: -0.15,
                   ),
                 ),
               ],
@@ -2756,7 +2679,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return Material(
-      color: DesignColors.primary.withValues(alpha: 0.1),
+      color: context.state.info.bg.withValues(alpha: 0.55),
       borderRadius: BorderRadius.circular(_kRadiusLg),
       elevation: 0,
       child: InkWell(
@@ -2769,7 +2692,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Icon(Icons.shield_outlined, color: DesignColors.primary, size: 26),
+                  Icon(Icons.shield_outlined, color: context.brand.primary, size: 26),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Padding(
@@ -2778,12 +2701,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
+                          Text(
                             'Need Help? Contact Security',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: DesignColors.primary,
+                              color: context.brand.primary,
                               height: 1.25,
                               letterSpacing: -0.2,
                             ),
@@ -2791,10 +2714,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(height: 4),
                           Text(
                             securityLine,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
-                              color: _kTextSecondary,
+                              color: context.text.secondary,
                               height: 1.25,
                             ),
                           ),
@@ -2803,16 +2726,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   Material(
-                    color: Colors.white,
+                    color: context.surface.defaultSurface,
                     elevation: 2,
                     shadowColor: Colors.black.withValues(alpha: 0.08),
                     shape: const CircleBorder(),
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: callSecurity,
-                      child: const Padding(
-                        padding: EdgeInsets.all(11),
-                        child: Icon(Icons.phone, color: DesignColors.primary, size: 20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(11),
+                        child: Icon(Icons.phone, color: context.brand.primary, size: 20),
                       ),
                     ),
                   ),
@@ -2841,3 +2764,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 /// Tab index for [ResidentShell] (home / community / profile).
 final currentTabProvider = StateProvider<int>((ref) => 0);
+
+/// Static data describing one Overview metric tile.
+class _OverviewTileSpec {
+  const _OverviewTileSpec({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+/// Circular avatar shown in the home header.
+///
+/// Renders the resident's uploaded `photoUrl` when available (cached) and
+/// falls back to the first letter of the name on load error or missing URL.
+class _HeaderAvatar extends StatelessWidget {
+  const _HeaderAvatar({required this.name, required this.photoUrl});
+
+  final String name;
+  final String? photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = resolveServerFileUrl(photoUrl);
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'R';
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: context.brand.primary.withValues(alpha: 0.12),
+        border: Border.all(
+          color: context.brand.primary.withValues(alpha: 0.16),
+          width: 1.2,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: url == null
+          ? _initialFallback(context, initial)
+          : CachedNetworkImage(
+              key: ValueKey(url),
+              imageUrl: url,
+              cacheKey: url,
+              fit: BoxFit.cover,
+              width: 44,
+              height: 44,
+              fadeInDuration: const Duration(milliseconds: 180),
+              placeholder: (_, _) => _initialFallback(context, initial),
+              errorWidget: (_, _, _) => _initialFallback(context, initial),
+            ),
+    );
+  }
+
+  Widget _initialFallback(BuildContext context, String initial) {
+    return Center(
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+          color: context.brand.primary,
+          letterSpacing: -0.35,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}

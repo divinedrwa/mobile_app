@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
@@ -867,7 +868,7 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
                   prefixText: '₹ ',
                   border: OutlineInputBorder(),
                 ),
-                autofocus: true,
+                autofocus: false,
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
@@ -1000,6 +1001,9 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
       if (villaId.isEmpty) throw 'Missing villa id on this row.';
 
       final filter = ref.read(maintenanceDashboardFilterProvider);
+      
+      final idempotencyKey = 'payment-${const Uuid().v4()}';
+      
       await ref.read(maintenanceRepositoryProvider).markPaidCash(
             villaId: villaId,
             month: filter.month,
@@ -1011,6 +1015,7 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
                 : _remarksCtl.text.trim(),
             maintenanceCollectionCycleId:
                 filter.maintenanceCollectionCycleId,
+            idempotencyKey: idempotencyKey,
           );
       if (!mounted) return;
       Navigator.of(context).pop();

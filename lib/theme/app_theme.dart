@@ -91,6 +91,8 @@ class AppTheme {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: AppTypography.textTheme(text.primary).titleLarge,
+        iconTheme: IconThemeData(color: text.secondary),
+        actionsIconTheme: IconThemeData(color: text.secondary),
       ),
       cardTheme: CardThemeData(
         color: surface.defaultSurface,
@@ -104,7 +106,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: brand.accent,
+          backgroundColor: brand.primary,
           foregroundColor: text.inverse,
           textStyle: AppTypography.textTheme(text.inverse).labelLarge,
           shape: RoundedRectangleBorder(
@@ -132,8 +134,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: brand.accent,
-          textStyle: AppTypography.textTheme(brand.accent).labelLarge,
+          foregroundColor: text.secondary,
+          textStyle: AppTypography.textTheme(text.secondary).labelLarge,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -174,6 +176,12 @@ class AppTheme {
         color: surface.border,
         space: 1,
         thickness: 1,
+      ),
+      iconTheme: IconThemeData(color: text.tertiary),
+      listTileTheme: ListTileThemeData(
+        iconColor: text.tertiary,
+        textColor: text.primary,
+        tileColor: surface.defaultSurface,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: brightness == Brightness.light

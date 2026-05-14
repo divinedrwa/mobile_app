@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/theme/app_spacing.dart';
+
 import '../../../../core/theme/design_animations.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/providers/emergency_contact_provider.dart';
 import 'add_emergency_contact_screen.dart';
 
@@ -16,123 +19,88 @@ class EmergencyContactsScreen extends ConsumerWidget {
     final contactsState = ref.watch(emergencyContactProvider);
 
     return Scaffold(
+      backgroundColor: context.surface.background,
       appBar: AppBar(
+        backgroundColor: context.state.denied.solid,
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text('Emergency Contacts'),
-        backgroundColor: Colors.red,
       ),
       body: contactsState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 56, color: Colors.red),
-              const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.read(emergencyContactProvider.notifier).fetchContacts(),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.error_outline,
+            title: 'Could not load emergency contacts',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () =>
+                ref.read(emergencyContactProvider.notifier).fetchContacts(),
           ),
         ),
-        data: (contacts) => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            Card(
-              color: Colors.red.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.red, size: 32),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        'These contacts will be notified during SOS alerts',
-                        style: TextStyle(
-                          color: Colors.red[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+        data: (contacts) {
+          if (contacts.isEmpty) {
+            return EmptyStateWidget(
+              icon: Icons.emergency_outlined,
+              title: 'No emergency contacts',
+              subtitle:
+                  'Add trusted contacts who will be notified during SOS alerts.',
+              actionLabel: 'Add contact',
+              onAction: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (context) => const AddEmergencyContactScreen(),
                 ),
               ),
-            ).animate().fadeIn(duration: 300.ms),
-            const SizedBox(height: AppSpacing.md),
-            ...contacts.asMap().entries.map((entry) {
-              final index = entry.key;
-              final contact = entry.value;
-              return Card(
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.red.withValues(alpha: 0.1),
-                    child: const Icon(Icons.emergency, color: Colors.red),
-                  ),
-                  title: Text(
-                    contact.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(contact.relationship),
-                      Text(contact.phone, style: const TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Call',
-                        icon: const Icon(Icons.call, color: Colors.green),
-                        onPressed: () => _makeCall(contact.phone),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete',
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                        onPressed: () =>
-                            _deleteContact(context, ref, contact.id),
-                      ),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(
-                duration: 300.ms,
-                delay: DesignAnimations.staggerFor(index + 1),
-              );
-            }),
-          ],
-        ),
+            );
+          }
+
+          return ListView(
+            padding: EdgeInsets.all(context.spacing.s16),
+            children: [
+              const EnterpriseInfoBanner(
+                icon: Icons.warning_amber_rounded,
+                title: 'SOS alert recipients',
+                message:
+                    'These contacts will be notified immediately when you trigger an SOS alert.',
+                tone: EnterpriseTone.danger,
+              ),
+              SizedBox(height: context.spacing.s24),
+              EnterpriseSectionHeader(
+                title: 'Emergency contacts',
+                subtitle:
+                    '${contacts.length} ${contacts.length == 1 ? 'contact' : 'contacts'} configured',
+              ),
+              SizedBox(height: context.spacing.s12),
+              for (int index = 0; index < contacts.length; index++)
+                _EmergencyContactCard(
+                  contact: contacts[index],
+                  onDelete: () =>
+                      _deleteContact(context, ref, contacts[index].id),
+                ).animate().fadeIn(
+                      duration: 300.ms,
+                      delay: DesignAnimations.staggerFor(index),
+                    ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (context) => const AddEmergencyContactScreen(),
             ),
           );
         },
-        backgroundColor: Colors.red,
+        backgroundColor: context.state.denied.solid,
         icon: const Icon(Icons.add),
         label: const Text('Add Contact'),
       ),
     );
-  }
-
-  void _makeCall(String phone) async {
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
   }
 
   void _deleteContact(BuildContext context, WidgetRef ref, String? id) async {
@@ -147,5 +115,97 @@ class EmergencyContactsScreen extends ConsumerWidget {
         backgroundColor: ok ? Colors.green : Colors.red,
       ),
     );
+  }
+}
+
+class _EmergencyContactCard extends StatelessWidget {
+  const _EmergencyContactCard({
+    required this.contact,
+    required this.onDelete,
+  });
+
+  final dynamic contact;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.s12),
+      child: EnterprisePanel(
+        tone: EnterpriseTone.danger,
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: context.state.denied.bg.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(context.radius.md),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.emergency_outlined,
+                color: context.state.denied.solid,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: context.spacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    contact.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: context.text.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    contact.relationship,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    contact.phone,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                          fontFamily: 'monospace',
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: context.spacing.s8),
+            IconButton(
+              tooltip: 'Call',
+              icon: Icon(
+                Icons.call_rounded,
+                color: context.state.approved.solid,
+              ),
+              onPressed: () => _makeCall(contact.phone),
+            ),
+            IconButton(
+              tooltip: 'Delete',
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: context.state.denied.solid,
+              ),
+              onPressed: onDelete,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _makeCall(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 }

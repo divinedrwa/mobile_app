@@ -3,11 +3,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_spacing.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/providers/complaint_provider.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
+import '../../data/providers/complaint_provider.dart';
 import '../widgets/list_skeleton.dart';
 
 /// Lists complaints from GET /residents/my-complaints (replaces former mock screen).
@@ -44,21 +46,21 @@ class MyComplaintsScreen extends ConsumerWidget {
     final async = ref.watch(myComplaintsProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.surface.defaultSurface,
         elevation: 0,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.text.primary),
         ),
-        title: const Text(
+        title: Text(
           'My Complaints',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: DesignColors.textPrimary,
+            color: context.text.primary,
           ),
         ),
         actions: [
@@ -71,26 +73,15 @@ class MyComplaintsScreen extends ConsumerWidget {
       ),
       body: async.when(
         loading: () => const ListSkeleton(),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  err.toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: DesignColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                FilledButton(
-                  onPressed: () => ref.invalidate(myComplaintsProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+        error: (err, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.report_problem_outlined,
+            title: 'Could not load complaints',
+            message: err.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(myComplaintsProvider),
           ),
         ),
         data: (items) {
@@ -109,84 +100,122 @@ class MyComplaintsScreen extends ConsumerWidget {
               ref.invalidate(myComplaintsProvider);
               await ref.read(myComplaintsProvider.future);
             },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: items.length,
-              separatorBuilder: (context, _) =>
-                  const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final c = items[index];
-                final color = _statusColor(c.status);
-                return Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: DesignRadius.borderLG,
-                    side: BorderSide(
-                      color: DesignColors.border.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    leading: Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
-                        borderRadius: DesignRadius.borderMD,
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.s16,
+                context.spacing.s16,
+                context.spacing.s16,
+                context.spacing.s32,
+              ),
+              children: [
+                const EnterpriseInfoBanner(
+                  icon: Icons.assignment_outlined,
+                  title: 'Track service issues clearly',
+                  message:
+                      'Review what has been filed, what is being worked on, and what has already been resolved.',
+                  tone: EnterpriseTone.info,
+                ),
+                SizedBox(height: context.spacing.s24),
+                EnterpriseSectionHeader(
+                  title: 'Complaint history',
+                  subtitle:
+                      '${items.length} ${items.length == 1 ? 'issue' : 'issues'} recorded for your home',
+                ),
+                SizedBox(height: context.spacing.s12),
+                for (int index = 0; index < items.length; index++)
+                  _ComplaintCard(
+                    item: items[index],
+                    color: _statusColor(items[index].status),
+                    statusLabel: _statusLabel(items[index].status),
+                  ).animate().fadeIn(
+                        duration: 250.ms,
+                        delay: DesignAnimations.staggerFor(index),
                       ),
-                      child: Icon(Icons.report_problem_outlined, color: color),
-                    ),
-                    title: Text(
-                      c.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.category,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: DesignColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('dd MMM yyyy, hh:mm a').format(c.createdAt.toLocal()),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: DesignColors.textSecondary.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
-                        borderRadius: DesignRadius.borderXS,
-                      ),
-                      child: Text(
-                        _statusLabel(c.status),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                    isThreeLine: true,
-                  ),
-                ).animate().fadeIn(duration: 250.ms, delay: DesignAnimations.staggerFor(index));
-              },
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ComplaintCard extends StatelessWidget {
+  const _ComplaintCard({
+    required this.item,
+    required this.color,
+    required this.statusLabel,
+  });
+
+  final dynamic item;
+  final Color color;
+  final String statusLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.s12),
+      child: EnterprisePanel(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(context.radius.md),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.report_problem_outlined, color: color),
+            ),
+            SizedBox(width: context.spacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: context.text.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    item.category,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    DateFormat('dd MMM yyyy, hh:mm a')
+                        .format(item.createdAt.toLocal()),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: context.spacing.s12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(context.radius.sm),
+              ),
+              child: Text(
+                statusLabel,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

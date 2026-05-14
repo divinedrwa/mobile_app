@@ -6,12 +6,13 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 // TODO: Re-enable when theme toggle is restored in the Appearance section.
 // import '../../../../theme/widgets/theme_mode_toggle.dart';
 import '../../../../core/utils/play_store_launch.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/notification_settings_notifier.dart';
 import 'legal_markdown_screen.dart';
@@ -128,215 +129,171 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          context.spacing.s16,
+          context.spacing.s12,
+          context.spacing.s16,
+          context.spacing.s32,
+        ),
         children: [
-          // Notifications Section
-          Text(
-            'Notifications',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          const EnterpriseInfoBanner(
+            icon: Icons.settings_suggest_rounded,
+            title: 'Control security, notifications, and legal preferences',
+            message:
+                'These settings apply to your resident account on this device and help keep access trustworthy and predictable.',
+            tone: EnterpriseTone.info,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: const Icon(Icons.notifications_outlined),
-                  title: const Text('Enable Notifications'),
-                  subtitle: const Text(
-                    'Master switch for push and society email alerts',
-                  ),
-                  value: notificationsEnabled,
-                  onChanged: notifBusy
-                      ? null
-                      : (value) => _runNotificationAction(
-                            () => ref
-                                .read(notificationSettingsProvider.notifier)
-                                .setMasterEnabled(value),
-                          ),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.phone_android_outlined),
-                  title: const Text('Push Notifications'),
-                  subtitle: const Text(
-                    'Firebase push — registers this device when enabled',
-                  ),
-                  value: pushEnabled,
-                  onChanged: !notificationsEnabled || notifBusy
-                      ? null
-                      : (value) => _runNotificationAction(
-                            () => ref
-                                .read(notificationSettingsProvider.notifier)
-                                .setPushEnabled(value),
-                          ),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.email_outlined),
-                  title: const Text('Email Notifications'),
-                  subtitle: const Text(
-                    'Society email alerts — saved to your account',
-                  ),
-                  value: emailEnabled,
-                  onChanged: !notificationsEnabled || notifBusy
-                      ? null
-                      : (value) => _runNotificationAction(
-                            () => ref
-                                .read(notificationSettingsProvider.notifier)
-                                .setEmailEnabled(value),
-                          ),
-                ),
-              ],
-            ),
+          SizedBox(height: context.spacing.s24),
+          _SettingsSection(
+            title: 'Notifications',
+            subtitle: 'Choose how this device receives resident alerts.',
+            children: [
+              _SettingsSwitchTile(
+                icon: Icons.notifications_outlined,
+                title: 'Enable notifications',
+                subtitle: 'Master switch for push and society email alerts',
+                value: notificationsEnabled,
+                onChanged: notifBusy
+                    ? null
+                    : (value) => _runNotificationAction(
+                          () => ref
+                              .read(notificationSettingsProvider.notifier)
+                              .setMasterEnabled(value),
+                        ),
+              ),
+              _SettingsSwitchTile(
+                icon: Icons.phone_android_outlined,
+                title: 'Push notifications',
+                subtitle:
+                    'Register this device for real-time security and society updates',
+                value: pushEnabled,
+                onChanged: !notificationsEnabled || notifBusy
+                    ? null
+                    : (value) => _runNotificationAction(
+                          () => ref
+                              .read(notificationSettingsProvider.notifier)
+                              .setPushEnabled(value),
+                        ),
+              ),
+              _SettingsSwitchTile(
+                icon: Icons.email_outlined,
+                title: 'Email notifications',
+                subtitle: 'Send society alerts to your account email',
+                value: emailEnabled,
+                onChanged: !notificationsEnabled || notifBusy
+                    ? null
+                    : (value) => _runNotificationAction(
+                          () => ref
+                              .read(notificationSettingsProvider.notifier)
+                              .setEmailEnabled(value),
+                        ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // Appearance Section
-          // TODO: Re-enable theme toggle when dark/system theme support is ready.
-          // The ThemeModeToggle and theme picker are hidden for now; the app
-          // is locked to light theme in main.dart.
-          Text(
-            'Appearance',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          SizedBox(height: context.spacing.s24),
+          _SettingsSection(
+            title: 'Appearance',
+            subtitle:
+                'Keep reading and navigation simple across all resident screens.',
+            children: [
+              _SettingsTile(
+                icon: Icons.language_rounded,
+                title: 'Language',
+                subtitle: 'English',
+                onTap: () {
+                  _showInfoDialog(
+                    context,
+                    title: 'Language',
+                    message: 'Current app language is English.',
+                  );
+                },
+              ),
+              _SettingsTile(
+                icon: Icons.light_mode_outlined,
+                title: 'Theme',
+                subtitle:
+                    'Light mode is currently active across the mobile experience',
+                onTap: () {
+                  _showInfoDialog(
+                    context,
+                    title: 'Theme',
+                    message:
+                        'Dark and system theme options are being refined for a future update.',
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.language_rounded),
-                  title: const Text('Language'),
-                  subtitle: const Text('English'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    _showInfoDialog(
-                      context,
-                      title: 'Language',
-                      message: 'Current app language is English.',
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // Privacy & Security Section
-          Text(
-            'Privacy & Security',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text('Change Password'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangePasswordDialog(context),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.fingerprint),
-                  title: const Text('Biometric login'),
-                  subtitle: Text(
-                    _biometricEnabled
-                        ? 'Use fingerprint, face, or device PIN on the login screen'
-                        : 'After enabling, sign in once with your password to save securely',
-                  ),
-                  value: _biometricEnabled,
-                  onChanged: _busyBiometric
-                      ? null
-                      : (v) {
-                          _setBiometricEnabled(v);
-                        },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip),
-                  title: const Text('Privacy Policy'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openLegalPage(
-                    title: 'Privacy Policy',
-                    assetPath: AppConstants.privacyPolicyAsset,
-                    publicUrl: AppConstants.privacyPolicyPublicUrl,
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: const Text('Terms & Conditions'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openLegalPage(
-                    title: 'Terms & Conditions',
-                    assetPath: AppConstants.termsConditionsAsset,
-                    publicUrl: AppConstants.termsConditionsPublicUrl,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // About Section
-          Text(
-            'About',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: Column(
-              children: [
-                const ListTile(
-                  leading: Icon(Icons.info),
-                  title: Text('App Version'),
-                  subtitle: Text('1.0.0 (Build 100)'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.rate_review),
-                  title: const Text('Rate Us'),
-                  subtitle: const Text('Opens Play Store or App Store'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: _openPlayStore,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // Danger Zone
-          Card(
-            color: Colors.red.withValues(alpha: 0.1),
-            child: ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: const Text(
-                'Deactivate account',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+          SizedBox(height: context.spacing.s24),
+          _SettingsSection(
+            title: 'Privacy & Security',
+            subtitle:
+                'Protect sign-in, review legal documents, and manage access safely.',
+            children: [
+              _SettingsTile(
+                icon: Icons.lock_outline_rounded,
+                title: 'Change password',
+                subtitle: 'Update your resident login password',
+                onTap: () => _showChangePasswordDialog(context),
+              ),
+              _SettingsSwitchTile(
+                icon: Icons.fingerprint,
+                title: 'Biometric login',
+                subtitle: _biometricEnabled
+                    ? 'Use fingerprint, face, or device PIN on the login screen'
+                    : 'Enable and sign in once with password to finish setup',
+                value: _biometricEnabled,
+                onChanged: _busyBiometric ? null : _setBiometricEnabled,
+              ),
+              _SettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: 'Privacy policy',
+                subtitle: 'Review how account and society data is handled',
+                onTap: () => _openLegalPage(
+                  title: 'Privacy Policy',
+                  assetPath: AppConstants.privacyPolicyAsset,
+                  publicUrl: AppConstants.privacyPolicyPublicUrl,
                 ),
               ),
-              subtitle: const Text(
-                'Deactivate your account — you won’t be able to sign in; data stays with your society',
+              _SettingsTile(
+                icon: Icons.description_outlined,
+                title: 'Terms & conditions',
+                subtitle: 'Review legal terms for using the mobile app',
+                onTap: () => _openLegalPage(
+                  title: 'Terms & Conditions',
+                  assetPath: AppConstants.termsConditionsAsset,
+                  publicUrl: AppConstants.termsConditionsPublicUrl,
+                ),
               ),
-              onTap: () {
-                _showDeleteAccountDialog(context);
-              },
-            ),
+            ],
+          ),
+          SizedBox(height: context.spacing.s24),
+          _SettingsSection(
+            title: 'About',
+            subtitle: 'Product information and store links.',
+            children: [
+              const _SettingsTile(
+                icon: Icons.info_outline_rounded,
+                title: 'App version',
+                subtitle: AppConstants.appVersion,
+              ),
+              _SettingsTile(
+                icon: Icons.rate_review_outlined,
+                title: 'Rate the app',
+                subtitle: 'Open the app store listing for this release',
+                onTap: _openPlayStore,
+              ),
+            ],
+          ),
+          SizedBox(height: context.spacing.s24),
+          EnterpriseInfoBanner(
+            icon: Icons.delete_forever_rounded,
+            title: 'Deactivate account',
+            message:
+                'Disable sign-in for this resident account while keeping society records intact.',
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Review',
+            onAction: () => _showDeleteAccountDialog(context),
           ),
         ],
       ),
@@ -416,7 +373,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: currentController,
                       obscureText: obscureCurrent,
                       enabled: !submitting,
-                      autofocus: true,
+                      autofocus: false,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         labelText: 'Current password',
@@ -569,6 +526,141 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        EnterpriseSectionHeader(title: title, subtitle: subtitle),
+        SizedBox(height: context.spacing.s12),
+        EnterprisePanel(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.s16,
+                    vertical: context.spacing.s4,
+                  ),
+                  child: children[i],
+                ),
+                if (i != children.length - 1)
+                  Divider(height: 1, color: context.surface.border),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: context.brand.primary),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: context.text.primary,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.text.secondary,
+            ),
+      ),
+      trailing: onTap == null
+          ? null
+          : Icon(Icons.chevron_right_rounded, color: context.text.tertiary),
+      onTap: onTap,
+    );
+  }
+}
+
+class _SettingsSwitchTile extends StatelessWidget {
+  const _SettingsSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: context.spacing.s12),
+          child: Icon(icon, color: context.brand.primary),
+        ),
+        SizedBox(width: context.spacing.s12),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.s12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: context.text.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                SizedBox(height: context.spacing.s4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.text.secondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
     );
   }
 }

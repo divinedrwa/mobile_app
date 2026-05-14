@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// 🎨 GATEPASS+ - DESIGN TOKENS (Legacy)
-/// Centralized design system — premium teal-and-gold palette.
+/// 🎨 GATEPASS+ - DESIGN TOKENS
+/// Centralized design system — professional brand palette.
+///
+/// Brand colors from GatePass+ identity (green + navy):
+/// - Primary: Forest Green (#3D8361) — trust, approval, growth
+/// - Secondary: Navy Blue (#1B2B3A) — stability, professionalism
+/// - Accent: Light Green (#5BA878) — highlights, positive actions
 ///
 /// This file contains all design tokens used throughout the app:
-/// - Colors (Primary Teal, Amber Accent, Semantic, Neutral)
+/// - Colors (Brand Green, Navy, Semantic, Neutral)
 /// - Typography (Headings, Body, Labels, Captions)
 /// - Spacing (Based on 8pt grid)
 /// - Radius (Border radius values)
@@ -13,36 +18,50 @@ import 'package:google_fonts/google_fonts.dart';
 /// - Components (Input fields, buttons, etc.)
 
 // ============================================================================
-// COLORS - Design Tokens
+// COLORS - Design Tokens (GatePass+ Brand)
 // ============================================================================
 
 class DesignColors {
-  // PRIMARY COLORS
-  /// Primary Teal - Main brand color (#0F766E)
-  static const Color primary = Color(0xFF0F766E);
+  // PRIMARY BRAND COLORS (from GatePass+ logo)
+  /// Primary brand color - Forest Green (#3D8361)
+  /// Used for: primary buttons, active states, key actions, logo "G"
+  static const Color primary = Color(0xFF3D8361);
 
-  /// Primary Teal Light (#14B8A6)
-  static const Color primaryLight = Color(0xFF14B8A6);
+  /// Primary light - Soft Green (#5BA878)
+  /// Used for: hover states, light backgrounds, positive feedback
+  static const Color primaryLight = Color(0xFF5BA878);
 
-  /// Primary Teal Dark - For pressed states (#115E59)
-  static const Color primaryDark = Color(0xFF115E59);
+  /// Primary dark - Deep Forest (#2A5D47)
+  /// Used for: pressed states, emphasis, shadows
+  static const Color primaryDark = Color(0xFF2A5D47);
   
-  // SECONDARY COLORS  
-  /// Secondary color (#475569)
-  static const Color secondary = Color(0xFF475569);
+  // SECONDARY BRAND COLORS
+  /// Secondary brand color - Navy Blue (#1B2B3A)
+  /// Used for: headers, navigation, professional elements, logo "P"
+  static const Color secondary = Color(0xFF1B2B3A);
   
-  /// Tertiary/Alternative color (#94A3B8)
-  static const Color tertiary = Color(0xFF94A3B8);
+  /// Tertiary/Alternative color - Soft Navy (#4A5F7A)
+  /// Used for: subtle accents, inactive states
+  static const Color tertiary = Color(0xFF4A5F7A);
+  
+  // ACCENT COLORS
+  /// Accent Green - Light Spring (#6BC990)
+  /// Used for: success messages, approval badges, positive indicators
+  static const Color accent = Color(0xFF6BC990);
+  
+  /// Accent hover - Vibrant Green (#4FB376)
+  /// Used for: hover states on accent elements
+  static const Color accentHover = Color(0xFF4FB376);
   
   // NEUTRAL / SURFACES
-  /// Background - Main app background (#F9FAFC)
-  static const Color background = Color(0xFFF9FAFC);
+  /// Background - Main app background (#FFFFFF)
+  static const Color background = Color(0xFFFFFFFF);
   
   /// Surface - Card/Panel background (#FFFFFF)
   static const Color surface = Color(0xFFFFFFFF);
   
-  /// Surface Soft - Subtle background (#F1F5F9)
-  static const Color surfaceSoft = Color(0xFFF1F5F9);
+  /// Surface Soft - Subtle background (#F8FAFC)
+  static const Color surfaceSoft = Color(0xFFF8FAFC);
   
   // TEXT COLORS
   /// Text Primary - Main text color (#0F172A)
@@ -64,18 +83,19 @@ class DesignColors {
   /// Divider color (#F1F5F9)
   static const Color divider = Color(0xFFF1F5F9);
   
-  // SEMANTIC COLORS
-  /// Error/Danger color (#EF4444)
-  static const Color error = Color(0xFFEF4444);
+  // SEMANTIC COLORS (kept professional, not too bright)
+  /// Error/Danger color - Soft Red (#E74C3C)
+  static const Color error = Color(0xFFE74C3C);
   
-  /// Success color (#22C55E)
-  static const Color success = Color(0xFF22C55E);
+  /// Success color - Brand Green (#3D8361)
+  /// Reuses primary brand color for consistency
+  static const Color success = primary;
   
-  /// Warning color (#F59E0B)
-  static const Color warning = Color(0xFFF59E0B);
+  /// Warning color - Warm Amber (#F39C12)
+  static const Color warning = Color(0xFFF39C12);
   
-  /// Info color (uses primary teal)
-  static const Color info = primary;
+  /// Info color - quiet neutral signal
+  static const Color info = tertiary;
   
   // SOCIAL COLORS
   /// Google red (#DB4437)
@@ -91,18 +111,32 @@ class DesignColors {
   /// Pressed overlay (10% black)
   static const Color pressedOverlay = Color(0x1A000000);
   
-  /// Focus overlay (12% primary)
-  static const Color focusOverlay = Color(0x1F0F766E);
+  /// Focus overlay (12% primary - brand green)
+  static const Color focusOverlay = Color(0x1F3D8361);
   
   /// Disabled overlay (38% white)
   static const Color disabledOverlay = Color(0x61FFFFFF);
   
-  // GRADIENTS
-  /// Primary gradient for hero sections
+  // GRADIENTS (brand-aligned, subtle)
+  /// Primary gradient for hero sections - Green gradient
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primary, primaryLight],
+    colors: [primary, primaryLight], // Forest → Light Green
+  );
+  
+  /// Secondary gradient - Navy blend
+  static const LinearGradient secondaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [secondary, Color(0xFF2C3E50)], // Navy → Charcoal
+  );
+  
+  /// Accent gradient - Vibrant green for CTAs
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [accent, primaryLight], // Light Green → Soft Green
   );
   
   /// Subtle background gradient

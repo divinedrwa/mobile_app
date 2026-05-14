@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/notice_model.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/providers/content_provider.dart';
 import 'notice_detail_screen.dart';
 
@@ -23,16 +25,20 @@ class NoticesListScreen extends ConsumerWidget {
     final selectedCategory = ref.watch(noticeCategoryFilterProvider);
     final noticesState = ref.watch(noticesProvider);
 
-    return Container(
-      color: const Color(0xFFF8F9FB),
+    return ColoredBox(
+      color: context.surface.background,
       child: Column(
         children: [
-          // Modern Filter Chips
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFF0F3F6))),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.s16,
+              vertical: context.spacing.s12,
+            ),
+            decoration: BoxDecoration(
+              color: context.surface.defaultSurface,
+              border: Border(
+                bottom: BorderSide(color: context.surface.border),
+              ),
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -63,27 +69,18 @@ class NoticesListScreen extends ConsumerWidget {
             ),
           ),
 
-          // Notices List
           Expanded(
             child: noticesState.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 56,
-                      color: DesignColors.error,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(error.toString(), textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(noticesProvider),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+              error: (error, _) => Padding(
+                padding: EdgeInsets.all(context.spacing.s16),
+                child: EnterpriseInfoBanner(
+                  icon: Icons.campaign_outlined,
+                  title: 'Could not load notices',
+                  message: error.toString(),
+                  tone: EnterpriseTone.danger,
+                  actionLabel: 'Retry',
+                  onAction: () => ref.invalidate(noticesProvider),
                 ),
               ),
               data: (notices) {
@@ -104,14 +101,25 @@ class NoticesListScreen extends ConsumerWidget {
                   child: filteredNotices.isEmpty
                       ? _buildEmptyState()
                       : ListView(
-                          padding: const EdgeInsets.all(DesignSpacing.lg),
+                          padding: EdgeInsets.fromLTRB(
+                            context.spacing.s16,
+                            context.spacing.s16,
+                            context.spacing.s16,
+                            context.spacing.s32,
+                          ),
                           children: [
                             if (urgentNotices.isNotEmpty) ...[
-                              _buildSectionHeader('Urgent Notices', Colors.red),
-                              const SizedBox(height: 12),
+                              _buildSectionHeader(
+                                context,
+                                'Urgent notices',
+                                'Immediate communication that may affect access or safety',
+                              ),
+                              SizedBox(height: context.spacing.s12),
                               ...urgentNotices.map(
                                 (notice) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
+                                  padding: EdgeInsets.only(
+                                    bottom: context.spacing.s12,
+                                  ),
                                   child: _buildModernNoticeCard(
                                     context,
                                     notice,
@@ -119,17 +127,20 @@ class NoticesListScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 24),
+                              SizedBox(height: context.spacing.s24),
                             ],
                             if (regularNotices.isNotEmpty) ...[
                               _buildSectionHeader(
+                                context,
                                 'All Notices',
-                                DesignColors.textSecondary,
+                                'Announcements, reminders, and society updates',
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: context.spacing.s12),
                               ...regularNotices.map(
                                 (notice) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
+                                  padding: EdgeInsets.only(
+                                    bottom: context.spacing.s12,
+                                  ),
                                   child: _buildModernNoticeCard(
                                     context,
                                     notice,
@@ -161,21 +172,21 @@ class NoticesListScreen extends ConsumerWidget {
         label,
         style: TextStyle(
           fontSize: 14,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: isSelected ? Colors.white : DesignColors.textSecondary,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? Colors.white : context.text.secondary,
         ),
       ),
       selected: isSelected,
       onSelected: (_) {
         ref.read(noticeCategoryFilterProvider.notifier).state = category;
       },
-      backgroundColor: DesignColors.surfaceSoft,
-      selectedColor: DesignColors.primary,
+      backgroundColor: context.surface.background,
+      selectedColor: context.brand.primary,
       checkmarkColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: DesignRadius.borderXL,
         side: BorderSide(
-          color: isSelected ? DesignColors.primary : Colors.grey[300]!,
+          color: isSelected ? context.brand.primary : context.surface.border,
           width: 1,
         ),
       ),
@@ -183,10 +194,14 @@ class NoticesListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, Color color) {
-    return Text(
-      title,
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    String subtitle,
+  ) {
+    return EnterpriseSectionHeader(
+      title: title,
+      subtitle: subtitle,
     );
   }
 
@@ -195,6 +210,10 @@ class NoticesListScreen extends ConsumerWidget {
     NoticeModel notice, {
     bool isUrgent = false,
   }) {
+    final borderColor = isUrgent
+        ? context.state.denied.solid.withValues(alpha: 0.24)
+        : context.surface.border;
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -208,11 +227,9 @@ class NoticesListScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(DesignSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surface.defaultSurface,
           borderRadius: DesignRadius.borderXL,
-          border: isUrgent
-              ? Border.all(color: Colors.red.shade300, width: 2)
-              : null,
+          border: Border.all(color: borderColor, width: isUrgent ? 1.5 : 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -304,9 +321,9 @@ class NoticesListScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     _getRelativeDate(notice.publishedAt),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: DesignColors.textSecondary,
+                      color: context.text.secondary,
                     ),
                   ),
                 ),
@@ -319,10 +336,10 @@ class NoticesListScreen extends ConsumerWidget {
             // Title
             Text(
               notice.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
-                color: DesignColors.textPrimary,
+                color: context.text.primary,
                 height: 1.3,
               ),
               maxLines: 2,
@@ -334,9 +351,9 @@ class NoticesListScreen extends ConsumerWidget {
             // Content Preview
             Text(
               notice.content,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
                 height: 1.5,
               ),
               maxLines: 3,

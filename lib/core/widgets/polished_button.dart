@@ -54,13 +54,7 @@ class _PolishedButtonState extends State<PolishedButton> {
       child: Container(
           width: widget.isFullWidth ? double.infinity : null,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isEnabled
-                  ? [buttonColor, buttonColor.withValues(alpha: 0.85)]
-                  : [DesignColors.textTertiary, DesignColors.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: isEnabled ? buttonColor : DesignColors.textTertiary,
             borderRadius: BorderRadius.circular(widget.borderRadius),
             boxShadow: isEnabled
                 ? AppElevations.buttonShadow(buttonColor)

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'app_navigator_keys.dart';
 import '../../core/constants/app_constants.dart';
-import '../../features/auth/presentation/pages/splash_screen.dart';
+import '../../features/auth/presentation/pages/branded_splash_screen.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/society_selection_screen.dart';
 import '../../core/utils/storage_service.dart';
@@ -100,7 +100,7 @@ class AppRouter {
         // Splash Screen
         GoRoute(
           path: '/',
-          builder: (context, state) => const SplashScreen(),
+          builder: (context, state) => const BrandedSplashScreen(),
         ),
         
         // Login Screen

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/animated_counter.dart';
 import '../../data/models/resident_dashboard_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
@@ -11,9 +13,12 @@ import 'amenity_booking_history_screen.dart';
 import 'parcel_management_screen.dart';
 
 const Color _kPageBg = DesignColors.background;
-const Color _kOverviewOrange = Color(0xFFFF6D00);
+const Color _kOverviewOrange = Color(0xFFF39C12); // Brand warning amber
+const Color _kCardBg = Colors.white;
+const Color _kBorderColor = Color(0xFFE8ECF0);
 
-/// Full overview — opened from Home “View all”.
+/// Full overview — opened from Home "View all".
+/// Enterprise-level dashboard with animated stats and professional design.
 class ResidentOverviewScreen extends ConsumerWidget {
   const ResidentOverviewScreen({super.key});
 
@@ -49,104 +54,188 @@ class ResidentOverviewScreen extends ConsumerWidget {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            // Enhanced App Bar with gradient
             SliverAppBar.large(
               pinned: true,
-              backgroundColor: Colors.white,
+              backgroundColor: _kCardBg,
               surfaceTintColor: Colors.transparent,
               foregroundColor: DesignColors.textPrimary,
               elevation: 0,
               shadowColor: Colors.black.withValues(alpha: 0.08),
               flexibleSpace: FlexibleSpaceBar(
                 expandedTitleScale: 1.0,
-                titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 14),
-                title: const Text(
-                  'Overview',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.45,
-                    color: DesignColors.textPrimary,
-                    fontSize: 22,
-                  ),
+                titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 16),
+                title: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Overview',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: DesignColors.textPrimary,
+                        fontSize: 28,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your activity snapshot',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: DesignColors.textSecondary.withValues(alpha: 0.85),
+                        letterSpacing: 0,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
-                background: DecoratedBox(
+                background: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white,
-                        DesignColors.primary.withValues(alpha: 0.07),
+                        _kCardBg,
+                        DesignColors.primary.withValues(alpha: 0.04),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
+            
+            // Content
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Error state
                     if (dash.hasError) ...[
-                      _OverviewErrorChip(onRetry: () => ref.invalidate(residentDashboardProvider)),
+                      _OverviewErrorChip(onRetry: () => ref.invalidate(residentDashboardProvider))
+                        .animate()
+                        .fadeIn(duration: 300.ms)
+                        .slideY(begin: -0.2, end: 0),
                       const SizedBox(height: 14),
                     ],
-                    _HeroSummaryCard(stats: s, attentionTotal: total, isBillingExcluded: isBillingExcluded),
-                    const SizedBox(height: 22),
+                    
+                    // Hero summary card with animation
+                    _EnhancedHeroSummaryCard(
+                      stats: s,
+                      attentionTotal: total,
+                      isBillingExcluded: isBillingExcluded,
+                    )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 50.ms)
+                      .slideY(begin: 0.1, end: 0),
+                    
+                    const SizedBox(height: 28),
+                    
+                    // Section header
                     Row(
                       children: [
                         Container(
-                          width: 3,
-                          height: 14,
+                          width: 4,
+                          height: 20,
                           decoration: BoxDecoration(
-                            color: DesignColors.primary,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                DesignColors.primary,
+                                DesignColors.primary.withValues(alpha: 0.6),
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         const Text(
-                          'Your metrics',
+                          'Detailed metrics',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
+                            letterSpacing: -0.3,
                             color: DesignColors.textPrimary,
                           ),
                         ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: DesignColors.surfaceSoft,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _kBorderColor),
+                          ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: total > 0 ? _kOverviewOrange : DesignColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        total > 0 ? 'Active' : 'Clear',
+                        style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: DesignColors.textSecondary,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
+                    )
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 150.ms)
+                      .slideX(begin: -0.1, end: 0),
+                    
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
+            
+            // Metric tiles with staggered animation
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (!isBillingExcluded) ...[
-                    _OverviewMetricTile(
-                      icon: Icons.payments_outlined,
+                    _EnhancedMetricTile(
+                      icon: Icons.payments_rounded,
                       color: _kOverviewOrange,
                       title: 'Maintenance',
                       value: s.pendingMaintenance,
                       subtitle: 'Pending maintenance items',
                       onTap: () => context.push('/resident/maintenance'),
+                      index: 0,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                   ],
-                  _OverviewMetricTile(
-                    icon: Icons.report_problem_outlined,
+                  _EnhancedMetricTile(
+                    icon: Icons.report_problem_rounded,
                     color: const Color(0xFFE65100),
                     title: 'Complaints',
                     value: s.activeComplaints,
                     subtitle: 'Active complaints you raised',
                     onTap: () => context.push('/resident/my-complaints'),
+                    index: isBillingExcluded ? 0 : 1,
                   ),
-                  const SizedBox(height: 12),
-                  _OverviewMetricTile(
-                    icon: Icons.inventory_2_outlined,
+                  const SizedBox(height: 14),
+                  _EnhancedMetricTile(
+                    icon: Icons.inventory_2_rounded,
                     color: DesignColors.primary,
                     title: 'Parcels',
                     value: s.pendingParcels,
@@ -158,10 +247,11 @@ class ResidentOverviewScreen extends ConsumerWidget {
                         ),
                       );
                     },
+                    index: isBillingExcluded ? 1 : 2,
                   ),
-                  const SizedBox(height: 12),
-                  _OverviewMetricTile(
-                    icon: Icons.event_available_outlined,
+                  const SizedBox(height: 14),
+                  _EnhancedMetricTile(
+                    icon: Icons.event_available_rounded,
                     color: const Color(0xFF00897B),
                     title: 'Bookings',
                     value: s.upcomingBookings,
@@ -173,6 +263,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                         ),
                       );
                     },
+                    index: isBillingExcluded ? 2 : 3,
                   ),
                 ]),
               ),
@@ -184,6 +275,10 @@ class ResidentOverviewScreen extends ConsumerWidget {
   }
 }
 
+// ============================================================================
+// ERROR CHIP
+// ============================================================================
+
 class _OverviewErrorChip extends StatelessWidget {
   const _OverviewErrorChip({required this.onRetry});
 
@@ -194,14 +289,26 @@ class _OverviewErrorChip extends StatelessWidget {
     return Material(
       color: const Color(0xFFFFF8E1),
       borderRadius: BorderRadius.circular(14),
+      elevation: 0,
       child: InkWell(
         onTap: onRetry,
         borderRadius: BorderRadius.circular(14),
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
           child: Row(
             children: [
-              Icon(Icons.cloud_off_outlined, color: Colors.orange.shade900, size: 22),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.cloud_off_rounded, color: Colors.orange.shade900, size: 18),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -214,7 +321,7 @@ class _OverviewErrorChip extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(Icons.refresh_rounded, color: Colors.orange.shade900, size: 22),
+              Icon(Icons.refresh_rounded, color: Colors.orange.shade900, size: 20),
             ],
           ),
         ),
@@ -223,8 +330,12 @@ class _OverviewErrorChip extends StatelessWidget {
   }
 }
 
-class _HeroSummaryCard extends StatelessWidget {
-  const _HeroSummaryCard({
+// ============================================================================
+// ENHANCED HERO SUMMARY CARD
+// ============================================================================
+
+class _EnhancedHeroSummaryCard extends StatelessWidget {
+  const _EnhancedHeroSummaryCard({
     required this.stats,
     required this.attentionTotal,
     this.isBillingExcluded = false,
@@ -264,14 +375,28 @@ class _HeroSummaryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8ECF0)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _kCardBg,
+            DesignColors.primary.withValues(alpha: 0.02),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _kBorderColor, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -2,
+          ),
+          BoxShadow(
+            color: DesignColors.primary.withValues(alpha: 0.03),
+            blurRadius: 40,
+            offset: const Offset(0, 16),
+            spreadRadius: -8,
           ),
         ],
       ),
@@ -279,68 +404,139 @@ class _HeroSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Top gradient accent bar
           Container(
-            height: 4,
+            height: 5,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
                   DesignColors.primary,
-                  DesignColors.primary.withValues(alpha: 0.65),
+                  DesignColors.primary.withValues(alpha: 0.7),
                   const Color(0xFF00897B),
                 ],
               ),
             ),
           ),
+          
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  headline,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
-                    height: 1.2,
-                    color: DesignColors.textPrimary,
+                // Status icon and headline
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: attentionTotal > 0
+                            ? _kOverviewOrange.withValues(alpha: 0.1)
+                            : DesignColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: attentionTotal > 0
+                              ? _kOverviewOrange.withValues(alpha: 0.2)
+                              : DesignColors.success.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Icon(
+                        attentionTotal > 0 ? Icons.pending_actions_rounded : Icons.check_circle_rounded,
+                        color: attentionTotal > 0 ? _kOverviewOrange : DesignColors.success,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            headline,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              height: 1.2,
+                              color: DesignColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            detail,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                              color: DesignColors.textSecondary.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 18),
+                
+                // Divider
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _kBorderColor.withValues(alpha: 0.3),
+                        _kBorderColor,
+                        _kBorderColor.withValues(alpha: 0.3),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  detail,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                    color: DesignColors.textSecondary.withValues(alpha: 0.95),
-                  ),
+                
+                const SizedBox(height: 18),
+                
+                // Stats grid
+                Row(
+                  children: [
+                    if (!isBillingExcluded) ...[
+                      Expanded(
+                        child: _StatPill(
+                          label: 'Maintenance',
+                          value: stats.pendingMaintenance,
+                          color: _kOverviewOrange,
+                          icon: Icons.payments_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Complaints',
+                        value: stats.activeComplaints,
+                        color: const Color(0xFFE65100),
+                        icon: Icons.report_problem_rounded,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                Row(
                   children: [
-                    if (!isBillingExcluded)
-                      _MiniStatChip(
-                        label: 'Maint.',
-                        value: stats.pendingMaintenance,
-                        color: _kOverviewOrange,
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Parcels',
+                        value: stats.pendingParcels,
+                        color: DesignColors.primary,
+                        icon: Icons.inventory_2_rounded,
                       ),
-                    _MiniStatChip(
-                      label: 'Compl.',
-                      value: stats.activeComplaints,
-                      color: const Color(0xFFE65100),
                     ),
-                    _MiniStatChip(
-                      label: 'Parcel',
-                      value: stats.pendingParcels,
-                      color: DesignColors.primary,
-                    ),
-                    _MiniStatChip(
-                      label: 'Book',
-                      value: stats.upcomingBookings,
-                      color: const Color(0xFF00897B),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Bookings',
+                        value: stats.upcomingBookings,
+                        color: const Color(0xFF00897B),
+                        icon: Icons.event_available_rounded,
+                      ),
                     ),
                   ],
                 ),
@@ -353,46 +549,70 @@ class _HeroSummaryCard extends StatelessWidget {
   }
 }
 
-class _MiniStatChip extends StatelessWidget {
-  const _MiniStatChip({
+// ============================================================================
+// STAT PILL
+// ============================================================================
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
     required this.label,
     required this.value,
     required this.color,
+    required this.icon,
   });
 
   final String label;
   final int value;
   final Color color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color.withValues(alpha: 0.95),
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$value',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: DesignColors.textPrimary,
-              letterSpacing: -0.2,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: DesignColors.textSecondary,
+                          letterSpacing: 0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                AnimatedCounter(
+                  value: value,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: DesignColors.textPrimary,
+                    letterSpacing: -0.5,
+                    height: 1.0,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -401,14 +621,19 @@ class _MiniStatChip extends StatelessWidget {
   }
 }
 
-class _OverviewMetricTile extends StatelessWidget {
-  const _OverviewMetricTile({
+// ============================================================================
+// ENHANCED METRIC TILE
+// ============================================================================
+
+class _EnhancedMetricTile extends StatelessWidget {
+  const _EnhancedMetricTile({
     required this.icon,
     required this.color,
     required this.title,
     required this.value,
     required this.subtitle,
     required this.onTap,
+    required this.index,
   });
 
   final IconData icon;
@@ -417,119 +642,133 @@ class _OverviewMetricTile extends StatelessWidget {
   final int value;
   final String subtitle;
   final VoidCallback onTap;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      color: _kCardBg,
+      borderRadius: BorderRadius.circular(18),
       elevation: 0,
       shadowColor: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE8ECF0)),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _kBorderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.045),
-                blurRadius: 12,
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
+                spreadRadius: -2,
               ),
             ],
           ),
-          child: IntrinsicHeight(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Icon circle with gradient
                 Container(
-                  width: 5,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(15)),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(9),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.11),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(icon, color: color, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: DesignColors.textPrimary,
-                                  letterSpacing: -0.28,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                subtitle,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: DesignColors.textSecondary.withValues(alpha: 0.92),
-                                  height: 1.28,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '$value',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: DesignColors.textPrimary,
-                                height: 1.0,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 12,
-                                color: DesignColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withValues(alpha: 0.15),
+                        color.withValues(alpha: 0.08),
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Text content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: DesignColors.textPrimary,
+                          letterSpacing: -0.3,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: DesignColors.textSecondary.withValues(alpha: 0.85),
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Value and arrow
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    AnimatedCounter(
+                      value: value,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        height: 1.0,
+                        letterSpacing: -1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: DesignColors.surfaceSoft,
+                        borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _kBorderColor),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: DesignColors.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
+    )
+      .animate()
+      .fadeIn(duration: 400.ms, delay: Duration(milliseconds: 200 + (index * 80)))
+      .slideX(begin: 0.1, end: 0);
   }
 }

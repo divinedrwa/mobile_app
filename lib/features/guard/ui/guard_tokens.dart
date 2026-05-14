@@ -25,12 +25,12 @@ abstract final class GuardTokens {
   static const double caption = 12.5; // 12–13
 
   // —— Outdoor-readable contrast ——
-  static const Color guardAccent = Color(0xFF1D4ED8);
-  static const Color guardAccentDeep = Color(0xFF1E3A8A);
+  static const Color guardAccent = Color(0xFF6B7280);
+  static const Color guardAccentDeep = Color(0xFF374151);
   static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF475569);
-  static const Color surfaceCard = Color(0xFFF8FAFC);
-  static const Color borderSubtle = Color(0xFFE2E8F0);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color surfaceCard = Color(0xFFFFFFFF);
+  static const Color borderSubtle = Color(0xFFE5E7EB);
 
   static const Color darkSurface = Color(0xFF1A1F2E);
   static const Color darkCard = Color(0xFF252B3A);

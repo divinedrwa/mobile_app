@@ -12,10 +12,10 @@ class HomeSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerWrap(
+    return const ShimmerWrap(
       child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(
+        physics: NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(
           horizontal: DesignSpacing.screenPaddingH,
           vertical: DesignSpacing.lg,
         ),
@@ -23,7 +23,7 @@ class HomeSkeleton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // -- Greeting header --
-            const Row(
+            Row(
               children: [
                 ShimmerBox(width: 44, height: 44, borderRadius: 22),
                 SizedBox(width: DesignSpacing.md),
@@ -41,10 +41,10 @@ class HomeSkeleton extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.xl),
 
             // -- Stats row (3 chips) --
-            const Row(
+            Row(
               children: [
                 Expanded(child: ShimmerBox(height: 72, borderRadius: DesignRadius.lg)),
                 SizedBox(width: DesignSpacing.sm),
@@ -54,18 +54,18 @@ class HomeSkeleton extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.xl),
 
             // -- Quick actions grid (2x2) --
-            const Row(
+            Row(
               children: [
                 Expanded(child: ShimmerBox(height: 88, borderRadius: DesignRadius.xl)),
                 SizedBox(width: DesignSpacing.sm),
                 Expanded(child: ShimmerBox(height: 88, borderRadius: DesignRadius.xl)),
               ],
             ),
-            const SizedBox(height: DesignSpacing.sm),
-            const Row(
+            SizedBox(height: DesignSpacing.sm),
+            Row(
               children: [
                 Expanded(child: ShimmerBox(height: 88, borderRadius: DesignRadius.xl)),
                 SizedBox(width: DesignSpacing.sm),
@@ -73,24 +73,24 @@ class HomeSkeleton extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.xl),
 
             // -- Hero card --
-            const ShimmerBox(height: 140, borderRadius: DesignRadius.xl),
+            ShimmerBox(height: 140, borderRadius: DesignRadius.xl),
 
-            const SizedBox(height: DesignSpacing.xl),
+            SizedBox(height: DesignSpacing.xl),
 
             // -- Section header --
-            const ShimmerBox(height: 14, width: 120, borderRadius: DesignRadius.sm),
+            ShimmerBox(height: 14, width: 120, borderRadius: DesignRadius.sm),
 
-            const SizedBox(height: DesignSpacing.md),
+            SizedBox(height: DesignSpacing.md),
 
             // -- List items --
-            const ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
-            const SizedBox(height: DesignSpacing.sm),
-            const ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
-            const SizedBox(height: DesignSpacing.sm),
-            const ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
+            SizedBox(height: DesignSpacing.sm),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
+            SizedBox(height: DesignSpacing.sm),
+            ShimmerBox(height: 72, borderRadius: DesignRadius.lg),
           ],
         ),
       ),

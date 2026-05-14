@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Plain white launch background. The Flutter BrandedSplashScreen takes
+     over as soon as the engine renders its first frame, so we intentionally
+     show no logo here to avoid a double-icon flash. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
-    <item android:gravity="center">
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/splash_app_icon"
-            android:width="120dp"
-            android:height="120dp" />
-    </item>
 </layer-list>

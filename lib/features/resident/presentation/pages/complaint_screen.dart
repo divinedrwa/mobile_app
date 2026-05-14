@@ -108,7 +108,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
             const DivineFlowSectionLabel('Summary'),
             TextFormField(
               controller: _titleController,
-              autofocus: true,
+              autofocus: false,
               textInputAction: TextInputAction.next,
               textCapitalization: TextCapitalization.sentences,
               decoration: DesignComponents.inputDecoration(

@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../providers/visitor_provider.dart';
 
 /// Poll / inbox: gate visitors waiting on your flat's approval.
@@ -64,12 +67,12 @@ class _VisitorApprovalRequestsScreenState
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
+        backgroundColor: context.surface.defaultSurface,
+        foregroundColor: context.text.primary,
         title: Text(
           'Gate visitor requests',
           style: DesignTypography.headingM.copyWith(fontSize: 17),
@@ -80,9 +83,14 @@ class _VisitorApprovalRequestsScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Material(
-            color: DesignColors.surface,
+            color: context.surface.defaultSurface,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.s16,
+                context.spacing.s12,
+                context.spacing.s16,
+                context.spacing.s12,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -144,56 +152,20 @@ class _VisitorApprovalRequestsScreenState
                   ],
                 ),
               ),
-              error: (e, _) => ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24),
-                children: [
-                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.14),
-                  const Icon(
-                    Icons.wifi_tethering_error_rounded,
-                    size: 56,
-                    color: DesignColors.warning,
+              error: (e, _) => Padding(
+                padding: EdgeInsets.all(context.spacing.s16),
+                child: EnterpriseInfoBanner(
+                  icon: Icons.wifi_tethering_error_rounded,
+                  title: 'Could not load gate requests',
+                  message: userFacingMessage(
+                    e,
+                    'Check your connection and try again.',
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Could not load requests',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: DesignColors.textPrimary,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    userFacingMessage(e, 'Check your connection and try again.'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: DesignColors.textSecondary,
-                      height: 1.4,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: FilledButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(visitorApprovalRequestsProvider(_filter)),
-                      icon: const Icon(Icons.refresh_rounded, size: 20),
-                      label: const Text('Retry'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: DesignColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  tone: EnterpriseTone.danger,
+                  actionLabel: 'Retry',
+                  onAction: () =>
+                      ref.invalidate(visitorApprovalRequestsProvider(_filter)),
+                ),
               ),
               data: (rows) => RefreshIndicator(
                 color: DesignColors.primary,
@@ -204,45 +176,31 @@ class _VisitorApprovalRequestsScreenState
                 child: rows.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        padding: EdgeInsets.fromLTRB(
+                          context.spacing.s16,
+                          context.spacing.s16,
+                          context.spacing.s16,
+                          context.spacing.s32,
+                        ),
                         children: [
-                          SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.12,
-                          ),
-                          const Icon(
-                            Icons.inbox_rounded,
-                            size: 64,
-                            color: DesignColors.textTertiary,
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            _emptyTitle(_filter),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: DesignColors.textPrimary,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _emptySubtitle(_filter),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: DesignColors.textSecondary,
-                              height: 1.45,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          EmptyStateWidget(
+                            icon: Icons.inbox_rounded,
+                            title: _emptyTitle(_filter),
+                            subtitle: _emptySubtitle(_filter),
                           ),
                         ],
                       )
                     : ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        padding: EdgeInsets.fromLTRB(
+                          context.spacing.s16,
+                          context.spacing.s16,
+                          context.spacing.s16,
+                          context.spacing.s32,
+                        ),
                         itemCount: rows.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) =>
+                            SizedBox(height: context.spacing.s12),
                         itemBuilder: (_, i) {
                           return _RequestCard(
                             data: rows[i],

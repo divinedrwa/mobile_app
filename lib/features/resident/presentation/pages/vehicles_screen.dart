@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../../core/theme/app_spacing.dart';
+
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/vehicle_model.dart';
 import '../../data/providers/vehicle_provider.dart';
 import 'add_vehicle_screen.dart';
@@ -19,92 +22,84 @@ class VehiclesScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('My Vehicles')),
       body: vehiclesState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 56,
-                color: DesignColors.error,
-              ),
-              const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.read(vehicleProvider.notifier).fetchVehicles(),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.directions_car_filled_outlined,
+            title: 'Could not load vehicles',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.read(vehicleProvider.notifier).fetchVehicles(),
           ),
         ),
-        data: (vehicles) => ListView.builder(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          itemCount: vehicles.length,
-          itemBuilder: (context, index) {
-            final vehicle = vehicles[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: _getVehicleColor(
-                      vehicle.type,
-                    ).withValues(alpha: 0.1),
-                    borderRadius: DesignRadius.borderMD,
-                  ),
-                  child: Icon(
-                    _getVehicleIcon(vehicle.type),
-                    color: _getVehicleColor(vehicle.type),
-                  ),
-                ),
-                title: Text(
-                  vehicle.vehicleNumber,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                subtitle: Column(
+        data: (vehicles) {
+          if (vehicles.isEmpty) {
+            return const EmptyStateWidget(
+              icon: Icons.directions_car_outlined,
+              title: 'No vehicles added yet',
+              subtitle:
+                  'Add your household vehicles so gate and security workflows stay accurate.',
+            );
+          }
+
+          return ListView(
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.s16,
+              context.spacing.s12,
+              context.spacing.s16,
+              context.spacing.s32,
+            ),
+            children: [
+              EnterprisePanel(
+                tone: EnterpriseTone.info,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 4),
-                    Text(vehicle.type),
-                    if (vehicle.brand != null && vehicle.model != null)
-                      Text(
-                        '${vehicle.brand} ${vehicle.model}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DesignColors.textSecondary,
-                        ),
-                      ),
+                    Text(
+                      'Keep gate access records clean',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: context.text.primary,
+                          ),
+                    ),
+                    SizedBox(height: context.spacing.s8),
+                    Text(
+                      'Store registered household vehicles so entries, approvals, and resident identity checks stay fast and accurate.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.text.secondary,
+                          ),
+                    ),
                   ],
-                ),
-                trailing: PopupMenuButton(
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      _showDeleteDialog(context, ref, vehicle);
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AddVehicleScreen(vehicle: vehicle),
-                        ),
-                      );
-                    }
-                  },
                 ),
               ),
-            ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms);
-          },
-        ),
+              SizedBox(height: context.spacing.s24),
+              EnterpriseSectionHeader(
+                title: 'Registered vehicles',
+                subtitle:
+                    '${vehicles.length} ${vehicles.length == 1 ? 'vehicle' : 'vehicles'} saved',
+              ),
+              SizedBox(height: context.spacing.s12),
+              for (int index = 0; index < vehicles.length; index++)
+                _VehicleCard(
+                  vehicle: vehicles[index],
+                  color: _getVehicleColor(context, vehicles[index].type),
+                  icon: _getVehicleIcon(vehicles[index].type),
+                  onDelete: () =>
+                      _showDeleteDialog(context, ref, vehicles[index]),
+                  onEdit: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddVehicleScreen(vehicle: vehicles[index]),
+                      ),
+                    );
+                  },
+                ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -130,14 +125,14 @@ class VehiclesScreen extends ConsumerWidget {
     }
   }
 
-  Color _getVehicleColor(String type) {
+  Color _getVehicleColor(BuildContext context, String type) {
     switch (type.toLowerCase()) {
       case 'car':
-        return Colors.blue;
+        return context.state.info.solid;
       case 'bike':
-        return Colors.orange;
+        return context.brand.accent;
       default:
-        return Colors.green;
+        return context.state.approved.solid;
     }
   }
 
@@ -192,6 +187,97 @@ class VehiclesScreen extends ConsumerWidget {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.vehicle,
+    required this.color,
+    required this.icon,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final VehicleModel vehicle;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final brandModel = [vehicle.brand, vehicle.model]
+        .whereType<String>()
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .join(' ');
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.s12),
+      child: EnterprisePanel(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(context.radius.md),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: color, size: 22),
+            ),
+            SizedBox(width: context.spacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vehicle.vehicleNumber,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: context.text.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    vehicle.type,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                        ),
+                  ),
+                  if (brandModel.isNotEmpty) ...[
+                    SizedBox(height: context.spacing.s4),
+                    Text(
+                      brandModel,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.text.secondary,
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Vehicle actions',
+              onSelected: (value) {
+                if (value == 'delete') {
+                  onDelete();
+                } else {
+                  onEdit();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

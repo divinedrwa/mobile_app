@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_spacing.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/amenity_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
-import '../../../../core/widgets/empty_state_widget.dart';
 import '../widgets/list_skeleton.dart';
 import 'amenity_booking_history_screen.dart';
 
@@ -128,23 +130,15 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
       ),
       body: amenitiesState.when(
         loading: () => const ListSkeleton(itemHeight: 88),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
-              const SizedBox(height: 12),
-              Text(
-                error.toString(),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: DesignColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(amenitiesProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.event_busy_rounded,
+            title: 'Could not load amenities',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(amenitiesProvider),
           ),
         ),
         data: (amenities) => amenities.isEmpty
@@ -153,63 +147,54 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
                 title: 'No amenities available',
                 subtitle: 'Your society hasn\'t set up bookable amenities yet. Check back later!',
               )
-            : ListView.builder(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          itemCount: amenities.length,
-          itemBuilder: (context, index) {
-            final amenity = amenities[index];
-            final color = _amenityColor(amenity.type);
-            final icon = _amenityIcon(amenity.type);
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(AppSpacing.md),
-                leading: Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: DesignRadius.borderLG,
-                  ),
-                  child: Icon(icon, color: color, size: 30),
+            : ListView(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacing.s16,
+                  context.spacing.s12,
+                  context.spacing.s16,
+                  context.spacing.s32,
                 ),
-                title: Text(
-                  amenity.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: AppSpacing.xs),
-                    Text('₹${amenity.pricePerHour.toStringAsFixed(0)}/hour'),
-                    if (amenity.location != null && amenity.location!.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(amenity.location!),
-                    ],
-                    const SizedBox(height: AppSpacing.xs),
-                    const Row(
+                children: [
+                  EnterprisePanel(
+                    tone: EnterpriseTone.info,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.check_circle, size: 16, color: DesignColors.success),
-                        SizedBox(width: AppSpacing.xs),
                         Text(
-                          'Available',
-                          style: TextStyle(color: DesignColors.success),
+                          'Book shared spaces with confidence',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: context.text.primary,
+                              ),
+                        ),
+                        SizedBox(height: context.spacing.s8),
+                        Text(
+                          'Choose a date and time, confirm the booking, and track previous reservations from booking history.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: context.text.secondary,
+                              ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-                trailing: ElevatedButton(
-                  onPressed: () => _pickAndBook(amenity),
-                  style: ElevatedButton.styleFrom(backgroundColor: color),
-                  child: const Text('Book'),
-                ),
+                  ),
+                  SizedBox(height: context.spacing.s24),
+                  EnterpriseSectionHeader(
+                    title: 'Available amenities',
+                    subtitle: '${amenities.length} bookable ${amenities.length == 1 ? 'space' : 'spaces'} in your society',
+                  ),
+                  SizedBox(height: context.spacing.s12),
+                  for (int index = 0; index < amenities.length; index++)
+                    _AmenityCard(
+                      amenity: amenities[index],
+                      icon: _amenityIcon(amenities[index].type),
+                      color: _amenityColor(context, amenities[index].type),
+                      onBook: () => _pickAndBook(amenities[index]),
+                    ).animate().fadeIn(
+                          duration: 300.ms,
+                          delay: DesignAnimations.staggerFor(index),
+                        ),
+                ],
               ),
-            ).animate().fadeIn(
-                  duration: 300.ms,
-                  delay: DesignAnimations.staggerFor(index),
-                );
-          },
-        ),
       ),
     );
   }
@@ -229,18 +214,126 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
     }
   }
 
-  Color _amenityColor(String type) {
+  Color _amenityColor(BuildContext context, String type) {
     switch (type.toUpperCase()) {
       case 'SWIMMING_POOL':
-        return Colors.blue;
+        return context.state.info.solid;
       case 'GYM':
-        return Colors.red;
+        return context.state.denied.solid;
       case 'BANQUET_HALL':
-        return Colors.purple;
+        return context.brand.accent;
       case 'SPORTS_COURT':
-        return Colors.orange;
+        return context.state.approved.solid;
       default:
-        return Colors.green;
+        return context.brand.primary;
     }
+  }
+}
+
+class _AmenityCard extends StatelessWidget {
+  const _AmenityCard({
+    required this.amenity,
+    required this.icon,
+    required this.color,
+    required this.onBook,
+  });
+
+  final AmenityModel amenity;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onBook;
+
+  @override
+  Widget build(BuildContext context) {
+    final priceLabel = 'INR ${amenity.pricePerHour.toStringAsFixed(0)}/hour';
+    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: context.text.secondary,
+        );
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.s12),
+      child: EnterprisePanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(context.radius.md),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                SizedBox(width: context.spacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        amenity.name,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: context.text.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      SizedBox(height: context.spacing.s4),
+                      Text(priceLabel, style: subtitleStyle),
+                      if (amenity.location != null &&
+                          amenity.location!.trim().isNotEmpty) ...[
+                        SizedBox(height: context.spacing.s4),
+                        Text(amenity.location!, style: subtitleStyle),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: context.spacing.s12),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.s8,
+                    vertical: context.spacing.s4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.state.approved.bg,
+                    borderRadius: BorderRadius.circular(context.radius.full),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 14,
+                        color: context.state.approved.solid,
+                      ),
+                      SizedBox(width: context.spacing.s4),
+                      Text(
+                        'Available',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: context.state.approved.fg,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: onBook,
+                  child: const Text('Book now'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

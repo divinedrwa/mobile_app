@@ -81,10 +81,11 @@ class MaintenanceRepository {
     String? maintenanceCollectionCycleId,
     String? bankAccountId,
     bool applyCredit = false,
+    String? idempotencyKey,
   }) async {
     try {
       final response = await _dio.post(
-        '/maintenance-management/mark-paid',
+        '/maintenance/payments',
         data: {
           'villaId': villaId,
           'month': month,
@@ -98,7 +99,8 @@ class MaintenanceRepository {
             'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
           if (bankAccountId != null && bankAccountId.isNotEmpty)
             'bankAccountId': bankAccountId,
-          if (applyCredit) 'applyCredit': true,
+          if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+            'idempotencyKey': idempotencyKey,
         },
       );
       final body = response.data;
@@ -293,6 +295,7 @@ class MaintenanceRepository {
     required int year,
     required double amount,
     required String paymentMode,
+    String? idempotencyKey,
   }) async {
     try {
       await _dio.post(
@@ -304,6 +307,8 @@ class MaintenanceRepository {
           'amount': amount,
           'paymentDate': DateTime.now().toUtc().toIso8601String(),
           'paymentMode': paymentMode,
+          if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+            'idempotencyKey': idempotencyKey,
         },
       );
     } on DioException catch (e) {

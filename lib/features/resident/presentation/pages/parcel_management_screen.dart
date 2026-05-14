@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/parcel_model.dart';
 import '../../data/providers/parcel_provider.dart';
-import '../../../../core/widgets/empty_state_widget.dart';
 import '../widgets/list_skeleton.dart';
 
 /// Modern Professional Parcel Management Screen
@@ -40,32 +43,32 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
     final pendingCount = ref.watch(pendingParcelsCountProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.surface.defaultSurface,
         elevation: 0,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.text.primary),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'My Parcels',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: DesignColors.textPrimary,
+                color: context.text.primary,
               ),
             ),
             if (pendingCount > 0)
               Text(
                 '$pendingCount pending collection',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                   fontWeight: FontWeight.normal,
                 ),
               ),
@@ -89,7 +92,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.orange,
+                        color: context.state.pending.solid,
                         borderRadius: DesignRadius.borderLG,
                       ),
                       child: Text(
@@ -140,22 +143,15 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
           );
         },
         loading: () => const ListSkeleton(itemHeight: 100),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'Failed to load parcels',
-                style: TextStyle(fontSize: 16, color: DesignColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.refresh(parcelProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, stack) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.inventory_2_outlined,
+            title: 'Could not load parcels',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.refresh(parcelProvider),
           ),
         ),
       ),
@@ -166,7 +162,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
     return RefreshIndicator(
       onRefresh: () => ref.read(parcelProvider.notifier).fetchParcels(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(DesignSpacing.lg),
+        padding: EdgeInsets.all(context.spacing.s16),
         itemCount: parcels.length,
         itemBuilder: (context, index) {
           final parcel = parcels[index];
@@ -181,15 +177,15 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
 
   Widget _buildParcelCard(ParcelModel parcel, int index, bool isPending) {
     final statusColor = parcel.status == ParcelStatus.pending
-        ? Colors.orange
+        ? context.state.pending.solid
         : parcel.status == ParcelStatus.collected
-            ? Colors.green
-            : Colors.grey;
+            ? context.state.approved.solid
+            : context.text.tertiary;
 
     return Container(
       padding: const EdgeInsets.all(DesignSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surface.defaultSurface,
         borderRadius: DesignRadius.borderXL,
         border: Border.all(
           color: statusColor.withValues(alpha: 0.2),
@@ -298,7 +294,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
             Container(
               padding: const EdgeInsets.all(DesignSpacing.md),
               decoration: BoxDecoration(
-                color: DesignColors.background,
+                  color: context.surface.background,
                 borderRadius: DesignRadius.borderMD,
               ),
               child: Row(

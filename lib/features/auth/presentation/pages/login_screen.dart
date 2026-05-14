@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
@@ -167,13 +166,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo Section
                     if (!keyboardVisible) ...[
                       _buildLogo(),
-                      const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.lg),
                     ],
 
-                    // Welcome Text
                     _buildWelcomeText(),
                     if (_showBiometricLogin && !_isLoading) ...[
                       const SizedBox(height: AppSpacing.lg),
@@ -193,13 +190,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                     const SizedBox(height: AppSpacing.xl),
 
-                    // Login Card
                     _buildLoginCard(),
 
                     const SizedBox(height: AppSpacing.lg),
 
-                    // Forgot Password
-                    _buildForgotPassword(),
+                    _buildContactSupport(),
 
                     const SizedBox(height: AppSpacing.lg),
                   ],
@@ -214,38 +209,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildLogo() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(DesignSpacing.md),
-          decoration: BoxDecoration(
-            color: DesignColors.textPrimary,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: SvgPicture.asset(
-            'assets/branding/app_icon.svg',
-            width: 84,
-            height: 84,
-          ),
+        Image.asset(
+          'assets/splash/gp_logo.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
         )
             .animate()
-            .fadeIn(duration: 600.ms)
-            .scale(begin: const Offset(0.5, 0.5), curve: Curves.easeOutBack),
-        const SizedBox(height: AppSpacing.md),
+            .fadeIn(duration: 500.ms)
+            .scale(begin: const Offset(0.85, 0.85), curve: Curves.easeOutCubic),
+        const SizedBox(height: 10),
         const Text(
           'GatePass+',
           style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
             color: DesignColors.textPrimary,
-            letterSpacing: 0.5,
+            letterSpacing: -0.4,
           ),
-        ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 600.ms),
+        ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 500.ms),
       ],
     );
   }
@@ -256,30 +238,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const Text(
           'Welcome Back',
           style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: DesignColors.textPrimary,
+            letterSpacing: -0.6,
             height: 1.2,
           ),
           textAlign: TextAlign.center,
         )
             .animate()
-            .fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 600.ms)
+            .fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 500.ms)
             .slideY(begin: DesignAnimations.slideNormal, end: 0),
         const SizedBox(height: AppSpacing.sm),
         const Text(
           'Reside. Approve. Manage.',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 15,
             color: DesignColors.textSecondary,
             height: 1.5,
           ),
           textAlign: TextAlign.center,
         )
             .animate()
-            .fadeIn(delay: DesignAnimations.sectionStaggerFor(3), duration: 600.ms)
+            .fadeIn(delay: DesignAnimations.sectionStaggerFor(3), duration: 500.ms)
             .slideY(begin: DesignAnimations.slideNormal, end: 0),
       ],
     );
+  }
+
+  Widget _buildContactSupport() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Need help? ',
+          style: TextStyle(
+            fontSize: 13.5,
+            color: DesignColors.textSecondary,
+          ),
+        ),
+        GestureDetector(
+          onTap: _showForgotPasswordDialog,
+          child: const Text(
+            'Contact Support',
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: DesignColors.primary,
+            ),
+          ),
+        ),
+      ],
+    ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(5), duration: 500.ms);
   }
 
   Widget _buildLoginCard() {
@@ -300,50 +310,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(DesignSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
             decoration: BoxDecoration(
               color: DesignColors.background,
               borderRadius: DesignRadius.borderXL,
               border: Border.all(color: DesignColors.borderLight),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.apartment_rounded, color: DesignColors.primary, size: 28),
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: DesignColors.primary.withValues(alpha: 0.10),
+                  ),
+                  child: const Icon(
+                    Icons.apartment_rounded,
+                    color: DesignColors.primary,
+                    size: 20,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
                         'Your society',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           color: DesignColors.textSecondary,
+                          letterSpacing: 0.1,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 2),
                       Text(
                         _selectedSocietyId.isEmpty
                             ? 'None selected'
                             : (_societyDisplayLabel.isNotEmpty
                                 ? _societyDisplayLabel
                                 : _selectedSocietyId),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 15.5,
                           fontWeight: FontWeight.w700,
+                          color: DesignColors.textPrimary,
+                          letterSpacing: -0.2,
                         ),
                       ),
                       if (_selectedSocietyId.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             _selectedSocietyId,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 11,
                               fontFamily: 'monospace',
-                              color: DesignColors.textSecondary,
+                              color: DesignColors.textTertiary,
                             ),
                           ),
                         ),
@@ -352,7 +383,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 TextButton(
                   onPressed: () => context.go('/society-select'),
-                  child: const Text('Change'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DesignColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Change',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -384,7 +427,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildEmailField() {
     return TextFormField(
       controller: _usernameOrEmailController,
-      autofocus: true,
+      autofocus: false,
       textInputAction: TextInputAction.next,
       keyboardType: TextInputType.text,
       style: const TextStyle(fontSize: 16),
@@ -508,28 +551,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildRememberMe() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Checkbox(
-            value: _rememberMe,
-            onChanged: (value) {
-              setState(() => _rememberMe = value ?? false);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() => _rememberMe = value ?? false);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                activeColor: DesignColors.primary,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
             ),
-            activeColor: DesignColors.primary,
-          ),
+            const SizedBox(width: 8),
+            const Text(
+              'Remember me',
+              style: TextStyle(
+                fontSize: 13.5,
+                color: DesignColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        const Text(
-          'Remember me',
-          style: TextStyle(
-            fontSize: 14,
-            color: DesignColors.textSecondary,
-            fontWeight: FontWeight.w500,
+        InkWell(
+          onTap: _showForgotPasswordDialog,
+          borderRadius: BorderRadius.circular(6),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Text(
+              'Forgot Password?',
+              style: TextStyle(
+                color: DesignColors.primary,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
@@ -540,34 +606,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return PolishedButton(
       text: 'Sign In',
       icon: Icons.arrow_forward_rounded,
+      color: DesignColors.primary,
       onPressed: _isLoading || _selectedSocietyId.isEmpty
           ? null
           : _handleLogin,
       isLoading: _isLoading,
       isFullWidth: true,
     );
-  }
-
-  Widget _buildForgotPassword() {
-    return TextButton(
-      onPressed: () {
-        _showForgotPasswordDialog();
-      },
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-      ),
-      child: const Text(
-        'Forgot Password?',
-        style: TextStyle(
-          color: DesignColors.primary,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(5));
   }
 
   Future<void> _handleLogin() async {

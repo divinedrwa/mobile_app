@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 /// `context.state` (see `context_extensions.dart`) so a future palette swap
 /// (including API-driven theming) reaches every screen atomically.
 ///
-/// Premium teal-and-gold palette:
-/// * Deep Teal `#0F766E` — primary (rich, trustworthy, premium)
-/// * Warm Amber `#F59E0B` — accent (golden highlights, CTA warmth)
+/// Neutral enterprise palette:
+/// * Charcoal `#111827` — primary
+/// * Slate `#4B5563` — accent / interactive neutral
 /// * Red `#EF4444` — danger
 ///
 /// Light/dark pairs were chosen to hit WCAG AA contrast. Do not change a
@@ -72,62 +72,57 @@ class AppColorPalette {
   final Color infoFg;
   final Color infoSolid;
 
-  /// Premium light mode — Deep Teal + Warm Amber.
-  ///
-  /// Teal `#0F766E` primary, amber `#F59E0B` accent, warm off-white
-  /// surfaces with subtle teal tinting. WCAG AA verified.
+  /// Clean light mode — white surfaces with charcoal / grey accents.
   static const AppColorPalette light = AppColorPalette(
-    brandPrimary: Color(0xFF0F766E),
-    brandAccent: Color(0xFFF59E0B),
+    brandPrimary: Color(0xFF374151),
+    brandAccent: Color(0xFF6B7280),
     brandDanger: Color(0xFFEF4444),
-    surfaceBackground: Color(0xFFF0FDFA),
+    surfaceBackground: Color(0xFFFFFFFF),
     surfaceDefault: Color(0xFFFFFFFF),
-    surfaceElevated: Color(0xFFCCFBF1),
-    surfaceBorder: Color(0xFF99F6E4),
-    textPrimary: Color(0xFF134E4A),
-    textSecondary: Color(0xFF6B7280),
+    surfaceElevated: Color(0xFFF8FAFC),
+    surfaceBorder: Color(0xFFE5E7EB),
+    textPrimary: Color(0xFF111827),
+    textSecondary: Color(0xFF4B5563),
     textTertiary: Color(0xFF9CA3AF),
     textInverse: Color(0xFFFFFFFF),
-    approvedBg: Color(0xFFD1FAE5),
-    approvedFg: Color(0xFF065F46),
-    approvedSolid: Color(0xFF10B981),
+    approvedBg: Color(0xFFEFF6F1),
+    approvedFg: Color(0xFF166534),
+    approvedSolid: Color(0xFF16A34A),
     pendingBg: Color(0xFFFEF3C7),
     pendingFg: Color(0xFF92400E),
     pendingSolid: Color(0xFFF59E0B),
     deniedBg: Color(0xFFFEE2E2),
     deniedFg: Color(0xFF991B1B),
     deniedSolid: Color(0xFFEF4444),
-    infoBg: Color(0xFFF0FDFA),
-    infoFg: Color(0xFF115E59),
-    infoSolid: Color(0xFF14B8A6),
+    infoBg: Color(0xFFF3F4F6),
+    infoFg: Color(0xFF374151),
+    infoSolid: Color(0xFF9CA3AF),
   );
 
-  /// Premium dark mode — Deep Teal + Warm Amber.
-  ///
-  /// Dark teal-tinted surfaces with lighter teal accents.
+  /// Quiet dark mode — deep neutrals with restrained contrast.
   static const AppColorPalette dark = AppColorPalette(
-    brandPrimary: Color(0xFFF0FDFA),
-    brandAccent: Color(0xFFFBBF24),
+    brandPrimary: Color(0xFFE5E7EB),
+    brandAccent: Color(0xFFD1D5DB),
     brandDanger: Color(0xFFF87171),
-    surfaceBackground: Color(0xFF0A1A18),
-    surfaceDefault: Color(0xFF112220),
-    surfaceElevated: Color(0xFF1A302D),
-    surfaceBorder: Color(0xFF2D4A46),
+    surfaceBackground: Color(0xFF111827),
+    surfaceDefault: Color(0xFF1F2937),
+    surfaceElevated: Color(0xFF273244),
+    surfaceBorder: Color(0xFF374151),
     textPrimary: Color(0xFFFFFFFF),
     textSecondary: Color(0xFFD1D5DB),
     textTertiary: Color(0xFF9CA3AF),
-    textInverse: Color(0xFF134E4A),
-    approvedBg: Color(0xFF064E3B),
-    approvedFg: Color(0xFF6EE7B7),
-    approvedSolid: Color(0xFF34D399),
+    textInverse: Color(0xFF111827),
+    approvedBg: Color(0xFF16341F),
+    approvedFg: Color(0xFFBBF7D0),
+    approvedSolid: Color(0xFF22C55E),
     pendingBg: Color(0xFF78350F),
-    pendingFg: Color(0xFFFCD34D),
-    pendingSolid: Color(0xFFFBBF24),
+    pendingFg: Color(0xFFFDE68A),
+    pendingSolid: Color(0xFFF59E0B),
     deniedBg: Color(0xFF7F1D1D),
     deniedFg: Color(0xFFFCA5A5),
     deniedSolid: Color(0xFFF87171),
-    infoBg: Color(0xFF042F2E),
-    infoFg: Color(0xFF5EEAD4),
-    infoSolid: Color(0xFF2DD4BF),
+    infoBg: Color(0xFF1F2937),
+    infoFg: Color(0xFFE5E7EB),
+    infoSolid: Color(0xFF9CA3AF),
   );
 }

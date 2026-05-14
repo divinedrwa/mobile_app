@@ -68,7 +68,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             // Vehicle Number
             TextFormField(
               controller: _numberController,
-              autofocus: true,
+              autofocus: false,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Vehicle Number',

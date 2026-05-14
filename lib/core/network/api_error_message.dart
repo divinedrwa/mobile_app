@@ -10,6 +10,21 @@ String parseApiErrorMessage(dynamic data, [String fallback = 'Something went wro
   }
   if (data is! Map) return fallback;
 
+  final error = data['error'];
+  if (error == 'RATE_LIMIT_EXCEEDED') {
+    final retryAfter = data['retryAfter']?.toString() ?? '60';
+    return 'Too many requests. Please wait $retryAfter seconds and try again.';
+  }
+  
+  if (error == 'DUPLICATE_PAYMENT') {
+    return 'This payment has already been recorded.';
+  }
+  
+  if (error == 'INVALID_AMOUNT') {
+    final msg = data['message'];
+    return msg is String ? msg : 'Payment amount must be positive';
+  }
+
   final issues = data['issues'];
   if (issues is List && issues.isNotEmpty) {
     final parts = <String>[];

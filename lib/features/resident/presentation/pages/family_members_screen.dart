@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../../core/theme/app_spacing.dart';
+
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/family_member_model.dart';
 import '../../data/providers/family_member_provider.dart';
 import 'add_family_member_screen.dart';
@@ -19,86 +22,82 @@ class FamilyMembersScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Family Members')),
       body: membersState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 56,
-                color: DesignColors.error,
-              ),
-              const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref
-                    .read(familyMemberProvider.notifier)
-                    .fetchFamilyMembers(),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.family_restroom_rounded,
+            title: 'Could not load family members',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () =>
+                ref.read(familyMemberProvider.notifier).fetchFamilyMembers(),
           ),
         ),
-        data: (members) => ListView.builder(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          itemCount: members.length,
-          itemBuilder: (context, index) {
-            final member = members[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: DesignColors.primary.withValues(alpha: 0.1),
-                  child: Text(
-                    member.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: DesignColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                title: Text(
-                  member.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
+        data: (members) {
+          if (members.isEmpty) {
+            return const EmptyStateWidget(
+              icon: Icons.family_restroom_rounded,
+              title: 'No family members yet',
+              subtitle:
+                  'Add household members so their details are available across resident features.',
+            );
+          }
+
+          return ListView(
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.s16,
+              context.spacing.s12,
+              context.spacing.s16,
+              context.spacing.s32,
+            ),
+            children: [
+              EnterprisePanel(
+                tone: EnterpriseTone.info,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(member.relationship),
-                    if (member.phone != null)
-                      Text(
-                        member.phone!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DesignColors.textSecondary,
-                        ),
-                      ),
+                    Text(
+                      'Manage everyone linked to your home',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: context.text.primary,
+                          ),
+                    ),
+                    SizedBox(height: context.spacing.s8),
+                    Text(
+                      'Keep resident access, contact numbers, and household records accurate for society operations.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.text.secondary,
+                          ),
+                    ),
                   ],
-                ),
-                trailing: PopupMenuButton(
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      _showDeleteDialog(context, ref, member);
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AddFamilyMemberScreen(member: member),
-                        ),
-                      );
-                    }
-                  },
                 ),
               ),
-            ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms);
-          },
-        ),
+              SizedBox(height: context.spacing.s24),
+              EnterpriseSectionHeader(
+                title: 'Household directory',
+                subtitle:
+                    '${members.length} ${members.length == 1 ? 'member' : 'members'} on file',
+              ),
+              SizedBox(height: context.spacing.s12),
+              for (int index = 0; index < members.length; index++)
+                _FamilyMemberCard(
+                  member: members[index],
+                  onDelete: () => _showDeleteDialog(context, ref, members[index]),
+                  onEdit: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddFamilyMemberScreen(member: members[index]),
+                      ),
+                    );
+                  },
+                ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -164,6 +163,91 @@ class FamilyMembersScreen extends ConsumerWidget {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FamilyMemberCard extends StatelessWidget {
+  const _FamilyMemberCard({
+    required this.member,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final FamilyMemberModel member;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = member.phone?.trim();
+    final hasPhone = phone != null && phone.isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.s12),
+      child: EnterprisePanel(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: context.surface.elevated,
+              child: Text(
+                member.name.substring(0, 1).toUpperCase(),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: context.brand.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            SizedBox(width: context.spacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    member.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: context.text.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  SizedBox(height: context.spacing.s4),
+                  Text(
+                    member.relationship,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.text.secondary,
+                        ),
+                  ),
+                  if (hasPhone) ...[
+                    SizedBox(height: context.spacing.s4),
+                    Text(
+                      phone,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.text.secondary,
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Member actions',
+              onSelected: (value) {
+                if (value == 'delete') {
+                  onDelete();
+                } else {
+                  onEdit();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

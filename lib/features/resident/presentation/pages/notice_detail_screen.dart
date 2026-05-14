@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/notice_model.dart';
 
 /// Modern Professional Notice Detail Screen
@@ -13,21 +16,21 @@ class NoticeDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.surface.defaultSurface,
         elevation: 0,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.text.primary),
         ),
-        title: const Text(
+        title: Text(
           'Notice Details',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: DesignColors.textPrimary,
+            color: context.text.primary,
           ),
         ),
         actions: [
@@ -42,7 +45,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.share, color: DesignColors.textPrimary),
+            icon: Icon(Icons.share, color: context.text.primary),
           ),
         ],
       ),
@@ -97,10 +100,10 @@ class NoticeDetailScreen extends ConsumerWidget {
             // Title
             Text(
               notice.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: DesignColors.textPrimary,
+                color: context.text.primary,
                 height: 1.3,
               ),
             ),
@@ -114,9 +117,9 @@ class NoticeDetailScreen extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Text(
                   DateFormat('MMM d, y • h:mm a').format(notice.publishedAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: DesignColors.textSecondary,
+                    color: context.text.secondary,
                   ),
                 ),
                 if (notice.publishedBy != null) ...[
@@ -126,9 +129,9 @@ class NoticeDetailScreen extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       notice.publishedBy!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: DesignColors.textSecondary,
+                        color: context.text.secondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -140,37 +143,22 @@ class NoticeDetailScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // Divider
-            Container(
-              height: 1,
-              color: DesignColors.borderLight,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Content
-            Text(
-              notice.content,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[800],
-                height: 1.6,
+            EnterprisePanel(
+              child: Text(
+                notice.content,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: context.text.primary,
+                  height: 1.6,
+                ),
               ),
             ),
 
             // Attachment
             if (notice.attachmentUrl != null) ...[
               const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(DesignSpacing.lg),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: DesignColors.primary.withValues(alpha: 0.3),
-                    width: 1.5,
-                  ),
-                ),
+              EnterprisePanel(
+                tone: EnterpriseTone.info,
                 child: Row(
                   children: [
                     Container(
@@ -186,7 +174,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -195,15 +183,15 @@ class NoticeDetailScreen extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: DesignColors.textPrimary,
+                              color: context.text.primary,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Tap to view or download',
                             style: TextStyle(
                               fontSize: 13,
-                              color: DesignColors.textSecondary,
+                              color: context.text.secondary,
                             ),
                           ),
                         ],
@@ -211,7 +199,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                     ),
                     Icon(
                       Icons.chevron_right,
-                      color: Colors.grey[400],
+                      color: context.text.tertiary,
                     ),
                   ],
                 ),

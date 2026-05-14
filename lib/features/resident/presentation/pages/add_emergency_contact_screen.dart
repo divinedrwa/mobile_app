@@ -61,7 +61,7 @@ class _AddEmergencyContactScreenState
             const SizedBox(height: AppSpacing.lg),
             TextFormField(
               controller: _nameController,
-              autofocus: true,
+              autofocus: false,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Name',

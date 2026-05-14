@@ -221,7 +221,7 @@ class _PreApproveVisitorScreenState
         const DivineFlowSectionLabel('Contact'),
         TextFormField(
           controller: _nameController,
-          autofocus: true,
+          autofocus: false,
           textInputAction: TextInputAction.next,
           textCapitalization: TextCapitalization.words,
           decoration: DesignComponents.inputDecoration(

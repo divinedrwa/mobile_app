@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/providers/visitor_history_provider.dart';
-import '../../data/models/visitor_model.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
+import '../../data/models/visitor_model.dart';
+import '../../data/providers/visitor_history_provider.dart';
 import '../widgets/list_skeleton.dart';
 
 /// Visitor history — compact, readable cards; status labels and times derived from API fields.
@@ -111,23 +114,26 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final visitorsState = ref.watch(visitorHistoryProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: DesignColors.textPrimary,
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: context.text.primary,
+          ),
         ),
-        title: const Text(
+        title: Text(
           'Visitor history',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: DesignColors.textPrimary,
+            color: context.text.primary,
             letterSpacing: -0.3,
           ),
         ),
@@ -140,24 +146,28 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   onChanged: (value) => setState(() => _searchQuery = value),
-                  style: const TextStyle(fontSize: 15),
+                  style: TextStyle(fontSize: 15, color: context.text.primary),
                   decoration: InputDecoration(
                     hintText: 'Search name or phone',
-                    hintStyle: const TextStyle(
-                      color: DesignColors.textTertiary,
+                    hintStyle: TextStyle(
+                      color: context.text.tertiary,
                       fontSize: 15,
                     ),
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.search_rounded,
                       size: 22,
-                      color: DesignColors.textTertiary,
+                      color: context.text.tertiary,
                     ),
                     isDense: true,
                     filled: true,
-                    fillColor: DesignColors.surfaceSoft,
+                    fillColor: context.surface.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderSide: BorderSide(color: context.surface.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: context.surface.border),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -193,33 +203,15 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
       ),
       body: visitorsState.when(
         loading: () => const ListSkeleton(),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.cloud_off_outlined,
-                  size: 48,
-                  color: DesignColors.textTertiary,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  error.toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: DesignColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.tonal(
-                  onPressed: () => ref.invalidate(visitorHistoryProvider),
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
+        error: (error, _) => Padding(
+          padding: EdgeInsets.all(context.spacing.s16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.cloud_off_outlined,
+            title: 'Could not load visitor history',
+            message: error.toString(),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(visitorHistoryProvider),
           ),
         ),
         data: (visitors) {
@@ -340,11 +332,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final hasVehicle = vehicle != null && vehicle.isNotEmpty;
 
     return Material(
-      color: DesignColors.surface,
+      color: context.surface.defaultSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: DesignColors.borderLight),
+        side: BorderSide(color: context.surface.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -357,7 +349,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: DesignColors.primary.withValues(alpha: 0.12),
+                    backgroundColor: context.brand.primary.withValues(alpha: 0.12),
                     child: Text(
                       name.isNotEmpty
                           ? name[0].toUpperCase()
@@ -376,19 +368,19 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: DesignColors.textPrimary,
+                            color: context.text.primary,
                             height: 1.2,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           visitor.phone,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: DesignColors.textSecondary,
+                            color: context.text.secondary,
                             height: 1.2,
                           ),
                         ),
@@ -437,21 +429,21 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
               ),
               if (hasPurpose) ...[
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Purpose',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: DesignColors.textTertiary,
+                    color: context.text.tertiary,
                     letterSpacing: 0.3,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   purpose,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: DesignColors.textSecondary,
+                    color: context.text.secondary,
                     height: 1.35,
                   ),
                   maxLines: 3,
@@ -462,9 +454,9 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                 const SizedBox(height: 6),
                 Text(
                   'Checked out · ${DateFormat('h:mm a').format(visitor.checkOutTime!.toLocal())}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: DesignColors.textTertiary,
+                    color: context.text.tertiary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -479,14 +471,14 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: DesignColors.textTertiary),
+        Icon(icon, size: 15, color: context.text.tertiary),
         const SizedBox(width: 5),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: DesignColors.textSecondary,
+            color: context.text.secondary,
           ),
         ),
       ],

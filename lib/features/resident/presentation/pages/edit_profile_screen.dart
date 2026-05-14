@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -518,6 +519,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           'phone': _phoneController.text.trim(),
       };
 
+      final previousPhotoUrl = resolveServerFileUrl(
+        ref.read(authProvider).user?.photoUrl,
+      );
+
       if (_selectedImage != null) {
         final formData = FormData.fromMap({
           ...jsonBody,
@@ -539,9 +544,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         }
       }
 
-      // Do not invalidate the whole auth provider here; that briefly clears user
-      // and triggers router redirect to society selection. Refresh profile only.
+      // Refresh profile only — invalidating auth would briefly clear the user
+      // and bounce the router back to society selection.
       await ref.read(authProvider.notifier).refreshProfile();
+
+      // If the user uploaded a new image, drop any cached bytes for the
+      // previous URL so the home header re-fetches (covers the edge case
+      // where the backend returns the same URL with updated content).
+      if (_selectedImage != null && previousPhotoUrl != null) {
+        await CachedNetworkImage.evictFromCache(previousPhotoUrl);
+        await NetworkImage(previousPhotoUrl).evict();
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
