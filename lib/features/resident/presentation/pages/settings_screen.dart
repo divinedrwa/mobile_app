@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -269,6 +270,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           SizedBox(height: context.spacing.s24),
           _SettingsSection(
+            title: 'Help & Support',
+            subtitle: 'Reach the GatePass+ team for issues or feedback.',
+            children: [
+              _SettingsTile(
+                icon: Icons.support_agent_outlined,
+                title: 'Contact support',
+                subtitle: AppConstants.supportEmail,
+                onTap: _openSupportEmail,
+              ),
+              _SettingsTile(
+                icon: Icons.bug_report_outlined,
+                title: 'Report a problem',
+                subtitle: 'Email us with a description and screenshots',
+                onTap: () => _openSupportEmail(
+                  subject: '${AppConstants.appName} v${AppConstants.appVersion} — Report a problem',
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.spacing.s24),
+          _SettingsSection(
             title: 'About',
             subtitle: 'Product information and store links.',
             children: [
@@ -286,18 +308,89 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           SizedBox(height: context.spacing.s24),
-          EnterpriseInfoBanner(
-            icon: Icons.delete_forever_rounded,
-            title: 'Deactivate account',
-            message:
-                'Disable sign-in for this resident account while keeping society records intact.',
-            tone: EnterpriseTone.danger,
-            actionLabel: 'Review',
-            onAction: () => _showDeleteAccountDialog(context),
+          _SettingsSection(
+            title: 'Manage account',
+            subtitle:
+                'Pause sign-in temporarily, or permanently delete your account from this society.',
+            children: [
+              _SettingsTile(
+                icon: Icons.pause_circle_outline_rounded,
+                title: 'Deactivate account',
+                subtitle:
+                    'Disable sign-in but keep records — admin can restore later',
+                onTap: () => _showDeactivateAccountDialog(context),
+              ),
+              _SettingsTile(
+                icon: Icons.delete_forever_outlined,
+                title: 'Delete account',
+                subtitle:
+                    'Permanently remove your personal information from this society',
+                onTap: () => _showHardDeleteAccountDialog(context),
+              ),
+              _SettingsTile(
+                icon: Icons.open_in_new_rounded,
+                title: 'Deletion instructions (web)',
+                subtitle: 'Read deletion options and request via email',
+                onTap: _openDeletionPolicyUrl,
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openDeletionPolicyUrl() async {
+    final url = AppConstants.accountDeletionPublicUrl.trim();
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $url')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open $url')),
+      );
+    }
+  }
+
+  Future<void> _openSupportEmail({String? subject}) async {
+    final subjectPart = subject != null && subject.isNotEmpty
+        ? '?subject=${Uri.encodeQueryComponent(subject)}'
+        : '';
+    final mailto = Uri.parse('mailto:${AppConstants.supportEmail}$subjectPart');
+    try {
+      final launched = await launchUrl(
+        mailto,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No email app available. Reach us at ${AppConstants.supportEmail}.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not open mail. Reach us at ${AppConstants.supportEmail}.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _showChangePasswordDialog(BuildContext context) async {
@@ -411,6 +504,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: submitting
+                            ? null
+                            : () {
+                                Navigator.of(dialogContext).pop();
+                                _openSupportEmail(
+                                  subject:
+                                      '${AppConstants.appName} — Password reset request',
+                                );
+                              },
+                        icon: const Icon(Icons.help_outline, size: 18),
+                        label: const Text('Forgot password?'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: const Size(0, 32),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -441,7 +556,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     newController.dispose();
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  void _showDeactivateAccountDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -476,7 +591,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               content: const Text(
                 'Your login will be disabled and push alerts stopped. '
                 'Your society keeps historical records; an admin can restore access if needed. '
-                'This does not erase your data from the society database.',
+                'This does not erase your data from the society database.\n\n'
+                'To permanently remove your personal information, use "Delete account" instead.',
               ),
               actions: [
                 TextButton(
@@ -507,6 +623,142 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       },
     );
+  }
+
+  /// Store-compliant hard delete. Requires the user to type their full name
+  /// exactly (case-insensitive); the server enforces the same check before
+  /// scrubbing PII. After success we force-logout to clear all on-device
+  /// state and route back to the login flow.
+  void _showHardDeleteAccountDialog(BuildContext context) {
+    final user = ref.read(authProvider).user;
+    final fullName = user?.name.trim() ?? '';
+    final confirmController = TextEditingController();
+    var listenerAttached = false;
+    var busy = false;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            // Bind the text-change listener exactly once for this dialog so
+            // the confirm button updates as the user types.
+            if (!listenerAttached) {
+              confirmController.addListener(() => setLocal(() {}));
+              listenerAttached = true;
+            }
+
+            final typed = confirmController.text.trim();
+            final canDelete = fullName.isNotEmpty &&
+                typed.toLowerCase() == fullName.toLowerCase();
+
+            Future<void> confirmDelete() async {
+              if (!canDelete) return;
+              busy = true;
+              setLocal(() {});
+              try {
+                await ref
+                    .read(authRepositoryProvider)
+                    .hardDeleteAccount(confirmFullName: fullName);
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                await ref.read(authProvider.notifier).logout();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Account deleted. Your personal information has been removed.',
+                    ),
+                  ),
+                );
+                context.go('/login');
+              } catch (e) {
+                busy = false;
+                setLocal(() {});
+                final msg = e is AppException
+                    ? e.message
+                    : 'Could not delete account';
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(msg)),
+                  );
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Delete account?'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'This permanently removes your personal information from this society:\n\n'
+                      '  • Name, email, phone, and profile photo\n'
+                      '  • Family members, emergency contacts\n'
+                      '  • Push notification tokens and biometric login\n\n'
+                      'Financial and audit records are retained anonymously for '
+                      'the society\'s accounting requirements.\n\n'
+                      'This action cannot be undone. To confirm, type your full name below:',
+                    ),
+                    const SizedBox(height: 12),
+                    SelectableText(
+                      fullName.isEmpty ? '(no name on file)' : fullName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmController,
+                      enabled: !busy,
+                      autofocus: false,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Type your full name',
+                        hintText: 'Exactly as shown above',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        Colors.red.withValues(alpha: 0.35),
+                    disabledForegroundColor: Colors.white,
+                  ),
+                  onPressed: (busy || !canDelete) ? null : confirmDelete,
+                  child: busy
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Delete forever'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => confirmController.dispose());
   }
 
   void _showInfoDialog(

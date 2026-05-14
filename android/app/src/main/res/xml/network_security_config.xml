@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Production policy: HTTPS only.
+
+    The base-config below sets `cleartextTrafficPermitted=false`, which is what
+    Google Play wants for a public release. Development needs HTTP for the
+    Android emulator + LAN talking to the local backend on
+    `http://10.0.2.2:4000` (emulator loopback to the host) and the typical
+    `192.168.*.*` Wi-Fi range — those are listed as domain-config exceptions.
+
+    If you ship a build that needs a different LAN range, add it here rather
+    than enabling `usesCleartextTraffic` in the manifest globally.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Development-only HTTP exceptions. Remove or tighten before listing. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>          <!-- Android emulator host loopback -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">192.168.1.0</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+    </domain-config>
+</network-security-config>

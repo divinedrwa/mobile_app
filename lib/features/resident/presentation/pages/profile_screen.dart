@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -745,10 +746,15 @@ class _ProfileAvatar extends StatelessWidget {
               );
             },
           ),
-          // Avatar
+          // Avatar — cached so an uploaded photo persists across screens and
+          // automatically refreshes when `edit_profile_screen` evicts the
+          // previous URL from the image cache after a successful upload.
           Container(
+            width: radius * 2,
+            height: radius * 2,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.12),
@@ -757,14 +763,10 @@ class _ProfileAvatar extends StatelessWidget {
                 ),
               ],
             ),
-            child: CircleAvatar(
-              radius: radius,
-              backgroundColor: Colors.white,
-              backgroundImage:
-                  avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-              child: avatarUrl != null
-                  ? null
-                  : Text(
+            clipBehavior: Clip.antiAlias,
+            child: avatarUrl == null
+                ? Center(
+                    child: Text(
                       initials,
                       style: const TextStyle(
                         fontSize: 28,
@@ -773,7 +775,38 @@ class _ProfileAvatar extends StatelessWidget {
                         letterSpacing: -0.5,
                       ),
                     ),
-            ),
+                  )
+                : CachedNetworkImage(
+                    key: ValueKey(avatarUrl),
+                    imageUrl: avatarUrl!,
+                    cacheKey: avatarUrl,
+                    fit: BoxFit.cover,
+                    width: radius * 2,
+                    height: radius * 2,
+                    fadeInDuration: const Duration(milliseconds: 180),
+                    placeholder: (_, _) => Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: DesignColors.primary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (_, _, _) => Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: DesignColors.primary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),

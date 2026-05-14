@@ -14,6 +14,18 @@ bool _accountDisabledMessage(String message) {
   return false;
 }
 
+/// Unauthenticated endpoints — a 401 from these means "bad credentials" or
+/// "invalid invitation token", **not** "your session expired". Treating them
+/// as session-expired would wipe `StorageService` (clearing the preferred
+/// society id) and bounce the user from the login screen back to society
+/// selection. Keep this list narrow: only paths the user can hit *without*
+/// an existing session.
+bool _isUnauthenticatedAuthEndpoint(String path) {
+  final p = path.toLowerCase();
+  return p.endsWith('/auth/login') ||
+      p.endsWith('/auth/register-with-invitation');
+}
+
 /// Interceptor to handle API errors
 class ErrorInterceptor extends Interceptor {
   @override
@@ -54,10 +66,17 @@ class ErrorInterceptor extends Interceptor {
             exception = UnauthorizedException(message: message);
             if (_accountDisabledMessage(message)) {
               unawaited(AccountDeactivatedHandler.triggerIfRegistered());
-            } else {
-              // Generic 401 = token expired / revoked / signing-key rotated.
-              // Force a single logout + redirect; the SessionExpiredHandler
-              // guards against multiple parallel requests each firing.
+            } else if (!_isUnauthenticatedAuthEndpoint(
+              err.requestOptions.path,
+            )) {
+              // Generic 401 on an authenticated endpoint = token expired /
+              // revoked / signing-key rotated. Force a single logout +
+              // redirect; the SessionExpiredHandler guards against multiple
+              // parallel requests each firing.
+              //
+              // A 401 from `/auth/login` itself is *not* a session expiry —
+              // it's "wrong username or password" and must surface inline on
+              // the login form without clearing storage or navigating away.
               unawaited(SessionExpiredHandler.triggerIfRegistered());
             }
             break;

@@ -66,28 +66,28 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Allow HTTP to your Mac / LAN during development (physical device login) -->
+	<!-- App Transport Security:
+	     Production = HTTPS-only (Apple-recommended; no `NSAllowsArbitraryLoads`).
+	     `NSAllowsLocalNetworking=true` is kept so a physical device on the
+	     same Wi-Fi can still hit the local dev backend on a LAN address
+	     during development without weakening transport security for public
+	     hosts. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
 	</dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app connects to your society API on your network or the internet.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Allow camera access to attach photos for your profile, complaints, and daily help registration.</string>
+	<string>GatePass+ uses the camera so you can attach photos for your profile picture, complaints, and visitor / daily-help registration.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Allow photo library access to choose images for your profile, complaints, and daily help.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Allow microphone access if you record video for attachments.</string>
+	<string>GatePass+ uses your photo library so you can choose images for your profile picture, complaint attachments, and visitor / daily-help registration.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to sign in to GatePass+ securely.</string>
+	<string>GatePass+ uses Face ID to sign you in securely without entering your password each time.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>
 		<string>sms</string>
+		<string>itms-apps</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter/scheduler.dart' hide Priority;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,15 @@ const String _androidChannelId = 'default';
 const String _androidChannelName = 'General';
 const String _androidChannelDescription =
     'Visitor alerts, approvals, and society updates';
+
+/// White silhouette drawable in `android/app/src/main/res/drawable-*/`.
+/// Android 5+ renders coloured PNGs as solid white squares in the status bar,
+/// so the small icon must always be this transparent-background silhouette.
+const String _androidNotificationIcon = '@drawable/ic_notification';
+
+/// Brand green; tints the silhouette + the accent line in the notification
+/// header. Mirrors `colors.xml/notification_brand` and `DesignColors.primary`.
+const Color _androidNotificationTint = Color(0xFF3D8361);
 
 /// Service to manage push notifications, local (foreground) display, and device tokens.
 class NotificationService {
@@ -124,7 +134,7 @@ class NotificationService {
   }
 
   Future<void> _initLocalNotifications() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings(_androidNotificationIcon);
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -507,7 +517,10 @@ class NotificationService {
             visibility: NotificationVisibility.public,
             playSound: true,
             enableVibration: true,
-            icon: '@mipmap/ic_launcher',
+            icon: _androidNotificationIcon,
+            color: _androidNotificationTint,
+            colorized: false,
+            largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
             styleInformation: androidStyle,
           ),
           iOS: DarwinNotificationDetails(

@@ -216,6 +216,24 @@ class AppConstants {
         'https://divinedrwa.github.io/GatePass-Legal/terms_condition.html',
   );
 
+  /// Public account-deletion landing page — required by the Google Play
+  /// User Data policy so prospective users can find deletion instructions
+  /// before installing the app. Defaults to the GatePass+ legal site;
+  /// override per-build with `--dart-define=ACCOUNT_DELETION_URL=…`.
+  static const String accountDeletionPublicUrl = String.fromEnvironment(
+    'ACCOUNT_DELETION_URL',
+    defaultValue:
+        'https://divinedrwa.github.io/GatePass-Legal/account_deletion.html',
+  );
+
+  /// Resident-facing support inbox. Used by the in-app "Contact support"
+  /// tile. Override per-build (e.g., staging vs prod) with
+  /// `--dart-define=SUPPORT_EMAIL=…`.
+  static const String supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'support@gatepass.app',
+  );
+
   /// Google Play listing (`applicationId` from Android `build.gradle.kts`).
   static const String androidApplicationId = 'com.app.gatepass';
 

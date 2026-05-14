@@ -7,12 +7,21 @@
         android:label="GatePass+"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config">
 
-        <!-- FCM defaults: align with Flutter [NotificationService] channel id `default` -->
+        <!-- FCM defaults: align with Flutter [NotificationService] channel id `default`.
+             Small icon must be a white-on-transparent silhouette (Android 5+ renders
+             coloured PNGs as a white square in the status bar). Tint comes from
+             default_notification_color. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_brand" />
 
         <activity
             android:name=".MainActivity"

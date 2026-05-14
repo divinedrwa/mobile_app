@@ -372,7 +372,12 @@ class AuthRepository {
     }
   }
 
-  /// Soft-delete resident account (`DELETE /residents/me`) — sets `isActive: false` on server.
+  /// Soft-deactivate the resident account (`DELETE /residents/me` with no query).
+  ///
+  /// The server sets `isActive: false` and disables push devices but retains
+  /// the user row + PII so an admin can restore access. Use this for a
+  /// reversible "pause" — for store-compliant account *deletion*, call
+  /// [hardDeleteAccount] instead.
   Future<void> deactivateAccount() async {
     try {
       await _dio.delete(ApiEndpoints.profile);
@@ -385,6 +390,37 @@ class AuthRepository {
         message: parseApiErrorMessage(
           e.response?.data,
           'Could not deactivate account',
+        ),
+      );
+    }
+  }
+
+  /// Permanently delete the resident account (`DELETE /residents/me?confirmHardDelete=<name>`).
+  ///
+  /// The server scrubs PII (name, email, phone, photo, biometric tokens) and
+  /// randomises credentials so the user can never sign in again. Financial
+  /// and audit records remain intact for the society's accounting trail.
+  ///
+  /// Required for Apple App Store guideline 5.1.1(v) and Google Play's
+  /// User Data policy. The caller must pass the user's full name verbatim;
+  /// the server rejects with 400 otherwise.
+  Future<void> hardDeleteAccount({required String confirmFullName}) async {
+    try {
+      await _dio.delete(
+        ApiEndpoints.profile,
+        queryParameters: <String, dynamic>{
+          'confirmHardDelete': confirmFullName,
+        },
+      );
+    } on DioException catch (e) {
+      final wrapped = e.error;
+      if (wrapped is AppException) {
+        throw wrapped;
+      }
+      throw AppException(
+        message: parseApiErrorMessage(
+          e.response?.data,
+          'Could not delete account',
         ),
       );
     }
