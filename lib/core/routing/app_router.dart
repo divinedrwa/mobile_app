@@ -202,14 +202,11 @@ class AppRouter {
         
         GuardRouteModule.section(),
         
-        // Admin App Routes (Placeholder for future)
+        // Admin users share the resident shell — role-specific UI (Outstanding
+        // tab, send reminders, etc.) is gated by `isAdmin` checks inside screens.
         GoRoute(
           path: '/admin',
-          builder: (context, state) => const Scaffold(
-            body: Center(
-              child: Text('Admin App - Coming Soon'),
-            ),
-          ),
+          redirect: (context, state) => '/resident',
         ),
       ],
     );

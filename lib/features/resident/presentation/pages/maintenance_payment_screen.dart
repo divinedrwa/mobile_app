@@ -534,6 +534,7 @@ class _MaintenancePaymentScreenState
             final residents = ((root['residents'] ?? const []) as List)
                 .whereType<Map>()
                 .map((e) => Map<String, dynamic>.from(e))
+                .where((r) => r['isExcluded'] != true)
                 .toList();
             final residentsSummary = Map<String, dynamic>.from(
               (root['residentsSummary'] ?? root['summary'] ?? const {}) as Map,
