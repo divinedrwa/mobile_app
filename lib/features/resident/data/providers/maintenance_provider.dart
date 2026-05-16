@@ -12,7 +12,8 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
       final user = ref.watch(authProvider).user;
-      if (user == null || user.role != UserRole.admin) return {};
+      if (user == null) return {};
+      if (user.role != UserRole.admin && user.role != UserRole.resident) return {};
       return ref.watch(maintenanceRepositoryProvider).getOutstandingDues();
     });
 

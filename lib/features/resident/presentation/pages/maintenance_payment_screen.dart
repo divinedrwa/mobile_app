@@ -310,7 +310,7 @@ class _MaintenancePaymentScreenState
     final filter = ref.watch(maintenanceDashboardFilterProvider);
     final tabs = isAdmin
         ? const ['All residents', 'My payments', 'Year review', 'Outstanding']
-        : const ['Overview', 'My payments', 'Year review'];
+        : const ['Overview', 'My payments', 'Year review', 'Outstanding'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
 
@@ -672,7 +672,7 @@ class _MaintenancePaymentScreenState
               _buildYearReviewTab(context, filter),
 
               // Outstanding tab (admin only)
-              if (isAdmin) _buildOutstandingTab(context),
+              _buildOutstandingTab(context),
             ];
 
             // Block rendering until financial-year list has resolved so
@@ -699,7 +699,7 @@ class _MaintenancePaymentScreenState
                   animation: tabCtrl,
                   builder: (ctx2, _) {
                     final tabIdx = tabCtrl.index;
-                    final hideFilterBar = isAdmin && tabIdx == 3;
+                    final hideFilterBar = tabIdx == 3;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -4302,9 +4302,11 @@ class _MaintenancePaymentScreenState
                 ),
               ),
             ),
-            // Send reminder action row
-            Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
-            _outstandingSendReminderRow(villaId, villaNumber),
+            // Send reminder action row (admin only)
+            if (ref.watch(authProvider).user?.role == UserRole.admin) ...[
+              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+              _outstandingSendReminderRow(villaId, villaNumber),
+            ],
 
             // Expanded cycle rows
             if (isExpanded) ...[
