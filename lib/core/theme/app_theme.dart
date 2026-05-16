@@ -213,13 +213,16 @@ class AppTheme {
   }
   
   // System UI Overlay Styles
+  // Note: statusBarColor / systemNavigationBarColor are deprecated on Android 15+
+  // (SDK 35) where edge-to-edge is enforced. We only set icon brightness here;
+  // the native side calls enableEdgeToEdge() and sets transparent bars via XML.
   static SystemUiOverlayStyle get systemUiOverlayStyleLight {
     return const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.surface,
       systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
     );
   }
 }

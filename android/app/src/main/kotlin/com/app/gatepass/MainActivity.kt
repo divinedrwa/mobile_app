@@ -5,12 +5,16 @@ import android.app.NotificationManager
 import android.os.Build
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
+        // Enable edge-to-edge: content draws behind system bars.
+        // Flutter's SafeArea widgets handle the insets on the Dart side.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         ensureDefaultFcmChannel()
         super.onCreate(savedInstanceState)
     }
