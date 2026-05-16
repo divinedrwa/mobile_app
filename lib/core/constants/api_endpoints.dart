@@ -124,7 +124,12 @@ class ApiEndpoints {
   
   // Resident - Documents
   static const String documents = '/residents/my-documents';
-  
+
+  // Resident - Society Expenses (read-only)
+  static const String societyExpenses = '/residents/society-expenses';
+  static const String societyExpenseCategories = '/residents/society-expenses/categories';
+  static String societyExpenseById(String id) => '/residents/society-expenses/$id';
+
   // Resident - Polls
   static const String polls = '/residents/my-polls';
   static String votePoll(String pollId, String optionId) => 

@@ -25,6 +25,8 @@ import '../../features/resident/presentation/pages/visitor_approval_requests_scr
 import '../../features/resident/presentation/pages/visitor_approval_detail_screen.dart';
 import '../../features/resident/presentation/pages/my_pre_approved_visitors_screen.dart';
 import '../../features/resident/presentation/pages/resident_overview_screen.dart';
+import '../../features/resident/presentation/pages/society_expenses_screen.dart';
+import '../../features/resident/presentation/pages/expense_detail_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
@@ -197,6 +199,27 @@ class AppRouter {
                 final id = state.pathParameters['id'] ?? '';
                 return VisitorApprovalDetailScreen(visitorId: id);
               },
+            ),
+            GoRoute(
+              path: 'expenses',
+              builder: (context, state) {
+                final month = int.tryParse(
+                    state.uri.queryParameters['month'] ?? '');
+                final year = int.tryParse(
+                    state.uri.queryParameters['year'] ?? '');
+                return SocietyExpensesScreen(
+                  initialMonth: month,
+                  initialYear: year,
+                );
+              },
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) => ExpenseDetailScreen(
+                    expenseId: state.pathParameters['id'] ?? '',
+                  ),
+                ),
+              ],
             ),
             GoRoute(
               path: 'overview',

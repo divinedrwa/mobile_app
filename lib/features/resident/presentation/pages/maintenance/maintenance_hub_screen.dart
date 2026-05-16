@@ -310,25 +310,36 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
   /// "go somewhere" rather than "summary stat".
   Widget _buildShortcutRow(List<MaintenanceDueModel> pending) {
     final pendingCount = pending.where((p) => p.remainingDue > 0 || p.amount > 0).length;
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _ShortcutCard(
-            icon: Icons.receipt_long_outlined,
-            label: 'My dues',
-            tone: DesignColors.error,
-            countBadge: pendingCount > 0 ? '$pendingCount' : null,
-            onTap: () => context.push('/resident/maintenance/dues'),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _ShortcutCard(
+                icon: Icons.receipt_long_outlined,
+                label: 'My dues',
+                tone: DesignColors.error,
+                countBadge: pendingCount > 0 ? '$pendingCount' : null,
+                onTap: () => context.push('/resident/maintenance/dues'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _ShortcutCard(
+                icon: Icons.history,
+                label: 'My payments',
+                tone: DesignColors.primary,
+                onTap: () => context.push('/resident/maintenance/history'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _ShortcutCard(
-            icon: Icons.history,
-            label: 'My payments',
-            tone: DesignColors.primary,
-            onTap: () => context.push('/resident/maintenance/history'),
-          ),
+        const SizedBox(height: AppSpacing.sm),
+        _ShortcutCard(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Society expenses',
+          tone: DesignColors.textSecondary,
+          onTap: () => context.push('/resident/expenses'),
         ),
       ],
     );

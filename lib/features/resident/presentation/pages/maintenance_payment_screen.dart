@@ -3040,6 +3040,50 @@ class _MaintenancePaymentScreenState
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: InkWell(
+                      onTap: () {
+                        final f = ref.read(maintenanceDashboardFilterProvider);
+                        context.push('/resident/expenses?month=${f.month}&year=${f.year}');
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: DesignColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DesignColors.borderLight),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 18,
+                              color: DesignColors.primary,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'View all society expenses',
+                                style: DesignTypography.bodySmall.copyWith(
+                                  color: DesignColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: DesignColors.primary.withValues(alpha: 0.6),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               );
             },
