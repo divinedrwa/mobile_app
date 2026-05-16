@@ -1768,6 +1768,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// vertical real estate of the same domain. Each row keeps its own
   /// destination route so no functionality is lost.
   Widget _buildMaintenanceCard(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    final isAdmin = user?.role == UserRole.admin;
+    final outstandingAsync = isAdmin ? ref.watch(outstandingDuesProvider) : null;
+    final villasCount = outstandingAsync?.whenOrNull(
+      data: (d) => (d['villasWithDuesCount'] as num?)?.toInt() ?? 0,
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1815,6 +1822,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             subtitle: 'Month-wise paid/unpaid, society spend, pending dues',
             onTap: () => context.push('/resident/maintenance-payment'),
           ),
+          if (isAdmin) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 46),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+            _maintenanceCardRow(
+              context,
+              icon: Icons.warning_amber_rounded,
+              iconColor: const Color(0xFFDC2626),
+              title: 'Outstanding dues',
+              subtitle: 'All pending payments across villas — send reminders',
+              onTap: () => context.push('/resident/maintenance-payment'),
+              trailingBadge: villasCount != null && villasCount > 0
+                  ? villasCount
+                  : null,
+            ),
+          ],
         ],
       ),
     );
@@ -1827,6 +1855,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    int? trailingBadge,
   }) {
     return Material(
       color: Colors.transparent,
@@ -1878,6 +1907,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
               ),
+              if (trailingBadge != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$trailingBadge',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFDC2626),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               Icon(
                 Icons.chevron_right_rounded,
                 color: DesignColors.textSecondary.withValues(alpha: 0.7),

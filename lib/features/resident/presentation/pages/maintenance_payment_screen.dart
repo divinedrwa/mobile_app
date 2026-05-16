@@ -86,6 +86,8 @@ class _MaintenancePaymentScreenState
     extends ConsumerState<MaintenancePaymentScreen> {
   _ResidentStatusFilter _residentStatusFilter = _ResidentStatusFilter.all;
   bool _appliedInitialQueryFilter = false;
+  final Set<String> _expandedOutstandingVillas = {};
+  final Set<String> _sendingReminderVillaIds = {};
 
   @override
   void didChangeDependencies() {
@@ -224,6 +226,7 @@ class _MaintenancePaymentScreenState
     ref.invalidate(pendingMaintenanceProvider);
     ref.invalidate(maintenanceHistoryProvider);
     ref.invalidate(billingFinancialYearsProvider);
+    ref.invalidate(outstandingDuesProvider);
     final fy = ref.read(maintenanceDashboardFilterProvider).financialYearId;
     if (fy != null && fy.isNotEmpty) {
       ref.invalidate(billingCyclesForFinancialYearProvider(fy));
@@ -306,7 +309,7 @@ class _MaintenancePaymentScreenState
     final isAdmin = user?.role == UserRole.admin;
     final filter = ref.watch(maintenanceDashboardFilterProvider);
     final tabs = isAdmin
-        ? const ['All residents', 'My payments', 'Year review']
+        ? const ['All residents', 'My payments', 'Year review', 'Outstanding']
         : const ['Overview', 'My payments', 'Year review'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
@@ -666,6 +669,9 @@ class _MaintenancePaymentScreenState
 
               // Year review tab
               _buildYearReviewTab(context, filter),
+
+              // Outstanding tab (admin only)
+              if (isAdmin) _buildOutstandingTab(context),
             ];
 
             // Block rendering until financial-year list has resolved so
@@ -692,22 +698,25 @@ class _MaintenancePaymentScreenState
                   animation: tabCtrl,
                   builder: (ctx2, _) {
                     final tabIdx = tabCtrl.index;
+                    final hideFilterBar = isAdmin && tabIdx == 3;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Material(
-                          color: DesignColors.surface,
-                          elevation: 0,
-                          child: _buildStickyFilterBar(
-                              ctx2, filter, isAdmin, root,
-                              hidesCycleDropdown: tabIdx >= 1),
-                        ),
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color:
-                              DesignColors.borderLight.withValues(alpha: 0.6),
-                        ),
+                        if (!hideFilterBar) ...[
+                          Material(
+                            color: DesignColors.surface,
+                            elevation: 0,
+                            child: _buildStickyFilterBar(
+                                ctx2, filter, isAdmin, root,
+                                hidesCycleDropdown: tabIdx >= 1),
+                          ),
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color:
+                                DesignColors.borderLight.withValues(alpha: 0.6),
+                          ),
+                        ],
                         Expanded(child: TabBarView(children: pages)),
                       ],
                     );
@@ -3983,6 +3992,469 @@ class _MaintenancePaymentScreenState
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(data);
     await Share.shareXFiles([XFile(file.path)], text: 'Maintenance report');
+  }
+
+  // ───────────────────────── Outstanding tab ─────────────────────────
+
+  Widget _buildOutstandingTab(BuildContext context) {
+    final outstanding = ref.watch(outstandingDuesProvider);
+    final inr = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 0);
+
+    return outstanding.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _wrapTabWithRefresh(
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: DesignColors.error),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load outstanding dues',
+                  style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  e.toString(),
+                  textAlign: TextAlign.center,
+                  style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => ref.invalidate(outstandingDuesProvider),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      data: (data) {
+        final villas = (data['villas'] as List?)
+                ?.whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList() ??
+            [];
+        final totalOutstanding = (data['totalOutstanding'] as num?)?.toDouble() ?? 0;
+        final villasWithDuesCount = (data['villasWithDuesCount'] as num?)?.toInt() ?? 0;
+        final totalPendingCycles = (data['totalPendingCycles'] as num?)?.toInt() ?? 0;
+
+        if (villas.isEmpty) {
+          return _wrapTabWithRefresh(
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: DesignColors.success.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_circle_outline_rounded, size: 52, color: DesignColors.success),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'All dues cleared!',
+                      style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Every villa is up to date on maintenance payments.',
+                      textAlign: TextAlign.center,
+                      style: DesignTypography.bodySmall.copyWith(
+                        color: DesignColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return _wrapTabWithRefresh(
+          ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 12, bottom: 32),
+            itemCount: villas.length + 1,
+            itemBuilder: (ctx, i) {
+              if (i == 0) {
+                return _outstandingSummaryBanner(
+                  totalOutstanding, villasWithDuesCount, totalPendingCycles, inr,
+                );
+              }
+              return _outstandingVillaCard(villas[i - 1], inr);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _outstandingSummaryBanner(
+    double totalOutstanding,
+    int villasWithDuesCount,
+    int totalPendingCycles,
+    NumberFormat inr,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              DesignColors.error.withValues(alpha: 0.08),
+              DesignColors.error.withValues(alpha: 0.03),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Total Outstanding',
+              style: DesignTypography.bodySmall.copyWith(
+                color: DesignColors.error.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              inr.format(totalOutstanding),
+              style: DesignTypography.headingL.copyWith(
+                color: DesignColors.error,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _outstandingChip(
+                  Icons.home_outlined,
+                  '$villasWithDuesCount ${villasWithDuesCount == 1 ? 'villa' : 'villas'}',
+                ),
+                const SizedBox(width: 8),
+                _outstandingChip(
+                  Icons.calendar_month_outlined,
+                  '$totalPendingCycles ${totalPendingCycles == 1 ? 'month' : 'months'}',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _outstandingChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: DesignColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: DesignColors.error.withValues(alpha: 0.7)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: DesignTypography.labelSmall.copyWith(
+              color: DesignColors.error.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _outstandingVillaCard(Map<String, dynamic> villa, NumberFormat inr) {
+    final villaId = villa['villaId']?.toString() ?? '';
+    final villaNumber = villa['villaNumber']?.toString() ?? '-';
+    final ownerName = (villa['ownerName']?.toString() ?? '').trim();
+    final totalOutstanding = (villa['totalOutstanding'] as num?)?.toDouble() ?? 0;
+    final pendingCycles = (villa['pendingCycles'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList() ??
+        [];
+    final isExpanded = _expandedOutstandingVillas.contains(villaId);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: DesignColors.error.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            // Header
+            InkWell(
+              onTap: () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedOutstandingVillas.remove(villaId);
+                  } else {
+                    _expandedOutstandingVillas.add(villaId);
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 3,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: DesignColors.error,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ownerName.isEmpty ? villaNumber : ownerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: DesignTypography.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            ownerName.isEmpty ? '' : villaNumber,
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: DesignColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          inr.format(totalOutstanding),
+                          style: DesignTypography.bodySmall.copyWith(
+                            color: DesignColors.error,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: DesignColors.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${pendingCycles.length} ${pendingCycles.length == 1 ? 'month' : 'months'}',
+                            style: DesignTypography.labelSmall.copyWith(
+                              color: DesignColors.error,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                      size: 20,
+                      color: DesignColors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Send reminder action row
+            Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+            _outstandingSendReminderRow(villaId, villaNumber),
+
+            // Expanded cycle rows
+            if (isExpanded) ...[
+              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                child: Column(
+                  children: pendingCycles
+                      .map((cycle) => _outstandingCycleRow(cycle, inr))
+                      .toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _outstandingSendReminderRow(String villaId, String villaNumber) {
+    final isSending = _sendingReminderVillaIds.contains(villaId);
+    return InkWell(
+      onTap: isSending ? null : () => _sendVillaReminder(villaId, villaNumber),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: [
+            if (isSending)
+              const SizedBox(
+                width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(Icons.notifications_active_outlined, size: 16, color: DesignColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isSending ? 'Sending reminder...' : 'Send payment reminder',
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+            Icon(Icons.send_rounded, size: 14, color: DesignColors.primary.withValues(alpha: 0.6)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendVillaReminder(String villaId, String villaNumber) async {
+    setState(() => _sendingReminderVillaIds.add(villaId));
+    try {
+      final result = await ref
+          .read(maintenanceRepositoryProvider)
+          .sendVillaReminder(villaId: villaId);
+      if (!mounted) return;
+      final sent = (result['sent'] as num?)?.toInt() ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sent > 0
+                ? 'Reminder sent to $sent resident${sent == 1 ? '' : 's'} of $villaNumber'
+                : result['message']?.toString() ?? 'No residents to notify',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: sent > 0 ? DesignColors.success : DesignColors.warning,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send reminder: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: DesignColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sendingReminderVillaIds.remove(villaId));
+      }
+    }
+  }
+
+  Widget _outstandingCycleRow(Map<String, dynamic> cycle, NumberFormat inr) {
+    final cycleTitle = cycle['cycleTitle']?.toString() ?? '';
+    final remainingDue = (cycle['remainingDue'] as num?)?.toDouble() ?? 0;
+    final isOverdue = cycle['isOverdue'] == true;
+    final status = cycle['status']?.toString() ?? '';
+    final accent = isOverdue ? DesignColors.error : DesignColors.warning;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isOverdue ? Icons.error_outline_rounded : Icons.schedule_rounded,
+              size: 16,
+              color: accent,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                cycleTitle,
+                style: DesignTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+            if (isOverdue || status == 'OVERDUE')
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: DesignColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'OVERDUE',
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: DesignColors.error,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 8.5,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+            Text(
+              inr.format(remainingDue),
+              style: DesignTypography.bodySmall.copyWith(
+                color: accent,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
 }

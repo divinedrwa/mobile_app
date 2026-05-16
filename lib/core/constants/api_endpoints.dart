@@ -31,6 +31,8 @@ class ApiEndpoints {
   static const String myMaintenance = '/residents/my-maintenance';
   static const String maintenanceHistory = '/residents/my-maintenance';
   static const String paymentHistory = '/residents/my-maintenance';
+  static const String outstandingDues = '/maintenance-management/outstanding-dues';
+  static const String sendVillaReminder = '/maintenance-management/send-villa-reminder';
 
   /// SaaS billing cycle (UTC windows; status from server): `GET /v1/cycles/current?societyId=&billingCycleId=`
   static String billingCyclesCurrent({

@@ -218,6 +218,27 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         ),
                       ),
 
+                      const SizedBox(height: 18),
+
+                      // Initiative credit line.
+                      FadeTransition(
+                        opacity: _featuresOpacity,
+                        child: SlideTransition(
+                          position: _featuresSlide,
+                          child: const Text(
+                            'An initiative of Divine Residency Welfare Association',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.15,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ),
+
                       // The rest of the screen is intentionally empty so the
                       // background artwork (apartment scene + bottom ribbon)
                       // shows through.

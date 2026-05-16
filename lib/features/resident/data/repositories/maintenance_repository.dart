@@ -158,6 +158,33 @@ class MaintenanceRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getOutstandingDues() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.outstandingDues);
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to fetch outstanding dues');
+    }
+  }
+
+  Future<Map<String, dynamic>> sendVillaReminder({
+    required String villaId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.sendVillaReminder,
+        data: {'villaId': villaId},
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to send reminder');
+    }
+  }
+
   Future<List<MaintenanceDueModel>> getPendingMaintenance() async {
     try {
       final response = await _dio.get('/residents/maintenance-pending');

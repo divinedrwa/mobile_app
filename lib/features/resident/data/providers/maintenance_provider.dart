@@ -9,6 +9,13 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
   (ref) => MaintenanceRepository(),
 );
 
+final outstandingDuesProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+      final user = ref.watch(authProvider).user;
+      if (user == null || user.role != UserRole.admin) return {};
+      return ref.watch(maintenanceRepositoryProvider).getOutstandingDues();
+    });
+
 final pendingMaintenanceProvider = FutureProvider<List<MaintenanceDueModel>>((
   ref,
 ) async {
