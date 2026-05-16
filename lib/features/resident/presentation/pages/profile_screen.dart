@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -291,11 +290,8 @@ class ProfileScreen extends ConsumerWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: () async {
+                        // logout() calls restartApp() — full relaunch.
                         await ref.read(authProvider.notifier).logout();
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx);
-                          if (context.mounted) context.go('/login');
-                        }
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: DesignColors.error,

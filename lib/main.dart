@@ -6,9 +6,9 @@ import 'bootstrap/app_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
+import 'core/utils/app_restart.dart';
 import 'theme/theme.dart' as gp_theme;
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'core/routing/app_navigator_keys.dart';
 import 'core/session/account_deactivated_handler.dart';
 import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
@@ -23,8 +23,14 @@ void main() async {
   WidgetsBinding.instance.addObserver(pushBinding);
 
   runApp(
-    const ProviderScope(
-      child: DivineApp(),
+    // Changing [appRestartKey] rebuilds the entire tree including
+    // ProviderScope — a full in-process restart (see [restartApp]).
+    ValueListenableBuilder<Key>(
+      valueListenable: appRestartKey,
+      builder: (_, key, _) => ProviderScope(
+        key: key,
+        child: const DivineApp(),
+      ),
     ),
   );
 }
@@ -48,26 +54,14 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       AccountDeactivatedHandler.register(() async {
         try {
           await ref.read(authProvider.notifier).logout();
-        } catch (_) {
-          // Ensure local session clears even if logout API fails.
-        }
-        final ctx = appRootNavigatorKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          GoRouter.of(ctx).go('/login');
-        }
+        } catch (_) {}
+        // logout() calls restartApp() — no navigation needed.
       });
-      // Same shape, but for plain expired/revoked tokens (no "deactivated"
-      // server message). Fires once per burst — see SessionExpiredHandler.
       SessionExpiredHandler.register(() async {
         try {
           await ref.read(authProvider.notifier).logout();
-        } catch (_) {
-          // Local session must clear even if logout API fails.
-        }
-        final ctx = appRootNavigatorKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          GoRouter.of(ctx).go('/login');
-        }
+        } catch (_) {}
+        // logout() calls restartApp() — no navigation needed.
       });
     });
   }
@@ -83,16 +77,15 @@ class _DivineAppState extends ConsumerState<DivineApp> {
   Widget build(BuildContext context) {
     _router ??= AppRouter.router(ref, refreshListenable: _routerRefresh);
 
+    // Only refresh the router when the user actually logs in or out.
     ref.listen<AuthState>(authProvider, (prev, next) {
-      _routerRefresh.notify();
+      final wasAuth = prev?.isAuthenticated ?? false;
+      final nowAuth = next.isAuthenticated;
+      if (wasAuth != nowAuth) {
+        _routerRefresh.notify();
+      }
     });
 
-    // Theme preference is persisted via [gp_theme.ThemeModeNotifier]
-    // (system / light / dark). `themeTokensProvider` holds the active
-    // palette and is ready to accept an API-driven override later.
-    //
-    // TODO: Re-enable dark/system theme support when ready.
-    // final themeMode = ref.watch(gp_theme.themeModeProvider);
     final tokens = ref.watch(gp_theme.themeTokensProvider);
 
     return MaterialApp.router(

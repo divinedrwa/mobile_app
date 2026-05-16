@@ -5,12 +5,7 @@ import '../../../../shared/models/user_model.dart';
 import '../../data/auth_repository.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
-import '../../../resident/data/providers/dashboard_provider.dart';
-import '../../../resident/data/providers/notification_provider.dart';
-import '../../../resident/data/providers/visitor_history_provider.dart';
-import '../../../resident/data/providers/vehicle_provider.dart';
-import '../../../resident/data/providers/family_member_provider.dart';
-import '../../../resident/data/providers/parcel_provider.dart';
+import '../../../../core/utils/app_restart.dart';
 
 /// Auth state
 class AuthState {
@@ -43,14 +38,17 @@ class AuthState {
 /// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
-  final Ref _ref;
+  // Retained for future provider invalidation needs; restartApp() handles
+  // cleanup for now but individual invalidation may return.
+  // ignore: unused_field
+  final Ref ref;
+  bool _loggingOut = false;
 
-  AuthNotifier(this._authRepository, this._ref) : super(const AuthState()) {
+  AuthNotifier(this._authRepository, this.ref) : super(const AuthState()) {
     _init();
   }
 
   Future<void> _init() async {
-    // Check if user is already logged in
     final isLoggedIn = await _authRepository.isLoggedIn();
     if (isLoggedIn) {
       await _authRepository.repairCachedUserDataIfNeeded();
@@ -62,8 +60,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
           return;
         }
         state = state.copyWith(user: cachedUser);
-        // Refresh profile in background; deliberately fire-and-forget so
-        // the splash doesn't block on the network round-trip.
         unawaited(_refreshProfile());
       }
     }
@@ -87,7 +83,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String password,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       final user = await _authRepository.login(
         societyId: societyId,
@@ -96,8 +92,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       state = AuthState(user: user, isLoading: false);
-      // Login payload omits nested `villa`; `/residents/me` includes `villa.villaNumber`.
-      await _refreshProfile();
+      // Fire-and-forget — router navigates on the state change above.
+      unawaited(_refreshProfile());
       return true;
     } on AppException catch (e) {
       state = state.copyWith(
@@ -135,7 +131,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         villaId: villaId,
       );
       state = AuthState(user: user, isLoading: false);
-      await _refreshProfile();
+      unawaited(_refreshProfile());
       return true;
     } on AppException catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.message);
@@ -149,16 +145,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Clears session, storage, Dio — then restarts the entire app.
+  /// The splash screen picks up from persisted preferences (preferred
+  /// society, etc.) and routes to /login or /society-select.
   Future<void> logout() async {
-    await _authRepository.logout();
-    // Invalidate data providers so stale data from previous user doesn't flash on re-login
-    _ref.invalidate(residentDashboardProvider);
-    _ref.invalidate(notificationProvider);
-    _ref.invalidate(visitorHistoryProvider);
-    _ref.invalidate(vehicleProvider);
-    _ref.invalidate(familyMemberProvider);
-    _ref.invalidate(parcelProvider);
+    if (_loggingOut) return;
+    _loggingOut = true;
+    try {
+      await _authRepository.logout();
+    } catch (_) {
+      // Best-effort — proceed to restart even if cleanup partially fails.
+    }
     state = const AuthState();
+    _loggingOut = false;
+    // Full app restart — destroys all providers, router, and caches.
+    restartApp();
   }
 
   void clearError() {

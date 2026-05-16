@@ -51,7 +51,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshBiometricLoginUi();
       if (!mounted) return;
-      if (_selectedSocietyId.isEmpty) {
+      // Only redirect if we're still on /login (avoid fighting with the
+      // user tapping "Change" which navigates to /society-select).
+      final loc = GoRouterState.of(context).matchedLocation;
+      if (_selectedSocietyId.isEmpty && loc == '/login') {
         context.go('/society-select');
       }
     });

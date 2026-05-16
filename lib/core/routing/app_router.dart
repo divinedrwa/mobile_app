@@ -51,11 +51,14 @@ class AppRouter {
           if (!isAuthenticated) {
             final preferredSid = StorageService.getPreferredLoginSocietyId()?.trim();
             final hasLoginSociety = preferredSid != null && preferredSid.isNotEmpty;
+            // User on /login but never picked a society → send to picker.
             if (isLogin && !hasLoginSociety) {
               return '/society-select';
             }
+            // User landed on an app route (e.g. after session expiry) →
+            // send to /login if they already chose a society, else picker.
             if (!isSplash && !isSocietySelect && !isLogin) {
-              return '/society-select';
+              return hasLoginSociety ? '/login' : '/society-select';
             }
           }
 
@@ -72,11 +75,12 @@ class AppRouter {
             if (role == UserRole.guard && (isResidentRoute || isAdminRoute)) {
               return '/guard/dashboard';
             }
-            if (role == UserRole.admin && (isResidentRoute || isGuardRoute)) {
-              return '/admin';
+            // Admin shares the resident shell — only block guard routes.
+            if (role == UserRole.admin && isGuardRoute) {
+              return '/resident';
             }
 
-            if (isLogin) {
+            if (isLogin || isSocietySelect) {
               switch (role) {
                 case UserRole.superAdmin:
                   return '/login';
@@ -85,7 +89,7 @@ class AppRouter {
                 case UserRole.guard:
                   return '/guard/dashboard';
                 case UserRole.admin:
-                  return '/admin';
+                  return '/resident';
               }
             }
           }
@@ -93,7 +97,8 @@ class AppRouter {
           return null;
         } catch (e) {
           debugPrint('GoRouter redirect error: $e');
-          return '/society-select';
+          final sid = StorageService.getPreferredLoginSocietyId()?.trim() ?? '';
+          return sid.isNotEmpty ? '/login' : '/society-select';
         }
       },
       routes: [

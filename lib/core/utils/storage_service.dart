@@ -160,16 +160,18 @@ class StorageService {
   }
 
   // Clear all data (logout). Preserves device-level settings (API base URL,
-  // biometric/notification toggles) but does NOT preserve the preferred login
-  // society — keeping it across logout caused requests in the window between
-  // logout and the next saveUserData() to carry the prior tenant's
-  // X-Society-Id (society_context_interceptor falls back to preferred id).
-  // The login screen handles re-selecting a society explicitly.
+  // biometric/notification toggles) and the preferred login society so the
+  // user lands on the login screen (not society-select) after logout or
+  // password change. The stale X-Society-Id concern is mitigated by
+  // DioClient.reset() which clears the interceptor cache during logout.
   static Future<void> clearAll() async {
     final apiBase = prefs.getString(AppConstants.keyApiBaseUrl);
     final biometricPref = prefs.getBool(AppConstants.keyBiometricLoginEnabled);
     final notificationsEnabled = prefs.getBool(AppConstants.keyNotificationsEnabled);
     final pushEnabled = prefs.getBool(AppConstants.keyPushNotificationsEnabled);
+    final preferredSocietyId = prefs.getString(AppConstants.keyPreferredLoginSocietyId);
+    final preferredSocietyName = prefs.getString(AppConstants.keyPreferredLoginSocietyName);
+    final rememberMe = prefs.getBool(AppConstants.keyRememberMe);
     await prefs.clear();
     // The JWT lives in secure storage; prefs.clear() doesn't reach it.
     await _secure.delete(key: AppConstants.keyToken);
@@ -184,6 +186,15 @@ class StorageService {
     }
     if (pushEnabled != null) {
       await prefs.setBool(AppConstants.keyPushNotificationsEnabled, pushEnabled);
+    }
+    if (preferredSocietyId != null && preferredSocietyId.isNotEmpty) {
+      await prefs.setString(AppConstants.keyPreferredLoginSocietyId, preferredSocietyId);
+    }
+    if (preferredSocietyName != null && preferredSocietyName.isNotEmpty) {
+      await prefs.setString(AppConstants.keyPreferredLoginSocietyName, preferredSocietyName);
+    }
+    if (rememberMe == true) {
+      await prefs.setBool(AppConstants.keyRememberMe, true);
     }
   }
 

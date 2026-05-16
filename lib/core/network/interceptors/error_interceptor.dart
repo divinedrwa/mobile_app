@@ -14,16 +14,24 @@ bool _accountDisabledMessage(String message) {
   return false;
 }
 
-/// Unauthenticated endpoints — a 401 from these means "bad credentials" or
-/// "invalid invitation token", **not** "your session expired". Treating them
-/// as session-expired would wipe `StorageService` (clearing the preferred
-/// society id) and bounce the user from the login screen back to society
-/// selection. Keep this list narrow: only paths the user can hit *without*
-/// an existing session.
-bool _isUnauthenticatedAuthEndpoint(String path) {
+/// Endpoints where a 401 must NOT trigger the session-expired flow.
+///
+/// • `/auth/login`, `/auth/register-with-invitation` — a 401 here means
+///   "bad credentials / invalid invitation", not "session expired". Treating
+///   it as expired would wipe storage and bounce the user away from the form.
+///
+/// • `/auth/logout`, `/notifications/devices/remove` — these are teardown
+///   calls made *during* logout. The JWT may already be revoked (e.g. after
+///   a password change), so a 401 is expected. Feeding it back into
+///   SessionExpiredHandler would trigger another logout() → another 401 →
+///   infinite loop.
+bool _isSessionExpiryExempt(String path) {
   final p = path.toLowerCase();
   return p.endsWith('/auth/login') ||
-      p.endsWith('/auth/register-with-invitation');
+      p.endsWith('/auth/register-with-invitation') ||
+      p.endsWith('/auth/logout') ||
+      p.endsWith('/notifications/devices/remove') ||
+      p.endsWith('/notifications/devices');
 }
 
 /// Interceptor to handle API errors
@@ -66,7 +74,7 @@ class ErrorInterceptor extends Interceptor {
             exception = UnauthorizedException(message: message);
             if (_accountDisabledMessage(message)) {
               unawaited(AccountDeactivatedHandler.triggerIfRegistered());
-            } else if (!_isUnauthenticatedAuthEndpoint(
+            } else if (!_isSessionExpiryExempt(
               err.requestOptions.path,
             )) {
               // Generic 401 on an authenticated endpoint = token expired /

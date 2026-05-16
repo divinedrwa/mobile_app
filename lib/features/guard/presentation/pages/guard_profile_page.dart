@@ -301,10 +301,8 @@ class GuardProfilePage extends ConsumerWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: () async {
+                        // logout() calls restartApp() — full relaunch.
                         await ref.read(authProvider.notifier).logout();
-                        if (!ctx.mounted) return;
-                        Navigator.pop(ctx);
-                        if (context.mounted) context.go('/login');
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: GuardTokens.dangerBrand,

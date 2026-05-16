@@ -105,7 +105,9 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
     final token = await StorageService.getToken();
     final hasSession = token != null && token.isNotEmpty;
 
-    String target = '/society-select';
+    // Default to login if user already picked a society; otherwise society-select.
+    final preferredSid = StorageService.getPreferredLoginSocietyId()?.trim() ?? '';
+    String target = preferredSid.isNotEmpty ? '/login' : '/society-select';
     if (hasSession) {
       final rawRole = StorageService.getUserRole();
       if (rawRole != null && rawRole.isNotEmpty) {
@@ -121,7 +123,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
             target = '/guard/dashboard';
             break;
           case UserRole.admin:
-            target = '/admin';
+            target = '/resident';
             break;
         }
       } else {

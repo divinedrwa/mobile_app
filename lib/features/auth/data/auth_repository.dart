@@ -6,7 +6,6 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_error_message.dart';
 import '../../../core/errors/exceptions.dart';
-import '../../../core/security/secure_credentials_store.dart';
 import '../../../core/utils/storage_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/push_sync_service.dart';
@@ -516,8 +515,18 @@ class AuthRepository {
     } catch (e) {
       // Ignore API errors on logout
     } finally {
-      await NotificationService().deleteToken();
-      await SecureCredentialsStore.instance.clearCredentials();
+      // Do NOT call NotificationService().deleteToken() — that destroys the
+      // Firebase registration token, so re-login can't send it in the login
+      // payload or re-register via PushSyncService.sync().  Backend-side
+      // unregister (PushSyncService.unregister above) is sufficient to stop
+      // pushes for the old session; the same device token is re-associated
+      // with the new user on the next login.
+      //
+      // Biometric credentials are NOT cleared here — they must survive logout
+      // so the biometric button appears on the login screen. They are protected
+      // by OS-level biometric auth (fingerprint/face/PIN). They are only
+      // cleared when the user explicitly disables biometric in Settings, or
+      // when a biometric login attempt fails (stale password).
       await StorageService.clearAll();
       DioClient.reset();
     }

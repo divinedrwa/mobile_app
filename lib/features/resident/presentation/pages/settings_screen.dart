@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -439,9 +438,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     );
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
+                // logout() calls restartApp() — app relaunches from splash.
                 await ref.read(authProvider.notifier).logout();
-                if (!context.mounted) return;
-                context.go('/login');
               } catch (e) {
                 setLocal(() => submitting = false);
                 final msg = e is AppException
@@ -570,9 +568,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 await ref.read(authRepositoryProvider).deactivateAccount();
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
+                // logout() calls restartApp() — app relaunches from splash.
                 await ref.read(authProvider.notifier).logout();
-                if (!context.mounted) return;
-                context.go('/login');
               } catch (e) {
                 setLocal(() => busy = false);
                 final msg = e is AppException
@@ -663,16 +660,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     .hardDeleteAccount(confirmFullName: fullName);
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
+                // logout() calls restartApp() — app relaunches from splash.
                 await ref.read(authProvider.notifier).logout();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Account deleted. Your personal information has been removed.',
-                    ),
-                  ),
-                );
-                context.go('/login');
               } catch (e) {
                 busy = false;
                 setLocal(() {});
