@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 import '../core/constants/app_constants.dart';
 import '../core/logging/fcm_log.dart';
@@ -49,8 +48,6 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
       'Firebase.initializeApp FAILED — pushes disabled until fixed. err=$e',
     );
   }
-
-  await Hive.initFlutter();
 
   await StorageService.init();
   AppConstants.setRuntimeBaseUrlOverride(

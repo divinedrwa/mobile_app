@@ -5,6 +5,12 @@ import '../../../../shared/models/user_model.dart';
 import '../../data/auth_repository.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../resident/data/providers/dashboard_provider.dart';
+import '../../../resident/data/providers/notification_provider.dart';
+import '../../../resident/data/providers/visitor_history_provider.dart';
+import '../../../resident/data/providers/vehicle_provider.dart';
+import '../../../resident/data/providers/family_member_provider.dart';
+import '../../../resident/data/providers/parcel_provider.dart';
 
 /// Auth state
 class AuthState {
@@ -37,8 +43,9 @@ class AuthState {
 /// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
+  final Ref _ref;
 
-  AuthNotifier(this._authRepository) : super(const AuthState()) {
+  AuthNotifier(this._authRepository, this._ref) : super(const AuthState()) {
     _init();
   }
 
@@ -144,6 +151,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authRepository.logout();
+    // Invalidate data providers so stale data from previous user doesn't flash on re-login
+    _ref.invalidate(residentDashboardProvider);
+    _ref.invalidate(notificationProvider);
+    _ref.invalidate(visitorHistoryProvider);
+    _ref.invalidate(vehicleProvider);
+    _ref.invalidate(familyMemberProvider);
+    _ref.invalidate(parcelProvider);
     state = const AuthState();
   }
 
@@ -160,5 +174,5 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// Auth state provider
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(authRepository);
+  return AuthNotifier(authRepository, ref);
 });

@@ -278,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         GestureDetector(
-          onTap: _showForgotPasswordDialog,
+          onTap: _showContactSupportDialog,
           child: const Text(
             'Contact Support',
             style: TextStyle(
@@ -626,7 +626,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final success = await ref.read(authProvider.notifier).login(
             societyId: _selectedSocietyId,
             username: _usernameOrEmailController.text.trim(),
-            password: _passwordController.text,
+            password: _passwordController.text.trim(),
           );
 
       if (!mounted) return;
@@ -638,7 +638,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await StorageService.setBool(AppConstants.keyRememberMe, true);
           await SecureCredentialsStore.instance.saveRememberMe(
             username: _usernameOrEmailController.text.trim(),
-            password: _passwordController.text,
+            password: _passwordController.text.trim(),
           );
         } else {
           await StorageService.setBool(AppConstants.keyRememberMe, false);
@@ -649,7 +649,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             true) {
           await SecureCredentialsStore.instance.saveCredentials(
             username: _usernameOrEmailController.text.trim(),
-            password: _passwordController.text,
+            password: _passwordController.text.trim(),
             societyId: _selectedSocietyId,
           );
         }
@@ -728,6 +728,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             fontSize: 14,
             height: 1.5,
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showContactSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: DesignRadius.borderXL,
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: DesignColors.info.withValues(alpha: 0.1),
+                borderRadius: DesignRadius.borderLG,
+              ),
+              child: const Icon(Icons.support_agent, color: DesignColors.info),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Contact Support',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Having trouble logging in?',
+              style: TextStyle(
+                color: DesignColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Reach out to your society admin or management office for assistance with login issues, account activation, or general queries.',
+              style: TextStyle(
+                color: DesignColors.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(

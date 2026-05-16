@@ -92,8 +92,8 @@ class AppRouter {
 
           return null;
         } catch (e) {
-          // Prevent crash by returning null on error
-          return null;
+          debugPrint('GoRouter redirect error: $e');
+          return '/society-select';
         }
       },
       routes: [

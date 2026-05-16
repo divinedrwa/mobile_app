@@ -12,6 +12,49 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/push_sync_service.dart';
 import '../../../shared/models/user_model.dart';
 
+/// Map a single Unicode codepoint from mathematical/fullwidth ranges to ASCII.
+int _mapConfusableRune(int rune) {
+  // Mathematical Monospace (Xiaomi "font" keyboards)
+  if (rune >= 0x1D670 && rune <= 0x1D689) return rune - 0x1D670 + 0x41; // A-Z
+  if (rune >= 0x1D68A && rune <= 0x1D6A3) return rune - 0x1D68A + 0x61; // a-z
+  if (rune >= 0x1D7F6 && rune <= 0x1D7FF) return rune - 0x1D7F6 + 0x30; // 0-9
+  // Mathematical Bold
+  if (rune >= 0x1D400 && rune <= 0x1D419) return rune - 0x1D400 + 0x41;
+  if (rune >= 0x1D41A && rune <= 0x1D433) return rune - 0x1D41A + 0x61;
+  if (rune >= 0x1D7CE && rune <= 0x1D7D7) return rune - 0x1D7CE + 0x30;
+  // Mathematical Italic
+  if (rune >= 0x1D434 && rune <= 0x1D44D) return rune - 0x1D434 + 0x41;
+  if (rune >= 0x1D44E && rune <= 0x1D467) return rune - 0x1D44E + 0x61;
+  // Mathematical Bold Italic
+  if (rune >= 0x1D468 && rune <= 0x1D481) return rune - 0x1D468 + 0x41;
+  if (rune >= 0x1D482 && rune <= 0x1D49B) return rune - 0x1D482 + 0x61;
+  // Mathematical Sans-Serif
+  if (rune >= 0x1D5A0 && rune <= 0x1D5B9) return rune - 0x1D5A0 + 0x41;
+  if (rune >= 0x1D5BA && rune <= 0x1D5D3) return rune - 0x1D5BA + 0x61;
+  if (rune >= 0x1D7E2 && rune <= 0x1D7EB) return rune - 0x1D7E2 + 0x30;
+  // Mathematical Sans-Serif Bold
+  if (rune >= 0x1D5D4 && rune <= 0x1D5ED) return rune - 0x1D5D4 + 0x41;
+  if (rune >= 0x1D5EE && rune <= 0x1D607) return rune - 0x1D5EE + 0x61;
+  if (rune >= 0x1D7EC && rune <= 0x1D7F5) return rune - 0x1D7EC + 0x30;
+  // Fullwidth ASCII (CJK keyboards)
+  if (rune >= 0xFF21 && rune <= 0xFF3A) return rune - 0xFF21 + 0x41;
+  if (rune >= 0xFF41 && rune <= 0xFF5A) return rune - 0xFF41 + 0x61;
+  if (rune >= 0xFF10 && rune <= 0xFF19) return rune - 0xFF10 + 0x30;
+  return rune;
+}
+
+/// Normalize confusable Unicode and strip invisible characters.
+String _sanitizeInput(String input) {
+  final buf = StringBuffer();
+  for (final rune in input.trim().runes) {
+    buf.writeCharCode(_mapConfusableRune(rune));
+  }
+  return buf.toString().replaceAll(
+    RegExp(r'[\u200B\u200C\u200D\uFEFF\u00AD\u2060]'),
+    '',
+  );
+}
+
 /// Repository for authentication operations
 class AuthRepository {
   Dio get _dio => DioClient.dio;
@@ -80,27 +123,35 @@ class AuthRepository {
     required String password,
   }) async {
     try {
-      if (kDebugMode) {
+      assert(() {
         debugPrint('📡 Calling login API: ${ApiEndpoints.login}');
         debugPrint('📡 Society: $societyId');
         debugPrint('📡 Username/Email: $username');
-      }
+        return true;
+      }());
 
       // Get device token information
       final deviceInfo = _notificationService.getDeviceTokenInfo();
-      if (kDebugMode) {
+      assert(() {
         debugPrint('📱 Device Info:');
         debugPrint(
           '   - Token: ${deviceInfo['fcmToken'] != null && deviceInfo['fcmToken']!.length >= 20 ? '${deviceInfo['fcmToken']!.substring(0, 20)}...' : deviceInfo['fcmToken']}',
         );
         debugPrint('   - Device ID: ${deviceInfo['deviceId']}');
         debugPrint('   - Device Type: ${deviceInfo['deviceType']}');
-      }
+        return true;
+      }());
       
+      // Normalize Unicode confusables (mathematical monospace/bold/italic/fullwidth
+      // variants from Xiaomi and similar keyboards) + strip invisible characters
+      // (zero-width spaces, BOM, etc.) that cause "Invalid credentials".
+      final cleanPassword = _sanitizeInput(password);
+      final cleanUsername = _sanitizeInput(username);
+
       final payload = <String, dynamic>{
         'societyId': societyId.trim(),
-        'username': username,
-        'password': password,
+        'username': cleanUsername,
+        'password': cleanPassword,
       };
       final fcmToken = deviceInfo['fcmToken'];
       final deviceId = deviceInfo['deviceId'];
