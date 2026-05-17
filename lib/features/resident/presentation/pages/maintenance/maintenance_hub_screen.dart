@@ -358,40 +358,56 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     final credit = (cycle?.availableCredit ?? 0).toDouble();
     final pendingCount = pending.where((p) => p.remainingDue > 0 || p.amount > 0).length;
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: MaintenanceStatChip(
-            label: 'This cycle',
-            value: inr.format(thisMonth),
-            tone: thisMonth > 0
-                ? MaintenanceStatTone.warning
-                : MaintenanceStatTone.success,
-            icon: Icons.receipt_long_outlined,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: MaintenanceStatChip(
+                label: 'This cycle',
+                value: inr.format(thisMonth),
+                tone: thisMonth > 0
+                    ? MaintenanceStatTone.warning
+                    : MaintenanceStatTone.success,
+                icon: Icons.receipt_long_outlined,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: MaintenanceStatChip(
+                label: 'Your credit',
+                value: inr.format(credit),
+                tone: credit > 0
+                    ? MaintenanceStatTone.info
+                    : MaintenanceStatTone.neutral,
+                icon: Icons.savings_outlined,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: MaintenanceStatChip(
+                label: 'Pending bills',
+                value: '$pendingCount',
+                tone: pendingCount > 0
+                    ? MaintenanceStatTone.warning
+                    : MaintenanceStatTone.success,
+                icon: Icons.pending_actions_outlined,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: MaintenanceStatChip(
-            label: 'Credit pool',
-            value: inr.format(credit),
-            tone: credit > 0
-                ? MaintenanceStatTone.info
-                : MaintenanceStatTone.neutral,
-            icon: Icons.savings_outlined,
+        if (credit > 0) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Advance credit will auto-apply to your next bill',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: DesignColors.primary.withValues(alpha: 0.7),
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: MaintenanceStatChip(
-            label: 'Pending bills',
-            value: '$pendingCount',
-            tone: pendingCount > 0
-                ? MaintenanceStatTone.warning
-                : MaintenanceStatTone.success,
-            icon: Icons.pending_actions_outlined,
-          ),
-        ),
+        ],
       ],
     );
   }

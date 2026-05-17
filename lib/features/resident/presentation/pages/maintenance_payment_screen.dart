@@ -3688,9 +3688,14 @@ class _MaintenancePaymentScreenState
     BuildContext context,
     Map<String, dynamic> dashboard,
   ) {
+    final fyId =
+        ref.read(maintenanceDashboardFilterProvider).financialYearId;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => CollectionExpenseOverviewScreen(dashboard: dashboard),
+        builder: (_) => CollectionExpenseOverviewScreen(
+          dashboard: dashboard,
+          financialYearId: fyId,
+        ),
       ),
     );
   }
@@ -4517,18 +4522,23 @@ pw.TableRow _pdfRow(String key, String value) {
 
 enum _OverviewMode { monthly, yearly }
 
-class CollectionExpenseOverviewScreen extends StatefulWidget {
-  const CollectionExpenseOverviewScreen({super.key, required this.dashboard});
+class CollectionExpenseOverviewScreen extends ConsumerStatefulWidget {
+  const CollectionExpenseOverviewScreen({
+    super.key,
+    required this.dashboard,
+    this.financialYearId,
+  });
 
   final Map<String, dynamic> dashboard;
+  final String? financialYearId;
 
   @override
-  State<CollectionExpenseOverviewScreen> createState() =>
+  ConsumerState<CollectionExpenseOverviewScreen> createState() =>
       _CollectionExpenseOverviewScreenState();
 }
 
 class _CollectionExpenseOverviewScreenState
-    extends State<CollectionExpenseOverviewScreen> {
+    extends ConsumerState<CollectionExpenseOverviewScreen> {
   _OverviewMode _mode = _OverviewMode.monthly;
 
   Iterable<MapEntry<String, double>> _categoryEntries(
@@ -4685,8 +4695,8 @@ class _CollectionExpenseOverviewScreenState
     final expenses = Map<String, dynamic>.from(
       (widget.dashboard['monthlyExpenseBreakdown'] ?? const {}) as Map,
     );
-    // Only months where a billing cycle actually exists.
-    final yearlyBreakdown =
+    // Only months where a billing cycle actually exists (calendar-year fallback).
+    final dashboardYearlyBreakdown =
         ((widget.dashboard['yearlyBreakdown'] ?? const []) as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
@@ -4706,6 +4716,106 @@ class _CollectionExpenseOverviewScreenState
     final totalExpense = (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
     final net = collected - totalExpense;
     final collectionRate = expected > 0 ? (collected / expected * 100) : 0.0;
+
+    // ----- FY-aware yearly breakdown -----
+    final fyId = widget.financialYearId;
+    final hasFyId = fyId != null && fyId.isNotEmpty;
+    List<Map<String, dynamic>> yearlyBreakdown = dashboardYearlyBreakdown;
+    bool fyLoading = false;
+    String? fyLabel;
+
+    if (hasFyId && _mode == _OverviewMode.yearly) {
+      // Look up FY label.
+      final fysAsync = ref.watch(billingFinancialYearsProvider);
+      fysAsync.whenData((fys) {
+        for (final fy in fys) {
+          if (fy['id']?.toString() == fyId) {
+            fyLabel = fy['label']?.toString();
+            break;
+          }
+        }
+      });
+
+      // Get cycles for this FY.
+      final cyclesAsync =
+          ref.watch(billingCyclesForFinancialYearProvider(fyId));
+      cyclesAsync.when(
+        loading: () {
+          fyLoading = true;
+        },
+        error: (_, __) {},
+        data: (body) {
+          final rawCycles = body['cycles'];
+          final cycles = rawCycles is List
+              ? rawCycles
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[];
+
+          // Determine which calendar years the FY spans.
+          final neededYears = <int>{};
+          final fyCycleKeys = <String>{};
+          for (final c in cycles) {
+            final ck = c['cycleKey']?.toString() ?? '';
+            fyCycleKeys.add(ck);
+            final my = _monthYearFromCycleKey(ck);
+            if (my != null) neededYears.add(my.year);
+          }
+
+          // Fetch yearlyBreakdown for each calendar year and merge.
+          final breakdownByKey = <String, Map<String, dynamic>>{};
+          bool allYearsLoaded = true;
+          for (final yr in neededYears) {
+            final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
+            yrAsync.whenData((rows) {
+              for (final row in rows) {
+                final m = (row['month'] as num?)?.toInt() ?? 0;
+                final y = (row['year'] as num?)?.toInt() ?? 0;
+                if (m > 0 && y > 0) {
+                  breakdownByKey['$y-${m.toString().padLeft(2, '0')}'] = row;
+                }
+              }
+            });
+            if (yrAsync is! AsyncData) allYearsLoaded = false;
+          }
+
+          if (!allYearsLoaded && neededYears.isNotEmpty) {
+            fyLoading = true;
+          } else {
+            // Build FY-filtered breakdown rows.
+            final fyRows = <Map<String, dynamic>>[];
+            for (final ck in fyCycleKeys) {
+              final row = breakdownByKey[ck];
+              if (row != null) {
+                fyRows.add(row);
+              } else {
+                // Create stub from cycle data.
+                final my = _monthYearFromCycleKey(ck);
+                if (my != null) {
+                  fyRows.add({
+                    'month': my.month,
+                    'year': my.year,
+                    'totalExpected': 0,
+                    'totalCollected': 0,
+                    'totalExpense': 0,
+                    'paidCount': 0,
+                    'unpaidCount': 0,
+                  });
+                }
+              }
+            }
+            // Filter to non-empty rows.
+            yearlyBreakdown = fyRows.where((row) {
+              final exp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
+              final paid = (row['paidCount'] as num?)?.toInt() ?? 0;
+              final unpaid = (row['unpaidCount'] as num?)?.toInt() ?? 0;
+              return exp > 0 || (paid + unpaid) > 0;
+            }).toList();
+          }
+        },
+      );
+    }
 
     final yearlyExpected = yearlyBreakdown.fold<double>(
       0,
@@ -4816,7 +4926,9 @@ class _CollectionExpenseOverviewScreenState
               ),
             ),
             Text(
-              periodLabel,
+              _mode == _OverviewMode.yearly && fyLabel != null
+                  ? fyLabel!
+                  : periodLabel,
               style: DesignTypography.bodySmall.copyWith(
                 color: DesignColors.textSecondary,
               ),
@@ -4871,6 +4983,13 @@ class _CollectionExpenseOverviewScreenState
               collected: collected,
               expense: totalExpense,
               net: net,
+            ),
+          ] else if (fyLoading) ...[
+            const Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
           ] else ...[
             compactStats(
@@ -4940,7 +5059,7 @@ class _CollectionExpenseOverviewScreenState
           ),
           const SizedBox(height: 4),
           Text(
-            '${yearlyBreakdown.length} cycle${yearlyBreakdown.length == 1 ? '' : 's'} in selected year',
+            '${yearlyBreakdown.length} cycle${yearlyBreakdown.length == 1 ? '' : 's'} in ${fyLabel ?? 'selected year'}',
             style: DesignTypography.bodySmall.copyWith(
               color: DesignColors.textSecondary,
             ),
@@ -4964,6 +5083,7 @@ class _CollectionExpenseOverviewScreenState
           else
             ...yearlyBreakdown.map((row) {
               final m = (row['month'] as num?)?.toInt() ?? 1;
+              final rowYear = (row['year'] as num?)?.toInt() ?? year;
               final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
               final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
               final mExp =
@@ -4984,7 +5104,7 @@ class _CollectionExpenseOverviewScreenState
                       ? DesignColors.warning
                       : DesignColors.error;
               final isCurrentPeriod =
-                  m == month && year == (filter['year'] as num?)?.toInt();
+                  m == month && rowYear == year;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(
@@ -5006,7 +5126,11 @@ class _CollectionExpenseOverviewScreenState
                         Row(
                           children: [
                             Text(
-                              DateFormat('MMMM').format(DateTime(year, m)),
+                              hasFyId
+                                  ? DateFormat('MMMM yyyy')
+                                      .format(DateTime(rowYear, m))
+                                  : DateFormat('MMMM')
+                                      .format(DateTime(rowYear, m)),
                               style: DesignTypography.bodyMedium.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),

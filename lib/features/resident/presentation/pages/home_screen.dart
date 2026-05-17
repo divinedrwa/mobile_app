@@ -218,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // Community-level ledger — informational, not actionable.
                     if (!isBillingExcluded) ...[
-                      _buildSocietyFundBalanceCard(context, dashboardAsync),
+                      _buildSocietyFundBalanceCard(context, dashboardAsync, billingAsync),
                       const SizedBox(height: _kSectionGap),
                     ],
 
@@ -825,6 +825,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildSocietyFundBalanceCard(
     BuildContext context,
     AsyncValue<ResidentDashboardModel> dash,
+    AsyncValue<BillingCycleCurrent> billingAsync,
   ) {
     final inr = NumberFormat.currency(
       locale: 'en_IN',
@@ -850,11 +851,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       error: (_, _) => const SizedBox.shrink(),
       data: (d) {
         final fund = d.fund;
-        final isPositive = fund.currentBalance >= 0;
+        final hasAdvanceCredit = fund.totalAdvanceCredit > 0;
+        final spendable = fund.societyFund;
+        final isPositive = spendable >= 0;
         final balanceColor =
             isPositive ? const Color(0xFF166534) : const Color(0xFFB91C1C);
         final balanceBg =
             isPositive ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2);
+        final snapshotLabel =
+            '${DateFormat('MMM yyyy').format(DateTime(fund.year > 0 ? fund.year : DateTime.now().year, fund.month >= 1 && fund.month <= 12 ? fund.month : DateTime.now().month))} snapshot';
 
         return Container(
           decoration: BoxDecoration(
@@ -867,17 +872,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 20,
                     color: DesignColors.primary,
                   ),
-                  SizedBox(width: 8),
-                  Expanded(
+                  const SizedBox(width: 8),
+                  const Expanded(
                     child: Text(
-                      'Current society fund balance',
+                      'Society fund balance',
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
@@ -886,38 +891,167 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
+                  if (hasAdvanceCredit)
+                    GestureDetector(
+                      onTap: () => _showFundInfoSheet(context),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: _kTextSecondary,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: balanceBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
+              if (hasAdvanceCredit) ...[
+                // Three-column breakdown
+                Row(
                   children: [
-                    Text(
-                      inr.format(fund.currentBalance),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: balanceColor,
-                        letterSpacing: -0.35,
+                    // Society Fund (spendable)
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: balanceBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inr.format(spendable),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: balanceColor,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Spendable',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _kTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      '${DateFormat('MMM yyyy').format(DateTime(fund.year > 0 ? fund.year : DateTime.now().year, fund.month >= 1 && fund.month <= 12 ? fund.month : DateTime.now().month))} snapshot',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: _kTextSecondary,
+                    const SizedBox(width: 6),
+                    // Advance Credit
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inr.format(fund.totalAdvanceCredit),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E40AF),
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Advance credit',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _kTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // In Bank (total)
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inr.format(fund.currentBalance),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: _kTextSecondary,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'In bank',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _kTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+              ] else ...[
+                // Single balance display (no advance credit)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: balanceBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        inr.format(fund.currentBalance),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: balanceColor,
+                          letterSpacing: -0.35,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        snapshotLabel,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: _kTextSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 'Collected ${inr.format(fund.allTimeCollected)} · Spent ${inr.format(fund.allTimeSpent)}',
@@ -939,10 +1073,146 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ],
+              // Personal advance credit — compact inline mention
+              _buildPersonalCreditInline(billingAsync, inr),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _showFundInfoSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Understanding your fund balance',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: DesignColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _infoRow(
+              const Color(0xFF166534),
+              'Spendable',
+              'Money the society can use for expenses. This is the total bank balance minus advance credit.',
+            ),
+            const SizedBox(height: 10),
+            _infoRow(
+              const Color(0xFF1E40AF),
+              'Advance credit',
+              'Prepayments by residents for future billing cycles. Reserved for those residents and not available for general spending.',
+            ),
+            const SizedBox(height: 10),
+            _infoRow(
+              _kTextSecondary,
+              'In bank',
+              'Total cash in the society account (spendable + advance credit).',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _infoRow(Color color, String title, String description) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          margin: const EdgeInsets.only(top: 4),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: _kTextSecondary,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact inline widget showing the resident's personal advance credit
+  /// inside the society fund card. Returns SizedBox.shrink when credit is 0.
+  Widget _buildPersonalCreditInline(
+    AsyncValue<BillingCycleCurrent> billingAsync,
+    NumberFormat inr,
+  ) {
+    return billingAsync.maybeWhen(
+      data: (cycle) {
+        final credit = (cycle.availableCredit ?? 0).toDouble();
+        if (credit <= 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.savings_outlined,
+                size: 13,
+                color: Color(0xFF1E40AF),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'Your advance credit: ${inr.format(credit)}',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E40AF),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 

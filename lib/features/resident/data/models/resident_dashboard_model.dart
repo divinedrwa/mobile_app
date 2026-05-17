@@ -70,6 +70,7 @@ class ResidentFundSnapshot {
     required this.monthNet,
     required this.additionalMergedInflowMonth,
     required this.additionalMergedInflowAllTime,
+    required this.totalAdvanceCredit,
   });
 
   final double currentBalance;
@@ -82,6 +83,11 @@ class ResidentFundSnapshot {
   final double monthNet;
   final double additionalMergedInflowMonth;
   final double additionalMergedInflowAllTime;
+  final double totalAdvanceCredit;
+
+  /// Spendable society fund = total balance minus advance credit earmarked for
+  /// future billing cycles.
+  double get societyFund => currentBalance - totalAdvanceCredit;
 
   factory ResidentFundSnapshot.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
@@ -96,6 +102,7 @@ class ResidentFundSnapshot {
         monthNet: 0,
         additionalMergedInflowMonth: 0,
         additionalMergedInflowAllTime: 0,
+        totalAdvanceCredit: 0,
       );
     }
     double d(dynamic v) {
@@ -120,6 +127,7 @@ class ResidentFundSnapshot {
       monthNet: d(json['monthNet']),
       additionalMergedInflowMonth: d(json['additionalMergedInflowMonth']),
       additionalMergedInflowAllTime: d(json['additionalMergedInflowAllTime']),
+      totalAdvanceCredit: d(json['totalAdvanceCredit']),
     );
   }
 }
