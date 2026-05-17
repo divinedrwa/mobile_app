@@ -1967,7 +1967,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             crossAxisCount: 3,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            mainAxisExtent: 72,
+            mainAxisExtent: 80,
           ),
           itemCount: residentHomeQuickActionsGrid.length,
           itemBuilder: (context, index) {
