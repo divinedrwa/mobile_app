@@ -317,7 +317,7 @@ class _GuardVisitorDetailPageState
                           if (v.checkOutTime != null) ...[
                             const Divider(height: 18),
                             _VisitorDetailRowCompact(
-                              icon: Icons.outbond_rounded,
+                              icon: Icons.logout_rounded,
                               label: 'Check-out',
                               value: _fmtCheckInTimeOnly(
                                 context,

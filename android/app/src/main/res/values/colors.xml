@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- White splash background — Flutter splash handles branding -->
-    <color name="splash_primary">#FFFFFFFF</color>
+    <!-- Splash background — matches Flutter splash (#F8FAFC) for seamless transition -->
+    <color name="splash_primary">#FFF8FAFC</color>
     <!-- GatePass+ adaptive icon background (#fafafa — matches new icon spec) -->
     <color name="ic_launcher_background">#FFFAFAFA</color>
     <!-- Brand green: tints the small notification icon + accent line in the

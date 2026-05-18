@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,18 +16,20 @@ import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
 
 // ---------------------------------------------------------------------------
-// Native screen info for iOS Display Zoom detection.
+// Native screen info for Display Zoom / Display Size detection.
 //
-// On iOS, Display Zoom changes BOTH the physical and logical sizes reported
-// to Flutter (while keeping devicePixelRatio the same). The only way to know
-// the device's *real* hardware resolution is UIScreen.nativeBounds, which we
-// fetch via a platform channel before runApp.
+// iOS Display Zoom and Android Display Size both change the effective density,
+// making everything appear larger. Flutter can't detect this from MediaQuery
+// alone. We fetch the device's true physical resolution via a platform channel
+// (UIScreen.nativeBounds on iOS, Display.getRealMetrics on Android) and
+// compute the natural logical size. If the current logical size is smaller
+// (= zoomed in), _buildFixedScale uses FittedBox to render at the natural
+// resolution and scale down to fit.
 // ---------------------------------------------------------------------------
 double? _naturalLogicalWidth;
 double? _naturalLogicalHeight;
 
 Future<void> _fetchNativeScreenInfo() async {
-  if (!Platform.isIOS) return;
   try {
     const channel = MethodChannel('com.app.gatepass/display');
     final info =
@@ -51,7 +51,7 @@ Future<void> _fetchNativeScreenInfo() async {
 void main() async {
   final r = await bootstrapDivineBeforeRunApp();
 
-  // Fetch iOS native resolution before building the UI.
+  // Fetch native screen resolution before building the UI (iOS + Android).
   await _fetchNativeScreenInfo();
 
   registerGuardFlowTelemetry(firebaseAvailable: r.firebaseInitialized);
@@ -136,47 +136,58 @@ class _DivineAppState extends ConsumerState<DivineApp> {
     );
   }
 
+  /// The logical width the app was designed for. Screens narrower than
+  /// this render the full UI at [_designWidth] dp and use [FittedBox] to
+  /// scale everything (text, icons, padding, margins) down proportionally.
+  /// Screens wider than this render at their native size.
+  static const double _designWidth = 420;
+
   /// Wraps the entire widget tree so the app always renders at its designed
-  /// sizes — ignoring both the device text-size setting (Dynamic Type /
-  /// Android Font Size) AND the display-zoom setting (iOS Display Zoom /
-  /// Android Display Size).
+  /// proportions — ignoring device text-size, display-zoom, and screen
+  /// density settings. On narrow screens the whole UI is scaled down
+  /// uniformly so text, icons, and spacing stay balanced.
   Widget _buildFixedScale(BuildContext context, Widget? child) {
     final data = MediaQuery.of(context);
 
-    // 1. Lock text scaling to the app's designed font sizes.
-    var fixedData = data.copyWith(textScaler: TextScaler.noScaling);
+    // 1. Lock text scaling and bold-text accessibility override.
+    var fixedData = data.copyWith(
+      textScaler: TextScaler.noScaling,
+      boldText: false,
+    );
+
+    // 2. Determine the target render width.
+    //    Priority: display-zoom correction > design-width scaling > none.
+    final naturalW = _naturalLogicalWidth;
+    double targetW;
+
+    if (naturalW != null && data.size.width < naturalW - 2) {
+      // Display Zoom (iOS) or Display Size (Android) is active.
+      targetW = naturalW;
+    } else if (data.size.width < _designWidth) {
+      // Narrow screen — render at design width for a compact look.
+      targetW = _designWidth;
+    } else {
+      targetW = data.size.width;
+    }
 
     // Debug output — visible in `flutter run` console.
     assert(() {
       debugPrint(
         '[FixedScale] textScaler=${data.textScaler} '
-        'size=${data.size} '
+        'size=${data.size} targetW=${targetW.toStringAsFixed(1)} '
         'natural=${_naturalLogicalWidth?.toStringAsFixed(1)}x'
         '${_naturalLogicalHeight?.toStringAsFixed(1)}',
       );
       return true;
     }());
 
-    // 2. Counteract iOS Display Zoom (or Android Display Size).
-    //
-    // On iOS, Display Zoom changes the reported physical AND logical
-    // resolution (DPR stays constant), so MediaQuery alone can't detect it.
-    // We compare the current logical size with the native hardware size
-    // obtained via the platform channel at startup.
-    //
-    // On Android, the native MainActivity resets fontScale and densityDpi
-    // so this path usually won't trigger; it's here as a safety net.
-    final naturalW = _naturalLogicalWidth;
-    final naturalH = _naturalLogicalHeight;
-
-    if (naturalW != null &&
-        naturalH != null &&
-        data.size.width < naturalW - 2) {
-      final scale = (data.size.width / naturalW).clamp(0.5, 1.0);
-      final correctedH = naturalH;
+    // 3. Apply proportional scaling if needed.
+    if (targetW > data.size.width + 2) {
+      final scale = (data.size.width / targetW).clamp(0.5, 1.0);
+      final correctedH = data.size.height / scale;
 
       fixedData = fixedData.copyWith(
-        size: Size(naturalW, correctedH),
+        size: Size(targetW, correctedH),
         padding: data.padding / scale,
         viewPadding: data.viewPadding / scale,
         viewInsets: data.viewInsets / scale,
@@ -188,7 +199,7 @@ class _DivineAppState extends ConsumerState<DivineApp> {
           fit: BoxFit.fill,
           alignment: Alignment.topLeft,
           child: SizedBox(
-            width: naturalW,
+            width: targetW,
             height: correctedH,
             child: child!,
           ),

@@ -107,7 +107,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
 
     final total = items.fold<double>(
       0,
-      (acc, m) => acc + (m.remainingDue > 0 ? m.remainingDue : m.amount),
+      (acc, m) => acc + m.remainingDue,
     );
     final hasOverdue = items.any((m) => _isOverdue(m));
 
@@ -367,7 +367,7 @@ class _DueCard extends StatelessWidget {
     final overdue = item.isOverdue || item.dueDate.isBefore(DateTime.now());
     final accent = overdue ? DesignColors.error : DesignColors.warning;
     final relative = _relativeDateLabel(item.dueDate, overdue: overdue);
-    final amount = item.remainingDue > 0 ? item.remainingDue : item.amount;
+    final amount = item.remainingDue;
     final dateFmt = DateFormat('d MMM y');
 
     return Material(

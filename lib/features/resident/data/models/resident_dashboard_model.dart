@@ -71,6 +71,10 @@ class ResidentFundSnapshot {
     required this.additionalMergedInflowMonth,
     required this.additionalMergedInflowAllTime,
     required this.totalAdvanceCredit,
+    required this.expectedAllTime,
+    required this.pendingDues,
+    required this.projectedBalance,
+    required this.collectionRate,
   });
 
   final double currentBalance;
@@ -84,6 +88,16 @@ class ResidentFundSnapshot {
   final double additionalMergedInflowMonth;
   final double additionalMergedInflowAllTime;
   final double totalAdvanceCredit;
+  final double expectedAllTime;
+
+  /// Maintenance expected but not yet collected (sum across all cycles).
+  final double pendingDues;
+
+  /// What the fund balance would be if every pending due were paid today.
+  final double projectedBalance;
+
+  /// Collection percentage (0–100).
+  final double collectionRate;
 
   /// Spendable society fund = total balance minus advance credit earmarked for
   /// future billing cycles.
@@ -103,6 +117,10 @@ class ResidentFundSnapshot {
         additionalMergedInflowMonth: 0,
         additionalMergedInflowAllTime: 0,
         totalAdvanceCredit: 0,
+        expectedAllTime: 0,
+        pendingDues: 0,
+        projectedBalance: 0,
+        collectionRate: 0,
       );
     }
     double d(dynamic v) {
@@ -128,6 +146,10 @@ class ResidentFundSnapshot {
       additionalMergedInflowMonth: d(json['additionalMergedInflowMonth']),
       additionalMergedInflowAllTime: d(json['additionalMergedInflowAllTime']),
       totalAdvanceCredit: d(json['totalAdvanceCredit']),
+      expectedAllTime: d(json['expectedAllTime']),
+      pendingDues: d(json['pendingDues']),
+      projectedBalance: d(json['projectedBalance']),
+      collectionRate: d(json['collectionRate']),
     );
   }
 }

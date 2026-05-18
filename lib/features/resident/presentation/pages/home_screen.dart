@@ -744,8 +744,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 105,
             crossAxisSpacing: 6,
             mainAxisSpacing: 6,
             mainAxisExtent: 92,
@@ -852,233 +852,439 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data: (d) {
         final fund = d.fund;
         final hasAdvanceCredit = fund.totalAdvanceCredit > 0;
-        final spendable = fund.societyFund;
-        final isPositive = spendable >= 0;
-        final balanceColor =
-            isPositive ? const Color(0xFF166534) : const Color(0xFFB91C1C);
-        final balanceBg =
-            isPositive ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2);
-        final snapshotLabel =
-            '${DateFormat('MMM yyyy').format(DateTime(fund.year > 0 ? fund.year : DateTime.now().year, fund.month >= 1 && fund.month <= 12 ? fund.month : DateTime.now().month))} snapshot';
+        final hasPending = fund.pendingDues > 0;
+        // Hero shows societyFund (collection − expenses, no advance credit)
+        final isPositive = fund.societyFund >= 0;
+        // Projected = societyFund + pending (advance credit separate)
+        final projectedSociety = fund.societyFund + fund.pendingDues;
+        final projectedPositive = projectedSociety >= 0;
+        final projectedColor =
+            projectedPositive ? const Color(0xFF166534) : const Color(0xFFDC2626);
+        // Bank balance colors (for summary section)
+        final bankPositive = fund.currentBalance >= 0;
+        final bankColor = bankPositive
+            ? const Color(0xFF16A34A)
+            : const Color(0xFFDC2626);
+        final progress = (fund.collectionRate / 100).clamp(0.0, 1.0);
+        final progressColor = progress >= 0.9
+            ? const Color(0xFF16A34A)
+            : progress >= 0.7
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFFEF4444);
+
+        // Hero colors — green-ish when positive, red-ish when negative
+        final heroBg = isPositive
+            ? const Color(0xFFF0FDF4)
+            : const Color(0xFFFEF2F2);
+        final heroBorder = isPositive
+            ? const Color(0xFFBBF7D0)
+            : const Color(0xFFFECACA);
+        final heroAmountColor = isPositive
+            ? const Color(0xFF16A34A)
+            : const Color(0xFFDC2626);
+        final heroMuted = isPositive
+            ? const Color(0xFF15803D)
+            : const Color(0xFF991B1B);
 
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(_kRadiusLg),
-            border: Border.all(color: const Color(0xFFE8ECF0)),
-            boxShadow: _cardShadow(0.05),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 20,
-                    color: DesignColors.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Society fund balance',
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: DesignColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  if (hasAdvanceCredit)
-                    GestureDetector(
-                      onTap: () => _showFundInfoSheet(context),
-                      child: const Icon(
-                        Icons.info_outline_rounded,
-                        size: 18,
-                        color: _kTextSecondary,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (hasAdvanceCredit) ...[
-                // Three-column breakdown
-                Row(
+              // ══════════ Hero: Fund Balance (compact) ══════════
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
+                decoration: BoxDecoration(
+                  color: heroBg,
+                  border: Border(bottom: BorderSide(color: heroBorder)),
+                ),
+                child: Column(
                   children: [
-                    // Society Fund (spendable)
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
+                    // Header + amount on one row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.account_balance_outlined,
+                          size: 17,
+                          color: heroMuted.withValues(alpha: 0.6),
                         ),
-                        decoration: BoxDecoration(
-                          color: balanceBg,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              inr.format(spendable),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: balanceColor,
-                                letterSpacing: -0.3,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Society Fund',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: heroMuted.withValues(alpha: 0.65),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Spendable',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: _kTextSecondary,
+                              const SizedBox(height: 1),
+                              Text(
+                                'Fund Balance',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: heroMuted.withValues(alpha: 0.4),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                        Text(
+                          inr.format(fund.societyFund),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: heroAmountColor,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _showFundInfoSheet(context),
+                          child: Icon(
+                            Icons.info_outline_rounded,
+                            size: 15,
+                            color: heroMuted.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    // Advance Credit
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              inr.format(fund.totalAdvanceCredit),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1E40AF),
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Advance credit',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: _kTextSecondary,
-                              ),
-                            ),
-                          ],
+                    // Progress bar
+                    if (fund.expectedAllTime > 0) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 5,
+                          backgroundColor: heroMuted.withValues(alpha: 0.08),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(progressColor),
                         ),
                       ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Text(
+                            '${fund.collectionRate.toStringAsFixed(1)}% collected',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: progressColor,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${inr.format(fund.allTimeCollected)} of ${inr.format(fund.expectedAllTime)}',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w500,
+                              color: heroMuted.withValues(alpha: 0.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // ══════════ 2×2 Metric Grid ══════════
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                child: Column(
+                  children: [
+                    // Row 1: Collection + Expenses
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _metricTile(
+                            label: 'Collection',
+                            value: inr.format(fund.allTimeCollected),
+                            subtitle: 'of ${inr.format(fund.expectedAllTime)}',
+                            accentColor: const Color(0xFF16A34A),
+                            bgColor: const Color(0xFFF0FDF4),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: _metricTile(
+                            label: 'Expenses',
+                            value: inr.format(fund.allTimeSpent),
+                            subtitle: 'total spent',
+                            accentColor: const Color(0xFFDC2626),
+                            bgColor: const Color(0xFFFEF2F2),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    // In Bank (total)
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
+                    const SizedBox(height: 7),
+                    // Row 2: Pending + Advance Credit
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _metricTile(
+                            label: 'Pending Dues',
+                            value: hasPending
+                                ? inr.format(fund.pendingDues)
+                                : 'None',
+                            subtitle: hasPending ? 'outstanding' : 'all clear',
+                            accentColor: hasPending
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF16A34A),
+                            bgColor: hasPending
+                                ? const Color(0xFFFFFBEB)
+                                : const Color(0xFFF0FDF4),
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: _metricTile(
+                            label: 'Advance Credit',
+                            value: hasAdvanceCredit
+                                ? inr.format(fund.totalAdvanceCredit)
+                                : '---',
+                            subtitle: hasAdvanceCredit
+                                ? 'resident credit'
+                                : 'no credit',
+                            accentColor: const Color(0xFF2563EB),
+                            bgColor: const Color(0xFFEFF6FF),
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              inr.format(fund.currentBalance),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: _kTextSecondary,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'In bank',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: _kTextSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ] else ...[
-                // Single balance display (no advance credit)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+
+              // ══════════ Summary: Bank Balance + Projected ══════════
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: balanceBg,
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Text(
-                        inr.format(fund.currentBalance),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: balanceColor,
-                          letterSpacing: -0.35,
+                      // ── Balance in Bank (society fund + advance credit) ──
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet_outlined,
+                            size: 15,
+                            color: bankColor.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Balance in Bank',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            inr.format(fund.currentBalance),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: bankColor,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          hasAdvanceCredit
+                              ? 'Society Fund ${inr.format(fund.societyFund)} + Advance Credit ${inr.format(fund.totalAdvanceCredit)}'
+                              : 'Collection ${inr.format(fund.allTimeCollected)} − Expenses ${inr.format(fund.allTimeSpent)}',
+                          style: const TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        snapshotLabel,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: _kTextSecondary,
+
+                      // ── After all dues cleared ──
+                      if (hasPending) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                         ),
-                      ),
+                        Row(
+                          children: [
+                            Icon(
+                              projectedPositive
+                                  ? Icons.trending_up_rounded
+                                  : Icons.trending_down_rounded,
+                              size: 15,
+                              color: projectedColor,
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'After all dues cleared',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              inr.format(projectedSociety),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: projectedColor,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'Society Fund ${inr.format(fund.societyFund)} + Pending ${inr.format(fund.pendingDues)}',
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ),
+                        if (hasAdvanceCredit) ...[
+                          const SizedBox(height: 2),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '+ ${inr.format(fund.totalAdvanceCredit)} advance credit in bank (belongs to residents)',
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF93C5FD),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                'Collected ${inr.format(fund.allTimeCollected)} · Spent ${inr.format(fund.allTimeSpent)}',
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: _kTextSecondary,
-                ),
               ),
-              if (fund.additionalMergedInflowAllTime > 0 ||
-                  fund.additionalMergedInflowMonth > 0) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Additional funds (merged): ${inr.format(fund.additionalMergedInflowMonth)} this month · ${inr.format(fund.additionalMergedInflowAllTime)} all-time',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: DesignColors.primary,
+
+              // Additional funds note
+              if (fund.additionalMergedInflowAllTime > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                  child: Text(
+                    'Collection includes additional funds of ${inr.format(fund.additionalMergedInflowAllTime)}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: _kTextSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
-              ],
-              // Personal advance credit — compact inline mention
-              _buildPersonalCreditInline(billingAsync, inr),
+
+              // Personal advance credit
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 0, 2, 2),
+                child: _buildPersonalCreditInline(billingAsync, inr),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         );
       },
+    );
+  }
+
+  /// Enterprise-style metric tile with colored left accent border.
+  Widget _metricTile({
+    required String label,
+    required String value,
+    required String subtitle,
+    required Color accentColor,
+    required Color bgColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // Colored accent bar
+            Container(width: 3.5, color: accentColor),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2263,7 +2469,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           symbol: '₹',
           decimalDigits: 0,
         );
-        final totalDue = pending.fold<double>(0, (sum, item) => sum + item.amount);
+        final totalDue = pending.fold<double>(0, (sum, item) => sum + item.remainingDue);
         final hasDue = totalDue > 0;
         if (!hasDue) {
           return const SizedBox.shrink();

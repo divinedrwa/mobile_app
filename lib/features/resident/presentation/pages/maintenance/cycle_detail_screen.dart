@@ -136,9 +136,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
     final isPartial = cycle.status.toUpperCase() == 'PARTIAL';
     final overdue = cycle.isOverdue ||
         (cycle.dueDate.isBefore(DateTime.now()) && !isPaid);
-    final remaining = cycle.remainingDue > 0
-        ? cycle.remainingDue
-        : (isPaid ? 0.0 : cycle.amount);
+    final remaining = isPaid ? 0.0 : cycle.remainingDue;
 
     final kind = isPaid
         ? MaintenanceStatusKind.paid

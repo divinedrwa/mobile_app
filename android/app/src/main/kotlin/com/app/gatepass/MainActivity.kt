@@ -11,8 +11,36 @@ import android.util.DisplayMetrics
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    // -- Platform channel: expose physical screen info to Dart ----------------
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.app.gatepass/display")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getNativeScreenInfo") {
+                    val stableDpi = DisplayMetrics.DENSITY_DEVICE_STABLE
+                    if (stableDpi > 0) {
+                        val realMetrics = DisplayMetrics()
+                        @Suppress("DEPRECATION")
+                        windowManager.defaultDisplay.getRealMetrics(realMetrics)
+                        result.success(mapOf(
+                            "nativeWidth" to realMetrics.widthPixels.toDouble(),
+                            "nativeHeight" to realMetrics.heightPixels.toDouble(),
+                            "nativeScale" to (stableDpi.toDouble() / 160.0),
+                        ))
+                    } else {
+                        result.success(null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
+    }
 
     // -- Lock font scale + display density at every level ----------------
 
@@ -62,8 +90,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-        // Enable edge-to-edge: content draws behind system bars.
-        // Flutter's SafeArea widgets handle the insets on the Dart side.
+        // Draw content behind system bars; Flutter SafeArea handles insets.
         WindowCompat.setDecorFitsSystemWindows(window, false)
         ensureDefaultFcmChannel()
         super.onCreate(savedInstanceState)

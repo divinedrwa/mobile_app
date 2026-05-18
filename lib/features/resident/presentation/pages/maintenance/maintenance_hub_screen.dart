@@ -192,7 +192,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                 e.cycleId != currentCycleId)
             .fold<double>(
               0,
-              (acc, e) => acc + (e.remainingDue > 0 ? e.remainingDue : e.amount),
+              (acc, e) => acc + e.remainingDue,
             );
         final cycleDue = cycle.remainingDue ?? 0;
         final totalActionable = (cycleDue + priorPendingTotal).clamp(0, double.infinity).toDouble();
@@ -309,7 +309,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
   /// (primary-tinted left, neutral right) so the eye sees them as
   /// "go somewhere" rather than "summary stat".
   Widget _buildShortcutRow(List<MaintenanceDueModel> pending) {
-    final pendingCount = pending.where((p) => p.remainingDue > 0 || p.amount > 0).length;
+    final pendingCount = pending.where((p) => p.remainingDue > 0).length;
     return Column(
       children: [
         Row(
@@ -356,7 +356,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
     final thisMonth = (cycle?.totalDue ?? cycle?.remainingDue ?? 0).toDouble();
     final credit = (cycle?.availableCredit ?? 0).toDouble();
-    final pendingCount = pending.where((p) => p.remainingDue > 0 || p.amount > 0).length;
+    final pendingCount = pending.where((p) => p.remainingDue > 0).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +482,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                         ? m.title
                         : DateFormat('MMMM y').format(DateTime(m.year, m.month)),
                     subtitle: 'Cycle ${m.cycleKey}',
-                    amount: m.remainingDue > 0 ? m.remainingDue : m.amount,
+                    amount: m.remainingDue,
                     status: _pendingStatus(m),
                     dueDate: m.dueDate,
                     actionLabel: 'View',

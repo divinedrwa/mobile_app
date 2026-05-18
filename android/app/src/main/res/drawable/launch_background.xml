@@ -3,5 +3,5 @@
      over as soon as the engine renders its first frame, so we intentionally
      show no logo here to avoid a double-icon flash. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+    <item android:drawable="@color/splash_primary" />
 </layer-list>

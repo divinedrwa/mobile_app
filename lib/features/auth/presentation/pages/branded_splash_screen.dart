@@ -138,9 +138,6 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final screenHeight = mediaQuery.size.height;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: AnimatedBuilder(
@@ -163,21 +160,15 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
 
               // Layer 2 — Brand mark + wordmark + feature row.
               //
-              // Layout target (matches the source mockup):
-              //   ~5%   top safe area
-              //   ~16%  GP logo
-              //   ~10%  wordmark + tagline
-              //   ~8%   gap (clean white space)
-              //   ~10%  feature icon row  ←  must sit ABOVE the apartment
-              //                              buildings in the background image.
-              //   rest  empty so the background artwork shows through.
+              // Top-aligned layout with fixed gaps. The Spacer at the
+              // bottom lets the background artwork show through.
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SizedBox(height: screenHeight * 0.03),
+                      const SizedBox(height: 20),
 
                       // GP brand mark.
                       FadeTransition(
@@ -186,14 +177,14 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                           scale: _logoScale,
                           child: Image.asset(
                             'assets/splash/gp_logo.png',
-                            width: 130,
-                            height: 130,
+                            width: 110,
+                            height: 110,
                             fit: BoxFit.contain,
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
 
                       // Wordmark (includes "GatePass+" + tagline).
                       FadeTransition(
@@ -208,10 +199,10 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         ),
                       ),
 
-                      SizedBox(height: screenHeight * 0.05),
+                      const SizedBox(height: 24),
 
-                      // Feature icon row — positioned in the clean white area
-                      // above the apartment buildings in the background image.
+                      // Feature icon row — sits in the clean white area
+                      // above the apartment buildings in the background.
                       FadeTransition(
                         opacity: _featuresOpacity,
                         child: SlideTransition(
@@ -220,7 +211,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 6),
 
                       // Initiative credit line.
                       FadeTransition(
@@ -234,16 +225,14 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF64748B),
-                              letterSpacing: 0.15,
+                              letterSpacing: 0.2,
                               height: 1.3,
                             ),
                           ),
                         ),
                       ),
 
-                      // The rest of the screen is intentionally empty so the
-                      // background artwork (apartment scene + bottom ribbon)
-                      // shows through.
+                      // Rest of screen: background artwork shows through.
                       const Spacer(),
                     ],
                   ),
@@ -275,21 +264,21 @@ class _FeatureRow extends StatelessWidget {
             label: 'Visitor\nManagement',
           ),
         ),
-        SizedBox(width: 8),
+        SizedBox(width: 10),
         Expanded(
           child: _FeatureTile(
             asset: 'assets/splash/icon_maintenance.png',
             label: 'Maintenance\nPayments',
           ),
         ),
-        SizedBox(width: 8),
+        SizedBox(width: 10),
         Expanded(
           child: _FeatureTile(
             asset: 'assets/splash/icon_secure.png',
             label: 'Secure\nAccess',
           ),
         ),
-        SizedBox(width: 8),
+        SizedBox(width: 10),
         Expanded(
           child: _FeatureTile(
             asset: 'assets/splash/icon_community.png',
@@ -314,16 +303,16 @@ class _FeatureTile extends StatelessWidget {
       children: [
         Image.asset(
           asset,
-          width: 50,
-          height: 50,
+          width: 46,
+          height: 46,
           fit: BoxFit.contain,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(
           label,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 10.5,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
             color: Color(0xFF334155),
             height: 1.25,

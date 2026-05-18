@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ system splash. We show a plain white background only;
-         the Flutter BrandedSplashScreen handles all branding to avoid a
-         visible icon swap during boot. -->
+    <!-- Android 12+ system splash. Shows GP+ logo on matching background
+         so the transition to the Flutter BrandedSplashScreen is seamless. -->
     <style name="LaunchTheme" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenBackground">@color/splash_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/NormalTheme</item>
     </style>
 </resources>

@@ -599,17 +599,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                    foregroundColor: Theme.of(dialogContext).colorScheme.onError,
                   ),
                   onPressed: busy ? null : confirmDeactivate,
                   child: busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: Theme.of(dialogContext).colorScheme.onError,
                           ),
                         )
                       : const Text('Deactivate'),
@@ -724,20 +724,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                    foregroundColor: Theme.of(dialogContext).colorScheme.onError,
                     disabledBackgroundColor:
-                        Colors.red.withValues(alpha: 0.35),
-                    disabledForegroundColor: Colors.white,
+                        Theme.of(dialogContext).colorScheme.error.withValues(alpha: 0.35),
+                    disabledForegroundColor: Theme.of(dialogContext).colorScheme.onError,
                   ),
                   onPressed: (busy || !canDelete) ? null : confirmDelete,
                   child: busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: Theme.of(dialogContext).colorScheme.onError,
                           ),
                         )
                       : const Text('Delete forever'),
