@@ -38,7 +38,7 @@ List<Widget> _buildBannersGroupedByType(
       previous = t;
       out.add(
         Padding(
-          padding: EdgeInsets.only(bottom: 10, top: out.isEmpty ? 0 : 18),
+          padding: EdgeInsets.only(bottom: 8, top: out.isEmpty ? 0 : 14),
           child: Row(
             children: [
               Container(
@@ -66,7 +66,7 @@ List<Widget> _buildBannersGroupedByType(
     }
     out.add(
       Padding(
-        padding: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.only(bottom: 12),
         child: cardBuilder(context, e),
       ),
     );
@@ -127,13 +127,13 @@ class EventsListScreen extends ConsumerWidget {
                           'Announcements, festivals, offers & society updates',
                           Colors.blue,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ..._buildBannersGroupedByType(
                           context,
                           upcomingEvents,
                           (_, e) => PremiumSocietyBannerCard(event: e),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                       ],
                       if (pastEvents.isNotEmpty) ...[
                         _buildSectionHeader(
@@ -141,14 +141,14 @@ class EventsListScreen extends ConsumerWidget {
                           'Past campaigns',
                           DesignColors.textSecondary,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ..._buildBannersGroupedByType(
                           context,
                           pastEvents,
                           (_, e) => PremiumSocietyBannerCard(event: e),
                         ),
                       ],
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
                     ],
                   ),
           );

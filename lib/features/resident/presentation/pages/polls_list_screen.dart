@@ -66,14 +66,14 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                           'Cast your vote',
                           Colors.green,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ...activePolls.map(
                           (poll) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: _buildModernPollCard(context, poll),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                       ],
                       if (closedPolls.isNotEmpty) ...[
                         _buildSectionHeader(
@@ -81,15 +81,15 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                           'View results',
                           DesignColors.textSecondary,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ...closedPolls.map(
                           (poll) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: _buildModernPollCard(context, poll),
                           ),
                         ),
                       ],
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
                     ],
                   ),
           );
@@ -284,7 +284,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           if (isActive && hasVoted) ...[
             Container(
@@ -348,7 +348,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
 
           // Vote Button
           if (isActive && !hasVoted) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton(

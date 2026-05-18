@@ -662,7 +662,7 @@ class _ProfileTile extends StatelessWidget {
                     Text(
                       title,
                       style: DesignTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: DesignColors.textPrimary,
                       ),
                     ),

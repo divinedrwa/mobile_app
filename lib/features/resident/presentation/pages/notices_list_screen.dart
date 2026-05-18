@@ -32,7 +32,7 @@ class NoticesListScreen extends ConsumerWidget {
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: context.spacing.s16,
-              vertical: context.spacing.s12,
+              vertical: context.spacing.s8,
             ),
             decoration: BoxDecoration(
               color: context.surface.defaultSurface,
@@ -105,7 +105,7 @@ class NoticesListScreen extends ConsumerWidget {
                             context.spacing.s16,
                             context.spacing.s16,
                             context.spacing.s16,
-                            context.spacing.s32,
+                            context.spacing.s16,
                           ),
                           children: [
                             if (urgentNotices.isNotEmpty) ...[
@@ -127,7 +127,7 @@ class NoticesListScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                              SizedBox(height: context.spacing.s24),
+                              SizedBox(height: context.spacing.s16),
                             ],
                             if (regularNotices.isNotEmpty) ...[
                               _buildSectionHeader(
@@ -148,7 +148,7 @@ class NoticesListScreen extends ConsumerWidget {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 8),
                           ],
                         ),
                 );

@@ -29,7 +29,7 @@ class DocumentsListScreen extends ConsumerWidget {
         children: [
           // Modern Filter Chips
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Color(0xFFF0F3F6))),
@@ -122,11 +122,11 @@ class DocumentsListScreen extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 12),
                                 ],
                               );
                             }),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 8),
                           ],
                         ),
                 );
