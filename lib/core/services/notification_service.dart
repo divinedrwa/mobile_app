@@ -594,6 +594,28 @@ class NotificationService {
           router.go('/resident/sos/active');
           return;
         }
+        if (type == 'VISITOR_PRE_APPROVED_ARRIVED') {
+          router.push('/resident/visitor-requests');
+          return;
+        }
+        if (type == 'complaint_status') {
+          router.push('/resident/my-complaints');
+          return;
+        }
+        if (type == 'notice') {
+          router.go('/resident');
+          return;
+        }
+        if (type == 'BILLING_CYCLE_CREATED' ||
+            type == 'MAINTENANCE_REMINDER' ||
+            type == 'MAINTENANCE_PAYMENT_RECORDED') {
+          router.push('/resident/maintenance');
+          return;
+        }
+        if (type == 'PARCEL_RECEIVED') {
+          router.go('/resident');
+          return;
+        }
         fcmDiag(
           'NAV_SKIP',
           'no matching route type="$type" openDetails=$openDetails '
