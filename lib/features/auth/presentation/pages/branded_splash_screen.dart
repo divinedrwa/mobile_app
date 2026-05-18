@@ -211,7 +211,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 15),
 
                       // Initiative credit line.
                       FadeTransition(
@@ -250,42 +250,49 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
 ///
 /// Each card uses an `Expanded` slot so the row stays balanced across phone
 /// widths without overflow.
+/// Horizontal row of four feature cards.
+///
+/// Each card uses an `Expanded` slot so the row stays balanced across phone
+/// widths without overflow.
 class _FeatureRow extends StatelessWidget {
   const _FeatureRow();
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _FeatureTile(
-            asset: 'assets/splash/icon_visitor.png',
-            label: 'Visitor\nManagement',
+    return const Padding(
+      padding: EdgeInsets.only(top: 35),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _FeatureTile(
+              asset: 'assets/splash/icon_visitor.png',
+              label: 'Visitor\nManagement',
+            ),
           ),
-        ),
-        SizedBox(width: 10),
-        Expanded(
-          child: _FeatureTile(
-            asset: 'assets/splash/icon_maintenance.png',
-            label: 'Maintenance\nPayments',
+          SizedBox(width: 10),
+          Expanded(
+            child: _FeatureTile(
+              asset: 'assets/splash/icon_maintenance.png',
+              label: 'Maintenance\nPayments',
+            ),
           ),
-        ),
-        SizedBox(width: 10),
-        Expanded(
-          child: _FeatureTile(
-            asset: 'assets/splash/icon_secure.png',
-            label: 'Secure\nAccess',
+          SizedBox(width: 10),
+          Expanded(
+            child: _FeatureTile(
+              asset: 'assets/splash/icon_secure.png',
+              label: 'Secure\nAccess',
+            ),
           ),
-        ),
-        SizedBox(width: 10),
-        Expanded(
-          child: _FeatureTile(
-            asset: 'assets/splash/icon_community.png',
-            label: 'Community\nCommunication',
+          SizedBox(width: 10),
+          Expanded(
+            child: _FeatureTile(
+              asset: 'assets/splash/icon_community.png',
+              label: 'Community\nCommunication',
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -298,28 +305,31 @@ class _FeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset(
-          asset,
-          width: 46,
-          height: 46,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF334155),
-            height: 1.25,
-            letterSpacing: 0.1,
+    return Padding(
+      padding: const EdgeInsets.only(top: 25),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            asset,
+            width: 46,
+            height: 46,
+            fit: BoxFit.contain,
           ),
-        ),
-      ],
+          const SizedBox(height: 5),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+              height: 1.25,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
