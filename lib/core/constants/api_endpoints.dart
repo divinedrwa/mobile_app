@@ -135,6 +135,132 @@ class ApiEndpoints {
   static String votePoll(String pollId, String optionId) => 
       '/residents/my-polls/$pollId/vote/$optionId';
   
+  // Admin Dashboard — aggregate stats
+  static const String adminVisitors = '/visitors';
+  static const String adminParcels = '/parcels';
+  static const String adminComplaints = '/complaints';
+  static const String complaintAnalyticsSummary = '/complaint-analytics/summary';
+  static String complaintAnalyticsQuickUpdate(String id) => '/complaint-analytics/quick-update/$id';
+  static const String adminFinancialDashboard =
+      '/maintenance-management/financial-dashboard';
+
+  // Admin — Expenses (full CRUD, admin role required)
+  static const String adminExpenses = '/expenses';
+  static String adminExpenseById(String id) => '/expenses/$id';
+  static const String adminExpenseCategories = '/expenses/categories';
+
+  // Admin — Notices (CRUD + push)
+  static const String adminNotices = '/notices';
+  static String adminNoticeById(String id) => '/notices/$id';
+
+  // Admin — Parcels (status update)
+  static String adminParcelStatus(String id) => '/parcels/$id/status';
+
+  // Admin — Gates
+  static const String adminGates = '/gates';
+
+  // Admin — Water Supply
+  static const String waterSupplyStatus = '/water-supply/status';
+  static const String waterSupplyEvents = '/water-supply/events';
+  static const String waterSupplyHistory = '/water-supply/history';
+
+  // Admin — Garbage Collection
+  static const String garbageCollectionActive = '/garbage-collection/active';
+  static const String garbageCollectionEvents = '/garbage-collection/events';
+  static const String garbageCollectionHistory = '/garbage-collection/history';
+  static String garbageCollectionExit(String id) =>
+      '/garbage-collection/$id/exit';
+
+  // Admin — SOS Alerts (management)
+  static const String adminSosAlerts = '/sos-alerts';
+  static const String adminSosAlertsActive = '/sos-alerts/active';
+  static const String adminSosAlertsStats = '/sos-alerts/stats';
+  static String adminSosAcknowledge(String id) => '/sos-alerts/$id/acknowledge';
+  static String adminSosStart(String id) => '/sos-alerts/$id/start';
+  static String adminSosResolve(String id) => '/sos-alerts/$id/resolve';
+
+  // Admin — Guard Shifts
+  static const String adminGuardShifts = '/guard-shifts';
+  static String adminGuardShiftById(String id) => '/guard-shifts/$id';
+
+  // Admin — Polls
+  static const String adminPolls = '/polls';
+  static String adminPollById(String id) => '/polls/$id';
+  static String adminPollClose(String id) => '/polls/$id/close';
+  static String adminPollVote(String pollId, String optionId) =>
+      '/polls/$pollId/vote/$optionId';
+
+  // Admin — Staff
+  static const String adminStaff = '/staff';
+  static String adminStaffById(String id) => '/staff/$id';
+
+  // Admin — Resident Management
+  static const String residentManagementOverview = '/resident-management/overview';
+  static const String residentManagementStatistics = '/resident-management/statistics';
+  static const String residentManagementMoveOut = '/resident-management/move-out';
+  static String residentManagementReactivate(String id) =>
+      '/resident-management/$id/reactivate';
+
+  // Admin — Villa / Property Management
+  static const String adminVillas = '/villas';
+  static String adminVillaById(String id) => '/villas/$id';
+  static const String adminVillaBulkMaintenance = '/villas/bulk-maintenance-amount';
+
+  // Admin — Invitations
+  static const String adminInvitations = '/invitations';
+  static String adminInvitationRevoke(String id) => '/invitations/$id/revoke';
+
+  // Admin — Society Settings
+  static const String societySettings = '/society-settings';
+
+  // Admin — Gate Analytics
+  static const String gateAnalyticsOverview = '/gate-analytics/overview';
+  static const String gateAnalyticsVisitorStats = '/gate-analytics/visitor-statistics';
+  static const String gateAnalyticsPeakHours = '/gate-analytics/peak-hours';
+  static const String gateAnalyticsDailyTrend = '/gate-analytics/daily-trend';
+
+  // Admin — Reconciliation
+  static const String reconciliationSummary = '/reconciliation/summary';
+  static const String reconciliationAlerts = '/reconciliation/alerts';
+  static String reconciliationAlertResolve(String id) =>
+      '/reconciliation/alerts/$id/resolve';
+
+  // Admin — Complaint Analytics (extended)
+  static const String complaintAnalyticsByCategory = '/complaint-analytics/by-category';
+  static const String complaintAnalyticsPending = '/complaint-analytics/pending-list';
+  static const String complaintAnalyticsTrend = '/complaint-analytics/trend';
+
+  // Admin — Parking Management
+  static const String parkingOverview = '/parking-management/overview';
+  static const String parkingSlotAnalysis = '/parking-management/slot-analysis';
+
+  // Admin — Vehicles (admin scope)
+  static const String adminVehicles = '/vehicles';
+
+  // Admin — Import / Export
+  static const String importVillasCsv = '/import/villas-csv';
+  static const String importResidentsCsv = '/import/residents-csv';
+  static const String exportVillasCsv = '/export/villas-csv';
+  static const String exportResidentsCsv = '/export/residents-csv';
+
+  // Admin — Amenities (CRUD)
+  static const String adminAmenities = '/amenities';
+  static String adminAmenityById(String id) => '/amenities/$id';
+
+  // Admin — Bank Accounts
+  static const String adminBankAccounts = '/bank-accounts';
+  static String adminBankAccountById(String id) => '/bank-accounts/$id';
+
+  // Admin — Water Supply Analytics
+  static const String waterSupplyAnalyticsOverview = '/water-supply-analytics/overview';
+  static const String waterSupplyAnalyticsDailyUsage = '/water-supply-analytics/daily-usage';
+  static const String waterSupplyAnalyticsHourlyPattern = '/water-supply-analytics/hourly-pattern';
+  static const String waterSupplyAnalyticsGatePerformance = '/water-supply-analytics/gate-performance';
+
+  // Admin — User / Role management
+  static const String adminUsers = '/users';
+  static String adminUserById(String id) => '/users/$id';
+
   // Guard — backend mounts under `/api/guards` (+ `/api/water-supply/toggle`, `/api/garbage-collection/entry`).
   // Date-range APIs (`my-visitors`, `my-parcels`, `gate-vehicle/today`): omit `from`/`to` for "today",
   // or send **both** `from` and `to` as `YYYY-MM-DD` (see backend `resolveGuardLogRange`).

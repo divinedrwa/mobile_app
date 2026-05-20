@@ -8,6 +8,8 @@ class UserModel {
   final String email;
   /// Society email alerts — server field; toggled in Settings.
   final bool notifyEmail;
+  /// FCM push notifications — server field; toggled in Settings.
+  final bool notifyPush;
   final String? phone;
   final String username;
   final UserRole role;
@@ -44,6 +46,7 @@ class UserModel {
     required this.name,
     required this.email,
     this.notifyEmail = false,
+    this.notifyPush = true,
     this.phone,
     required this.username,
     required this.role,
@@ -82,6 +85,7 @@ class UserModel {
         name: json['name']?.toString() ?? '',
         email: json['email']?.toString() ?? '',
         notifyEmail: json['notifyEmail'] as bool? ?? false,
+        notifyPush: json['notifyPush'] as bool? ?? true,
         phone: json['phone']?.toString(),
         username: json['username']?.toString() ?? '',
         role: UserRole.fromString(json['role']?.toString() ?? 'RESIDENT'),
@@ -167,6 +171,7 @@ class UserModel {
       'name': name,
       'email': email,
       'notifyEmail': notifyEmail,
+      'notifyPush': notifyPush,
       'phone': phone,
       'username': username,
       'role': role.value,
@@ -196,6 +201,7 @@ class UserModel {
     String? name,
     String? email,
     bool? notifyEmail,
+    bool? notifyPush,
     String? phone,
     String? username,
     UserRole? role,
@@ -223,6 +229,7 @@ class UserModel {
       name: name ?? this.name,
       email: email ?? this.email,
       notifyEmail: notifyEmail ?? this.notifyEmail,
+      notifyPush: notifyPush ?? this.notifyPush,
       phone: phone ?? this.phone,
       username: username ?? this.username,
       role: role ?? this.role,

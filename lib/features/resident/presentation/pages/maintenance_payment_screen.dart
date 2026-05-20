@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,10 +11,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/maintenance_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Some gateways or proxies wrap JSON as `{ "data": { ... } }` — normalize for the UI.
 Map<String, dynamic> _normalizeDashboardPayload(Map<String, dynamic> raw) {
@@ -80,14 +77,10 @@ class MaintenancePaymentScreen extends ConsumerStatefulWidget {
       _MaintenancePaymentScreenState();
 }
 
-enum _ResidentStatusFilter { all, paid, unpaid }
-
 class _MaintenancePaymentScreenState
     extends ConsumerState<MaintenancePaymentScreen> {
-  _ResidentStatusFilter _residentStatusFilter = _ResidentStatusFilter.all;
   bool _appliedInitialQueryFilter = false;
   final Set<String> _expandedOutstandingVillas = {};
-  final Set<String> _sendingReminderVillaIds = {};
 
   @override
   void didChangeDependencies() {
@@ -305,12 +298,8 @@ class _MaintenancePaymentScreenState
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(maintenanceDashboardProvider);
-    final user = ref.watch(authProvider).user;
-    final isAdmin = user?.role == UserRole.admin;
     final filter = ref.watch(maintenanceDashboardFilterProvider);
-    final tabs = isAdmin
-        ? const ['All residents', 'My payments', 'Year review', 'Outstanding']
-        : const ['Overview', 'My payments', 'Year review', 'Outstanding'];
+    final tabs = const ['Overview', 'My payments', 'Year review', 'Outstanding'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
 
@@ -363,7 +352,7 @@ class _MaintenancePaymentScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAdmin ? 'Maintenance finance' : 'Maintenance & payments',
+                'Maintenance & payments',
                 style: DesignTypography.headingM.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -381,7 +370,6 @@ class _MaintenancePaymentScreenState
           actions: _buildAppBarActions(
             dashboardState.valueOrNull,
             filter,
-            isAdmin,
           ),
           bottom: TabBar(
             isScrollable: true,
@@ -547,7 +535,6 @@ class _MaintenancePaymentScreenState
               residentsSummary: residentsSummary,
               userSummary: userSummary,
               expenses: expenses,
-              isAdmin: isAdmin,
             );
 
             // When FY mode is active but no billing cycle is selected,
@@ -601,13 +588,6 @@ class _MaintenancePaymentScreenState
             final pages = <Widget>[
               if (hasFyWithoutCycle)
                 selectCyclePlaceholder
-              else if (isAdmin)
-                _buildResidentsTab(
-                  context,
-                  residents,
-                  residentsSummary,
-                  overviewStrip,
-                )
               else
                 _buildOverviewTab(
                   context,
@@ -708,7 +688,7 @@ class _MaintenancePaymentScreenState
                             color: DesignColors.surface,
                             elevation: 0,
                             child: _buildStickyFilterBar(
-                                ctx2, filter, isAdmin, root,
+                                ctx2, filter, root,
                                 hidesCycleDropdown: tabIdx >= 1),
                           ),
                           Divider(
@@ -734,7 +714,6 @@ class _MaintenancePaymentScreenState
   List<Widget> _buildAppBarActions(
     Map<String, dynamic>? dashboard,
     MaintenanceDashboardFilter filter,
-    bool isAdmin,
   ) {
     return [
       IconButton(
@@ -756,19 +735,12 @@ class _MaintenancePaymentScreenState
             ? null
             : () => _openFinancialOverview(context, dashboard),
       ),
-      if (isAdmin)
-        IconButton(
-          tooltip: 'Send reminders',
-          icon: const Icon(Icons.notifications_active_outlined, color: DesignColors.textSecondary),
-          onPressed: () => _sendReminders(context, filter),
-        ),
     ];
   }
 
   Widget _buildStickyFilterBar(
     BuildContext context,
     MaintenanceDashboardFilter filter,
-    bool isAdmin,
     Map<String, dynamic> dashboard, {
     bool hidesCycleDropdown = false,
   }) {
@@ -1070,7 +1042,6 @@ class _MaintenancePaymentScreenState
     required Map<String, dynamic> residentsSummary,
     required Map<String, dynamic> userSummary,
     required Map<String, dynamic> expenses,
-    required bool isAdmin,
   }) {
     final expected =
         (residentsSummary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
@@ -3473,217 +3444,6 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _buildResidentsTab(
-    BuildContext context,
-    List<Map<String, dynamic>> residents,
-    Map<String, dynamic> summary,
-    Widget overviewStrip,
-  ) {
-    if (residents.isEmpty) {
-      return _buildResidentsEmptyState(summary, overviewStrip);
-    }
-    final filtered = residents.where((r) {
-      final status = (r['status']?.toString() ?? 'UNPAID').toUpperCase();
-      switch (_residentStatusFilter) {
-        case _ResidentStatusFilter.paid:
-          return status == 'PAID';
-        case _ResidentStatusFilter.unpaid:
-          return status != 'PAID';
-        case _ResidentStatusFilter.all:
-          return true;
-      }
-    }).toList();
-    final totalResidents =
-        (summary['totalResidents'] as num?)?.toInt() ?? residents.length;
-    final paidCount =
-        (summary['paidCount'] as num?)?.toInt() ??
-        residents
-            .where(
-              (r) => (r['status']?.toString() ?? '').toUpperCase() == 'PAID',
-            )
-            .length;
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    return _wrapTabWithRefresh(
-      ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          overviewStrip,
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'All Residents',
-                  style: DesignTypography.label.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: DesignColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  () {
-                    final partialCount =
-                        (summary['partialCount'] as num?)?.toInt() ?? 0;
-                    final overdueCount =
-                        (summary['overdueCount'] as num?)?.toInt() ?? 0;
-                    final base =
-                        '$totalResidents residents · $paidCount paid · ${totalResidents - paidCount} unpaid this period';
-                    if (partialCount <= 0 && overdueCount <= 0) return base;
-                    return '$base · $partialCount partial · $overdueCount overdue';
-                  }(),
-                  style: DesignTypography.bodySmall.copyWith(
-                    color: DesignColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SegmentedButton<_ResidentStatusFilter>(
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: WidgetStateProperty.resolveWith((s) {
-                      if (s.contains(WidgetState.selected)) {
-                        return DesignColors.primary.withValues(alpha: 0.14);
-                      }
-                      return DesignColors.surfaceSoft;
-                    }),
-                    foregroundColor: WidgetStateProperty.resolveWith((s) {
-                      if (s.contains(WidgetState.selected)) {
-                        return DesignColors.primary;
-                      }
-                      return DesignColors.textSecondary;
-                    }),
-                  ),
-                  segments: const [
-                    ButtonSegment(
-                      value: _ResidentStatusFilter.all,
-                      label: Text('All'),
-                    ),
-                    ButtonSegment(
-                      value: _ResidentStatusFilter.paid,
-                      label: Text('Paid'),
-                    ),
-                    ButtonSegment(
-                      value: _ResidentStatusFilter.unpaid,
-                      label: Text('Unpaid'),
-                    ),
-                  ],
-                  selected: {_residentStatusFilter},
-                  onSelectionChanged: (selected) {
-                    setState(() => _residentStatusFilter = selected.first);
-                  },
-                ),
-                const SizedBox(height: 8),
-                if (filtered.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: _emptyState(
-                      icon: Icons.filter_alt_outlined,
-                      title: 'No residents in this filter',
-                      subtitle:
-                          'Try switching to All or another payment status.',
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (filtered.isNotEmpty)
-            ...filtered.map(
-              (r) => _residentPaymentTile(r, inr),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResidentsEmptyState(
-    Map<String, dynamic> summary,
-    Widget overviewStrip,
-  ) {
-    final expected =
-        (summary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
-    final collected = (summary['totalCollected'] as num?)?.toDouble() ?? 0;
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-    return _wrapTabWithRefresh(
-      ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          overviewStrip,
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _emptyState(
-                  icon: Icons.groups_2_outlined,
-                  title: 'No residents listed for this period',
-                  subtitle:
-                      'Try a different month/year above, or ask your secretary to add units and maintenance.',
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _metricCard(
-                        'Expected',
-                        inr.format(expected),
-                        DesignColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _metricCard(
-                        'Collected',
-                        inr.format(collected),
-                        DesignColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metricCard(String title, String value, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.lg,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              value,
-              style: DesignTypography.headingM.copyWith(color: color),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 220.ms);
-  }
-
   void _openFinancialOverview(
     BuildContext context,
     Map<String, dynamic> dashboard,
@@ -3871,47 +3631,17 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Future<void> _sendReminders(
-    BuildContext context,
-    MaintenanceDashboardFilter filter,
-  ) async {
-    try {
-      await ref
-          .read(maintenanceRepositoryProvider)
-          .sendDuesReminders(month: filter.month, year: filter.year);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Due reminders sent successfully'),
-          backgroundColor: DesignColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: DesignColors.error,
-        ),
-      );
-    }
-  }
-
   Future<void> _downloadPdfReport(
     BuildContext context,
     Map<String, dynamic> dashboard,
     MaintenanceDashboardFilter filter,
   ) async {
     try {
-      final user = ref.read(authProvider).user;
-      final isAdmin = user?.role == UserRole.admin;
       final bytes = await ref
           .read(maintenanceRepositoryProvider)
           .downloadMaintenanceReportPdf(
             month: filter.month,
             year: filter.year,
-            isAdmin: isAdmin,
-            maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
           );
       if (bytes.isEmpty) throw Exception('Empty report received');
       final suffix =
@@ -4351,12 +4081,6 @@ class _MaintenancePaymentScreenState
                 ),
               ),
             ),
-            // Send reminder action row (admin only)
-            if (ref.watch(authProvider).user?.role == UserRole.admin) ...[
-              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
-              _outstandingSendReminderRow(villaId, villaNumber),
-            ],
-
             // Expanded cycle rows
             if (isExpanded) ...[
               Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
@@ -4373,74 +4097,6 @@ class _MaintenancePaymentScreenState
         ),
       ),
     );
-  }
-
-  Widget _outstandingSendReminderRow(String villaId, String villaNumber) {
-    final isSending = _sendingReminderVillaIds.contains(villaId);
-    return InkWell(
-      onTap: isSending ? null : () => _sendVillaReminder(villaId, villaNumber),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Row(
-          children: [
-            if (isSending)
-              const SizedBox(
-                width: 16, height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              const Icon(Icons.notifications_active_outlined, size: 16, color: DesignColors.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                isSending ? 'Sending reminder...' : 'Send payment reminder',
-                style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
-                ),
-              ),
-            ),
-            Icon(Icons.send_rounded, size: 14, color: DesignColors.primary.withValues(alpha: 0.6)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _sendVillaReminder(String villaId, String villaNumber) async {
-    setState(() => _sendingReminderVillaIds.add(villaId));
-    try {
-      final result = await ref
-          .read(maintenanceRepositoryProvider)
-          .sendVillaReminder(villaId: villaId);
-      if (!mounted) return;
-      final sent = (result['sent'] as num?)?.toInt() ?? 0;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            sent > 0
-                ? 'Reminder sent to $sent resident${sent == 1 ? '' : 's'} of $villaNumber'
-                : result['message']?.toString() ?? 'No residents to notify',
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: sent > 0 ? DesignColors.success : DesignColors.warning,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send reminder: $e'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: DesignColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _sendingReminderVillaIds.remove(villaId));
-      }
-    }
   }
 
   Widget _outstandingCycleRow(Map<String, dynamic> cycle, NumberFormat inr) {

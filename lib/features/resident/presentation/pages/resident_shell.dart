@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../data/providers/notification_provider.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
@@ -19,6 +22,29 @@ class ResidentShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(currentTabProvider);
     final unreadCount = ref.watch(unreadCountProvider);
+    final user = ref.watch(authProvider).user;
+    final isAdmin = user?.role == UserRole.admin;
+    final hasVilla = user?.villaId != null &&
+        (user?.villaId?.isNotEmpty ?? false);
+
+    // Admin without villa → admin-only mode (single tab, no bottom nav)
+    final adminOnly = isAdmin && !hasVilla;
+
+    if (adminOnly) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          SystemNavigator.pop();
+        },
+        child: const Scaffold(
+          body: AdminDashboardScreen(),
+        ),
+      );
+    }
+
+    // Admin with villa → 4 tabs; Resident → 3 tabs
+    final profileIndex = isAdmin ? 3 : 2;
 
     return PopScope(
       canPop: false,
@@ -28,17 +54,17 @@ class ResidentShell extends ConsumerWidget {
           ref.read(currentTabProvider.notifier).state = 0;
           return;
         }
-        // Home tab: close app gracefully instead of popping shell route.
         SystemNavigator.pop();
       },
       child: Scaffold(
         backgroundColor: context.surface.background,
         body: IndexedStack(
           index: currentTab,
-          children: const [
-            HomeScreen(),
-            CommunityScreen(),
-            ProfileScreen(),
+          children: [
+            const HomeScreen(),
+            const CommunityScreen(),
+            if (isAdmin) const AdminDashboardScreen(),
+            const ProfileScreen(),
           ],
         ),
         bottomNavigationBar: SafeArea(
@@ -85,14 +111,24 @@ class ResidentShell extends ConsumerWidget {
                   index: 1,
                   isSelected: currentTab == 1,
                 ),
+                if (isAdmin)
+                  _buildNavItem(
+                    context,
+                    ref,
+                    icon: Icons.admin_panel_settings_outlined,
+                    selectedIcon: Icons.admin_panel_settings_rounded,
+                    label: 'Admin',
+                    index: 2,
+                    isSelected: currentTab == 2,
+                  ),
                 _buildNavItem(
                   context,
                   ref,
                   icon: Icons.person_outline_rounded,
                   selectedIcon: Icons.person_rounded,
                   label: 'Profile',
-                  index: 2,
-                  isSelected: currentTab == 2,
+                  index: profileIndex,
+                  isSelected: currentTab == profileIndex,
                 ),
               ],
             ),

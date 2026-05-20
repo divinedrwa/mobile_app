@@ -422,6 +422,27 @@ class AuthRepository {
     }
   }
 
+  /// Push preference (`PATCH /residents/me` with `notifyPush` only).
+  Future<void> updateNotifyPush(bool notifyPush) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.profile,
+        data: <String, dynamic>{'notifyPush': notifyPush},
+      );
+    } on DioException catch (e) {
+      final wrapped = e.error;
+      if (wrapped is AppException) {
+        throw wrapped;
+      }
+      throw AppException(
+        message: parseApiErrorMessage(
+          e.response?.data,
+          'Could not update push notification preference',
+        ),
+      );
+    }
+  }
+
   /// Soft-deactivate the resident account (`DELETE /residents/me` with no query).
   ///
   /// The server sets `isActive: false` and disables push devices but retains

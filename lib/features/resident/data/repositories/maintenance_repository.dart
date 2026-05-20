@@ -11,16 +11,12 @@ class MaintenanceRepository {
   Future<Map<String, dynamic>> getFinancialDashboard({
     required int month,
     required int year,
-    required bool isAdmin,
     String? maintenanceCollectionCycleId,
     String? billingCycleId,
   }) async {
     try {
-      final path = isAdmin
-          ? '/maintenance-management/financial-dashboard'
-          : '/residents/maintenance-dashboard';
       final response = await _dio.get(
-        path,
+        '/residents/maintenance-dashboard',
         queryParameters: {
           'month': month,
           'year': year,
@@ -133,22 +129,14 @@ class MaintenanceRepository {
   Future<List<int>> downloadMaintenanceReportPdf({
     required int month,
     required int year,
-    required bool isAdmin,
     String? maintenanceCollectionCycleId,
   }) async {
     try {
-      final path = isAdmin
-          ? '/maintenance-management/financial-dashboard/report-pdf'
-          : '/residents/maintenance-dashboard/report-pdf';
       final response = await _dio.get<List<int>>(
-        path,
+        '/residents/maintenance-dashboard/report-pdf',
         queryParameters: {
           'month': month,
           'year': year,
-          if (isAdmin &&
-              maintenanceCollectionCycleId != null &&
-              maintenanceCollectionCycleId.isNotEmpty)
-            'cycleId': maintenanceCollectionCycleId,
         },
         options: Options(responseType: ResponseType.bytes),
       );

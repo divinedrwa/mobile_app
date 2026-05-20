@@ -1,0 +1,886 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/shimmer_box.dart';
+import '../../data/providers/admin_providers.dart';
+
+const Color _kWaterBlue = Color(0xFF0EA5E9);
+const Color _kGarbageGreen = Color(0xFF10B981);
+
+/// Admin screen for gate utilities: water supply toggle + garbage pickup.
+class AdminGateUtilitiesScreen extends ConsumerStatefulWidget {
+  const AdminGateUtilitiesScreen({super.key});
+
+  @override
+  ConsumerState<AdminGateUtilitiesScreen> createState() =>
+      _AdminGateUtilitiesScreenState();
+}
+
+class _AdminGateUtilitiesScreenState
+    extends ConsumerState<AdminGateUtilitiesScreen> {
+  String? _selectedGateId;
+  bool _togglingWater = false;
+  bool _loggingGarbage = false;
+  bool _markingExit = false;
+
+  Future<void> _refresh() async {
+    ref.invalidate(adminGatesProvider);
+    ref.invalidate(adminWaterSupplyStatusProvider);
+    if (_selectedGateId != null) {
+      ref.invalidate(adminGarbageActiveProvider(_selectedGateId!));
+      ref.invalidate(adminWaterSupplyEventsProvider(_selectedGateId));
+      ref.invalidate(adminGarbageEventsProvider(_selectedGateId));
+    }
+  }
+
+  Future<void> _toggleWater(bool turnOn) async {
+    if (_selectedGateId == null || _togglingWater) return;
+    setState(() => _togglingWater = true);
+    try {
+      await ref
+          .read(adminGateUtilitiesRepositoryProvider)
+          .toggleWaterSupply(gateId: _selectedGateId!, turnedOn: turnOn);
+      ref.invalidate(adminWaterSupplyStatusProvider);
+      ref.invalidate(adminWaterSupplyEventsProvider(_selectedGateId));
+      if (mounted) {
+        _showSnack('Water supply turned ${turnOn ? 'ON' : 'OFF'}', false);
+      }
+    } catch (e) {
+      if (mounted) _showSnack(userFacingMessage(e), true);
+    } finally {
+      if (mounted) setState(() => _togglingWater = false);
+    }
+  }
+
+  Future<void> _logGarbageEntry() async {
+    if (_selectedGateId == null || _loggingGarbage) return;
+    setState(() => _loggingGarbage = true);
+    try {
+      await ref
+          .read(adminGateUtilitiesRepositoryProvider)
+          .logGarbageEntry(gateId: _selectedGateId!);
+      ref.invalidate(adminGarbageActiveProvider(_selectedGateId!));
+      ref.invalidate(adminGarbageEventsProvider(_selectedGateId));
+      if (mounted) _showSnack('Garbage collector entry logged', false);
+    } catch (e) {
+      if (mounted) _showSnack(userFacingMessage(e), true);
+    } finally {
+      if (mounted) setState(() => _loggingGarbage = false);
+    }
+  }
+
+  Future<void> _markGarbageExit(String eventId) async {
+    if (_markingExit) return;
+    setState(() => _markingExit = true);
+    try {
+      await ref
+          .read(adminGateUtilitiesRepositoryProvider)
+          .markGarbageExit(eventId);
+      ref.invalidate(adminGarbageActiveProvider(_selectedGateId!));
+      ref.invalidate(adminGarbageEventsProvider(_selectedGateId));
+      if (mounted) _showSnack('Garbage collector exit marked', false);
+    } catch (e) {
+      if (mounted) _showSnack(userFacingMessage(e), true);
+    } finally {
+      if (mounted) setState(() => _markingExit = false);
+    }
+  }
+
+  void _showSnack(String msg, bool isError) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? DesignColors.error : DesignColors.primary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignRadius.md)),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gatesAsync = ref.watch(adminGatesProvider);
+
+    return Scaffold(
+      backgroundColor: DesignColors.background,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: DesignColors.background,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Gate Utilities',
+          style: DesignTypography.headingM.copyWith(
+            color: DesignColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            icon:
+                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            onPressed: _refresh,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        color: DesignColors.primary,
+        onRefresh: _refresh,
+        child: gatesAsync.when(
+          loading: () => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ShimmerWrap(
+              child: Column(
+                children: [
+                  ShimmerBox(height: 44, borderRadius: DesignRadius.full),
+                  const SizedBox(height: 20),
+                  ShimmerBox(height: 110, borderRadius: DesignRadius.xl),
+                  const SizedBox(height: 16),
+                  ShimmerBox(height: 130, borderRadius: DesignRadius.xl),
+                ],
+              ),
+            ),
+          ),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: EmptyStateWidget(
+              icon: Icons.error_outline_rounded,
+              title: 'Failed to load gates',
+              subtitle: 'Pull down to refresh or try again.',
+              iconColor: DesignColors.error,
+              actionLabel: 'Retry',
+              onAction: _refresh,
+            ),
+          ),
+          data: (gates) => _buildBody(gates),
+        ),
+      ),
+    );
+  }
+
+  // ── Body ────────────────────────────────────────────────────────────
+
+  Widget _buildBody(List<Map<String, dynamic>> gates) {
+    if (gates.isEmpty) {
+      return ListView(children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 80),
+          child: EmptyStateWidget(
+            icon: Icons.door_front_door_outlined,
+            title: 'No gates configured',
+            subtitle: 'Gates will appear here once added to your society.',
+          ),
+        ),
+      ]);
+    }
+
+    // Auto-select first gate
+    if (_selectedGateId == null ||
+        !gates.any((g) => g['id']?.toString() == _selectedGateId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(
+              () => _selectedGateId = gates.first['id']?.toString() ?? '');
+        }
+      });
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+      children: [
+        // Gate selector chips
+        _buildGateChips(gates),
+        const SizedBox(height: 24),
+
+        if (_selectedGateId != null) ...[
+          // ── Water Supply ──
+          _buildWaterSupplySection(),
+          const SizedBox(height: 28),
+          // ── Garbage Pickup ──
+          _buildGarbageSection(),
+        ],
+      ],
+    );
+  }
+
+  // ── Gate Chips ─────────────────────────────────────────────────────
+
+  Widget _buildGateChips(List<Map<String, dynamic>> gates) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: gates.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final gate = gates[i];
+          final id = gate['id']?.toString() ?? '';
+          final name = gate['name']?.toString() ?? 'Gate';
+          final selected = _selectedGateId == id;
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedGateId = id),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? DesignColors.secondary
+                    : DesignColors.surface,
+                borderRadius: BorderRadius.circular(DesignRadius.full),
+                border: Border.all(
+                  color: selected
+                      ? DesignColors.secondary
+                      : DesignColors.borderLight,
+                ),
+                boxShadow: selected ? DesignElevation.sm : null,
+              ),
+              child: Text(
+                name,
+                style: DesignTypography.label.copyWith(
+                  color: selected ? Colors.white : DesignColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // WATER SUPPLY
+  // ══════════════════════════════════════════════════════════════════════
+
+  Widget _buildWaterSupplySection() {
+    final statusAsync = ref.watch(adminWaterSupplyStatusProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title
+        _sectionTitle('Water Supply', Icons.water_drop_rounded, _kWaterBlue),
+        const SizedBox(height: 14),
+
+        // Status + controls card
+        statusAsync.when(
+          loading: () => _shimmerCard(110),
+          error: (_, __) => _errorCard('Failed to load water status'),
+          data: (statuses) {
+            final gateStatus = statuses
+                .cast<Map<String, dynamic>>()
+                .where((s) => s['gateId']?.toString() == _selectedGateId);
+            final isOn =
+                gateStatus.isNotEmpty && gateStatus.first['isOn'] == true;
+
+            return _waterCard(isOn);
+          },
+        ),
+
+        // Recent events timeline
+        const SizedBox(height: 14),
+        _buildWaterTimeline(),
+      ],
+    );
+  }
+
+  Widget _waterCard(bool isOn) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DesignColors.surface,
+        borderRadius: BorderRadius.circular(DesignRadius.xl),
+        border: Border.all(color: DesignColors.borderLight),
+        boxShadow: DesignElevation.sm,
+      ),
+      child: Column(
+        children: [
+          // Status banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: isOn
+                  ? _kWaterBlue.withValues(alpha: 0.06)
+                  : DesignColors.surfaceSoft,
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(DesignRadius.xl)),
+            ),
+            child: Row(
+              children: [
+                // Animated status indicator
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isOn
+                        ? _kWaterBlue.withValues(alpha: 0.14)
+                        : DesignColors.textTertiary.withValues(alpha: 0.1),
+                  ),
+                  child: Icon(
+                    isOn ? Icons.water_drop_rounded : Icons.water_drop_outlined,
+                    color: isOn ? _kWaterBlue : DesignColors.textTertiary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Status',
+                        style: DesignTypography.captionSmall
+                            .copyWith(color: DesignColors.textTertiary),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  isOn ? _kWaterBlue : DesignColors.textTertiary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isOn ? 'Supply Running' : 'Supply Stopped',
+                            style: DesignTypography.label.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: isOn
+                                  ? _kWaterBlue
+                                  : DesignColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action buttons row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _toggleButton(
+                    label: 'Turn ON',
+                    icon: Icons.power_settings_new_rounded,
+                    color: _kWaterBlue,
+                    isActive: isOn,
+                    isLoading: _togglingWater,
+                    onTap: isOn ? null : () => _toggleWater(true),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _toggleButton(
+                    label: 'Turn OFF',
+                    icon: Icons.power_off_rounded,
+                    color: const Color(0xFFEF4444),
+                    isActive: !isOn,
+                    isLoading: _togglingWater,
+                    onTap: !isOn ? null : () => _toggleWater(false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required bool isLoading,
+    required VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null && !isLoading;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(DesignRadius.lg),
+          border: Border.all(
+            color: isActive ? color : DesignColors.borderLight,
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isLoading && !isActive)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: color,
+                ),
+              )
+            else
+              Icon(icon,
+                  size: 18,
+                  color: isActive ? Colors.white : color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: DesignTypography.labelSmall.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isActive
+                    ? Colors.white
+                    : (enabled ? color : DesignColors.textTertiary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaterTimeline() {
+    final eventsAsync =
+        ref.watch(adminWaterSupplyEventsProvider(_selectedGateId));
+
+    return eventsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (events) {
+        if (events.isEmpty) return const SizedBox.shrink();
+        final recent = events.take(4).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Recent Activity',
+                style: DesignTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: DesignColors.textSecondary)),
+            const SizedBox(height: 10),
+            ...recent.asMap().entries.map((entry) {
+              final e = entry.value;
+              final isLast = entry.key == recent.length - 1;
+              final turnedOn = e['turnedOn'] == true;
+              return _timelineRow(
+                icon: turnedOn
+                    ? Icons.toggle_on_rounded
+                    : Icons.toggle_off_rounded,
+                color: turnedOn ? _kWaterBlue : DesignColors.error,
+                title: turnedOn ? 'Turned ON' : 'Turned OFF',
+                subtitle: e['reason']?.toString(),
+                time: _formatTime(e['createdAt']?.toString()),
+                isLast: isLast,
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // GARBAGE PICKUP
+  // ══════════════════════════════════════════════════════════════════════
+
+  Widget _buildGarbageSection() {
+    if (_selectedGateId == null) return const SizedBox.shrink();
+    final activeAsync =
+        ref.watch(adminGarbageActiveProvider(_selectedGateId!));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(
+            'Garbage Pickup', Icons.local_shipping_rounded, _kGarbageGreen),
+        const SizedBox(height: 14),
+
+        activeAsync.when(
+          loading: () => _shimmerCard(130),
+          error: (_, __) => _errorCard('Failed to load garbage status'),
+          data: (data) {
+            final isInside = data['isInside'] == true;
+            final event = data['event'] as Map<String, dynamic>?;
+            final eventId = event?['id']?.toString();
+            return _garbageCard(isInside, eventId, event);
+          },
+        ),
+
+        const SizedBox(height: 14),
+        _buildGarbageTimeline(),
+      ],
+    );
+  }
+
+  Widget _garbageCard(
+      bool isInside, String? eventId, Map<String, dynamic>? event) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DesignColors.surface,
+        borderRadius: BorderRadius.circular(DesignRadius.xl),
+        border: Border.all(color: DesignColors.borderLight),
+        boxShadow: DesignElevation.sm,
+      ),
+      child: Column(
+        children: [
+          // Status banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: isInside
+                  ? _kGarbageGreen.withValues(alpha: 0.06)
+                  : DesignColors.surfaceSoft,
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(DesignRadius.xl)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isInside
+                        ? _kGarbageGreen.withValues(alpha: 0.14)
+                        : DesignColors.textTertiary.withValues(alpha: 0.1),
+                  ),
+                  child: Icon(
+                    isInside
+                        ? Icons.local_shipping_rounded
+                        : Icons.local_shipping_outlined,
+                    color: isInside ? _kGarbageGreen : DesignColors.textTertiary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Status',
+                        style: DesignTypography.captionSmall
+                            .copyWith(color: DesignColors.textTertiary),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isInside
+                                  ? _kGarbageGreen
+                                  : DesignColors.textTertiary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              isInside ? 'Collector Inside' : 'No Active Pickup',
+                              style: DesignTypography.label.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: isInside
+                                    ? _kGarbageGreen
+                                    : DesignColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isInside && event != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Entered ${_formatTime(event['entryTime']?.toString())}',
+                          style: DesignTypography.captionSmall
+                              .copyWith(color: DesignColors.textTertiary),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // IN / OUT action buttons — both always visible
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _garbageActionBtn(
+                    label: 'Log Entry',
+                    subtitle: 'IN',
+                    icon: Icons.login_rounded,
+                    color: _kGarbageGreen,
+                    isActive: !isInside,
+                    isLoading: _loggingGarbage,
+                    onTap: isInside ? null : _logGarbageEntry,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _garbageActionBtn(
+                    label: 'Mark Exit',
+                    subtitle: 'OUT',
+                    icon: Icons.logout_rounded,
+                    color: const Color(0xFFF59E0B),
+                    isActive: isInside,
+                    isLoading: _markingExit,
+                    onTap: isInside && eventId != null
+                        ? () => _markGarbageExit(eventId)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _garbageActionBtn({
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isActive,
+    required bool isLoading,
+    required VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null && !isLoading;
+    final showLoading = isLoading && isActive;
+
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isActive ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(DesignRadius.lg),
+          border: Border.all(
+            color: isActive
+                ? color
+                : (enabled ? DesignColors.borderLight : DesignColors.divider),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            if (showLoading)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: isActive ? Colors.white : color,
+                ),
+              )
+            else
+              Icon(icon,
+                  size: 22,
+                  color: isActive
+                      ? Colors.white
+                      : (enabled ? color : DesignColors.textTertiary)),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: DesignTypography.labelSmall.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isActive
+                    ? Colors.white
+                    : (enabled ? DesignColors.textPrimary : DesignColors.textTertiary),
+              ),
+            ),
+            Text(
+              subtitle,
+              style: DesignTypography.captionSmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isActive
+                    ? Colors.white70
+                    : (enabled ? color : DesignColors.textTertiary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGarbageTimeline() {
+    final eventsAsync =
+        ref.watch(adminGarbageEventsProvider(_selectedGateId));
+
+    return eventsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (events) {
+        if (events.isEmpty) return const SizedBox.shrink();
+        final recent = events.take(4).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Recent Activity',
+                style: DesignTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: DesignColors.textSecondary)),
+            const SizedBox(height: 10),
+            ...recent.asMap().entries.map((entry) {
+              final e = entry.value;
+              final isLast = entry.key == recent.length - 1;
+              final hasExit = e['exitTime'] != null;
+              return _timelineRow(
+                icon: hasExit
+                    ? Icons.check_circle_rounded
+                    : Icons.schedule_rounded,
+                color: hasExit ? _kGarbageGreen : DesignColors.warning,
+                title: hasExit ? 'Completed' : 'In Progress',
+                subtitle: null,
+                time: _formatTime(e['entryTime']?.toString()),
+                isLast: isLast,
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // SHARED WIDGETS
+  // ══════════════════════════════════════════════════════════════════════
+
+  Widget _sectionTitle(String text, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(text,
+            style: DesignTypography.headingM
+                .copyWith(fontSize: 16, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
+  Widget _timelineRow({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String? subtitle,
+    required String time,
+    required bool isLast,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline dot + line
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                const SizedBox(height: 2),
+                Icon(icon, size: 16, color: color),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 1.5,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: DesignColors.borderLight,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: DesignTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: DesignColors.textPrimary)),
+                        if (subtitle != null && subtitle.isNotEmpty)
+                          Text(subtitle,
+                              style: DesignTypography.captionSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Text(time,
+                      style: DesignTypography.captionSmall
+                          .copyWith(color: DesignColors.textTertiary)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shimmerCard(double height) {
+    return ShimmerWrap(
+      child: ShimmerBox(height: height, borderRadius: DesignRadius.xl),
+    );
+  }
+
+  Widget _errorCard(String msg) {
+    return EnterpriseInfoBanner(
+      icon: Icons.error_outline,
+      title: 'Error',
+      message: msg,
+      tone: EnterpriseTone.danger,
+    );
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(local);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'just now';
+  }
+}

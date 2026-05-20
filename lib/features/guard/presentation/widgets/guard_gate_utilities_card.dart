@@ -31,9 +31,47 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
   bool get _anyLoading =>
       _loadingWaterOn || _loadingWaterOff || _loadingGarbage;
 
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required Color confirmColor,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   Future<void> _water(bool on) async {
     final id = widget.gateId;
     if (id == null || id.isEmpty || _anyLoading) return;
+
+    final confirmed = await _confirm(
+      title: on ? 'Turn water supply ON?' : 'Turn water supply OFF?',
+      message: 'This will send a notification to all residents in the society.',
+      confirmLabel: on ? 'Yes, turn ON' : 'Yes, turn OFF',
+      confirmColor: on
+          ? GuardTokens.success
+          : Theme.of(context).colorScheme.error,
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() {
       if (on) {
         _loadingWaterOn = true;
@@ -77,6 +115,15 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
   Future<void> _garbage() async {
     final id = widget.gateId;
     if (id == null || id.isEmpty || _anyLoading) return;
+
+    final confirmed = await _confirm(
+      title: 'Log garbage pickup arrival?',
+      message: 'This will notify all residents that the garbage collector is at the gate.',
+      confirmLabel: 'Yes, notify',
+      confirmColor: GuardTokens.guardAccentDeep,
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() => _loadingGarbage = true);
     try {
       await ref.read(guardRepositoryProvider).logGarbageCollectorEntry(gateId: id);

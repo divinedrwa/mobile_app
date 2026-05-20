@@ -110,14 +110,11 @@ final maintenancePaymentProvider =
 /// multiple calendar years when a FY spans two (e.g. Apr 2025 – Mar 2026).
 final yearlyBreakdownForYearProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, year) async {
-      final user = ref.watch(authProvider).user;
-      final isAdmin = user?.role == UserRole.admin;
       final dashboard = await ref
           .watch(maintenanceRepositoryProvider)
           .getFinancialDashboard(
             month: 1,
             year: year,
-            isAdmin: isAdmin,
           );
       return ((dashboard['yearlyBreakdown'] ?? const []) as List)
           .whereType<Map>()
@@ -182,14 +179,11 @@ final maintenanceDashboardProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
   final filter = ref.watch(maintenanceDashboardFilterProvider);
-  final user = ref.watch(authProvider).user;
-  final isAdmin = user?.role == UserRole.admin;
   return ref
       .watch(maintenanceRepositoryProvider)
       .getFinancialDashboard(
         month: filter.month,
         year: filter.year,
-        isAdmin: isAdmin,
         maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
         billingCycleId: filter.billingCycleId,
       );

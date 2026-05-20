@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../../core/theme/app_spacing.dart';
-import '../../../../../core/theme/design_tokens.dart';
-import '../../../data/providers/maintenance_provider.dart';
-import '../../widgets/maintenance/maintenance_stat_chip.dart';
-import '../../widgets/maintenance/payment_list_tile.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/shimmer_box.dart';
+import '../../data/providers/admin_providers.dart';
+import '../../../resident/presentation/widgets/maintenance/maintenance_stat_chip.dart';
+import '../../../resident/presentation/widgets/maintenance/payment_list_tile.dart';
 
 /// Admin-facing maintenance overview.
 ///
@@ -34,6 +36,10 @@ class AdminMaintenanceHubScreen extends ConsumerStatefulWidget {
 class _AdminMaintenanceHubScreenState
     extends ConsumerState<AdminMaintenanceHubScreen>
     with WidgetsBindingObserver {
+  bool _sendingReminders = false;
+  final Set<String> _selectedVillaIds = {};
+  bool _selectionInitialised = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,34 +55,173 @@ class _AdminMaintenanceHubScreenState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.invalidate(maintenanceDashboardProvider);
+      ref.invalidate(adminMaintenanceDashboardProvider);
     }
   }
 
   Future<void> _refresh() async {
-    ref.invalidate(maintenanceDashboardProvider);
+    final fyId = ref.read(adminMaintenanceFilterProvider).financialYearId;
+    ref.invalidate(adminCollectionFinancialYearsProvider);
+    if (fyId != null && fyId.isNotEmpty) {
+      ref.invalidate(adminCollectionCyclesForFYProvider(fyId));
+    }
+    ref.invalidate(adminMaintenanceDashboardProvider);
+    _selectionInitialised = false;
     try {
-      await ref.read(maintenanceDashboardProvider.future);
+      await ref.read(adminMaintenanceDashboardProvider.future);
     } catch (_) {/* surfaced inline */}
   }
 
-  void _shiftMonth(int delta) {
-    final cur = ref.read(maintenanceDashboardFilterProvider);
-    final shifted = DateTime(cur.year, cur.month + delta, 1);
-    ref.read(maintenanceDashboardFilterProvider.notifier).state = cur.copyWith(
-      month: shifted.month,
-      year: shifted.year,
-      // Period changes invalidate any sticky cycle id from the prior month.
-      clearCollectionCycleId: true,
-      clearBillingCycleId: true,
-    );
+  // ── FY / cycle auto-select helpers ────────────────────────────────
+
+  String? _pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
+    if (fys.isEmpty) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    for (final fy in fys) {
+      final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
+      final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
+      if (s == null || e == null) continue;
+      final ds = DateTime(s.year, s.month, s.day);
+      final de = DateTime(e.year, e.month, e.day);
+      if (!today.isBefore(ds) && !today.isAfter(de)) {
+        return fy['id']?.toString();
+      }
+    }
+    return fys.first['id']?.toString();
+  }
+
+  Map<String, dynamic>? _pickDefaultCycle(List<Map<String, dynamic>> cycles) {
+    if (cycles.isEmpty) return null;
+    final now = DateTime.now();
+    for (final c in cycles) {
+      final pm = (c['periodMonth'] as num?)?.toInt();
+      final py = (c['periodYear'] as num?)?.toInt();
+      if (pm == now.month && py == now.year) return c;
+    }
+    for (final c in cycles) {
+      if ((c['status']?.toString() ?? '').toUpperCase() == 'OPEN') return c;
+    }
+    return cycles.last;
+  }
+
+  // ── Selection helpers ─────────────────────────────────────────────
+
+  /// All residents that have pending dues and are not excluded from billing.
+  List<Map<String, dynamic>> _pendingResidents(Map<String, dynamic> data) {
+    return ((data['residents'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((r) => r['isExcluded'] != true)
+        .where((r) {
+          final s = (r['status']?.toString() ?? '').toUpperCase();
+          return s == 'PENDING' || s == 'OVERDUE' || s == 'PARTIAL';
+        })
+        .toList();
+  }
+
+  void _initSelection(List<Map<String, dynamic>> residents) {
+    if (_selectionInitialised) return;
+    _selectionInitialised = true;
+    _selectedVillaIds
+      ..clear()
+      ..addAll(
+        residents
+            .where((r) => r['villaId'] != null)
+            .map((r) => r['villaId'].toString()),
+      );
+  }
+
+  bool _allSelected(List<Map<String, dynamic>> residents) {
+    if (residents.isEmpty) return false;
+    final allIds = residents
+        .where((r) => r['villaId'] != null)
+        .map((r) => r['villaId'].toString())
+        .toSet();
+    return _selectedVillaIds.length == allIds.length;
+  }
+
+  void _toggleAll(List<Map<String, dynamic>> residents) {
+    setState(() {
+      if (_allSelected(residents)) {
+        _selectedVillaIds.clear();
+      } else {
+        _selectedVillaIds
+          ..clear()
+          ..addAll(
+            residents
+                .where((r) => r['villaId'] != null)
+                .map((r) => r['villaId'].toString()),
+          );
+      }
+    });
+  }
+
+  void _toggleVilla(String villaId) {
+    setState(() {
+      if (_selectedVillaIds.contains(villaId)) {
+        _selectedVillaIds.remove(villaId);
+      } else {
+        _selectedVillaIds.add(villaId);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final filter = ref.watch(maintenanceDashboardFilterProvider);
-    final dashboardAsync = ref.watch(maintenanceDashboardProvider);
+    final filter = ref.watch(adminMaintenanceFilterProvider);
+    final dashboardAsync = ref.watch(adminMaintenanceDashboardProvider);
     final periodLabel = DateFormat('MMMM y').format(DateTime(filter.year, filter.month));
+
+    // ── Auto-select FY ──────────────────────────────────────────────
+    ref.listen(adminCollectionFinancialYearsProvider, (prev, next) {
+      next.whenData((fys) {
+        final cur = ref.read(adminMaintenanceFilterProvider);
+        if (fys.isEmpty || cur.financialYearId != null) return;
+        final id = _pickDefaultFinancialYearId(fys);
+        if (id == null || id.isEmpty) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final c2 = ref.read(adminMaintenanceFilterProvider);
+          if (c2.financialYearId != null) return;
+          ref.read(adminMaintenanceFilterProvider.notifier).state =
+              c2.copyWith(financialYearId: id);
+        });
+      });
+    });
+
+    // ── Auto-select cycle once FY cycles load ──
+    final fyListenId = filter.financialYearId;
+    if (fyListenId != null && fyListenId.isNotEmpty) {
+      ref.listen(adminCollectionCyclesForFYProvider(fyListenId), (prev, next) {
+        next.whenData((cycles) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final cur = ref.read(adminMaintenanceFilterProvider);
+            if (cur.financialYearId != fyListenId) return;
+            if (cur.maintenanceCollectionCycleId != null &&
+                cycles.any((c) =>
+                    c['id']?.toString() ==
+                    cur.maintenanceCollectionCycleId)) {
+              return;
+            }
+            final chosen = _pickDefaultCycle(cycles);
+            if (chosen == null) return;
+            final pm =
+                (chosen['periodMonth'] as num?)?.toInt() ?? cur.month;
+            final py =
+                (chosen['periodYear'] as num?)?.toInt() ?? cur.year;
+            ref.read(adminMaintenanceFilterProvider.notifier).state =
+                cur.copyWith(
+              maintenanceCollectionCycleId: chosen['id']?.toString(),
+              month: pm,
+              year: py,
+              clearBillingCycleId: true,
+            );
+          });
+        });
+      });
+    }
 
     return Scaffold(
       backgroundColor: DesignColors.background,
@@ -108,11 +253,6 @@ class _AdminMaintenanceHubScreenState
             icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
-          IconButton(
-            tooltip: 'Detailed finance view',
-            icon: const Icon(Icons.tune, color: DesignColors.textSecondary),
-            onPressed: () => context.push('/resident/maintenance-payment'),
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -126,7 +266,7 @@ class _AdminMaintenanceHubScreenState
             AppSpacing.xxl,
           ),
           children: [
-            _periodNav(filter, periodLabel),
+            _fyAndCycleSelector(filter),
             const SizedBox(height: AppSpacing.lg),
             dashboardAsync.when(
               loading: () => _heroSkeleton(),
@@ -137,8 +277,6 @@ class _AdminMaintenanceHubScreenState
                   _snapshotHero(data),
                   const SizedBox(height: AppSpacing.lg),
                   _statRow(data),
-                  const SizedBox(height: AppSpacing.lg),
-                  _quickActions(),
                   const SizedBox(height: AppSpacing.xl),
                   _residentsSection(data),
                 ],
@@ -150,41 +288,169 @@ class _AdminMaintenanceHubScreenState
     );
   }
 
-  // ---- period nav ----
+  // ── FY + cycle selector ───────────────────────────────────────────
 
-  Widget _periodNav(MaintenanceDashboardFilter filter, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: DesignColors.surface,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: DesignColors.borderLight),
+  Widget _fyAndCycleSelector(AdminMaintenanceFilter filter) {
+    final fysAsync = ref.watch(adminCollectionFinancialYearsProvider);
+
+    return fysAsync.when(
+      loading: () => ShimmerWrap(
+        child: ShimmerBox(height: 48, borderRadius: DesignRadius.lg),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Previous month',
-            icon: const Icon(Icons.chevron_left, color: DesignColors.textSecondary),
-            onPressed: () => _shiftMonth(-1),
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                label,
-                style: DesignTypography.bodyMedium.copyWith(
-                  color: DesignColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+      error: (_, _) => EnterpriseInfoBanner(
+        icon: Icons.error_outline,
+        title: 'Load failed',
+        message: 'Couldn\'t load financial years',
+        tone: EnterpriseTone.danger,
+      ),
+      data: (fys) {
+        if (fys.isEmpty) {
+          return EnterpriseInfoBanner(
+            icon: Icons.info_outline,
+            title: 'No data',
+            message: 'No financial years configured',
+            tone: EnterpriseTone.info,
+          );
+        }
+
+        return Column(
+          children: [
+            _fyDropdown(fys, filter),
+            const SizedBox(height: AppSpacing.sm),
+            _cycleChips(filter),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _fyDropdown(
+    List<Map<String, dynamic>> fys,
+    AdminMaintenanceFilter filter,
+  ) {
+    return EnterprisePanel(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: DropdownButton<String>(
+        value: filter.financialYearId,
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        icon: const Icon(Icons.keyboard_arrow_down,
+            color: DesignColors.textSecondary),
+        style: DesignTypography.bodyMedium.copyWith(
+          color: DesignColors.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        items: fys
+            .map((fy) => DropdownMenuItem<String>(
+                  value: fy['id']?.toString(),
+                  child: Text(fy['label']?.toString() ?? 'Untitled'),
+                ))
+            .toList(),
+        onChanged: (id) {
+          if (id == null) return;
+          final cur = ref.read(adminMaintenanceFilterProvider);
+          ref.read(adminMaintenanceFilterProvider.notifier).state =
+              cur.copyWith(
+            financialYearId: id,
+            clearCollectionCycleId: true,
+            clearBillingCycleId: true,
+          );
+          _selectionInitialised = false;
+        },
+      ),
+    );
+  }
+
+  Widget _cycleChips(AdminMaintenanceFilter filter) {
+    final fyId = filter.financialYearId;
+    if (fyId == null || fyId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final cyclesAsync = ref.watch(adminCollectionCyclesForFYProvider(fyId));
+
+    return cyclesAsync.when(
+      loading: () => ShimmerWrap(
+        child: SizedBox(
+          height: 44,
+          child: Row(
+            children: List.generate(
+              4,
+              (i) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ShimmerBox(height: 36, width: 56, borderRadius: DesignRadius.full),
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'Next month',
-            icon: const Icon(Icons.chevron_right, color: DesignColors.textSecondary),
-            onPressed: () => _shiftMonth(1),
-          ),
-        ],
+        ),
       ),
+      error: (_, _) => EnterpriseInfoBanner(
+        icon: Icons.error_outline,
+        title: 'Load failed',
+        message: 'Couldn\'t load billing periods',
+        tone: EnterpriseTone.danger,
+      ),
+      data: (cycles) {
+        if (cycles.isEmpty) {
+          return EnterpriseInfoBanner(
+            icon: Icons.info_outline,
+            title: 'No data',
+            message: 'No billing periods for this year',
+            tone: EnterpriseTone.info,
+          );
+        }
+
+        final selectedCycleId = filter.maintenanceCollectionCycleId;
+
+        return SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: cycles.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final cycle = cycles[index];
+              final cycleId = cycle['id']?.toString();
+              final isSelected = cycleId == selectedCycleId;
+
+              final pm = (cycle['periodMonth'] as num?)?.toInt();
+              final py = (cycle['periodYear'] as num?)?.toInt();
+              final chipLabel = pm != null
+                  ? DateFormat('MMM').format(DateTime(py ?? 2000, pm))
+                  : (cycle['title']?.toString() ?? '?');
+
+              return ChoiceChip(
+                label: Text(chipLabel),
+                selected: isSelected,
+                selectedColor: DesignColors.primary,
+                backgroundColor: DesignColors.surface,
+                side: BorderSide(
+                  color: isSelected
+                      ? DesignColors.primary
+                      : DesignColors.borderLight,
+                ),
+                labelStyle: DesignTypography.bodySmall.copyWith(
+                  color:
+                      isSelected ? Colors.white : DesignColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                onSelected: (_) {
+                  final cur = ref.read(adminMaintenanceFilterProvider);
+                  ref
+                      .read(adminMaintenanceFilterProvider.notifier)
+                      .state = cur.copyWith(
+                    maintenanceCollectionCycleId: cycleId,
+                    month: pm ?? cur.month,
+                    year: py ?? cur.year,
+                    clearBillingCycleId: true,
+                  );
+                  _selectionInitialised = false;
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -288,16 +554,9 @@ class _AdminMaintenanceHubScreenState
     ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0, duration: 320.ms, curve: Curves.easeOutCubic);
   }
 
-  Widget _heroSkeleton() => Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: DesignColors.surfaceSoft,
-          borderRadius: BorderRadius.circular(DesignRadius.xl),
-        ),
-        child: const Center(
-          child: SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-      );
+  Widget _heroSkeleton() => ShimmerWrap(
+      child: ShimmerBox(height: 160, borderRadius: DesignRadius.xl),
+    );
 
   // ---- stat row ----
 
@@ -341,54 +600,121 @@ class _AdminMaintenanceHubScreenState
     );
   }
 
-  // ---- quick actions ----
+  // ---- reminder button (inline in residents section) ----
 
-  Widget _quickActions() {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.notifications_active_outlined,
-            label: 'Send reminders',
-            tone: DesignColors.primary,
-            onPressed: _onSendReminders,
+  Widget _reminderButton(List<Map<String, dynamic>> pendingList) {
+    final count = _selectedVillaIds.length;
+    final isBulk = _allSelected(pendingList);
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: DesignColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignRadius.lg),
           ),
+          elevation: 0,
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.tune,
-            label: 'Detailed view',
-            tone: DesignColors.textSecondary,
-            onPressed: () => context.push('/resident/maintenance-payment'),
-          ),
+        onPressed: _sendingReminders || count == 0 ? null : _onSendReminders,
+        icon: _sendingReminders
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.notifications_active_outlined, size: 18),
+        label: Text(
+          _sendingReminders
+              ? 'Sending...'
+              : isBulk
+                  ? 'Send reminder to all ($count)'
+                  : 'Send reminder to $count selected',
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-      ],
+      ),
     );
   }
 
   Future<void> _onSendReminders() async {
-    final repo = ref.read(maintenanceRepositoryProvider);
-    final filter = ref.read(maintenanceDashboardFilterProvider);
+    if (_sendingReminders || _selectedVillaIds.isEmpty) return;
+
+    final filter = ref.read(adminMaintenanceFilterProvider);
+    final periodLabel =
+        DateFormat('MMMM y').format(DateTime(filter.year, filter.month));
+
+    final data = ref.read(adminMaintenanceDashboardProvider).valueOrNull;
+    final pendingList = data != null ? _pendingResidents(data) : <Map<String, dynamic>>[];
+    final isBulk = _allSelected(pendingList);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Reminders'),
+        content: Text(
+          isBulk
+              ? 'Send payment reminders to all ${_selectedVillaIds.length} residents with pending dues for $periodLabel?'
+              : 'Send payment reminders to ${_selectedVillaIds.length} selected resident${_selectedVillaIds.length == 1 ? "" : "s"} for $periodLabel?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _sendingReminders = true);
+
+    final repo = ref.read(adminMaintenanceRepositoryProvider);
     try {
-      final result = await repo.sendDuesReminders(
-        month: filter.month,
-        year: filter.year,
-        maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
-      );
+      int totalSent = 0;
+
+      if (isBulk) {
+        final result = await repo.sendDuesReminders(
+          month: filter.month,
+          year: filter.year,
+          maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
+        );
+        totalSent = (result['sent'] as num?)?.toInt() ??
+            (result['notified'] as num?)?.toInt() ??
+            0;
+      } else {
+        for (final villaId in _selectedVillaIds) {
+          try {
+            final result = await repo.sendVillaReminder(villaId: villaId);
+            totalSent += (result['sent'] as num?)?.toInt() ?? 0;
+          } catch (_) {
+            // Continue sending to remaining villas.
+          }
+        }
+      }
+
       if (!mounted) return;
-      final notified = (result['notified'] as num?)?.toInt() ?? 0;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: DesignColors.primary,
           content: Text(
-            notified > 0
-                ? 'Reminded $notified resident${notified == 1 ? "" : "s"}'
+            totalSent > 0
+                ? 'Reminded $totalSent resident${totalSent == 1 ? "" : "s"}'
                 : 'No residents to remind for this period',
           ),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      ref.invalidate(adminMaintenanceDashboardProvider);
+      _selectionInitialised = false;
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -398,6 +724,8 @@ class _AdminMaintenanceHubScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _sendingReminders = false);
     }
   }
 
@@ -407,11 +735,16 @@ class _AdminMaintenanceHubScreenState
     final residents = ((data['residents'] as List?) ?? const [])
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
+        .where((r) => r['isExcluded'] != true)
         .toList();
 
     if (residents.isEmpty) {
       return _emptyResidents();
     }
+
+    // Prepare pending residents for selection.
+    final pendingList = _pendingResidents(data);
+    _initSelection(pendingList);
 
     final paid = <Map<String, dynamic>>[];
     final partial = <Map<String, dynamic>>[];
@@ -430,29 +763,72 @@ class _AdminMaintenanceHubScreenState
       }
     }
 
+    final hasPending = pendingList.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Header + select all ──
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'Residents',
-            style: DesignTypography.headingM.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
+          child: Row(
+            children: [
+              Text(
+                'Residents',
+                style: DesignTypography.headingM.copyWith(
+                  color: DesignColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              if (hasPending)
+                GestureDetector(
+                  onTap: () => _toggleAll(pendingList),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: Checkbox(
+                          value: _allSelected(pendingList),
+                          onChanged: (_) => _toggleAll(pendingList),
+                          activeColor: DesignColors.primary,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Select all',
+                        style: DesignTypography.captionSmall.copyWith(
+                          color: DesignColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         if (overdue.isNotEmpty)
-          _statusGroup(label: 'Overdue', residents: overdue, status: PaymentTileStatus.overdue),
+          _statusGroup(label: 'Overdue', residents: overdue, status: PaymentTileStatus.overdue, selectable: true),
         if (pending.isNotEmpty)
-          _statusGroup(label: 'Pending', residents: pending, status: PaymentTileStatus.pending),
+          _statusGroup(label: 'Pending', residents: pending, status: PaymentTileStatus.pending, selectable: true),
         if (partial.isNotEmpty)
-          _statusGroup(label: 'Partial', residents: partial, status: PaymentTileStatus.partial),
+          _statusGroup(label: 'Partial', residents: partial, status: PaymentTileStatus.partial, selectable: true),
         if (paid.isNotEmpty)
-          _statusGroup(label: 'Paid', residents: paid, status: PaymentTileStatus.paid),
+          _statusGroup(label: 'Paid', residents: paid, status: PaymentTileStatus.paid, selectable: false),
+
+        // ── Send reminder button ──
+        if (hasPending) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _reminderButton(pendingList),
+        ],
       ],
     );
   }
@@ -461,6 +837,7 @@ class _AdminMaintenanceHubScreenState
     required String label,
     required List<Map<String, dynamic>> residents,
     required PaymentTileStatus status,
+    bool selectable = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -470,7 +847,7 @@ class _AdminMaintenanceHubScreenState
         child: Column(
           children: [
             for (final r in residents) ...[
-              _residentRow(r, status),
+              _residentRow(r, status, selectable: selectable),
               const SizedBox(height: AppSpacing.sm),
             ],
           ],
@@ -479,9 +856,14 @@ class _AdminMaintenanceHubScreenState
     );
   }
 
-  Widget _residentRow(Map<String, dynamic> r, PaymentTileStatus status) {
+  Widget _residentRow(
+    Map<String, dynamic> r,
+    PaymentTileStatus status, {
+    bool selectable = false,
+  }) {
     final inr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final villaNumber = r['villaNumber']?.toString() ?? '—';
+    final villaId = r['villaId']?.toString() ?? '';
     final ownerName = r['ownerName']?.toString() ?? 'Unknown';
     final amount = (r['amount'] as num?)?.toDouble() ?? 0;
     final paidToward = (r['paidTowardCycle'] as num?)?.toDouble();
@@ -503,15 +885,38 @@ class _AdminMaintenanceHubScreenState
       subtitle += ' · Credit: ${inr.format(advanceCredit)}';
     }
 
-    return PaymentListTile(
-      title: 'Villa $villaNumber',
-      subtitle: subtitle,
-      amount: amount,
-      status: status,
-      dueDate: status == PaymentTileStatus.paid ? null : dueDate,
-      paidDate: status == PaymentTileStatus.paid ? paidAt : null,
-      actionLabel: actionable ? 'Mark paid' : null,
-      onAction: actionable ? () => _openMarkCashSheet(r) : null,
+    final isSelected = selectable && villaId.isNotEmpty && _selectedVillaIds.contains(villaId);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (selectable && villaId.isNotEmpty) ...[
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Checkbox(
+              value: isSelected,
+              onChanged: (_) => _toggleVilla(villaId),
+              activeColor: DesignColors.primary,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: PaymentListTile(
+            title: 'Villa $villaNumber',
+            subtitle: subtitle,
+            amount: amount,
+            status: status,
+            dueDate: status == PaymentTileStatus.paid ? null : dueDate,
+            paidDate: status == PaymentTileStatus.paid ? paidAt : null,
+            actionLabel: actionable ? 'Mark paid' : null,
+            onAction: actionable ? () => _openMarkCashSheet(r) : null,
+          ),
+        ),
+      ],
     );
   }
 
@@ -523,124 +928,26 @@ class _AdminMaintenanceHubScreenState
       builder: (_) => _MarkCashSheet(resident: resident),
     );
     // Refresh after a successful mark-cash to reflect the new status.
-    ref.invalidate(maintenanceDashboardProvider);
+    ref.invalidate(adminMaintenanceDashboardProvider);
   }
 
   Widget _emptyResidents() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.xxxl,
-      ),
-      decoration: BoxDecoration(
-        color: DesignColors.surface,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: DesignColors.borderLight),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: const BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.people_outline,
-              size: 32,
-              color: DesignColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'No residents in this period',
-            style: DesignTypography.bodyMedium.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Generate snapshots for the cycle from the detailed finance view to populate this list.',
-            textAlign: TextAlign.center,
-            style: DesignTypography.bodySmall.copyWith(
-              color: DesignColors.textSecondary,
-            ),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: EmptyStateWidget(
+        icon: Icons.people_outline,
+        title: 'No residents in this period',
+        subtitle: 'Generate snapshots for the cycle from the detailed finance view to populate this list.',
       ),
     );
   }
 
   Widget _errorTile(String label) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: DesignColors.error.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: DesignColors.error.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.cloud_off_outlined, color: DesignColors.error),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              '$label. Pull down to retry.',
-              style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.tone,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color tone;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: DesignColors.surface,
-      borderRadius: BorderRadius.circular(DesignRadius.lg),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: DesignColors.borderLight),
-            borderRadius: BorderRadius.circular(DesignRadius.lg),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: tone, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return EnterpriseInfoBanner(
+      icon: Icons.cloud_off_outlined,
+      title: 'Something went wrong',
+      message: '$label. Pull down to retry.',
+      tone: EnterpriseTone.danger,
     );
   }
 }
@@ -665,12 +972,8 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DesignColors.surface,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: DesignColors.borderLight),
-      ),
+    return EnterprisePanel(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           InkWell(
@@ -736,7 +1039,6 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
 }
 
 /// Modal bottom sheet for marking a payment against a single resident.
-/// Posts to `/maintenance-management/mark-paid` via the existing repository.
 class _MarkCashSheet extends ConsumerStatefulWidget {
   const _MarkCashSheet({required this.resident});
 
@@ -1000,11 +1302,11 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
       final villaId = widget.resident['villaId']?.toString() ?? '';
       if (villaId.isEmpty) throw 'Missing villa id on this row.';
 
-      final filter = ref.read(maintenanceDashboardFilterProvider);
-      
+      final filter = ref.read(adminMaintenanceFilterProvider);
+
       final idempotencyKey = 'payment-${const Uuid().v4()}';
-      
-      await ref.read(maintenanceRepositoryProvider).markPaidCash(
+
+      await ref.read(adminMaintenanceRepositoryProvider).markPaidCash(
             villaId: villaId,
             month: filter.month,
             year: filter.year,
@@ -1046,14 +1348,14 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
       final villaId = widget.resident['villaId']?.toString() ?? '';
       if (villaId.isEmpty) throw 'Missing villa id on this row.';
 
-      final filter = ref.read(maintenanceDashboardFilterProvider);
+      final filter = ref.read(adminMaintenanceFilterProvider);
       final cycleId = filter.maintenanceCollectionCycleId;
       if (cycleId == null || cycleId.isEmpty) {
         throw 'No billing cycle selected.';
       }
 
       final result =
-          await ref.read(maintenanceRepositoryProvider).applyCredit(
+          await ref.read(adminMaintenanceRepositoryProvider).applyCredit(
                 villaId: villaId,
                 maintenanceCollectionCycleId: cycleId,
               );

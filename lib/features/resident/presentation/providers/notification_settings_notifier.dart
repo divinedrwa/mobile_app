@@ -45,13 +45,17 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
     _ref.listen<AuthState>(authProvider, (previous, next) {
       final user = next.user;
       if (user == null) {
-        if (state.emailEnabled) {
-          state = state.copyWith(emailEnabled: false);
+        if (state.emailEnabled || state.pushEnabled) {
+          state = state.copyWith(emailEnabled: false, pushEnabled: false);
         }
         return;
       }
+      // Sync local state from server-side preferences.
       if (user.notifyEmail != state.emailEnabled) {
         state = state.copyWith(emailEnabled: user.notifyEmail);
+      }
+      if (user.notifyPush != state.pushEnabled) {
+        state = state.copyWith(pushEnabled: user.notifyPush);
       }
     });
   }
@@ -60,9 +64,13 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
 
   static NotificationSettingsState _initial(Ref ref) {
     final user = ref.read(authProvider).user;
+    // Derive push/master state from server-side notifyPush when available,
+    // falling back to local storage for the first frame before profile loads.
+    final serverPush = user?.notifyPush ?? true;
+    final localMaster = NotificationPreferenceStorage.notificationsEnabled;
     return NotificationSettingsState(
-      masterEnabled: NotificationPreferenceStorage.notificationsEnabled,
-      pushEnabled: NotificationPreferenceStorage.pushNotificationsEnabled,
+      masterEnabled: localMaster && serverPush,
+      pushEnabled: serverPush,
       emailEnabled: user?.notifyEmail ?? false,
     );
   }
@@ -75,6 +83,8 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
       await NotificationPreferenceStorage.setNotificationsEnabled(enabled);
       if (!enabled) {
         await NotificationPreferenceStorage.setPushNotificationsEnabled(false);
+        // Disable both push and email server-side.
+        await _ref.read(authRepositoryProvider).updateNotifyPush(false);
         await _ref.read(authRepositoryProvider).updateNotifyEmail(false);
         await _ref.read(authProvider.notifier).refreshProfile();
         await PushSyncService.unregister();
@@ -85,6 +95,9 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
         );
       } else {
         await NotificationPreferenceStorage.setPushNotificationsEnabled(true);
+        // Enable push server-side.
+        await _ref.read(authRepositoryProvider).updateNotifyPush(true);
+        await _ref.read(authProvider.notifier).refreshProfile();
         state = state.copyWith(
           masterEnabled: true,
           pushEnabled: true,
@@ -92,6 +105,8 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
         final ok = await _requestPermissionAndSyncPush();
         if (!ok && Platform.isAndroid) {
           await NotificationPreferenceStorage.setPushNotificationsEnabled(false);
+          await _ref.read(authRepositoryProvider).updateNotifyPush(false);
+          await _ref.read(authProvider.notifier).refreshProfile();
           state = state.copyWith(pushEnabled: false);
         }
       }
@@ -104,11 +119,16 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
     state = state.copyWith(isBusy: true);
     try {
       await NotificationPreferenceStorage.setPushNotificationsEnabled(enabled);
+      // Persist push preference server-side so the notification service respects it.
+      await _ref.read(authRepositoryProvider).updateNotifyPush(enabled);
+      await _ref.read(authProvider.notifier).refreshProfile();
       state = state.copyWith(pushEnabled: enabled);
       if (enabled) {
         final ok = await _requestPermissionAndSyncPush();
         if (!ok && Platform.isAndroid) {
           await NotificationPreferenceStorage.setPushNotificationsEnabled(false);
+          await _ref.read(authRepositoryProvider).updateNotifyPush(false);
+          await _ref.read(authProvider.notifier).refreshProfile();
           state = state.copyWith(pushEnabled: false);
         }
       } else {

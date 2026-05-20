@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
@@ -14,8 +12,6 @@ import '../../widgets/maintenance/maintenance_hub_skeleton.dart';
 import '../../widgets/maintenance/maintenance_stat_chip.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 import '../../widgets/maintenance/payment_list_tile.dart';
-import 'admin_maintenance_hub_screen.dart';
-
 /// Resident-facing maintenance landing screen.
 ///
 /// One scroll, three sections:
@@ -84,17 +80,6 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
-    final isAdmin = user?.role == UserRole.admin;
-    if (isAdmin) {
-      // Admin sees the redesigned society-wide hub. The legacy multi-tab
-      // finance screen is still reachable via the "Detailed view" action
-      // in the admin hub for power-user operations (cycle generation,
-      // bank reconciliation, year reports) that aren't worth replicating
-      // here.
-      return const AdminMaintenanceHubScreen();
-    }
-
     final cycleAsync = ref.watch(residentBillingCycleProvider);
     final pendingAsync = ref.watch(pendingMaintenanceProvider);
     final historyAsync = ref.watch(maintenanceHistoryProvider);

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../theme/context_extensions.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import 'documents_list_screen.dart';
 import 'events_list_screen.dart';
 import 'notifications_center_screen.dart';
@@ -38,8 +36,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = ref.watch(authProvider).user?.role == UserRole.admin;
-
     return Scaffold(
       backgroundColor: context.surface.background,
       appBar: AppBar(
@@ -75,27 +71,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                   ),
                 );
               },
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(
-                    Icons.notifications_none_rounded,
-                    color: context.text.primary,
-                  ),
-                  if (isAdmin)
-                    Positioned(
-                      right: -1,
-                      top: -1,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: context.brand.accent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
+              icon: Icon(
+                Icons.notifications_none_rounded,
+                color: context.text.primary,
               ),
             ),
           ),
@@ -132,21 +110,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
           ),
         ),
       ),
-      floatingActionButton: isAdmin && _tabController.index == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Create notice action is pending backend flow.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              backgroundColor: context.brand.accent,
-              elevation: 3,
-              child: const Icon(Icons.edit_rounded, color: Colors.white),
-            )
-          : null,
       body: TabBarView(
         controller: _tabController,
         physics: const BouncingScrollPhysics(),

@@ -133,7 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final activeBillingCycle = billingAsync.maybeWhen(
       data: (c) {
-        if (user?.role == UserRole.admin || !c.hasCycle || c.isPaid) {
+        if (!c.hasCycle || c.isPaid) {
           return null;
         }
         final s = c.status;

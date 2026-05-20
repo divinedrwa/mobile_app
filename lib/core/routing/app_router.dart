@@ -27,6 +27,30 @@ import '../../features/resident/presentation/pages/my_pre_approved_visitors_scre
 import '../../features/resident/presentation/pages/resident_overview_screen.dart';
 import '../../features/resident/presentation/pages/society_expenses_screen.dart';
 import '../../features/resident/presentation/pages/expense_detail_screen.dart';
+import '../../features/admin/presentation/pages/admin_complaints_screen.dart';
+import '../../features/admin/presentation/pages/admin_expenses_screen.dart';
+import '../../features/admin/presentation/pages/admin_notices_screen.dart';
+import '../../features/admin/presentation/pages/admin_parcels_screen.dart';
+import '../../features/admin/presentation/pages/admin_reminders_screen.dart';
+import '../../features/admin/presentation/pages/admin_role_management_screen.dart';
+import '../../features/admin/presentation/pages/admin_maintenance_hub_screen.dart';
+import '../../features/admin/presentation/pages/admin_gate_utilities_screen.dart';
+import '../../features/admin/presentation/pages/admin_sos_screen.dart';
+import '../../features/admin/presentation/pages/admin_guard_shifts_screen.dart';
+import '../../features/admin/presentation/pages/admin_polls_screen.dart';
+import '../../features/admin/presentation/pages/admin_staff_screen.dart';
+import '../../features/admin/presentation/pages/admin_residents_screen.dart';
+import '../../features/admin/presentation/pages/admin_villas_screen.dart';
+import '../../features/admin/presentation/pages/admin_invitations_screen.dart';
+import '../../features/admin/presentation/pages/admin_society_settings_screen.dart';
+import '../../features/admin/presentation/pages/admin_gate_analytics_screen.dart';
+import '../../features/admin/presentation/pages/admin_reconciliation_screen.dart';
+import '../../features/admin/presentation/pages/admin_complaint_analytics_screen.dart';
+import '../../features/admin/presentation/pages/admin_parking_screen.dart';
+import '../../features/admin/presentation/pages/admin_data_tools_screen.dart';
+import '../../features/admin/presentation/pages/admin_amenities_screen.dart';
+import '../../features/admin/presentation/pages/admin_bank_accounts_screen.dart';
+import '../../features/admin/presentation/pages/admin_water_analytics_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
@@ -224,6 +248,130 @@ class AppRouter {
             GoRoute(
               path: 'overview',
               builder: (context, state) => const ResidentOverviewScreen(),
+            ),
+            // Admin placeholder routes (Phase 1)
+            GoRoute(
+              path: 'admin-mark-payment',
+              builder: (context, state) =>
+                  const AdminMaintenanceHubScreen(),
+            ),
+            GoRoute(
+              path: 'admin-complaints',
+              builder: (context, state) =>
+                  const AdminComplaintsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-reminders',
+              builder: (context, state) =>
+                  const AdminRemindersScreen(),
+            ),
+            GoRoute(
+              path: 'admin-expenses',
+              builder: (context, state) =>
+                  const AdminExpensesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-notices',
+              builder: (context, state) =>
+                  const AdminNoticesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-parcels',
+              builder: (context, state) =>
+                  const AdminParcelsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-roles',
+              builder: (context, state) =>
+                  const AdminRoleManagementScreen(),
+            ),
+            GoRoute(
+              path: 'admin-gate-utilities',
+              builder: (context, state) =>
+                  const AdminGateUtilitiesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-sos',
+              builder: (context, state) =>
+                  const AdminSosScreen(),
+            ),
+            GoRoute(
+              path: 'admin-guard-shifts',
+              builder: (context, state) =>
+                  const AdminGuardShiftsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-polls',
+              builder: (context, state) =>
+                  const AdminPollsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-staff',
+              builder: (context, state) =>
+                  const AdminStaffScreen(),
+            ),
+            // Tier 1 — new admin screens
+            GoRoute(
+              path: 'admin-residents',
+              builder: (context, state) =>
+                  const AdminResidentsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-villas',
+              builder: (context, state) =>
+                  const AdminVillasScreen(),
+            ),
+            GoRoute(
+              path: 'admin-invitations',
+              builder: (context, state) =>
+                  const AdminInvitationsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-settings',
+              builder: (context, state) =>
+                  const AdminSocietySettingsScreen(),
+            ),
+            // Tier 2 — analytics & insights
+            GoRoute(
+              path: 'admin-gate-analytics',
+              builder: (context, state) =>
+                  const AdminGateAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-reconciliation',
+              builder: (context, state) =>
+                  const AdminReconciliationScreen(),
+            ),
+            GoRoute(
+              path: 'admin-complaint-analytics',
+              builder: (context, state) =>
+                  const AdminComplaintAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-parking',
+              builder: (context, state) =>
+                  const AdminParkingScreen(),
+            ),
+            // Tier 3 — tools & extras
+            GoRoute(
+              path: 'admin-data-tools',
+              builder: (context, state) =>
+                  const AdminDataToolsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-amenities',
+              builder: (context, state) =>
+                  const AdminAmenitiesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-bank-accounts',
+              builder: (context, state) =>
+                  const AdminBankAccountsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-water-analytics',
+              builder: (context, state) =>
+                  const AdminWaterAnalyticsScreen(),
             ),
           ],
         ),
