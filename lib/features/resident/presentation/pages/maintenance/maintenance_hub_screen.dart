@@ -222,9 +222,10 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
               : null,
           actionLabel: 'View details',
           onAction: () {
-            final firstPending = pending.isNotEmpty ? pending.first : null;
-            if (firstPending != null && firstPending.cycleId.isNotEmpty) {
-              context.push('/resident/maintenance/cycle/${firstPending.cycleId}');
+            // If only one pending bill, go directly to its detail.
+            // Otherwise go to the full dues list so the resident sees all bills.
+            if (pending.length == 1 && pending.first.cycleId.isNotEmpty) {
+              context.push('/resident/maintenance/cycle/${pending.first.cycleId}');
             } else {
               context.push('/resident/maintenance/dues');
             }
@@ -350,6 +351,8 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     params['month'] = '${now.month}';
                     params['year'] = '${now.year}';
                     if (cycleId != null && cycleId.isNotEmpty) params['cycleId'] = cycleId;
+                    final remark = cycle?.title ?? 'Maintenance ${DateFormat('MMM yyyy').format(now)}';
+                    params['remark'] = remark;
                     final query = '?${Uri(queryParameters: params).query}';
                     context.push('/resident/maintenance/upi-pay$query');
                   },
@@ -508,8 +511,10 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     amount: m.remainingDue,
                     status: _pendingStatus(m),
                     dueDate: m.dueDate,
-                    actionLabel: 'View',
-                    onAction: () => _openCycleDetail(m),
+                    actionLabel: _hasUpiVpa ? 'Pay' : 'View',
+                    onAction: _hasUpiVpa
+                        ? () => _navigateToUpiPayment(m)
+                        : () => _openCycleDetail(m),
                     onTap: () => _openCycleDetail(m),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -632,6 +637,20 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
   void _openCycleDetail(MaintenanceDueModel m) {
     if (m.cycleId.isEmpty) return;
     context.push('/resident/maintenance/cycle/${m.cycleId}');
+  }
+
+  void _navigateToUpiPayment(MaintenanceDueModel m) {
+    final monthName = DateFormat('MMM yyyy').format(DateTime(m.year, m.month));
+    final remark = m.title.isNotEmpty ? m.title : 'Maintenance $monthName';
+    final params = <String, String>{
+      'amount': m.remainingDue.toStringAsFixed(0),
+      'month': '${m.month}',
+      'year': '${m.year}',
+      'remark': remark,
+    };
+    if (m.cycleId.isNotEmpty) params['cycleId'] = m.cycleId;
+    final query = '?${Uri(queryParameters: params).query}';
+    context.push('/resident/maintenance/upi-pay$query');
   }
 
   Widget _listSkeleton(int count) {

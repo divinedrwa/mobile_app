@@ -24,6 +24,7 @@ class UpiPaymentRepository {
     required int year,
     String? upiTransactionRef,
     String? cycleId,
+    String? remark,
   }) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
@@ -35,6 +36,7 @@ class UpiPaymentRepository {
           if (upiTransactionRef != null && upiTransactionRef.isNotEmpty)
             'upiTransactionRef': upiTransactionRef,
           if (cycleId != null && cycleId.isNotEmpty) 'cycleId': cycleId,
+          if (remark != null && remark.isNotEmpty) 'remark': remark,
         },
       );
       return res.data ?? {};

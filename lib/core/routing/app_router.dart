@@ -202,6 +202,7 @@ class AppRouter {
                       month: int.tryParse(q['month'] ?? ''),
                       year: int.tryParse(q['year'] ?? ''),
                       cycleId: q['cycleId'],
+                      remark: q['remark'],
                     );
                   },
                 ),

@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/providers/upi_payment_provider.dart';
 import '../../widgets/maintenance/breakdown_row.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 
@@ -243,8 +244,81 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         // Per-cycle status badge row to give residents a quick read on
         // partial vs full coverage without re-reading the breakdown.
         _statusFootnote(cycle, isPaid: isPaid, isPartial: isPartial, overdue: overdue),
+        // Pay via UPI button — shown only when there's an outstanding balance
+        // and the society has UPI configured.
+        if (!isPaid && remaining > 0) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _buildPayButton(cycle, remaining),
+        ],
       ],
     );
+  }
+
+  Widget _buildPayButton(MaintenanceDueModel cycle, double remaining) {
+    final upiConfig = ref.watch(upiConfigProvider);
+    final vpa = upiConfig.valueOrNull?['upiVpa']?.toString() ?? '';
+    if (vpa.isEmpty) {
+      // No UPI configured — show a hint instead of nothing
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: DesignColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(DesignRadius.md),
+          border: Border.all(color: DesignColors.primary.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, size: 18, color: DesignColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'To pay, contact your society admin or use the payment method they have shared.',
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: () => _navigateToUpiPayment(cycle, remaining),
+        icon: const Icon(Icons.currency_rupee, size: 18),
+        label: Text(
+          'Pay ₹${remaining.toStringAsFixed(0)} via UPI',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF16A34A),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignRadius.md),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToUpiPayment(MaintenanceDueModel cycle, double amount) {
+    final monthName = DateFormat('MMM yyyy').format(DateTime(cycle.year, cycle.month));
+    final remark = cycle.title.isNotEmpty
+        ? cycle.title
+        : 'Maintenance $monthName';
+    final params = <String, String>{
+      'amount': amount.toStringAsFixed(0),
+      'month': '${cycle.month}',
+      'year': '${cycle.year}',
+      'remark': remark,
+    };
+    if (cycle.cycleId.isNotEmpty) params['cycleId'] = cycle.cycleId;
+    final query = '?${Uri(queryParameters: params).query}';
+    context.push('/resident/maintenance/upi-pay$query');
   }
 
   Widget _statusFootnote(

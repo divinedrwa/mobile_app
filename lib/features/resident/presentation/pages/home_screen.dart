@@ -1617,31 +1617,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     context.push('/resident/maintenance');
   }
 
-  Future<void> _confirmPayThenMaintenance(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Complete payment'),
-        content: const Text(
-          'In-app checkout is not available yet. Please pay this cycle at your '
-          'society office or through the method your administrator shares. You can '
-          'open Maintenance & finances to review dues and receipts.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.push('/resident/maintenance');
-            },
-            child: const Text('Open maintenance'),
-          ),
-        ],
-      ),
-    );
+  void _confirmPayThenMaintenance(BuildContext context) {
+    // Navigate directly to maintenance hub where resident can access
+    // UPI payment, view dues, and pay individual or all bills.
+    context.push('/resident/maintenance');
   }
 
   Widget _sectionHeader(String title, VoidCallback onViewAll, {bool dense = false}) {
@@ -2522,7 +2501,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         final countHint = count > 1 ? ' · $count charges' : '';
 
-        void openPayments() => context.push('/resident/maintenance');
+        void openPayments() => context.push('/resident/maintenance/dues');
 
         return Material(
           color: Colors.white,

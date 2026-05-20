@@ -11,6 +11,7 @@ class UpiPaymentModel {
   final DateTime submittedAt;
   final DateTime? verifiedAt;
   final String? rejectionReason;
+  final String? remark;
   final int month;
   final int year;
 
@@ -27,6 +28,7 @@ class UpiPaymentModel {
     required this.submittedAt,
     this.verifiedAt,
     this.rejectionReason,
+    this.remark,
     required this.month,
     required this.year,
   });
@@ -57,6 +59,7 @@ class UpiPaymentModel {
           ? DateTime.tryParse(json['verifiedAt'].toString())
           : null,
       rejectionReason: json['rejectionReason']?.toString(),
+      remark: json['remark']?.toString(),
       month: json['month'] is num ? (json['month'] as num).toInt() : 0,
       year: json['year'] is num ? (json['year'] as num).toInt() : 0,
     );

@@ -8,6 +8,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/providers/upi_payment_provider.dart';
 
 /// Dedicated screen for the resident's outstanding bills.
 ///
@@ -55,6 +56,45 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     } catch (_) {/* surfaced inline */}
   }
 
+  bool get _hasUpiVpa {
+    final config = ref.watch(upiConfigProvider).valueOrNull;
+    final vpa = config?['upiVpa']?.toString() ?? '';
+    return vpa.isNotEmpty;
+  }
+
+  void _navigateToUpiPayment({
+    required double amount,
+    required int month,
+    required int year,
+    String? cycleId,
+    String? remark,
+  }) {
+    final params = <String, String>{
+      'amount': amount.toStringAsFixed(0),
+      'month': '$month',
+      'year': '$year',
+    };
+    if (cycleId != null && cycleId.isNotEmpty) params['cycleId'] = cycleId;
+    if (remark != null && remark.isNotEmpty) params['remark'] = remark;
+    final query = '?${Uri(queryParameters: params).query}';
+    context.push('/resident/maintenance/upi-pay$query');
+  }
+
+  /// Build a human-readable remark for a single cycle.
+  String _singleCycleRemark(MaintenanceDueModel m) {
+    if (m.title.isNotEmpty) return m.title;
+    return 'Maintenance ${DateFormat('MMM yyyy').format(DateTime(m.year, m.month))}';
+  }
+
+  /// Build a remark listing all months when paying multiple cycles.
+  String _allCyclesRemark(List<MaintenanceDueModel> items) {
+    if (items.length == 1) return _singleCycleRemark(items.first);
+    final months = items
+        .map((m) => DateFormat('MMM yyyy').format(DateTime(m.year, m.month)))
+        .toList();
+    return 'Maintenance: ${months.join(', ')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(pendingMaintenanceProvider);
@@ -87,7 +127,49 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
           data: (items) => items.isEmpty ? _emptyState() : _content(items),
         ),
       ),
-      bottomNavigationBar: null,
+      bottomNavigationBar: async.whenOrNull(
+        data: (items) {
+          if (items.isEmpty || !_hasUpiVpa) return null;
+          final total = items.fold<double>(0, (acc, m) => acc + m.remainingDue);
+          if (total <= 0) return null;
+          final inr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+          // For "Pay All", use the oldest pending bill's month/year
+          final oldest = items.first;
+          return Container(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
+            decoration: const BoxDecoration(
+              color: DesignColors.surface,
+              border: Border(top: BorderSide(color: DesignColors.borderLight)),
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _navigateToUpiPayment(
+                    amount: total,
+                    month: oldest.month,
+                    year: oldest.year,
+                    remark: _allCyclesRemark(items),
+                  ),
+                  icon: const Icon(Icons.currency_rupee, size: 18),
+                  label: Text(
+                    'Pay all ${inr.format(total)} via UPI',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -148,6 +230,14 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
             item: items[i],
             inr: inr,
             onTap: () => _open(items[i]),
+            showPay: _hasUpiVpa,
+            onPay: () => _navigateToUpiPayment(
+              amount: items[i].remainingDue,
+              month: items[i].month,
+              year: items[i].year,
+              cycleId: items[i].cycleId,
+              remark: _singleCycleRemark(items[i]),
+            ),
           ).animate(delay: Duration(milliseconds: 60 * i)).fadeIn(duration: 220.ms).slideX(
                 begin: 0.04,
                 end: 0,
@@ -356,11 +446,15 @@ class _DueCard extends StatelessWidget {
     required this.item,
     required this.inr,
     required this.onTap,
+    this.showPay = false,
+    this.onPay,
   });
 
   final MaintenanceDueModel item;
   final NumberFormat inr;
   final VoidCallback onTap;
+  final bool showPay;
+  final VoidCallback? onPay;
 
   @override
   Widget build(BuildContext context) {
@@ -453,25 +547,48 @@ class _DueCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Due ${dateFmt.format(item.dueDate)}',
-                              style: DesignTypography.caption.copyWith(
-                                color: DesignColors.textSecondary,
+                            Expanded(
+                              child: Text(
+                                'Due ${dateFmt.format(item.dueDate)}',
+                                style: DesignTypography.caption.copyWith(
+                                  color: DesignColors.textSecondary,
+                                ),
                               ),
                             ),
+                            if (showPay && onPay != null)
+                              SizedBox(
+                                height: 30,
+                                child: FilledButton(
+                                  onPressed: onPay,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF16A34A),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  child: const Text('Pay'),
+                                ),
+                              ),
                           ],
                         ),
                       ],
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: DesignColors.textTertiary,
+                if (!showPay)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: DesignColors.textTertiary,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
