@@ -29,7 +29,9 @@ import '../repositories/admin_parking_repository.dart';
 import '../repositories/admin_data_tools_repository.dart';
 import '../repositories/admin_amenity_repository.dart';
 import '../repositories/admin_bank_account_repository.dart';
+import '../repositories/admin_upi_payment_repository.dart';
 import '../repositories/admin_water_analytics_repository.dart';
+import '../../../resident/data/models/upi_payment_model.dart';
 
 // ── Dashboard ─────────────────────────────────────────────────────────
 
@@ -553,4 +555,29 @@ final adminWaterAnalyticsGateProvider =
   return ref
       .watch(adminWaterAnalyticsRepositoryProvider)
       .getGatePerformance();
+});
+
+// ── UPI Payment Verifications ───────────────────────────────────────
+
+final adminUpiPaymentRepositoryProvider =
+    Provider<AdminUpiPaymentRepository>(
+        (ref) => AdminUpiPaymentRepository());
+
+/// UPI status filter for the verifications screen.
+final adminUpiStatusFilterProvider =
+    StateProvider.autoDispose<String>((ref) => 'PENDING');
+
+/// UPI payment submissions filtered by current status selection.
+final adminPendingUpiPaymentsProvider =
+    FutureProvider.autoDispose<List<UpiPaymentModel>>((ref) async {
+  final status = ref.watch(adminUpiStatusFilterProvider);
+  return ref
+      .watch(adminUpiPaymentRepositoryProvider)
+      .getSubmissions(status: status);
+});
+
+/// UPI stats (pending / verified / rejected counts).
+final adminUpiStatsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminUpiPaymentRepositoryProvider).getStats();
 });

@@ -63,6 +63,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     ref.invalidate(residentDashboardProvider);
     ref.invalidate(outstandingDuesProvider);
     ref.invalidate(notificationProvider);
+    ref.invalidate(adminUpiStatsProvider);
   }
 
   static String _greeting() {
@@ -367,6 +368,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSummaryStrip(d),
+        _buildUpiPendingAlert(ctx),
         SizedBox(height: _kSectionGap),
         _buildSocietyFundCard(ctx, fundAsync),
         SizedBox(height: _kSectionGap),
@@ -377,6 +379,72 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         _buildRecentActivity(ctx, notificationsAsync),
         const SizedBox(height: 20),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // UPI PENDING ALERT
+  // ═══════════════════════════════════════════════════════════════════
+
+  Widget _buildUpiPendingAlert(BuildContext ctx) {
+    final statsAsync = ref.watch(adminUpiStatsProvider);
+    return statsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (stats) {
+        final pending = stats['pending'] as int? ?? 0;
+        if (pending == 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: GestureDetector(
+            onTap: () => ctx.push('/resident/admin-upi-verifications'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(_kRadiusMd),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.currency_rupee_rounded,
+                        color: Color(0xFFF59E0B), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$pending UPI payment${pending > 1 ? 's' : ''} pending verification',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                        const Text(
+                          'Tap to review and verify',
+                          style: TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: Color(0xFFB45309), size: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1265,6 +1333,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 '/resident/admin-notices'),
             _QA(Icons.inventory_2_outlined, 'Parcels', Color(0xFF06B6D4),
                 '/resident/admin-parcels'),
+            _QA(Icons.currency_rupee_rounded, 'UPI Verifications',
+                Color(0xFF16A34A), '/resident/admin-upi-verifications'),
           ],
         ),
         const SizedBox(height: 14),

@@ -20,6 +20,8 @@ class AdminSocietySettingsScreen extends ConsumerStatefulWidget {
 class _AdminSocietySettingsScreenState
     extends ConsumerState<AdminSocietySettingsScreen> {
   bool _saving = false;
+  final _upiVpaController = TextEditingController();
+  bool _editingVpa = false;
 
   Future<void> _refresh() async {
     ref.invalidate(adminSocietySettingsProvider);
@@ -99,6 +101,10 @@ class _AdminSocietySettingsScreenState
             'ANY_ONE_APPROVAL';
     final approvalRequired = settings['visitorApprovalRequired'] == true;
     final guardCanApprove = settings['guardCanApproveVisitors'] == true;
+    final upiVpa = settings['upiVpa']?.toString() ?? '';
+    if (!_editingVpa) {
+      _upiVpaController.text = upiVpa;
+    }
 
     final isActive = status == 'ACTIVE';
 
@@ -292,8 +298,134 @@ class _AdminSocietySettingsScreenState
             ],
           ),
         ),
+        const SizedBox(height: 24),
+
+        // Payment Settings — UPI VPA
+        EnterpriseSectionHeader(title: 'Payment Settings'),
+        const SizedBox(height: 8),
+
+        EnterprisePanel(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'UPI VPA (Virtual Payment Address)',
+                style: DesignTypography.label
+                    .copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Residents will use this VPA to pay maintenance via UPI.',
+                style: DesignTypography.captionSmall
+                    .copyWith(color: DesignColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _upiVpaController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. society@upi',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixIcon: _saving
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.save_rounded, size: 20),
+                          tooltip: 'Save',
+                          onPressed: () => _saveUpiVpa(),
+                        ),
+                ),
+                onTap: () => setState(() => _editingVpa = true),
+                onSubmitted: (_) => _saveUpiVpa(),
+              ),
+              if (upiVpa.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _saving ? null : _clearUpiVpa,
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('Remove VPA'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DesignColors.error,
+                    textStyle: DesignTypography.captionSmall,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  Future<void> _saveUpiVpa() async {
+    final vpa = _upiVpaController.text.trim();
+    if (vpa.isNotEmpty && !vpa.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('VPA must contain @')),
+      );
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _editingVpa = false;
+    });
+    try {
+      if (vpa.isEmpty) {
+        await ref.read(adminSocietySettingsRepositoryProvider).updateSettings(
+              clearUpiVpa: true,
+            );
+      } else {
+        await ref.read(adminSocietySettingsRepositoryProvider).updateSettings(
+              upiVpa: vpa,
+            );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('UPI VPA updated')),
+        );
+      }
+      _refresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _clearUpiVpa() async {
+    _upiVpaController.clear();
+    setState(() => _saving = true);
+    try {
+      await ref.read(adminSocietySettingsRepositoryProvider).updateSettings(
+            clearUpiVpa: true,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('UPI VPA removed')),
+        );
+      }
+      _refresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _updateSetting({

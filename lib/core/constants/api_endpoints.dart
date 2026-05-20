@@ -135,6 +135,17 @@ class ApiEndpoints {
   static String votePoll(String pollId, String optionId) => 
       '/residents/my-polls/$pollId/vote/$optionId';
   
+  // Resident — UPI Payments
+  static const String upiConfig = '/residents/upi-config';
+  static const String upiPaymentSubmit = '/residents/upi-payment-submit';
+  static const String myUpiPayments = '/residents/my-upi-payments';
+
+  // Admin — UPI Payment Verifications
+  static const String adminUpiPaymentsPending = '/upi-payments/pending';
+  static String adminUpiVerify(String id) => '/upi-payments/$id/verify';
+  static String adminUpiReject(String id) => '/upi-payments/$id/reject';
+  static const String adminUpiStats = '/upi-payments/stats';
+
   // Admin Dashboard — aggregate stats
   static const String adminVisitors = '/visitors';
   static const String adminParcels = '/parcels';

@@ -17,6 +17,8 @@ import '../../features/resident/presentation/pages/maintenance/cycle_detail_scre
 import '../../features/resident/presentation/pages/maintenance/maintenance_history_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/maintenance_hub_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/my_dues_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/upi_payment_screen.dart';
+import '../../features/admin/presentation/pages/admin_upi_verifications_screen.dart';
 import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
 import '../../features/resident/presentation/pages/my_complaints_screen.dart';
@@ -190,6 +192,18 @@ class AppRouter {
                   builder: (context, state) => CycleDetailScreen(
                     cycleId: state.pathParameters['cycleId'] ?? '',
                   ),
+                ),
+                GoRoute(
+                  path: 'upi-pay',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return UpiPaymentScreen(
+                      amount: double.tryParse(q['amount'] ?? ''),
+                      month: int.tryParse(q['month'] ?? ''),
+                      year: int.tryParse(q['year'] ?? ''),
+                      cycleId: q['cycleId'],
+                    );
+                  },
                 ),
               ],
             ),
@@ -372,6 +386,11 @@ class AppRouter {
               path: 'admin-water-analytics',
               builder: (context, state) =>
                   const AdminWaterAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-upi-verifications',
+              builder: (context, state) =>
+                  const AdminUpiVerificationsScreen(),
             ),
           ],
         ),

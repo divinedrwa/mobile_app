@@ -8,6 +8,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/providers/upi_payment_provider.dart';
 import '../../widgets/maintenance/maintenance_hub_skeleton.dart';
 import '../../widgets/maintenance/maintenance_stat_chip.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
@@ -62,6 +63,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     ref.invalidate(residentBillingCycleProvider);
     ref.invalidate(pendingMaintenanceProvider);
     ref.invalidate(maintenanceHistoryProvider);
+    ref.invalidate(upiConfigProvider);
   }
 
   Future<void> _refresh() async {
@@ -320,14 +322,50 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        _ShortcutCard(
-          icon: Icons.account_balance_wallet_outlined,
-          label: 'Society expenses',
-          tone: DesignColors.textSecondary,
-          onTap: () => context.push('/resident/expenses'),
+        Row(
+          children: [
+            Expanded(
+              child: _ShortcutCard(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Society expenses',
+                tone: DesignColors.textSecondary,
+                onTap: () => context.push('/resident/expenses'),
+              ),
+            ),
+            // Show "Pay via UPI" shortcut when VPA is configured
+            if (_hasUpiVpa) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ShortcutCard(
+                  icon: Icons.currency_rupee,
+                  label: 'Pay via UPI',
+                  tone: const Color(0xFF16A34A),
+                  onTap: () {
+                    final cycle = ref.read(residentBillingCycleProvider).valueOrNull;
+                    final amount = cycle?.remainingDue?.toDouble();
+                    final cycleId = cycle?.cycleId;
+                    final now = DateTime.now();
+                    final params = <String, String>{};
+                    if (amount != null && amount > 0) params['amount'] = amount.toStringAsFixed(0);
+                    params['month'] = '${now.month}';
+                    params['year'] = '${now.year}';
+                    if (cycleId != null && cycleId.isNotEmpty) params['cycleId'] = cycleId;
+                    final query = '?${Uri(queryParameters: params).query}';
+                    context.push('/resident/maintenance/upi-pay$query');
+                  },
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
+  }
+
+  bool get _hasUpiVpa {
+    final config = ref.watch(upiConfigProvider).valueOrNull;
+    final vpa = config?['upiVpa']?.toString() ?? '';
+    return vpa.isNotEmpty;
   }
 
   // ---- STAT ROW ----
