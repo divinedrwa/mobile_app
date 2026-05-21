@@ -5,6 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -23,6 +24,9 @@ class AdminComplaintsScreen extends ConsumerStatefulWidget {
 
 class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
     with WidgetsBindingObserver {
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +35,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
 
   @override
   void dispose() {
+    _searchCtl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -98,6 +103,12 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
 
             // ── Filter chips ──
             _buildFilterChips(activeFilter),
+            const SizedBox(height: AppSpacing.sm),
+            AdminSearchField(
+              controller: _searchCtl,
+              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+              hint: 'Search by title, villa, category…',
+            ),
             const SizedBox(height: AppSpacing.lg),
 
             // ── Complaints list ──
@@ -355,9 +366,35 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
           );
         }
 
+        // Apply search filter.
+        final searchedComplaints = _searchQuery.isEmpty
+            ? complaints
+            : complaints.where((c) {
+                final title = (c['title'] ?? '').toString().toLowerCase();
+                final category = (c['category'] ?? '').toString().toLowerCase();
+                final villa = (c['villa'] as Map<String, dynamic>?)?['villaNumber']?.toString().toLowerCase() ?? '';
+                final owner = (c['villa'] as Map<String, dynamic>?)?['ownerName']?.toString().toLowerCase() ?? '';
+                return title.contains(_searchQuery) ||
+                    category.contains(_searchQuery) ||
+                    villa.contains(_searchQuery) ||
+                    owner.contains(_searchQuery);
+              }).toList();
+
+        if (searchedComplaints.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: EmptyStateWidget(
+              icon: Icons.search_off,
+              title: 'No matches',
+              subtitle: 'No complaints match your search.',
+              iconColor: DesignColors.textTertiary,
+            ),
+          );
+        }
+
         // Group complaints by status.
         final grouped = <String, List<Map<String, dynamic>>>{};
-        for (final c in complaints) {
+        for (final c in searchedComplaints) {
           final status = c['status']?.toString() ?? 'OPEN';
           (grouped[status] ??= []).add(c);
         }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -21,10 +22,16 @@ class DailyHelpScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Vendors')),
-      body: helpersState.when(
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(dailyHelpProvider.notifier).fetchDailyHelp(),
+        child: helpersState.when(
         loading: () => const ListSkeleton(itemHeight: 72),
-        error: (error, _) => Center(
-          child: Column(
+        error: (error, _) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
@@ -33,7 +40,7 @@ class DailyHelpScreen extends ConsumerWidget {
                 color: DesignColors.error,
               ),
               const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
+              Text(userFacingMessage(error), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () =>
@@ -42,9 +49,12 @@ class DailyHelpScreen extends ConsumerWidget {
               ),
             ],
           ),
-        ),
+          ),
+        )]),
         data: (helpers) => helpers.isEmpty
-            ? EmptyStateWidget(
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [EmptyStateWidget(
                 icon: Icons.support_agent_outlined,
                 title: 'No daily help added yet',
                 subtitle: 'Add your regular service providers like maids, cooks, or drivers.',
@@ -55,8 +65,9 @@ class DailyHelpScreen extends ConsumerWidget {
                     MaterialPageRoute(builder: (context) => const AddDailyHelpScreen()),
                   );
                 },
-              )
+              )])
             : ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.md),
           itemCount: helpers.length,
           itemBuilder: (context, index) {
@@ -193,7 +204,7 @@ class DailyHelpScreen extends ConsumerWidget {
             ).animate().fadeIn(duration: 300.ms, delay: DesignAnimations.staggerFor(index));
           },
         ),
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(

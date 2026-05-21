@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/constants/form_options.dart';
 import '../../data/models/daily_help_model.dart';
 import '../../data/providers/daily_help_provider.dart';
 import 'dart:io';
@@ -24,14 +26,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
   XFile? _selectedImage;
   bool _isSubmitting = false;
 
-  final List<String> _helpTypes = [
-    'Maid',
-    'Cook',
-    'Driver',
-    'Gardener',
-    'Security',
-    'Other',
-  ];
+  final List<String> _helpTypes = FormOptions.dailyHelpTypes;
 
   @override
   void initState() {
@@ -132,8 +127,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
                 prefixIcon: Icon(Icons.phone),
               ),
               keyboardType: TextInputType.phone,
-              validator: (v) =>
-                  v?.isEmpty ?? true ? 'Please enter phone' : null,
+              validator: Validators.phone,
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(

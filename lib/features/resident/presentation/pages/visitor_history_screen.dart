@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -208,7 +209,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
           child: EnterpriseInfoBanner(
             icon: Icons.cloud_off_outlined,
             title: 'Could not load visitor history',
-            message: error.toString(),
+            message: userFacingMessage(error),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () => ref.invalidate(visitorHistoryProvider),

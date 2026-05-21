@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -18,6 +19,15 @@ class AdminVillasScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(adminVillasProvider);
   }
@@ -139,10 +149,28 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        ...villas.map((v) => _villaCard(v, inr)),
+        const SizedBox(height: 12),
+        AdminSearchField(
+          controller: _searchCtl,
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          hint: 'Search by villa number, block, owner…',
+        ),
+        const SizedBox(height: 12),
+        ..._filteredVillas(villas).map((v) => _villaCard(v, inr)),
       ],
     );
+  }
+
+  List<Map<String, dynamic>> _filteredVillas(List<Map<String, dynamic>> villas) {
+    if (_searchQuery.isEmpty) return villas;
+    return villas.where((v) {
+      final villaNum = (v['villaNumber'] ?? '').toString().toLowerCase();
+      final block = (v['block'] ?? '').toString().toLowerCase();
+      final owner = (v['ownerName'] ?? '').toString().toLowerCase();
+      return villaNum.contains(_searchQuery) ||
+          block.contains(_searchQuery) ||
+          owner.contains(_searchQuery);
+    }).toList();
   }
 
   Widget _villaCard(Map<String, dynamic> v, NumberFormat inr) {

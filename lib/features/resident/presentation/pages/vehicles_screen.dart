@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -20,30 +21,38 @@ class VehiclesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Vehicles')),
-      body: vehiclesState.when(
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(vehicleProvider.notifier).fetchVehicles(),
+        child: vehiclesState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Padding(
+        error: (error, _) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+          Padding(
           padding: EdgeInsets.all(context.spacing.s16),
           child: EnterpriseInfoBanner(
             icon: Icons.directions_car_filled_outlined,
             title: 'Could not load vehicles',
-            message: error.toString(),
+            message: userFacingMessage(error),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () => ref.read(vehicleProvider.notifier).fetchVehicles(),
           ),
-        ),
+        )]),
         data: (vehicles) {
           if (vehicles.isEmpty) {
-            return const EmptyStateWidget(
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [EmptyStateWidget(
               icon: Icons.directions_car_outlined,
               title: 'No vehicles added yet',
               subtitle:
                   'Add your household vehicles so gate and security workflows stay accurate.',
-            );
+            )]);
           }
 
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               context.spacing.s16,
               context.spacing.s12,
@@ -100,7 +109,7 @@ class VehiclesScreen extends ConsumerWidget {
             ],
           );
         },
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(

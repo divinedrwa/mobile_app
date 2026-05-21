@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -17,6 +18,14 @@ class AdminStaffScreen extends ConsumerStatefulWidget {
 
 class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
   String? _typeFilter; // null = All
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
 
   static const _staffTypes = [
     'MAID',
@@ -97,10 +106,21 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
 
   Widget _buildBody(List<Map<String, dynamic>> staff) {
     // Local filter
-    final filtered = _typeFilter == null
+    var filtered = _typeFilter == null
         ? staff
         : staff.where((s) =>
             s['type']?.toString().toUpperCase() == _typeFilter).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((s) {
+        final name = (s['name'] ?? '').toString().toLowerCase();
+        final phone = (s['phone'] ?? '').toString().toLowerCase();
+        final type = (s['type'] ?? '').toString().toLowerCase();
+        return name.contains(_searchQuery) ||
+            phone.contains(_searchQuery) ||
+            type.contains(_searchQuery);
+      }).toList();
+    }
 
     // Count per type
     final typeCounts = <String?, int>{null: staff.length};
@@ -129,7 +149,13 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        AdminSearchField(
+          controller: _searchCtl,
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          hint: 'Search by name, phone…',
+        ),
+        const SizedBox(height: 12),
 
         if (filtered.isEmpty)
           Padding(

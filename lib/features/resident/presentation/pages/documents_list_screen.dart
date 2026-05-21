@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/models/document_model.dart';
@@ -77,7 +78,7 @@ class DocumentsListScreen extends ConsumerWidget {
                       color: DesignColors.error,
                     ),
                     const SizedBox(height: 12),
-                    Text(error.toString(), textAlign: TextAlign.center),
+                    Text(userFacingMessage(error), textAlign: TextAlign.center),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () => ref.invalidate(documentsProvider),

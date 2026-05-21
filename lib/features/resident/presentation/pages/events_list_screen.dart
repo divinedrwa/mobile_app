@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/society_banner_type.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -96,7 +97,7 @@ class EventsListScreen extends ConsumerWidget {
                 color: DesignColors.error,
               ),
               const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
+              Text(userFacingMessage(error), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => ref.invalidate(eventsProvider),

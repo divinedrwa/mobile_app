@@ -28,9 +28,34 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Phone number is required';
     }
-    final phoneRegex = RegExp(r'^\d{10}$');
-    if (!phoneRegex.hasMatch(value)) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
       return 'Enter a valid 10-digit phone number';
+    }
+    return null;
+  }
+
+  /// Phone validation that allows empty (optional fields).
+  static String? phoneOptional(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
+      return 'Enter a valid 10-digit phone number';
+    }
+    return null;
+  }
+
+  /// Vehicle registration number — at least 4 alphanumeric characters.
+  static String? vehicleNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter vehicle number';
+    }
+    final cleaned = value.replaceAll(RegExp(r'\s+'), '');
+    if (cleaned.length < 4) {
+      return 'Enter a valid vehicle number (e.g. MH12AB1234)';
+    }
+    if (!RegExp(r'^[A-Za-z0-9]+$').hasMatch(cleaned)) {
+      return 'Only letters and numbers allowed';
     }
     return null;
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -19,6 +20,14 @@ class AdminResidentsScreen extends ConsumerStatefulWidget {
 
 class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
   String? _statusFilter; // null = All
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(adminResidentOverviewProvider);
@@ -59,7 +68,13 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           children: [
             _buildStatsHero(statsAsync),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            AdminSearchField(
+              controller: _searchCtl,
+              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+              hint: 'Search by name, villa, phone…',
+            ),
+            const SizedBox(height: 12),
             _buildResidentList(overviewAsync),
           ],
         ),
@@ -202,11 +217,24 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
         final activeCount = residents.where((r) => r['isActive'] == true).length;
         final inactiveCount = allCount - activeCount;
 
-        final filtered = _statusFilter == null
+        var filtered = _statusFilter == null
             ? residents
             : _statusFilter == 'ACTIVE'
                 ? residents.where((r) => r['isActive'] == true).toList()
                 : residents.where((r) => r['isActive'] != true).toList();
+
+        if (_searchQuery.isNotEmpty) {
+          filtered = filtered.where((r) {
+            final name = (r['name'] ?? r['username'] ?? '').toString().toLowerCase();
+            final phone = (r['phone'] ?? '').toString().toLowerCase();
+            final villa = (r['villa'] as Map<String, dynamic>?)?['villaNumber']?.toString().toLowerCase() ?? '';
+            final email = (r['email'] ?? '').toString().toLowerCase();
+            return name.contains(_searchQuery) ||
+                phone.contains(_searchQuery) ||
+                villa.contains(_searchQuery) ||
+                email.contains(_searchQuery);
+          }).toList();
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,13 +381,16 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
               ],
             ),
           ),
-          Container(
-            margin: const EdgeInsets.only(left: 8),
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: isActive ? DesignColors.primary : DesignColors.textTertiary,
-              shape: BoxShape.circle,
+          Tooltip(
+            message: isActive ? 'Active' : 'Inactive',
+            child: Container(
+              margin: const EdgeInsets.only(left: 8),
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isActive ? DesignColors.primary : DesignColors.textTertiary,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
         ],
@@ -473,6 +504,29 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
   Future<void> _handleMoveOut(String residentId, String villaId) async {
     Navigator.of(context).pop();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm move-out'),
+        content: const Text(
+          'This resident will be marked as moved out and lose access. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: DesignColors.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Move out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     try {
       await ref
           .read(adminResidentManagementRepositoryProvider)
@@ -494,6 +548,26 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
   Future<void> _handleReactivate(String residentId) async {
     Navigator.of(context).pop();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm reactivation'),
+        content: const Text(
+          'This will restore the resident\'s access to the society app. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reactivate'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     try {
       await ref
           .read(adminResidentManagementRepositoryProvider)

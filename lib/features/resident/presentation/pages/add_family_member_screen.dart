@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/constants/form_options.dart';
 import '../../data/models/family_member_model.dart';
 import '../../data/providers/family_member_provider.dart';
 
@@ -27,16 +29,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
   DateTime? _dateOfBirth;
   bool _isSubmitting = false;
 
-  final List<String> _relationships = [
-    'Spouse',
-    'Son',
-    'Daughter',
-    'Father',
-    'Mother',
-    'Brother',
-    'Sister',
-    'Other',
-  ];
+  final List<String> _relationships = FormOptions.familyRelationships;
 
   @override
   void initState() {
@@ -81,12 +74,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 hintText: 'Enter full name',
                 prefixIcon: Icon(Icons.person),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter name';
-                }
-                return null;
-              },
+              validator: (v) => Validators.required(v, 'Name'),
             ),
 
             const SizedBox(height: AppSpacing.md),
@@ -120,6 +108,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 prefixIcon: Icon(Icons.phone),
               ),
               keyboardType: TextInputType.phone,
+              validator: Validators.phoneOptional,
             ),
 
             const SizedBox(height: AppSpacing.md),

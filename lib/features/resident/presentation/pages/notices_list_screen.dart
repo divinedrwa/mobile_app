@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/notice_model.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -77,7 +78,7 @@ class NoticesListScreen extends ConsumerWidget {
                 child: EnterpriseInfoBanner(
                   icon: Icons.campaign_outlined,
                   title: 'Could not load notices',
-                  message: error.toString(),
+                  message: userFacingMessage(error),
                   tone: EnterpriseTone.danger,
                   actionLabel: 'Retry',
                   onAction: () => ref.invalidate(noticesProvider),

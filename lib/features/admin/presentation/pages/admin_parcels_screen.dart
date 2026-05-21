@@ -5,6 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -23,6 +24,8 @@ class AdminParcelsScreen extends ConsumerStatefulWidget {
 class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
     with WidgetsBindingObserver {
   String? _statusFilter; // null = All
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -32,6 +35,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
 
   @override
   void dispose() {
+    _searchCtl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -126,9 +130,18 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
         rawParcels.map((e) => _AdminParcel.fromJson(e)).toList();
 
     // Apply local status filter.
-    final filtered = _statusFilter == null
+    var filtered = _statusFilter == null
         ? allParcels
         : allParcels.where((p) => p.status == _statusFilter).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((p) {
+        return p.description.toLowerCase().contains(_searchQuery) ||
+            p.villaNumber.toLowerCase().contains(_searchQuery) ||
+            p.ownerName.toLowerCase().contains(_searchQuery) ||
+            p.courier.toLowerCase().contains(_searchQuery);
+      }).toList();
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -140,6 +153,12 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
 
         // ── Filter chips ──
         _buildFilterChips(allParcels),
+        const SizedBox(height: AppSpacing.sm),
+        AdminSearchField(
+          controller: _searchCtl,
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          hint: 'Search by description, villa, courier…',
+        ),
         const SizedBox(height: AppSpacing.lg),
 
         // ── List ──

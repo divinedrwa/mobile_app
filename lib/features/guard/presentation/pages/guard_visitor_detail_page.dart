@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/utils/phone_launch.dart';
+import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -359,8 +359,8 @@ class _GuardVisitorDetailPageState
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    SelectableText(
-                                      v.phone,
+                                    Text(
+                                      maskPhone(v.phone),
                                       style: GuardTokens.bodyStyle(context)
                                           .copyWith(
                                         fontWeight: FontWeight.w700,

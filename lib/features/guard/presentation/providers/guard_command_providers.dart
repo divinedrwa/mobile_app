@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/models/guard_models.dart';
 import 'guard_providers.dart';
@@ -119,5 +120,59 @@ class GuardDeliverySubmitParams {
   final String? description;
 }
 
-/// Maps errors for UI without importing Dio in widgets.
-String guardCommandErrorMessage(Object e) => userFacingMessage(e);
+/// Maps errors to guard-friendly, actionable messages.
+///
+/// Falls through to the backend's own message when available, but wraps
+/// generic exception types with context a gate guard can act on.
+String guardCommandErrorMessage(Object e) {
+  final ex = e is AppException ? e : null;
+
+  // Network / connectivity
+  if (e is NetworkException) {
+    return e.message.contains('timeout')
+        ? 'Request timed out — check your connection and retry.'
+        : 'No internet. Connect to Wi-Fi or mobile data and retry.';
+  }
+
+  // Auth expired mid-shift
+  if (e is UnauthorizedException) {
+    return 'Session expired. Close this screen and log in again.';
+  }
+
+  // Permission / shift mismatch
+  if (e is ForbiddenException) {
+    final msg = e.message;
+    // Prefer backend message when it's specific
+    if (msg != 'Access forbidden' && msg.isNotEmpty) return msg;
+    return 'You don\'t have permission. Your shift may have ended or gate access changed.';
+  }
+
+  // Record removed
+  if (e is NotFoundException) {
+    final msg = e.message;
+    if (msg != 'Resource not found' && msg.isNotEmpty) return msg;
+    return 'Record not found — it may have been removed. Pull down to refresh.';
+  }
+
+  // Conflict (duplicate entry, already completed)
+  if (ex != null && ex.statusCode == 409) {
+    final msg = ex.message;
+    if (msg.isNotEmpty && msg != 'Something went wrong') return msg;
+    return 'This action was already completed.';
+  }
+
+  // Server errors
+  if (e is ServerException) {
+    final msg = e.message;
+    if (msg != 'Server error occurred' && msg.isNotEmpty) return msg;
+    return 'Server error — please try again in a moment.';
+  }
+
+  // Validation (show backend Zod messages as-is)
+  if (e is ValidationException) {
+    return e.message;
+  }
+
+  // Fallback to the existing chain
+  return userFacingMessage(e);
+}

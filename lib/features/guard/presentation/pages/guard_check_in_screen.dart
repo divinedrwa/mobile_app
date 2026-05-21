@@ -114,6 +114,25 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       );
       return;
     }
+    // Confirmation before API call.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm check-in'),
+        content: Text('Check in ${_name.text.trim()} (${_type.name})?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Check in'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _submitting = true);
     try {
       // Build visitTargets from selected residents.
@@ -363,6 +382,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               TextFormField(
                                 controller: _phone,
                                 enabled: !_submitting,
+                                textInputAction: TextInputAction.next,
                                 keyboardType: TextInputType.phone,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
@@ -392,6 +412,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               TextFormField(
                                 controller: _name,
                                 enabled: !_submitting,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _submit(),
                                 textCapitalization: TextCapitalization.words,
                                 style: TextStyle(
                                   fontSize: 17,
@@ -954,18 +976,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     );
   }
 
-  String _labelForType(GuardCheckInVisitorType t) {
-    switch (t) {
-      case GuardCheckInVisitorType.guest:
-        return 'Guest';
-      case GuardCheckInVisitorType.delivery:
-        return 'Delivery';
-      case GuardCheckInVisitorType.serviceProvider:
-        return 'Service';
-      case GuardCheckInVisitorType.vendor:
-        return 'Vendor';
-    }
-  }
+  String _labelForType(GuardCheckInVisitorType t) => t.label;
 }
 
 class _IntroBanner extends StatelessWidget {

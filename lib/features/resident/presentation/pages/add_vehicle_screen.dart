@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/constants/form_options.dart';
 import '../../data/models/vehicle_model.dart';
 import '../../data/providers/vehicle_provider.dart';
 
@@ -25,13 +27,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   String _selectedType = 'Car';
   bool _isSubmitting = false;
 
-  final List<String> _vehicleTypes = [
-    'Car',
-    'Bike',
-    'Scooter',
-    'Truck',
-    'Other',
-  ];
+  final List<String> _vehicleTypes = FormOptions.vehicleTypes;
 
   @override
   void initState() {
@@ -76,12 +72,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
                 prefixIcon: Icon(Icons.numbers),
               ),
               textCapitalization: TextCapitalization.characters,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter vehicle number';
-                }
-                return null;
-              },
+              validator: Validators.vehicleNumber,
             ),
 
             const SizedBox(height: AppSpacing.md),

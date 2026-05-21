@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -136,7 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
+            content: Text(userFacingMessage(e, 'Login failed')),
             backgroundColor: DesignColors.error,
             duration: const Duration(seconds: 4),
           ),
@@ -687,7 +688,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
+            content: Text(userFacingMessage(e, 'Login failed')),
             backgroundColor: DesignColors.error,
             duration: const Duration(seconds: 4),
           ),

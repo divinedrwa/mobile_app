@@ -4,6 +4,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../constants/app_constants.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
+import 'interceptors/retry_interceptor.dart';
 import 'interceptors/society_context_interceptor.dart';
 
 /// Dio HTTP client configuration
@@ -30,6 +31,7 @@ class DioClient {
     _dio!.interceptors.addAll([
       SocietyContextInterceptor(),
       AuthInterceptor(),
+      RetryInterceptor(),
       ErrorInterceptor(),
       if (kDebugMode)
         PrettyDioLogger(

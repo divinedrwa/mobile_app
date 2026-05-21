@@ -7,6 +7,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_screen_section_header.dart';
 
@@ -63,6 +64,24 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
       return;
     }
     FocusScope.of(context).unfocus();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log vehicle entry'),
+        content: Text('Record $reg (${_isResident ? "Resident" : "Visitor"})?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _submitting = true);
     final span = GuardFlowTelemetry.start('guard_vehicle_entry');
     try {
@@ -90,7 +109,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
+      ).showSnackBar(SnackBar(content: Text(guardCommandErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

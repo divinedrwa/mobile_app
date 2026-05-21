@@ -165,6 +165,9 @@ class UserModel {
   /// (another occupant of the same villa is the PRIMARY payer).
   bool get isBillingExcluded => maintenanceBillingRole == 'EXCLUDED';
 
+  /// True when this resident is a tenant (not an owner).
+  bool get isTenant => residentType == ResidentType.tenant;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../../utils/shift_active_helper.dart';
@@ -121,6 +121,25 @@ class _GuardPreApprovedArrivalScreenState
     if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm entry'),
+        content: Text('Admit ${widget.entry.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Admit'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _submitting = true);
     try {
       final map = await ref
@@ -159,7 +178,7 @@ class _GuardPreApprovedArrivalScreenState
           SnackBar(
             behavior: SnackBarBehavior.floating,
             content: Text(
-              userFacingMessage(e, 'Could not check in visitor.'),
+              guardCommandErrorMessage(e),
             ),
           ),
         );
@@ -178,7 +197,7 @@ class _GuardPreApprovedArrivalScreenState
     final dateFmt = DateFormat('MMM d, y · h:mm a');
     final hasActiveShift = shiftsAsync.maybeWhen(
       data: _hasActiveShift,
-      orElse: () => true,
+      orElse: () => false,
     );
 
     return GuardThemeScope(

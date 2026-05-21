@@ -93,11 +93,27 @@ class AppRouter {
           if (isAuthenticated) {
             final role = user.role;
 
+            // Mobile app doesn't support super-admin. Force logout to
+            // prevent an infinite redirect loop (authenticated → /login →
+            // still authenticated → /login …).
             if (role == UserRole.superAdmin) {
-              return '/login';
+              Future.microtask(
+                () => ref.read(authProvider.notifier).logout(),
+              );
+              return null;
             }
 
             if (role == UserRole.resident && (isGuardRoute || isAdminRoute)) {
+              return '/resident';
+            }
+            // Block plain residents from admin sub-screens inside resident shell.
+            if (role == UserRole.resident && loc.startsWith('/resident/admin')) {
+              return '/resident';
+            }
+            // Block tenants from accessing society expenses.
+            if (role == UserRole.resident &&
+                user.isTenant &&
+                loc.startsWith('/resident/expenses')) {
               return '/resident';
             }
             if (role == UserRole.guard && (isResidentRoute || isAdminRoute)) {
@@ -111,7 +127,7 @@ class AppRouter {
             if (isLogin || isSocietySelect) {
               switch (role) {
                 case UserRole.superAdmin:
-                  return '/login';
+                  return null; // microtask logout handles it above
                 case UserRole.resident:
                   return '/resident';
                 case UserRole.guard:

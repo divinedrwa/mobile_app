@@ -502,29 +502,7 @@ class _PreApproveVisitorScreenState
     }
   }
 
-  String _getVisitorTypeLabel(VisitorType type) {
-    switch (type) {
-      case VisitorType.guest:
-        return 'Guest';
-      case VisitorType.delivery:
-        return 'Delivery';
-      case VisitorType.service:
-        return 'Service provider';
-      case VisitorType.vendor:
-        return 'Vendor';
-    }
-  }
+  String _getVisitorTypeLabel(VisitorType type) => type.label;
 
-  String _getVisitorTypeDescription(VisitorType type) {
-    switch (type) {
-      case VisitorType.guest:
-        return 'Friends, family, or social visitors';
-      case VisitorType.delivery:
-        return 'Packages, food, or courier drop-offs';
-      case VisitorType.service:
-        return 'Repairs, cleaning, or one-off appointments';
-      case VisitorType.vendor:
-        return 'Regular suppliers or contracted staff';
-    }
-  }
+  String _getVisitorTypeDescription(VisitorType type) => type.description;
 }

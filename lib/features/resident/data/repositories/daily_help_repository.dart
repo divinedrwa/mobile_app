@@ -85,7 +85,7 @@ class DailyHelpRepository {
       case 'gardener':
         return 'GARDENER';
       case 'security':
-        return 'SECURITY';
+        return 'OTHER';
       default:
         return 'OTHER';
     }

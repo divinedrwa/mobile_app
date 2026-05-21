@@ -6,6 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../resident/data/models/expense_category_model.dart';
 import '../../data/providers/admin_providers.dart';
@@ -31,6 +32,9 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
     decimalDigits: 0,
   );
 
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +43,7 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
 
   @override
   void dispose() {
+    _searchCtl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -106,6 +111,12 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
 
             // ── Category filter chips ──
             _buildCategoryChips(categoriesAsync, filter.categoryId),
+            const SizedBox(height: AppSpacing.sm),
+            AdminSearchField(
+              controller: _searchCtl,
+              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+              hint: 'Search by title, paid to…',
+            ),
             const SizedBox(height: AppSpacing.lg),
 
             // ── Expense list ──
@@ -263,7 +274,17 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
         ),
       ),
       data: (data) {
-        final expenses = data as List;
+        var expenses = data as List;
+        if (_searchQuery.isNotEmpty) {
+          expenses = expenses.where((e) {
+            final title = (e.title as String).toLowerCase();
+            final paidTo = (e.paidTo as String).toLowerCase();
+            final catName = (e.category?.name ?? '').toString().toLowerCase();
+            return title.contains(_searchQuery) ||
+                paidTo.contains(_searchQuery) ||
+                catName.contains(_searchQuery);
+          }).toList();
+        }
         if (expenses.isEmpty) {
           return Padding(
             padding: const EdgeInsets.only(top: 80),

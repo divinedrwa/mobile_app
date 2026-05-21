@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_screen_section_header.dart';
 
@@ -67,7 +67,7 @@ class _GuardIncidentReportPageState
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
+        ).showSnackBar(SnackBar(content: Text(guardCommandErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);

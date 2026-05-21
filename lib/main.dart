@@ -14,6 +14,7 @@ import 'core/session/account_deactivated_handler.dart';
 import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
+import 'core/widgets/offline_banner.dart';
 
 // ---------------------------------------------------------------------------
 // Native screen info for Display Zoom / Display Size detection.
@@ -132,7 +133,10 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
       themeMode: ThemeMode.light,
       routerConfig: _router!,
-      builder: _buildFixedScale,
+      builder: (context, child) {
+        final scaled = _buildFixedScale(context, child);
+        return OfflineBanner(child: scaled);
+      },
     );
   }
 

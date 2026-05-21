@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
@@ -235,7 +234,7 @@ class _GuardDeliveryQuickPageState
                               color: GuardTokens.warning,
                             ),
                             const SizedBox(width: GuardTokens.g2),
-                            Expanded(child: Text(userFacingMessage(e))),
+                            Expanded(child: Text(guardCommandErrorMessage(e))),
                             TextButton(
                               onPressed: () =>
                                   ref.invalidate(guardVillasProvider),
@@ -486,10 +485,16 @@ class _GuardDeliveryQuickPageState
   }
 
   Future<void> _submit(bool leftAtGate) async {
-    final residentsList =
-        await ref.read(guardResidentsPickerProvider.future);
-    if (residentsList.isEmpty) return;
-    final selected = _resident ?? residentsList.first;
+    if (_resident == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Select a resident before submitting'),
+        ),
+      );
+      return;
+    }
+    final selected = _resident!;
 
     setState(() => _submitting = true);
     try {
@@ -528,7 +533,7 @@ class _GuardDeliveryQuickPageState
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
+        ).showSnackBar(SnackBar(content: Text(guardCommandErrorMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);

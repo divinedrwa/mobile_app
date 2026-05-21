@@ -217,7 +217,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
 
                     // Community-level ledger — informational, not actionable.
-                    if (!isBillingExcluded) ...[
+                    // Hidden from tenants: fund balance is internal governance data.
+                    if (!isBillingExcluded && !(user?.isTenant ?? false)) ...[
                       _buildSocietyFundBalanceCard(context, dashboardAsync, billingAsync),
                       const SizedBox(height: _kSectionGap),
                     ],

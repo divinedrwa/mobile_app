@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -28,7 +29,7 @@ class PaymentHistoryScreen extends ConsumerWidget {
           child: EnterpriseInfoBanner(
             icon: Icons.receipt_long_outlined,
             title: 'Could not load payment history',
-            message: error.toString(),
+            message: userFacingMessage(error),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () => ref.invalidate(maintenanceHistoryProvider),

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -148,7 +149,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
           child: EnterpriseInfoBanner(
             icon: Icons.inventory_2_outlined,
             title: 'Could not load parcels',
-            message: error.toString(),
+            message: userFacingMessage(error),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () => ref.refresh(parcelProvider),

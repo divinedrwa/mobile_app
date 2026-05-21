@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
+import '../providers/guard_command_providers.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../ui/guard_tokens.dart';
@@ -68,6 +68,29 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
 
   Future<void> _broadcast() async {
     if (_sending) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm broadcast'),
+        content: const Text(
+          'This will send an emergency alert to all admins. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: GuardTokens.guardAccentDeep,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send broadcast'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _sending = true);
     unawaited(HapticFeedback.heavyImpact());
     final span = GuardFlowTelemetry.start('guard_soc_broadcast');
@@ -94,7 +117,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
+      ).showSnackBar(SnackBar(content: Text(guardCommandErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -223,7 +246,10 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
                 ),
                 const SizedBox(height: GuardTokens.g2),
                 Center(
-                  child: Material(
+                  child: Semantics(
+                    button: true,
+                    label: 'Send $_kind emergency broadcast. Long press to activate.',
+                    child: Material(
                     elevation: 8,
                     shadowColor: GuardTokens.dangerBrand.withValues(
                       alpha: 0.45,
@@ -294,6 +320,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
                               ),
                       ),
                     ),
+                  ),
                   ),
                 ),
                 const SizedBox(height: GuardTokens.g3),

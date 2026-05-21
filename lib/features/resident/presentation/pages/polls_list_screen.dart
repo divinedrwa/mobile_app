@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -35,7 +36,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                 color: DesignColors.error,
               ),
               const SizedBox(height: 12),
-              Text(error.toString(), textAlign: TextAlign.center),
+              Text(userFacingMessage(error), textAlign: TextAlign.center),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => ref.invalidate(pollsProvider),
@@ -324,7 +325,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
             final isSelected =
                 effectivePick != null && effectivePick == oid;
             final percentage = option['percentage'] as int;
-            final showResults = hasVoted || !isActive;
+            final showResults = !isActive;
 
             return Padding(
               padding: EdgeInsets.only(

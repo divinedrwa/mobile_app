@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_haptics.dart';
@@ -23,7 +25,8 @@ class SOSScreen extends ConsumerStatefulWidget {
   ConsumerState<SOSScreen> createState() => _SOSScreenState();
 }
 
-class _SOSScreenState extends ConsumerState<SOSScreen> {
+class _SOSScreenState extends ConsumerState<SOSScreen>
+    with WidgetsBindingObserver {
   SOSType? _selectedType;
   bool _arming = false;
   double _holdProgress = 0;
@@ -31,9 +34,24 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
   DateTime? _holdStart;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _holdTicker?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Cancel hold if user switches away — prevent accidental SOS in background.
+    if (state != AppLifecycleState.resumed && _arming) {
+      _cancelHold();
+    }
   }
 
   void _beginHold() {
@@ -77,6 +95,17 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
     });
   }
 
+  /// Check HTTP 409 by status code instead of fragile string matching.
+  bool _isConflict(Object e) {
+    if (e is AppException) return e.statusCode == 409;
+    if (e is DioException) {
+      if (e.response?.statusCode == 409) return true;
+      final inner = e.error;
+      if (inner is AppException && inner.statusCode == 409) return true;
+    }
+    return false;
+  }
+
   Future<void> _confirmAndSend() async {
     final type = _selectedType;
     if (type == null) return;
@@ -110,7 +139,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen> {
     } catch (e) {
       if (!mounted) return;
       final msg = userFacingMessage(e, 'Could not send SOS');
-      if (msg.contains('active SOS') || msg.contains('409')) {
+      if (_isConflict(e)) {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(

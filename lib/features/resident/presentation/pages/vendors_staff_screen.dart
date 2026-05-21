@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/daily_help_model.dart';
@@ -153,7 +154,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
         children: [
           const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
           const SizedBox(height: 10),
-          Text(error.toString(), textAlign: TextAlign.center),
+          Text(userFacingMessage(error), textAlign: TextAlign.center),
           const SizedBox(height: 12),
           Center(
             child: ElevatedButton(
@@ -248,7 +249,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
         children: [
           const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
           const SizedBox(height: 10),
-          Text(error.toString(), textAlign: TextAlign.center),
+          Text(userFacingMessage(error), textAlign: TextAlign.center),
           const SizedBox(height: 12),
           Center(
             child: ElevatedButton(

@@ -343,16 +343,19 @@ enum SOSStatus {
   bool get isOpen => !isTerminal;
 }
 
-/// Visitor Types
+/// Visitor Types — single source of truth for labels shown across resident
+/// and guard screens.
 enum VisitorType {
-  guest('GUEST'),
-  delivery('DELIVERY'),
+  guest('GUEST', 'Guest', 'Friends, family, or social visitors'),
+  delivery('DELIVERY', 'Delivery', 'Packages, food, or courier drop-offs'),
   /// Matches backend Prisma `VisitorType.SERVICE_PROVIDER` and `/residents/pre-approve-visitor` zod schema.
-  service('SERVICE_PROVIDER'),
-  vendor('VENDOR');
+  service('SERVICE_PROVIDER', 'Service', 'Repairs, cleaning, or one-off appointments'),
+  vendor('VENDOR', 'Vendor', 'Regular suppliers or contracted staff');
 
   final String value;
-  const VisitorType(this.value);
+  final String label;
+  final String description;
+  const VisitorType(this.value, this.label, this.description);
 }
 
 /// Booking Status

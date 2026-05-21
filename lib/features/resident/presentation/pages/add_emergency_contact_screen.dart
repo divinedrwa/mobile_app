@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/providers/emergency_contact_provider.dart';
@@ -90,8 +91,7 @@ class _AddEmergencyContactScreenState
                 prefixIcon: Icon(Icons.phone),
               ),
               keyboardType: TextInputType.phone,
-              validator: (v) =>
-                  v?.isEmpty ?? true ? 'Please enter phone' : null,
+              validator: Validators.phone,
             ),
             const SizedBox(height: AppSpacing.xl),
             ElevatedButton(

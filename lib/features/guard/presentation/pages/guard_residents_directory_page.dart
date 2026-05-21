@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/utils/phone_launch.dart';
+import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -298,6 +298,27 @@ class _ResidentCard extends StatelessWidget {
                 IconButton.outlined(
                   style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                   onPressed: () async {
+                    final display = row.phoneMasked?.trim().isNotEmpty == true
+                        ? row.phoneMasked!
+                        : maskPhone(row.phone);
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Call resident?'),
+                        content: Text('Dial ${row.name} at $display?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Call'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true || !context.mounted) return;
                     final ok = await launchDial(row.phone);
                     if (!context.mounted) return;
                     if (!ok) {

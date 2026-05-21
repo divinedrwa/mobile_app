@@ -6,6 +6,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
+import '../../../../core/constants/form_options.dart';
 import '../../data/providers/complaint_provider.dart' show
     complaintSubmitProvider, myComplaintsProvider;
 
@@ -25,16 +26,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
   String _selectedPriority = 'MEDIUM';
   bool _isSubmitting = false;
 
-  final categories = [
-    'Plumbing',
-    'Electrical',
-    'Cleaning',
-    'Security',
-    'Parking',
-    'Maintenance',
-    'Noise',
-    'Other',
-  ];
+  final categories = FormOptions.complaintCategories;
 
   @override
   void dispose() {

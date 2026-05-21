@@ -8,6 +8,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../resident/data/models/notice_model.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -25,6 +26,9 @@ class AdminNoticesScreen extends ConsumerStatefulWidget {
 
 class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
     with WidgetsBindingObserver {
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +37,7 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
 
   @override
   void dispose() {
+    _searchCtl.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -130,12 +135,43 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
               );
             }
 
-            return ListView.separated(
+            final filtered = _searchQuery.isEmpty
+                ? notices
+                : notices.where((n) {
+                    final title = n.title.toLowerCase();
+                    final content = n.content.toLowerCase();
+                    final cat = n.category.name.toLowerCase();
+                    return title.contains(_searchQuery) ||
+                        content.contains(_searchQuery) ||
+                        cat.contains(_searchQuery);
+                  }).toList();
+
+            return ListView(
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 80),
-              itemCount: notices.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, index) => _noticeCard(notices[index]),
+              children: [
+                AdminSearchField(
+                  controller: _searchCtl,
+                  onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                  hint: 'Search notices…',
+                ),
+                const SizedBox(height: 12),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 80),
+                    child: EmptyStateWidget(
+                      icon: Icons.search_off,
+                      title: 'No matches',
+                      subtitle: 'No notices match your search.',
+                      iconColor: DesignColors.textTertiary,
+                    ),
+                  )
+                else
+                  ...filtered.map((n) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _noticeCard(n),
+                      )),
+              ],
             );
           },
         ),

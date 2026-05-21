@@ -153,14 +153,17 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? DesignColors.primary
-                                : DesignColors.textTertiary,
-                            shape: BoxShape.circle,
+                        Tooltip(
+                          message: isActive ? 'Active' : 'Inactive',
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? DesignColors.primary
+                                  : DesignColors.textTertiary,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ],

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -18,6 +19,14 @@ class AdminParkingScreen extends ConsumerStatefulWidget {
 
 class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
   String? _typeFilter;
+  final _searchCtl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(adminParkingOverviewProvider);
@@ -162,6 +171,12 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
         // Vehicle list
         EnterpriseSectionHeader(title: 'Vehicles'),
         const SizedBox(height: 8),
+        AdminSearchField(
+          controller: _searchCtl,
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          hint: 'Search by number, villa, owner…',
+        ),
+        const SizedBox(height: 12),
         vehiclesAsync.when(
           loading: () => ShimmerWrap(
             child: Column(
@@ -217,13 +232,24 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
     }
 
     final types = typeCounts.keys.where((k) => k != null).toList()..sort();
-    final filtered = _typeFilter == null
+    var filtered = _typeFilter == null
         ? vehicles
         : vehicles.where((v) {
             final t = v['type']?.toString().toUpperCase() ??
                 v['vehicleType']?.toString().toUpperCase();
             return t == _typeFilter;
           }).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((v) {
+        final number = (v['vehicleNumber'] ?? v['registrationNumber'] ?? '').toString().toLowerCase();
+        final villa = (v['villa'] as Map<String, dynamic>?)?['villaNumber']?.toString().toLowerCase() ?? '';
+        final owner = (v['ownerName'] ?? v['residentName'] ?? '').toString().toLowerCase();
+        return number.contains(_searchQuery) ||
+            villa.contains(_searchQuery) ||
+            owner.contains(_searchQuery);
+      }).toList();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -26,23 +28,29 @@ class EmergencyContactsScreen extends ConsumerWidget {
         elevation: 0,
         title: const Text('Emergency Contacts'),
       ),
-      body: contactsState.when(
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(emergencyContactProvider.notifier).fetchContacts(),
+        child: contactsState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Padding(
+        error: (error, _) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [Padding(
           padding: EdgeInsets.all(context.spacing.s16),
           child: EnterpriseInfoBanner(
             icon: Icons.error_outline,
             title: 'Could not load emergency contacts',
-            message: error.toString(),
+            message: userFacingMessage(error),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () =>
                 ref.read(emergencyContactProvider.notifier).fetchContacts(),
           ),
-        ),
+        )]),
         data: (contacts) {
           if (contacts.isEmpty) {
-            return EmptyStateWidget(
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [EmptyStateWidget(
               icon: Icons.emergency_outlined,
               title: 'No emergency contacts',
               subtitle:
@@ -54,10 +62,11 @@ class EmergencyContactsScreen extends ConsumerWidget {
                   builder: (context) => const AddEmergencyContactScreen(),
                 ),
               ),
-            );
+            )]);
           }
 
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.all(context.spacing.s16),
             children: [
               const EnterpriseInfoBanner(
@@ -86,7 +95,7 @@ class EmergencyContactsScreen extends ConsumerWidget {
             ],
           );
         },
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(

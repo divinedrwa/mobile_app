@@ -11,6 +11,7 @@ import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/utils/media_url.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../shared/models/user_model.dart';
@@ -175,8 +176,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autocorrect: false,
-                          validator: (v) =>
-                              v?.trim().isEmpty ?? true ? 'Please enter your email' : null,
+                          validator: Validators.email,
                         ),
                         const SizedBox(height: DesignSpacing.lg),
                         TextFormField(
@@ -189,6 +189,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                           keyboardType: TextInputType.phone,
                           textInputAction: TextInputAction.done,
+                          validator: Validators.phoneOptional,
                         ),
                       ],
                     ),
