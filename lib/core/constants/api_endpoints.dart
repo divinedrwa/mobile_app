@@ -12,6 +12,7 @@ class ApiEndpoints {
   /// Public: complete onboarding with admin-issued invitation token (`POST`).
   static const String registerWithInvitation = '/auth/register-with-invitation';
   static const String logout = '/auth/logout';
+  static const String refreshToken = '/auth/refresh';
 
   /// Register or refresh FCM token (authenticated). Keeps token in sync after refresh.
   static const String notificationsRegisterDevice = '/notifications/devices';

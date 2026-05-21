@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,20 +61,39 @@ void main() async {
 
   registerGuardFlowTelemetry(firebaseAvailable: r.firebaseInitialized);
 
+  // Set up Firebase Crashlytics (release builds only).
+  if (r.firebaseInitialized && kReleaseMode) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  }
+
   final pushBinding = PushLifecycleBinding();
   WidgetsBinding.instance.addObserver(pushBinding);
 
-  runApp(
-    // Changing [appRestartKey] rebuilds the entire tree including
-    // ProviderScope — a full in-process restart (see [restartApp]).
-    ValueListenableBuilder<Key>(
-      valueListenable: appRestartKey,
-      builder: (_, key, _) => ProviderScope(
-        key: key,
-        child: const DivineApp(),
+  void startApp() {
+    runApp(
+      // Changing [appRestartKey] rebuilds the entire tree including
+      // ProviderScope — a full in-process restart (see [restartApp]).
+      ValueListenableBuilder<Key>(
+        valueListenable: appRestartKey,
+        builder: (_, key, _) => ProviderScope(
+          key: key,
+          child: const DivineApp(),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  // In release builds, catch uncaught async errors via Crashlytics.
+  if (r.firebaseInitialized && kReleaseMode) {
+    runZonedGuarded(
+      startApp,
+      (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      },
+    );
+  } else {
+    startApp();
+  }
 }
 
 class DivineApp extends ConsumerStatefulWidget {

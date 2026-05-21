@@ -30,6 +30,7 @@ bool _isSessionExpiryExempt(String path) {
   return p.endsWith('/auth/login') ||
       p.endsWith('/auth/register-with-invitation') ||
       p.endsWith('/auth/logout') ||
+      p.endsWith('/auth/refresh') ||
       p.endsWith('/notifications/devices/remove') ||
       p.endsWith('/notifications/devices');
 }

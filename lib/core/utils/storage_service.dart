@@ -61,6 +61,19 @@ class StorageService {
     await prefs.remove(AppConstants.keyToken);
   }
 
+  // Refresh token — always secure storage.
+  static Future<void> saveRefreshToken(String token) async {
+    await _secure.write(key: AppConstants.keyRefreshToken, value: token);
+  }
+
+  static Future<String?> getRefreshToken() async {
+    return _secure.read(key: AppConstants.keyRefreshToken);
+  }
+
+  static Future<void> removeRefreshToken() async {
+    await _secure.delete(key: AppConstants.keyRefreshToken);
+  }
+
   /// Fills [userData] 'societyId' when the API omits it, using preferred login and the
   /// last stored key. Call before persisting or when building [UserModel] from cache.
   static void ensureSocietyIdInUserMap(Map<String, dynamic> userData) {
@@ -152,6 +165,7 @@ class StorageService {
   /// Clears JWT + cached user rows only (keeps API URL, biometric prefs, preferred society for login).
   static Future<void> clearAuthUserSession() async {
     await removeToken();
+    await removeRefreshToken();
     await prefs.remove(AppConstants.keyUserData);
     await prefs.remove(AppConstants.keyUserId);
     await prefs.remove(AppConstants.keyUserRole);
@@ -173,8 +187,9 @@ class StorageService {
     final preferredSocietyName = prefs.getString(AppConstants.keyPreferredLoginSocietyName);
     final rememberMe = prefs.getBool(AppConstants.keyRememberMe);
     await prefs.clear();
-    // The JWT lives in secure storage; prefs.clear() doesn't reach it.
+    // The JWT and refresh token live in secure storage; prefs.clear() doesn't reach them.
     await _secure.delete(key: AppConstants.keyToken);
+    await _secure.delete(key: AppConstants.keyRefreshToken);
     if (apiBase != null && apiBase.isNotEmpty) {
       await prefs.setString(AppConstants.keyApiBaseUrl, apiBase);
     }

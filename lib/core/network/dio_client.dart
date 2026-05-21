@@ -6,6 +6,7 @@ import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
 import 'interceptors/society_context_interceptor.dart';
+import 'interceptors/token_refresh_interceptor.dart';
 
 /// Dio HTTP client configuration
 class DioClient {
@@ -32,6 +33,7 @@ class DioClient {
       SocietyContextInterceptor(),
       AuthInterceptor(),
       RetryInterceptor(),
+      TokenRefreshInterceptor(),
       ErrorInterceptor(),
       if (kDebugMode)
         PrettyDioLogger(

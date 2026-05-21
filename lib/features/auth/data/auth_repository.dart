@@ -192,9 +192,13 @@ class AuthRepository {
         throw AppException(message: 'No user data in response');
       }
 
-      // Save token
+      // Save tokens
       final token = response.data['token'].toString();
       await StorageService.saveToken(token);
+      final refreshToken = response.data['refreshToken']?.toString();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await StorageService.saveRefreshToken(refreshToken);
+      }
       if (kDebugMode) {
         debugPrint('✅ Token saved: ${token.substring(0, 20)}...');
       }
@@ -325,6 +329,10 @@ class AuthRepository {
       }
 
       await StorageService.saveToken(root['token'].toString());
+      final regRefreshToken = root['refreshToken']?.toString();
+      if (regRefreshToken != null && regRefreshToken.isNotEmpty) {
+        await StorageService.saveRefreshToken(regRefreshToken);
+      }
       final userData = Map<String, dynamic>.from(
         root['user'] as Map<dynamic, dynamic>,
       );
