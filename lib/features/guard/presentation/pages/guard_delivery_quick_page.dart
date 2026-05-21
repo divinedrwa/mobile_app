@@ -114,7 +114,11 @@ class _GuardDeliveryQuickPageState
                           runSpacing: spacing,
                           children: _brands.map((b) {
                             final sel = _brand == b.api;
-                            return SizedBox(
+                            return Semantics(
+                              label: '${b.label} courier${sel ? ', selected' : ''}',
+                              button: true,
+                              selected: sel,
+                              child: SizedBox(
                               width: cellW,
                               child: Material(
                                 color: sel
@@ -186,6 +190,7 @@ class _GuardDeliveryQuickPageState
                                   ),
                                 ),
                               ),
+                            ),
                             );
                           }).toList(),
                         );

@@ -12,6 +12,7 @@ import '../../../../core/utils/phone_launch.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
+import '../providers/guard_visitor_approval_notifier.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_screen_section_header.dart';
 
@@ -39,17 +40,9 @@ class _GuardVisitorApprovalPageState
   final _otp = TextEditingController();
   final _villaQuery = TextEditingController();
 
-  ResidentPickerItem? _resident;
-  bool _submittingOtp = false;
-  bool _submittingNotify = false;
-  bool _submittingAllow = false;
-  bool? _otpVerified;
   /// Ensures [initialExtra] `villaId` is applied even when [guardVillasProvider] is already loaded.
   bool _didResolveInitialVilla = false;
   bool _requestedVillasRefresh = false;
-  /// When non-null, the id of the pre-approved entry currently being admitted
-  /// (used to show a per-row spinner + disable the others).
-  String? _admittingPreApprovedId;
 
   @override
   void initState() {
@@ -118,7 +111,9 @@ class _GuardVisitorApprovalPageState
     _didResolveInitialVilla = true;
     if (found != null) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _resident = found);
+        if (mounted) {
+          ref.read(visitorApprovalFormProvider.notifier).selectResident(found);
+        }
       });
     }
   }
@@ -145,7 +140,7 @@ class _GuardVisitorApprovalPageState
         widget.visitorId == 'dir' &&
         residentName != null &&
         residentName.isNotEmpty;
-    final selectedFlatLabel = _resident?.flatLabel;
+    final selectedFlatLabel = ref.watch(visitorApprovalFormProvider).resident?.flatLabel;
 
     final title = hasResidentCtx ? 'Approving for $residentName' : 'Request';
     final subtitle = hasResidentCtx
@@ -208,6 +203,15 @@ class _GuardVisitorApprovalPageState
 
   @override
   Widget build(BuildContext context) {
+    final formState = ref.watch(visitorApprovalFormProvider);
+    final formNotifier = ref.read(visitorApprovalFormProvider.notifier);
+    // Local aliases for minimal diff with old field references.
+    final _resident = formState.resident;
+    final _submittingOtp = formState.submittingOtp;
+    final _submittingNotify = formState.submittingNotify;
+    final _submittingAllow = formState.submittingAllow;
+    final _otpVerified = formState.otpVerified;
+
     if (!_requestedVillasRefresh) {
       _requestedVillasRefresh = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -423,10 +427,7 @@ class _GuardVisitorApprovalPageState
                                         : Colors.transparent,
                                     child: InkWell(
                                       onTap: () {
-                                        setState(() {
-                                          _resident = r;
-                                          _otpVerified = null;
-                                        });
+                                        formNotifier.selectResident(r);
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -713,7 +714,8 @@ class _GuardVisitorApprovalPageState
     // Prefer the resolved resident's villa (handles manual changes); fall back
     // to the villaId carried in by the directory tap.
     final vid =
-        (_resident?.villaId ?? widget.initialExtra?['villaId'])?.trim();
+        (ref.watch(visitorApprovalFormProvider).resident?.villaId ??
+            widget.initialExtra?['villaId'])?.trim();
     if (vid == null || vid.isEmpty) return const SizedBox.shrink();
 
     final async = ref.watch(guardPreApprovedEntriesProvider);
@@ -767,14 +769,18 @@ class _GuardVisitorApprovalPageState
                 style: GuardTokens.captionStyle(context),
               ),
               const SizedBox(height: GuardTokens.g2),
-              for (final e in shown)
-                _PreApprovedAdmitRow(
-                  entry: e,
-                  admitting: _admittingPreApprovedId == e.id,
-                  disabled: _admittingPreApprovedId != null &&
-                      _admittingPreApprovedId != e.id,
-                  onAdmit: () => _admitPreApprovedInline(e),
-                ),
+              ...() {
+                final admId = ref.watch(visitorApprovalFormProvider).admittingPreApprovedId;
+                return [
+                  for (final e in shown)
+                    _PreApprovedAdmitRow(
+                      entry: e,
+                      admitting: admId == e.id,
+                      disabled: admId != null && admId != e.id,
+                      onAdmit: () => _admitPreApprovedInline(e),
+                    ),
+                ];
+              }(),
               if (more > 0) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -791,58 +797,22 @@ class _GuardVisitorApprovalPageState
     );
   }
 
-  /// One-tap admit for a pre-approval row. Mirrors the cache invalidations
-  /// done by [_allowEntry] and the standalone arrival screen so the home,
-  /// active and today feeds all refresh.
+  /// One-tap admit for a pre-approval row.
   Future<void> _admitPreApprovedInline(GuardPreApprovedEntry entry) async {
-    setState(() => _admittingPreApprovedId = entry.id);
-    final span = GuardFlowTelemetry.start(
-      'guard_admit_preapproved_from_approval',
-    );
-    try {
-      final map = await ref
-          .read(guardRepositoryProvider)
-          .admitPreApprovedEntry(entry.id);
-      final admitted = map['admitted'] == true;
-      if (!mounted) return;
-      if (admitted) {
-        span.complete();
-        ref.invalidate(guardPreApprovedEntriesProvider);
-        ref.invalidate(guardDashboardProvider);
-        ref.invalidate(guardTodayVisitorsProvider);
-        ref.invalidate(guardPendingVisitorsProvider);
-        ref.invalidate(guardActiveVisitorsTabProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            content: Text(
-              map['message']?.toString() ?? '${entry.name} checked in',
-            ),
-          ),
-        );
-        context.pop(true);
-        return;
-      }
-      span.complete(success: false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(
-            map['message']?.toString() ?? 'Could not admit visitor',
-          ),
+    final result = await ref
+        .read(visitorApprovalFormProvider.notifier)
+        .admitPreApproved(entry.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          result.message ?? (result.success ? '${entry.name} checked in' : 'Could not admit visitor'),
         ),
-      );
-    } catch (e) {
-      span.complete(success: false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userFacingMessage(e, 'Could not admit visitor.')),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _admittingPreApprovedId = null);
+      ),
+    );
+    if (result.success) {
+      context.pop(true);
     }
   }
 
@@ -875,167 +845,45 @@ class _GuardVisitorApprovalPageState
   }
 
   Future<void> _verifyOtp() async {
-    final resident = _resident ?? await _firstResident();
+    final result = await ref
+        .read(visitorApprovalFormProvider.notifier)
+        .verifyOtp(otp: _otp.text);
     if (!mounted) return;
-    if (resident == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Select a resident first')));
-      return;
-    }
-    if (_otp.text.trim().length < 4) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter OTP from resident')));
-      return;
-    }
-    setState(() {
-      _submittingOtp = true;
-      _otpVerified = null;
-    });
-    try {
-      final res = await ref
-          .read(guardRepositoryProvider)
-          .verifyVisitorOtp(otp: _otp.text.trim(), villaId: resident.villaId);
-      final ok = res['verified'] == true;
-      setState(() => _otpVerified = ok);
-      if (mounted) {
-        final apiMsg = res['message']?.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              ok ? 'OTP verified' : (apiMsg ?? 'Verification failed'),
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _otpVerified = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
-      }
-    } finally {
-      if (mounted) setState(() => _submittingOtp = false);
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message ?? 'Done'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _notifyResident() async {
-    final resident = _resident ?? await _firstResident();
-    if (!mounted) return;
-    if (resident == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Select a resident first')));
-      return;
-    }
-    if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter visitor name and phone')),
-      );
-      return;
-    }
-    setState(() => _submittingNotify = true);
-    final span = GuardFlowTelemetry.start('guard_notify_visitor_at_gate');
-    try {
-      await ref
-          .read(guardRepositoryProvider)
-          .notifyVisitorAtGate(
-            villaId: resident.villaId,
-            visitorName: _name.text.trim(),
-            visitorPhone: _phone.text.trim(),
-          );
-      span.complete();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Flat residents were notified')),
+    final result = await ref
+        .read(visitorApprovalFormProvider.notifier)
+        .notifyResident(
+          visitorName: _name.text.trim(),
+          visitorPhone: _phone.text.trim(),
         );
-      }
-    } catch (e) {
-      span.complete(success: false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
-      }
-    } finally {
-      if (mounted) setState(() => _submittingNotify = false);
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.message ?? 'Done')),
+    );
   }
 
   Future<void> _allowEntry() async {
-    final resident = _resident ?? await _firstResident();
-    if (!mounted) return;
-    if (resident == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Select a resident')));
-      return;
-    }
-    final otp = _otp.text.trim();
-    if (otp.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter OTP to allow gate entry')),
-      );
-      return;
-    }
-
-    setState(() => _submittingAllow = true);
-    final span = GuardFlowTelemetry.start('guard_allow_entry');
-    try {
-      final res = await ref
-          .read(guardRepositoryProvider)
-          .approveVisitorEntry(
-            otp: otp,
-            villaId: resident.villaId,
-            visitorName: _name.text.trim(),
-            visitorPhone: _phone.text.trim(),
-          );
-      final admitted = res['admitted'] == true || res['verified'] == true;
-      if (!mounted) return;
-      if (admitted) {
-        span.complete();
-        ref.invalidate(guardDashboardProvider);
-        ref.invalidate(guardTodayVisitorsProvider);
-        ref.invalidate(guardPendingVisitorsProvider);
-        ref.invalidate(guardActiveVisitorsTabProvider);
-        ref.invalidate(guardPreApprovedEntriesProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              res['message']?.toString() ?? 'Visitor admitted and checked in',
-            ),
-          ),
+    final result = await ref
+        .read(visitorApprovalFormProvider.notifier)
+        .allowEntry(
+          otp: _otp.text,
+          visitorName: _name.text.trim(),
+          visitorPhone: _phone.text.trim(),
         );
-        context.pop(true);
-        return;
-      }
-      span.complete(success: false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(res['message']?.toString() ?? 'Entry not allowed'),
-        ),
-      );
-    } catch (e) {
-      span.complete(success: false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
-      }
-    } finally {
-      if (mounted) setState(() => _submittingAllow = false);
-    }
-  }
-
-  Future<ResidentPickerItem?> _firstResident() async {
-    try {
-      final list = await ref.read(guardResidentsPickerProvider.future);
-      return list.isEmpty ? null : list.first;
-    } catch (_) {
-      return null;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.message ?? 'Done')),
+    );
+    if (result.success) {
+      context.pop(true);
     }
   }
 

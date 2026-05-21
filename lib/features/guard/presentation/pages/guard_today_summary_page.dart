@@ -5,6 +5,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_skeletons.dart';
 
 class _VisitBreakdown {
   const _VisitBreakdown({
@@ -120,8 +121,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
           loading: () => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: const [
-              SizedBox(height: 120),
-              Center(child: CircularProgressIndicator()),
+              GuardSummarySkeleton(),
             ],
           ),
           error: (e, _) => ListView(
@@ -404,7 +404,9 @@ class _MetricCard extends StatelessWidget {
     final w = MediaQuery.sizeOf(context).width;
     final tileW = (w - GuardTokens.padScreen * 2 - 10) / 2;
     final width = tileW.clamp(140.0, 420.0);
-    return Container(
+    return Semantics(
+      label: '$value $label',
+      child: Container(
       width: width,
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
@@ -460,6 +462,7 @@ class _MetricCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

@@ -327,4 +327,12 @@ class ApiEndpoints {
   static const String waterSupplyToggle = '/water-supply/toggle';
   /// Guard / admin — log collector entry (`POST` body: gateId, notes?).
   static const String garbageCollectionEntry = '/garbage-collection/entry';
+
+  // ── Admin: Guard Patrols ────────────────────────────────────────────
+  static const String adminGuardPatrols = '/guard-patrols';
+  static String adminGuardPatrolStatus(String id) =>
+      '/guard-patrols/$id/status';
+
+  // ── Admin / Guard: Incidents ────────────────────────────────────────
+  static const String incidents = '/incidents';
 }

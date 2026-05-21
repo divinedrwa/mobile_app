@@ -10,6 +10,7 @@ import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_pre_approved_entries_list.dart';
 import '../widgets/guard_empty_placeholder.dart';
+import '../widgets/guard_skeletons.dart';
 
 List<BoxShadow> _visitorsListCardShadow(BuildContext context) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -359,14 +360,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
 
     return async.when(
       loading: () => const SizedBox.expand(
-        child: ColoredBox(
-          color: GuardTokens.surfaceCard,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GuardTokens.guardAccentDeep,
-            ),
-          ),
-        ),
+        child: GuardListSkeleton(),
       ),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
@@ -599,14 +593,7 @@ class _PreApprovedTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const SizedBox.expand(
-        child: ColoredBox(
-          color: GuardTokens.surfaceCard,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GuardTokens.guardAccentDeep,
-            ),
-          ),
-        ),
+        child: GuardListSkeleton(),
       ),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
@@ -664,14 +651,7 @@ class _DeliveriesTab extends ConsumerWidget {
 
     return parcelsAsync.when(
       loading: () => const SizedBox.expand(
-        child: ColoredBox(
-          color: GuardTokens.surfaceCard,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GuardTokens.guardAccentDeep,
-            ),
-          ),
-        ),
+        child: GuardListSkeleton(),
       ),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
@@ -848,14 +828,7 @@ class _VehicleTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const SizedBox.expand(
-        child: ColoredBox(
-          color: GuardTokens.surfaceCard,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: GuardTokens.guardAccentDeep,
-            ),
-          ),
-        ),
+        child: GuardListSkeleton(),
       ),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
@@ -901,8 +874,7 @@ class _VehicleTab extends ConsumerWidget {
             ),
           );
         }
-        final insideCount =
-            entries.where((e) => _guardVehicleAwaitingExit(e)).length;
+        final insideCount = entries.where((v) => v.isInside).length;
         return SizedBox.expand(
           child: RefreshIndicator(
           color: GuardTokens.guardAccentDeep,
@@ -928,25 +900,10 @@ class _VehicleTab extends ConsumerWidget {
                   ),
                 );
               }
-              final raw = entries[i - 1];
-              final id = raw['id']?.toString();
-              final reg = raw['registrationNumber']?.toString() ?? '';
-              final kind = raw['kind']?.toString() ?? '';
-              final awaitingExit = _guardVehicleAwaitingExit(raw);
-              final villa = raw['villa'] as Map<String, dynamic>?;
-              final flat = villa == null
-                  ? ''
-                  : [
-                      if (villa['block'] != null &&
-                          '${villa['block']}'.trim().isNotEmpty)
-                        villa['block'].toString().trim(),
-                      if (villa['villaNumber'] != null &&
-                          '${villa['villaNumber']}'.trim().isNotEmpty)
-                        villa['villaNumber'].toString().trim(),
-                    ].where((x) => x.isNotEmpty).join(' · ');
+              final v = entries[i - 1];
               final subtitleLine = [
-                _vehicleKindLabel(kind),
-                if (flat.isNotEmpty) flat,
+                _vehicleKindLabel(v.kind),
+                if (v.flatLabel.isNotEmpty) v.flatLabel,
               ].join(' · ');
 
               return Card(
@@ -961,15 +918,15 @@ class _VehicleTab extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          reg.isNotEmpty ? reg : '(No plate)',
+                          v.registrationNumber.isNotEmpty ? v.registrationNumber : '(No plate)',
                           style: GuardTokens.bodyStyle(context).copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       _StatePill(
-                        label: awaitingExit ? 'Inside' : 'Out',
-                        tone: awaitingExit
+                        label: v.isInside ? 'Inside' : 'Out',
+                        tone: v.isInside
                             ? GuardTokens.success
                             : GuardTokens.textSecondary,
                       ),
@@ -986,7 +943,7 @@ class _VehicleTab extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          awaitingExit
+                          v.isInside
                               ? 'Awaiting exit mark'
                               : 'Exit recorded',
                           style: GuardTokens.captionStyle(context),
@@ -994,7 +951,7 @@ class _VehicleTab extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  trailing: !awaitingExit || id == null || id.isEmpty
+                  trailing: !v.isInside || v.id.isEmpty
                       ? null
                       : _BusyTextActionButton(
                           style: GuardTokens.textLink(context),
@@ -1004,7 +961,7 @@ class _VehicleTab extends ConsumerWidget {
                             try {
                               await ref
                                   .read(guardRepositoryProvider)
-                                  .markGateVehicleExit(id);
+                                  .markGateVehicleExit(v.id);
                               ref.invalidate(
                                 guardGateVehicleTodayProvider,
                               );
@@ -1029,13 +986,6 @@ class _VehicleTab extends ConsumerWidget {
       },
     );
   }
-}
-
-bool _guardVehicleAwaitingExit(Map<String, dynamic> raw) {
-  final e = raw['exitAt'];
-  if (e == null) return true;
-  if (e is String && e.trim().isEmpty) return true;
-  return false;
 }
 
 String _vehicleKindLabel(String kind) {
@@ -1206,29 +1156,32 @@ class _SummaryBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tone.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: tone, size: 17),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: GuardTokens.captionStyle(context).copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5,
-                height: 1.2,
-                color: Theme.of(context).colorScheme.onSurface,
+    return Semantics(
+      label: label,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+        decoration: BoxDecoration(
+          color: tone.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: tone.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: tone, size: 17, semanticLabel: null),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: GuardTokens.captionStyle(context).copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  height: 1.2,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1242,22 +1195,25 @@ class _StatePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: tone.withValues(alpha: 0.22),
+    return Semantics(
+      label: 'Status: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: tone.withValues(alpha: 0.09),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: tone.withValues(alpha: 0.22),
+          ),
         ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: tone,
-          fontWeight: FontWeight.w700,
-          fontSize: 10,
-          height: 1.1,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: tone,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            height: 1.1,
+          ),
         ),
       ),
     );

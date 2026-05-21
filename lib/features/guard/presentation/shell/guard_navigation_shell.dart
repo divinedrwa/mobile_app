@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_haptics.dart';
+import '../../../resident/data/providers/notification_provider.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_offline_sync_notifier.dart';
 
 /// Bottom navigation shell for guard — separate from [ResidentShell].
-class GuardNavigationShell extends StatelessWidget {
+class GuardNavigationShell extends ConsumerWidget {
   const GuardNavigationShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? GuardTokens.darkSurface : GuardTokens.surfaceCard;
     final barBg = isDark ? GuardTokens.darkCard : Colors.white;
+    final unread = ref.watch(unreadCountProvider);
 
     return PopScope(
       canPop: false,
@@ -33,6 +37,7 @@ class GuardNavigationShell extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(child: shell),
+            _OfflineSyncStrip(),
             Material(
               elevation: 2,
               shadowColor: Colors.black12,
@@ -74,25 +79,39 @@ class GuardNavigationShell extends StatelessWidget {
                       DesignHaptics.selection();
                       shell.goBranch(index);
                     },
-                    destinations: const [
-                      NavigationDestination(
+                    destinations: [
+                      const NavigationDestination(
                         icon: Icon(Icons.space_dashboard_outlined),
                         selectedIcon: Icon(Icons.space_dashboard_rounded),
                         label: 'Home',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.sensor_door_outlined),
                         selectedIcon: Icon(Icons.sensor_door_rounded),
                         label: 'Active',
                       ),
-                      NavigationDestination(
+                      const NavigationDestination(
                         icon: Icon(Icons.receipt_long_outlined),
                         selectedIcon: Icon(Icons.receipt_long_rounded),
                         label: 'Logs',
                       ),
                       NavigationDestination(
-                        icon: Icon(Icons.person_outline_rounded),
-                        selectedIcon: Icon(Icons.person_rounded),
+                        icon: Badge(
+                          isLabelVisible: unread > 0,
+                          label: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          child: const Icon(Icons.person_outline_rounded),
+                        ),
+                        selectedIcon: Badge(
+                          isLabelVisible: unread > 0,
+                          label: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          child: const Icon(Icons.person_rounded),
+                        ),
                         label: 'Profile',
                       ),
                     ],
@@ -100,6 +119,55 @@ class GuardNavigationShell extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Slim banner above the nav bar when offline mutations are pending sync.
+class _OfflineSyncStrip extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sync = ref.watch(offlineSyncProvider);
+    if (sync.pendingCount == 0) return const SizedBox.shrink();
+
+    return Material(
+      color: GuardTokens.warningMuted,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(
+          children: [
+            if (sync.syncing)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(Icons.cloud_upload_outlined, size: 18, color: GuardTokens.warning),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                sync.syncing
+                    ? 'Syncing...'
+                    : '${sync.pendingCount} offline ${sync.pendingCount == 1 ? 'action' : 'actions'} pending',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+            if (!sync.syncing)
+              GestureDetector(
+                onTap: () => ref.read(offlineSyncProvider.notifier).syncAll(),
+                child: const Text(
+                  'Sync now',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: GuardTokens.guardAccentDeep,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

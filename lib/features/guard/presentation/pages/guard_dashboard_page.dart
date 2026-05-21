@@ -35,39 +35,41 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
     super.dispose();
   }
 
+  /// Reloads dashboard + satellite sections; awaits network so pull-to-refresh works.
+  Future<void> _refreshAll() async {
+    ref.invalidate(guardDashboardProvider);
+    ref.invalidate(guardMyGateProvider);
+    ref.invalidate(guardActiveAlertsProvider);
+    ref.invalidate(guardTodayVisitorsProvider);
+    ref.invalidate(guardPendingVisitorsProvider);
+    ref.invalidate(guardPreApprovedEntriesProvider);
+    ref.invalidate(guardActiveVisitorsTabProvider);
+    ref.invalidate(guardPendingParcelsProvider);
+    ref.invalidate(guardPatrolsTodayProvider);
+    ref.invalidate(guardMyPatrolsProvider);
+
+    await ref.read(guardDashboardProvider.future);
+
+    Future<void> silent(Future<dynamic> f) async {
+      try {
+        await f;
+      } catch (_) {}
+    }
+
+    await Future.wait<void>([
+      silent(ref.read(guardMyGateProvider.future)),
+      silent(ref.read(guardActiveAlertsProvider.future)),
+      silent(ref.read(guardTodayVisitorsProvider.future)),
+      silent(ref.read(guardPendingVisitorsProvider.future)),
+      silent(ref.read(guardPreApprovedEntriesProvider.future)),
+      silent(ref.read(guardActiveVisitorsTabProvider.future)),
+      silent(ref.read(guardPendingParcelsProvider.future)),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashAsync = ref.watch(guardDashboardProvider);
-
-    /// Reloads dashboard + satellite sections; awaits network so pull-to-refresh works.
-    Future<void> refreshAll() async {
-      ref.invalidate(guardDashboardProvider);
-      ref.invalidate(guardMyGateProvider);
-      ref.invalidate(guardActiveAlertsProvider);
-      ref.invalidate(guardTodayVisitorsProvider);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPendingParcelsProvider);
-
-      await ref.read(guardDashboardProvider.future);
-
-      Future<void> silent(Future<dynamic> f) async {
-        try {
-          await f;
-        } catch (_) {}
-      }
-
-      await Future.wait<void>([
-        silent(ref.read(guardMyGateProvider.future)),
-        silent(ref.read(guardActiveAlertsProvider.future)),
-        silent(ref.read(guardTodayVisitorsProvider.future)),
-        silent(ref.read(guardPendingVisitorsProvider.future)),
-        silent(ref.read(guardPreApprovedEntriesProvider.future)),
-        silent(ref.read(guardActiveVisitorsTabProvider.future)),
-        silent(ref.read(guardPendingParcelsProvider.future)),
-      ]);
-    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).brightness == Brightness.dark
@@ -106,13 +108,13 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
         loading: () => const GuardDashboardSkeleton(),
         error: (e, _) => GuardDashboardError(
           message: userFacingMessage(e, 'Could not load dashboard.'),
-          onRetry: refreshAll,
+          onRetry: _refreshAll,
         ),
         data: (d) => RefreshIndicator.adaptive(
-          onRefresh: refreshAll,
+          onRefresh: _refreshAll,
           child: _DashboardContent(
             dash: d,
-            onRefreshInvalidate: refreshAll,
+            onRefreshInvalidate: _refreshAll,
             scrollController: _scroll,
           ),
         ),
@@ -235,6 +237,7 @@ class _DashboardContent extends ConsumerWidget {
           onEmergency: () => context.push(GuardRoutes.emergency),
           onPreApprovedVisitors: () =>
               context.push(GuardRoutes.preApprovedList),
+          onPatrol: () => context.push(GuardRoutes.patrol),
         ),
         const SizedBox(height: GuardTokens.sectionGap + 6),
         GuardGateUtilitiesCard(

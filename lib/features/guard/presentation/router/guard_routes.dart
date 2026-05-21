@@ -14,6 +14,7 @@ import '../pages/guard_delivery_quick_page.dart';
 import '../pages/guard_vehicle_entry_page.dart';
 import '../pages/guard_emergency_page.dart';
 import '../pages/guard_incident_report_page.dart';
+import '../pages/guard_patrol_screen.dart';
 import '../pages/guard_residents_directory_page.dart';
 import '../pages/guard_shift_details_page.dart';
 import '../pages/guard_visitor_approval_page.dart';
@@ -43,6 +44,7 @@ abstract final class GuardRoutes {
   static const emergency = '/guard/emergency';
   static const incident = '/guard/incident-report';
   static const directory = '/guard/residents-directory';
+  static const patrol = '/guard/patrol';
   static const shift = '/guard/shift';
   static const notifications = '/guard/notifications';
   /// Full-screen detail; pass [GuardVisitorRow] as `extra`.
@@ -170,6 +172,11 @@ final class GuardRouteModule {
           path: 'emergency',
           parentNavigatorKey: appRootNavigatorKey,
           builder: (context, state) => const GuardEmergencyPage(),
+        ),
+        GoRoute(
+          path: 'patrol',
+          parentNavigatorKey: appRootNavigatorKey,
+          builder: (context, state) => const GuardPatrolScreen(),
         ),
         GoRoute(
           path: 'incident-report',

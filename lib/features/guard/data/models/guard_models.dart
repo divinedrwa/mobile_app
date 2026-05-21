@@ -513,6 +513,168 @@ String guardVisitorStatusLabel(GuardVisitorRow v, {bool compact = false}) {
   return v.status;
 }
 
+/// Typed vehicle entry from `GET /guards/gate-vehicle-today`.
+class GuardVehicleEntry {
+  GuardVehicleEntry({
+    required this.id,
+    required this.registrationNumber,
+    required this.kind,
+    this.exitAt,
+    this.villaBlock,
+    this.villaNumber,
+    this.notes,
+    this.createdAt,
+  });
+
+  final String id;
+  final String registrationNumber;
+  final String kind;
+  final DateTime? exitAt;
+  final String? villaBlock;
+  final String? villaNumber;
+  final String? notes;
+  final DateTime? createdAt;
+
+  bool get isInside => exitAt == null;
+
+  String get flatLabel {
+    if (villaNumber == null || villaNumber!.isEmpty) return '';
+    if (villaBlock != null && villaBlock!.isNotEmpty) {
+      return '$villaBlock · $villaNumber';
+    }
+    return villaNumber!;
+  }
+
+  factory GuardVehicleEntry.fromJson(Map<String, dynamic> json) {
+    DateTime? parseAt(dynamic v) {
+      if (v == null) return null;
+      if (v is String && v.trim().isEmpty) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    final villa = json['villa'];
+    Map<String, dynamic>? villaMap;
+    if (villa is Map) villaMap = Map<String, dynamic>.from(villa);
+
+    return GuardVehicleEntry(
+      id: json['id']?.toString() ?? '',
+      registrationNumber: json['registrationNumber']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? '',
+      exitAt: parseAt(json['exitAt']),
+      villaBlock: villaMap?['block']?.toString(),
+      villaNumber: villaMap?['villaNumber']?.toString(),
+      notes: _jsonString(json['notes']),
+      createdAt: parseAt(json['createdAt']),
+    );
+  }
+}
+
+/// Typed shift row from `GET /guards/my-shifts`.
+class GuardShiftRow {
+  GuardShiftRow({
+    required this.id,
+    required this.shiftType,
+    this.gateName,
+    this.gateId,
+    this.startTime,
+    this.endTime,
+    this.recurringDaily = false,
+    this.recurringStartMinutes,
+    this.recurringEndMinutes,
+  });
+
+  final String id;
+  final String shiftType;
+  final String? gateName;
+  final String? gateId;
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final bool recurringDaily;
+  final int? recurringStartMinutes;
+  final int? recurringEndMinutes;
+
+  /// Build the raw map that ShiftActiveHelper expects.
+  Map<String, dynamic> toRawMap() => {
+        'startTime': startTime?.toIso8601String(),
+        'endTime': endTime?.toIso8601String(),
+        'recurringDaily': recurringDaily,
+        'recurringStartMinutes': recurringStartMinutes,
+        'recurringEndMinutes': recurringEndMinutes,
+      };
+
+  factory GuardShiftRow.fromJson(Map<String, dynamic> json) {
+    DateTime? parseAt(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    final gate = json['gate'];
+    Map<String, dynamic>? gateMap;
+    if (gate is Map) gateMap = Map<String, dynamic>.from(gate);
+
+    return GuardShiftRow(
+      id: json['id']?.toString() ?? '',
+      shiftType: json['shiftType']?.toString() ?? 'SHIFT',
+      gateName: gateMap?['name']?.toString(),
+      gateId: gateMap?['id']?.toString(),
+      startTime: parseAt(json['startTime']),
+      endTime: parseAt(json['endTime']),
+      recurringDaily: json['recurringDaily'] == true,
+      recurringStartMinutes: _jsonInt(json['recurringStartMinutes']) == 0
+          ? null
+          : _jsonInt(json['recurringStartMinutes']),
+      recurringEndMinutes: _jsonInt(json['recurringEndMinutes']) == 0
+          ? null
+          : _jsonInt(json['recurringEndMinutes']),
+    );
+  }
+}
+
+/// Typed patrol row from `GET /guards/my-patrols` or `GET /guards/patrols-today`.
+class GuardPatrolRow {
+  GuardPatrolRow({
+    required this.id,
+    required this.checkpointName,
+    this.checkpointLocation,
+    this.scheduledTime,
+    this.actualTime,
+    required this.status,
+    this.notes,
+    this.createdAt,
+  });
+
+  final String id;
+  final String checkpointName;
+  final String? checkpointLocation;
+  final DateTime? scheduledTime;
+  final DateTime? actualTime;
+  final String status;
+  final String? notes;
+  final DateTime? createdAt;
+
+  bool get isInProgress => status.toUpperCase() == 'IN_PROGRESS';
+  bool get isCompleted => status.toUpperCase() == 'COMPLETED';
+  bool get isMissed => status.toUpperCase() == 'MISSED';
+
+  factory GuardPatrolRow.fromJson(Map<String, dynamic> json) {
+    DateTime? parseAt(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    return GuardPatrolRow(
+      id: json['id']?.toString() ?? '',
+      checkpointName: json['checkpointName']?.toString() ?? '',
+      checkpointLocation: _jsonString(json['checkpointLocation']),
+      scheduledTime: parseAt(json['scheduledTime']),
+      actualTime: parseAt(json['actualTime']),
+      status: json['status']?.toString() ?? 'SCHEDULED',
+      notes: _jsonString(json['notes']),
+      createdAt: parseAt(json['createdAt']),
+    );
+  }
+}
+
 /// GET /guards/residents-directory
 class ResidentDirectoryRow {
   ResidentDirectoryRow({

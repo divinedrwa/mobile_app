@@ -100,7 +100,7 @@ class GuardRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMyShifts({int days = 7}) async {
+  Future<List<GuardShiftRow>> getMyShifts({int days = 7}) async {
     try {
       final response = await _dio.get(
         ApiEndpoints.guardMyShifts,
@@ -110,10 +110,14 @@ class GuardRepository {
       if (data is! Map) return [];
       final map = Map<String, dynamic>.from(data);
       final list = map['shifts'] as List? ?? [];
-      return list
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      final out = <GuardShiftRow>[];
+      for (final e in list) {
+        if (e is! Map) continue;
+        try {
+          out.add(GuardShiftRow.fromJson(Map<String, dynamic>.from(e)));
+        } catch (_) {}
+      }
+      return out;
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load shifts');
     }
@@ -546,6 +550,49 @@ class GuardRepository {
     }
   }
 
+  Future<List<GuardPatrolRow>> getMyPatrols({int days = 7}) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.guardMyPatrols,
+        queryParameters: {'days': days},
+      );
+      final data = response.data;
+      if (data is! Map) return [];
+      final map = Map<String, dynamic>.from(data);
+      final list = map['patrols'] as List? ?? [];
+      final out = <GuardPatrolRow>[];
+      for (final e in list) {
+        if (e is! Map) continue;
+        try {
+          out.add(GuardPatrolRow.fromJson(Map<String, dynamic>.from(e)));
+        } catch (_) {}
+      }
+      return out;
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load patrols');
+    }
+  }
+
+  Future<List<GuardPatrolRow>> getPatrolsToday() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.guardPatrolsToday);
+      final data = response.data;
+      if (data is! Map) return [];
+      final map = Map<String, dynamic>.from(data);
+      final list = map['patrols'] as List? ?? [];
+      final out = <GuardPatrolRow>[];
+      for (final e in list) {
+        if (e is! Map) continue;
+        try {
+          out.add(GuardPatrolRow.fromJson(Map<String, dynamic>.from(e)));
+        } catch (_) {}
+      }
+      return out;
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load today\'s patrols');
+    }
+  }
+
   Future<Map<String, dynamic>> createGuardIncident({
     required String title,
     required String description,
@@ -617,7 +664,7 @@ class GuardRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getGateVehicleToday({DateTime? from, DateTime? to}) async {
+  Future<List<GuardVehicleEntry>> getGateVehicleToday({DateTime? from, DateTime? to}) async {
     try {
       final qp = <String, dynamic>{
         if (from != null) 'from': _ymd(from),
@@ -638,7 +685,14 @@ class GuardRepository {
           'results',
         ],
       );
-      return maps.map(_normalizeGateVehicleEntry).toList();
+      final normalized = maps.map(_normalizeGateVehicleEntry).toList();
+      final out = <GuardVehicleEntry>[];
+      for (final m in normalized) {
+        try {
+          out.add(GuardVehicleEntry.fromJson(m));
+        } catch (_) {}
+      }
+      return out;
     } on DioException catch (e) {
       throw mapDioException(e, 'Could not load vehicle log');
     }

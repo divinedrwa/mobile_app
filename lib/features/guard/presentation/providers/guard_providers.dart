@@ -184,12 +184,12 @@ final guardResidentsDirectoryProvider = FutureProvider.autoDispose
 );
 
 final guardGateVehicleTodayProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+    FutureProvider.autoDispose<List<GuardVehicleEntry>>((ref) async {
   return ref.read(guardRepositoryProvider).getGateVehicleToday();
 });
 
 final guardVehicleLogsProvider =
-    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
+    FutureProvider.autoDispose.family<List<GuardVehicleEntry>, String>(
   (ref, key) async {
     final repo = ref.read(guardRepositoryProvider);
     if (key == 'today') return repo.getGateVehicleToday();
@@ -201,7 +201,19 @@ final guardVehicleLogsProvider =
   },
 );
 
+/// Today's patrol entries (`GET /guards/patrols-today`).
+final guardPatrolsTodayProvider =
+    FutureProvider.autoDispose<List<GuardPatrolRow>>((ref) async {
+  return ref.read(guardRepositoryProvider).getPatrolsToday();
+});
+
+/// Recent patrols (`GET /guards/my-patrols`).
+final guardMyPatrolsProvider =
+    FutureProvider.autoDispose<List<GuardPatrolRow>>((ref) async {
+  return ref.read(guardRepositoryProvider).getMyPatrols();
+});
+
 final guardMyShiftsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+    FutureProvider.autoDispose<List<GuardShiftRow>>((ref) async {
   return ref.read(guardRepositoryProvider).getMyShifts();
 });

@@ -53,6 +53,8 @@ import '../../features/admin/presentation/pages/admin_data_tools_screen.dart';
 import '../../features/admin/presentation/pages/admin_amenities_screen.dart';
 import '../../features/admin/presentation/pages/admin_bank_accounts_screen.dart';
 import '../../features/admin/presentation/pages/admin_water_analytics_screen.dart';
+import '../../features/admin/presentation/pages/admin_patrols_screen.dart';
+import '../../features/admin/presentation/pages/admin_incidents_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
@@ -330,6 +332,16 @@ class AppRouter {
               path: 'admin-guard-shifts',
               builder: (context, state) =>
                   const AdminGuardShiftsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-patrols',
+              builder: (context, state) =>
+                  const AdminPatrolsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-incidents',
+              builder: (context, state) =>
+                  const AdminIncidentsScreen(),
             ),
             GoRoute(
               path: 'admin-polls',

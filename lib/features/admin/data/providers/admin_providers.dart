@@ -31,6 +31,8 @@ import '../repositories/admin_amenity_repository.dart';
 import '../repositories/admin_bank_account_repository.dart';
 import '../repositories/admin_upi_payment_repository.dart';
 import '../repositories/admin_water_analytics_repository.dart';
+import '../repositories/admin_patrol_repository.dart';
+import '../repositories/admin_incident_repository.dart';
 import '../../../resident/data/models/upi_payment_model.dart';
 
 // ── Dashboard ─────────────────────────────────────────────────────────
@@ -580,4 +582,26 @@ final adminPendingUpiPaymentsProvider =
 final adminUpiStatsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return ref.watch(adminUpiPaymentRepositoryProvider).getStats();
+});
+
+// ── Guard Patrols (Admin) ───────────────────────────────────────────
+
+final adminPatrolRepositoryProvider =
+    Provider<AdminPatrolRepository>((ref) => AdminPatrolRepository());
+
+/// All guard patrols for the society.
+final adminPatrolsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminPatrolRepositoryProvider).getPatrols();
+});
+
+// ── Incidents (Admin) ───────────────────────────────────────────────
+
+final adminIncidentRepositoryProvider =
+    Provider<AdminIncidentRepository>((ref) => AdminIncidentRepository());
+
+/// All incidents for the society.
+final adminIncidentsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminIncidentRepositoryProvider).getIncidents();
 });

@@ -117,8 +117,6 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(guardResidentsPickerProvider);
-
     return GuardThemeScope(
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,

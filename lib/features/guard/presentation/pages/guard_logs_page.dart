@@ -6,6 +6,8 @@ import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../../../resident/data/models/parcel_model.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_error_banner.dart';
+import '../widgets/guard_skeletons.dart';
 
 /// Gate logs: today/date range filter + searchable lists per tab.
 class GuardLogsPage extends ConsumerStatefulWidget {
@@ -227,19 +229,12 @@ bool _parcelMatch(ParcelModel p, String q) {
       p.status.label.toLowerCase().contains(qq);
 }
 
-bool _vehicleMatch(Map<String, dynamic> raw, String q) {
+bool _vehicleMatch(GuardVehicleEntry v, String q) {
   if (q.isEmpty) return true;
   final qq = q.toLowerCase();
-  final reg = raw['registrationNumber']?.toString() ?? '';
-  final kind = raw['kind']?.toString() ?? '';
-  final villa = raw['villa'] as Map?;
-  final flat = [
-    if (villa?['block'] != null) villa?['block']?.toString() ?? '',
-    if (villa?['villaNumber'] != null) villa?['villaNumber']?.toString() ?? '',
-  ].join(' ');
-  return reg.toLowerCase().contains(qq) ||
-      kind.toLowerCase().contains(qq) ||
-      flat.toLowerCase().contains(qq);
+  return v.registrationNumber.toLowerCase().contains(qq) ||
+      v.kind.toLowerCase().contains(qq) ||
+      v.flatLabel.toLowerCase().contains(qq);
 }
 
 class _VisitorLogs extends ConsumerWidget {
@@ -255,8 +250,8 @@ class _VisitorLogs extends ConsumerWidget {
         ? 'No visits logged today.'
         : 'No visitors in this range.';
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => _LogError(
+      loading: () => const GuardListSkeleton(),
+      error: (e, _) => GuardCenteredError(
         message: userFacingMessage(e),
         onRetry: () => ref.invalidate(guardVisitorLogsProvider(logKey)),
       ),
@@ -380,8 +375,8 @@ class _DeliveryLogs extends ConsumerWidget {
         ? 'No deliveries today.'
         : 'No deliveries in this range.';
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => _LogError(
+      loading: () => const GuardListSkeleton(),
+      error: (e, _) => GuardCenteredError(
         message: userFacingMessage(e),
         onRetry: () => ref.invalidate(guardParcelLogsProvider(logKey)),
       ),
@@ -477,16 +472,13 @@ class _VehicleLogs extends ConsumerWidget {
         ? 'No vehicles logged today.'
         : 'No vehicles in this range.';
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => _LogError(
+      loading: () => const GuardListSkeleton(),
+      error: (e, _) => GuardCenteredError(
         message: userFacingMessage(e),
         onRetry: () => ref.invalidate(guardVehicleLogsProvider(logKey)),
       ),
       data: (rows) {
-        final list = rows
-            .map((e) => Map<String, dynamic>.from(e as Map))
-            .where((m) => _vehicleMatch(m, query))
-            .toList();
+        final list = rows.where((v) => _vehicleMatch(v, query)).toList();
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -514,9 +506,7 @@ class _VehicleLogs extends ConsumerWidget {
                   itemCount: list.length + 1,
                   itemBuilder: (_, i) {
                     if (i == 0) {
-                      final inside = list
-                          .where((raw) => raw['exitAt'] == null)
-                          .length;
+                      final inside = list.where((v) => v.isInside).length;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: GuardTokens.g2),
                         child: _LogSummaryChip(
@@ -525,10 +515,7 @@ class _VehicleLogs extends ConsumerWidget {
                         ),
                       );
                     }
-                    final raw = list[i - 1];
-                    final reg = raw['registrationNumber']?.toString() ?? '';
-                    final kind = raw['kind']?.toString() ?? '';
-                    final exited = raw['exitAt'] != null;
+                    final v = list[i - 1];
                     return Card(
                       margin: const EdgeInsets.only(bottom: GuardTokens.g2),
                       child: ListTile(
@@ -543,14 +530,14 @@ class _VehicleLogs extends ConsumerWidget {
                           child: const Icon(Icons.directions_car_rounded),
                         ),
                         title: Text(
-                          reg.isEmpty ? '—' : reg,
+                          v.registrationNumber.isEmpty ? '—' : v.registrationNumber,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.8,
                           ),
                         ),
                         subtitle: Text(
-                          '${kind.replaceAll('_', ' ')} · ${exited ? 'Out' : 'Inside'}',
+                          '${v.kind.replaceAll('_', ' ')} · ${v.isInside ? 'Inside' : 'Out'}',
                           style: GuardTokens.captionStyle(context),
                         ),
                       ),
@@ -591,41 +578,3 @@ class _LogSummaryChip extends StatelessWidget {
   }
 }
 
-class _LogError extends StatelessWidget {
-  const _LogError({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(GuardTokens.padScreen),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: GuardTokens.warning.withValues(alpha: 0.9),
-            ),
-            const SizedBox(height: GuardTokens.g2),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GuardTokens.bodyStyle(context),
-            ),
-            const SizedBox(height: GuardTokens.g2),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-              style: GuardTokens.primaryFilled(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

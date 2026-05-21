@@ -7,6 +7,7 @@ import '../../data/models/guard_models.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_pre_approved_entries_list.dart';
+import '../widgets/guard_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 
 /// Full-screen pre-approved list (e.g. from notification). Rows have no admit button — tap opens arrival.
@@ -26,14 +27,6 @@ class _GuardPreApprovedListPageState
       return;
     }
     context.go(GuardRoutes.dashboard);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(guardPreApprovedEntriesProvider);
-    });
   }
 
   Future<void> _onRefresh() async {
@@ -63,7 +56,7 @@ class _GuardPreApprovedListPageState
         ),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const GuardListSkeleton(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(GuardTokens.padScreen),

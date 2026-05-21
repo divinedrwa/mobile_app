@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
@@ -12,7 +11,7 @@ import '../../../../core/theme/design_haptics.dart';
 import '../../data/guard_visitor_type.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
-import '../providers/guard_command_providers.dart';
+import '../providers/guard_check_in_notifier.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../../utils/shift_active_helper.dart';
@@ -33,12 +32,6 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   final _vehicle = TextEditingController();
   final _villaQuery = TextEditingController();
 
-  GuardCheckInVisitorType _type = GuardCheckInVisitorType.guest;
-  final Set<String> _selectedUserIds = {};
-
-  Uint8List? _photoBytes;
-  bool _submitting = false;
-
   static const _maxFlatRowsVisible = 8;
   static const _flatRowHeight = 68.0;
 
@@ -52,59 +45,26 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
-    final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: source,
-      maxWidth: 1280,
-      maxHeight: 1280,
-      imageQuality: 68,
-    );
-    if (x == null) return;
-    final bytes = await x.readAsBytes();
-    if (!mounted) return;
-    const maxBytes = 180000;
-    if (bytes.length > maxBytes) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('Image too large — pick a smaller photo or skip.'),
-        ),
-      );
-      return;
+    final notifier = ref.read(checkInFormProvider.notifier);
+    final ok = await notifier.pickPhoto(source);
+    if (!ok && mounted) {
+      final err = ref.read(checkInFormProvider).errorMessage;
+      if (err != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(behavior: SnackBarBehavior.floating, content: Text(err)),
+        );
+      }
     }
-    setState(() => _photoBytes = bytes);
   }
 
-  void _clearPhoto() => setState(() => _photoBytes = null);
-
-  String? _photoForApi() {
-    if (_photoBytes == null || _photoBytes!.isEmpty) return null;
-    if (_photoBytes!.length > 160000) return null;
-    return 'data:image/jpeg;base64,${base64Encode(_photoBytes!)}';
-  }
-
-  bool _hasActiveShift(List<Map<String, dynamic>> rows) =>
-      ShiftActiveHelper.hasActiveShift(rows);
+  bool _hasActiveShift(List<GuardShiftRow> rows) =>
+      ShiftActiveHelper.hasActiveShift(rows.map((r) => r.toRawMap()).toList());
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    final shifts = await ref.read(guardMyShiftsProvider.future);
-    if (!_hasActiveShift(shifts)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: GuardTokens.warning,
-          content: Text(
-            'No active shift found. Ask admin to assign/start your shift first.',
-          ),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedUserIds.isEmpty) {
+    final formState = ref.read(checkInFormProvider);
+    if (formState.selectedUserIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Select at least one resident'),
@@ -119,7 +79,9 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm check-in'),
-        content: Text('Check in ${_name.text.trim()} (${_type.name})?'),
+        content: Text(
+          'Check in ${_name.text.trim()} (${formState.visitorType.name})?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -133,59 +95,25 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _submitting = true);
-    try {
-      // Build visitTargets from selected residents.
-      final allResidents =
-          ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
-      final targets = allResidents
-          .where((r) => _selectedUserIds.contains(r.userId))
-          .map((r) => VisitTarget.fromResident(r))
-          .toList();
-      final params = GuardCheckInSubmitParams(
-        name: _name.text.trim(),
-        phone: _phone.text.trim(),
-        visitTargets: targets,
-        visitorTypeApi: _type.apiValue,
-        purpose: null,
-        vehicleNumber: _vehicle.text.trim().isEmpty
-            ? null
-            : _vehicle.text.trim(),
-        photo: _photoForApi(),
-      );
-      final result = await ref.read(guardCheckInSubmitProvider)(params);
-      if (!mounted) return;
+    final notifier = ref.read(checkInFormProvider.notifier);
+    final err = await notifier.submit(
+      name: _name.text.trim(),
+      phone: _phone.text.trim(),
+      vehicleNumber:
+          _vehicle.text.trim().isEmpty ? null : _vehicle.text.trim(),
+    );
+    if (!mounted) return;
+    if (err == null) {
       DesignHaptics.success();
-      ref.invalidate(guardDashboardProvider);
-      ref.invalidate(guardTodayVisitorsProvider);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
+      final msg = ref.read(checkInFormProvider).resultMessage ?? 'Done';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            params.awaitResidentApproval
-                ? ((result['residentApprovalRecipientCount'] is int &&
-                          (result['residentApprovalRecipientCount'] as int) == 0)
-                      ? 'Request created, but no resident account is mapped to selected flat(s). Approval will not be possible until mapping is fixed.'
-                      : 'Request sent to residents. They can approve or reject in the app. You’ll get a notification when it’s decided.')
-                : 'Visitor checked in',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(behavior: SnackBarBehavior.floating, content: Text(msg)),
       );
       Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(guardCommandErrorMessage(e)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(behavior: SnackBarBehavior.floating, content: Text(err)),
+      );
     }
   }
 
@@ -239,6 +167,14 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final formState = ref.watch(checkInFormProvider);
+    final formNotifier = ref.read(checkInFormProvider.notifier);
+    // Aliases matching previous local fields — minimizes UI churn.
+    final _type = formState.visitorType; // ignore: unused_local_variable
+    final _selectedUserIds = formState.selectedUserIds;
+    final _photoBytes = formState.photoBytes;
+    final _submitting = formState.submitting;
+
     final residentsAsync = ref.watch(guardResidentsPickerProvider);
     final shiftsAsync = ref.watch(guardMyShiftsProvider);
     final residentDirectoryAsync = ref.watch(guardResidentsDirectoryProvider(''));
@@ -342,7 +278,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     selected: selected,
                                     onSelected: _submitting
                                         ? null
-                                        : (_) => setState(() => _type = t),
+                                        : (_) => formNotifier.setVisitorType(t),
                                     selectedColor: GuardTokens.guardAccent
                                         .withValues(alpha: 0.22),
                                     checkmarkColor: GuardTokens.guardAccentDeep,
@@ -706,17 +642,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                                                   _submitting
                                                                   ? null
                                                                   : (_) {
-                                                                      setState(() {
-                                                                        if (selected) {
-                                                                          _selectedUserIds.remove(
-                                                                            r.userId,
-                                                                          );
-                                                                        } else {
-                                                                          _selectedUserIds.add(
-                                                                            r.userId,
-                                                                          );
-                                                                        }
-                                                                      });
+                                                                      formNotifier.toggleResident(r.userId);
                                                                     },
                                                             ),
                                                           ),
@@ -889,7 +815,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     IconButton(
                                       onPressed: _submitting
                                           ? null
-                                          : _clearPhoto,
+                                          : formNotifier.clearPhoto,
                                       icon: const Icon(
                                         Icons.delete_outline_rounded,
                                         color: GuardTokens.dangerBrand,

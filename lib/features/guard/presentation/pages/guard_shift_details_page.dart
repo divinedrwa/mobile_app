@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../../utils/shift_active_helper.dart';
+import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_skeletons.dart';
 
 class GuardShiftDetailsPage extends ConsumerWidget {
   const GuardShiftDetailsPage({super.key});
@@ -33,16 +36,11 @@ class GuardShiftDetailsPage extends ConsumerWidget {
           children: [
             Expanded(
               child: async.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(GuardTokens.padScreen),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
+                loading: () => const GuardShiftSkeleton(),
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(GuardTokens.padScreen),
                   child: Center(
-                    child: _ShiftErrorBanner(
+                    child: GuardInlineErrorBanner(
                       message: userFacingMessage(e),
                       onRetry: () => ref.invalidate(guardMyShiftsProvider),
                     ),
@@ -105,20 +103,13 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                             ),
                           );
                         }
-                        final raw = rows[i - 1];
-                        final start = DateTime.tryParse('${raw['startTime']}');
-                        final end = DateTime.tryParse('${raw['endTime']}');
-                        final shiftType =
-                            raw['shiftType']?.toString() ?? 'SHIFT';
-                        final gate = raw['gate'] is Map
-                            ? (raw['gate'] as Map)['name']?.toString()
-                            : null;
+                        final shift = rows[i - 1];
                         final active =
-                            ShiftActiveHelper.isShiftActive(raw, now);
+                            ShiftActiveHelper.isShiftActive(shift.toRawMap(), now);
                         final title =
-                            '${_titleCase(shiftType)}${gate == null ? '' : ' · $gate'}';
+                            '${_titleCase(shift.shiftType)}${shift.gateName == null ? '' : ' · ${shift.gateName}'}';
                         final line =
-                            '${_fmtDate(start)} · ${_fmtTime(start)}–${_fmtTime(end)}';
+                            '${_fmtDate(shift.startTime)} · ${_fmtTime(shift.startTime)}–${_fmtTime(shift.endTime)}';
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: GuardTokens.g2),
@@ -145,6 +136,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                                     active
                                         ? Icons.brightness_high_rounded
                                         : Icons.nights_stay_rounded,
+                                    semanticLabel: active ? 'Active shift' : 'Inactive shift',
                                     color: active
                                         ? GuardTokens.success
                                         : GuardTokens.textSecondary,
@@ -174,7 +166,9 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                                   ),
                                 ),
                                 if (active)
-                                  Chip(
+                                  Semantics(
+                                    label: 'Shift is currently active',
+                                    child: Chip(
                                     label: const Text('Active'),
                                     backgroundColor: GuardTokens.successMuted,
                                     labelStyle: GuardTokens.bodyStyle(context)
@@ -183,6 +177,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                                           fontWeight: FontWeight.w700,
                                           fontSize: GuardTokens.caption,
                                         ),
+                                  ),
                                   ),
                               ],
                             ),
@@ -220,43 +215,3 @@ class GuardShiftDetailsPage extends ConsumerWidget {
   }
 }
 
-class _ShiftErrorBanner extends StatelessWidget {
-  const _ShiftErrorBanner({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(GuardTokens.g2),
-      decoration: BoxDecoration(
-        color: GuardTokens.warningMuted,
-        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
-        border: Border.all(color: GuardTokens.warning.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
-              const SizedBox(width: GuardTokens.g2),
-              Expanded(child: Text(message)),
-            ],
-          ),
-          const SizedBox(height: GuardTokens.g2),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: onRetry,
-              style: GuardTokens.textLink(context),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Retry'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

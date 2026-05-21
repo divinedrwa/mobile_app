@@ -33,8 +33,8 @@ class _GuardPreApprovedArrivalScreenState
 
   bool _submitting = false;
 
-  static bool _hasActiveShift(List<Map<String, dynamic>> rows) =>
-      ShiftActiveHelper.hasActiveShift(rows);
+  static bool _hasActiveShift(List<GuardShiftRow> rows) =>
+      ShiftActiveHelper.hasActiveShift(rows.map((r) => r.toRawMap()).toList());
 
   String _visitorTypeLabel(String? api) {
     switch ((api ?? '').trim().toUpperCase()) {

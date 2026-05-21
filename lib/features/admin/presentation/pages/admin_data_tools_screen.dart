@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +18,7 @@ class AdminDataToolsScreen extends ConsumerStatefulWidget {
 
 class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
   bool _exporting = false;
+  bool _importing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +39,7 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         children: [
-          // Import section — requires file_picker package (not yet installed)
+          // Import section
           EnterpriseSectionHeader(title: 'Import CSV'),
           const SizedBox(height: 8),
           EnterprisePanel(
@@ -49,7 +51,7 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
                   label: 'Import Villas',
                   subtitle: 'Upload a CSV with villa data',
                   trailing: const Icon(Icons.upload_file, size: 18, color: DesignColors.textTertiary),
-                  onTap: () => _showImportInfo(),
+                  onTap: _importing ? null : () => _handleImport('villas'),
                 ),
                 const Divider(height: 1),
                 _actionTile(
@@ -57,7 +59,7 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
                   label: 'Import Residents',
                   subtitle: 'Upload a CSV with resident data',
                   trailing: const Icon(Icons.upload_file, size: 18, color: DesignColors.textTertiary),
-                  onTap: () => _showImportInfo(),
+                  onTap: _importing ? null : () => _handleImport('residents'),
                 ),
               ],
             ),
@@ -89,13 +91,23 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
               ],
             ),
           ),
-          if (_exporting) ...[
+          if (_exporting || _importing) ...[
             const SizedBox(height: 8),
-            const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _importing ? 'Importing…' : 'Exporting…',
+                    style: const TextStyle(fontSize: 13, color: DesignColors.textSecondary),
+                  ),
+                ],
               ),
             ),
           ],
@@ -120,12 +132,49 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
     );
   }
 
-  void _showImportInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('CSV import requires file_picker package. Use the web admin panel for imports.'),
-      ),
+  Future<void> _handleImport(String type) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+      withData: true,
     );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    if (file.bytes == null || file.bytes!.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read file data')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _importing = true);
+    try {
+      final repo = ref.read(adminDataToolsRepositoryProvider);
+      final res = type == 'villas'
+          ? await repo.importVillasCsv(file.bytes!, file.name)
+          : await repo.importResidentsCsv(file.bytes!, file.name);
+      if (mounted) {
+        final count = res['imported'] ?? res['count'] ?? '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_capitalize(type)} imported successfully${count != '' ? ' ($count records)' : ''}',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
   }
 
   Future<void> _handleExport(String type) async {

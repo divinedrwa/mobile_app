@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +10,9 @@ import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
+import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_skeletons.dart';
 
 class GuardResidentsDirectoryPage extends ConsumerStatefulWidget {
   const GuardResidentsDirectoryPage({super.key});
@@ -22,11 +26,17 @@ class _GuardResidentsDirectoryPageState
     extends ConsumerState<GuardResidentsDirectoryPage> {
   final _query = TextEditingController();
   String _debouncedQuery = '';
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _query.addListener(() {
+    _query.addListener(_onQueryChanged);
+  }
+
+  void _onQueryChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       final q = _query.text.trim();
       if (q != _debouncedQuery) {
         setState(() => _debouncedQuery = q);
@@ -36,6 +46,7 @@ class _GuardResidentsDirectoryPageState
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _query.dispose();
     super.dispose();
   }
@@ -112,16 +123,11 @@ class _GuardResidentsDirectoryPageState
             ),
             Expanded(
               child: async.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(GuardTokens.padScreen),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
+                loading: () => const GuardDirectorySkeleton(),
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(GuardTokens.padScreen),
                   child: Center(
-                    child: _DirectoryErrorBanner(
+                    child: GuardInlineErrorBanner(
                       message: userFacingMessage(e),
                       onRetry: () => ref.invalidate(
                         guardResidentsDirectoryProvider(_debouncedQuery),
@@ -292,7 +298,7 @@ class _ResidentCard extends StatelessWidget {
                     Icons.verified_user_outlined,
                     color: GuardTokens.guardAccentDeep,
                   ),
-                  tooltip: 'Visitor approval',
+                  tooltip: 'Check in visitor for ${row.name}',
                 ),
                 const SizedBox(height: GuardTokens.g1),
                 IconButton.outlined(
@@ -339,7 +345,7 @@ class _ResidentCard extends StatelessWidget {
                     Icons.phone_outlined,
                     color: GuardTokens.guardAccentDeep,
                   ),
-                  tooltip: 'Call flat',
+                  tooltip: 'Call ${row.name}',
                 ),
               ],
             ),
@@ -350,43 +356,3 @@ class _ResidentCard extends StatelessWidget {
   }
 }
 
-class _DirectoryErrorBanner extends StatelessWidget {
-  const _DirectoryErrorBanner({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(GuardTokens.g2),
-      decoration: BoxDecoration(
-        color: GuardTokens.warningMuted,
-        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
-        border: Border.all(color: GuardTokens.warning.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
-              const SizedBox(width: GuardTokens.g2),
-              Expanded(child: Text(message)),
-            ],
-          ),
-          const SizedBox(height: GuardTokens.g2),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: onRetry,
-              style: GuardTokens.textLink(context),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Retry'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

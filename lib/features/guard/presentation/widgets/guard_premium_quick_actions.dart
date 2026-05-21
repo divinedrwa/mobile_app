@@ -11,6 +11,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
     required this.onDelivery,
     required this.onEmergency,
     required this.onPreApprovedVisitors,
+    required this.onPatrol,
   });
 
   final VoidCallback onAddVisitor;
@@ -18,6 +19,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
   final VoidCallback onDelivery;
   final VoidCallback onEmergency;
   final VoidCallback onPreApprovedVisitors;
+  final VoidCallback onPatrol;
 
   @override
   Widget build(BuildContext context) {
@@ -88,13 +90,30 @@ class GuardPremiumQuickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        _QuickTile(
-          icon: Icons.event_available_rounded,
-          label: 'Pre-approved',
-          subtitle: 'Expected guests list',
-          accent: const Color(0xFFEA580C),
-          isDark: isDark,
-          onTap: onPreApprovedVisitors,
+        Row(
+          children: [
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.event_available_rounded,
+                label: 'Pre-approved',
+                subtitle: 'Expected guests',
+                accent: const Color(0xFFEA580C),
+                isDark: isDark,
+                onTap: onPreApprovedVisitors,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.shield_rounded,
+                label: 'Patrol',
+                subtitle: 'Start a round',
+                accent: const Color(0xFF0891B2),
+                isDark: isDark,
+                onTap: onPatrol,
+              ),
+            ),
+          ],
         ),
       ],
     );
