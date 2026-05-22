@@ -55,6 +55,9 @@ import '../../features/admin/presentation/pages/admin_bank_accounts_screen.dart'
 import '../../features/admin/presentation/pages/admin_water_analytics_screen.dart';
 import '../../features/admin/presentation/pages/admin_patrols_screen.dart';
 import '../../features/admin/presentation/pages/admin_incidents_screen.dart';
+import '../../features/admin/presentation/pages/admin_maintenance_actions_screen.dart';
+import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.dart';
+import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
@@ -420,6 +423,22 @@ class AppRouter {
               path: 'admin-upi-verifications',
               builder: (context, state) =>
                   const AdminUpiVerificationsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-maintenance-actions',
+              builder: (context, state) =>
+                  const AdminMaintenanceActionsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-outstanding-dues',
+              builder: (context, state) =>
+                  const AdminOutstandingDuesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-villa-history/:villaId',
+              builder: (context, state) => AdminVillaHistoryScreen(
+                villaId: state.pathParameters['villaId'] ?? '',
+              ),
             ),
           ],
         ),

@@ -165,4 +165,77 @@ class AdminMaintenanceRepository {
       throw mapDioException(e, 'Failed to apply credit');
     }
   }
+
+  /// Manual credit adjustment (add or deduct) for a villa in a cycle.
+  Future<Map<String, dynamic>> manualCreditAdjustment({
+    required String villaId,
+    required String maintenanceCollectionCycleId,
+    required double amount,
+    required String type,
+    String? remarks,
+  }) async {
+    try {
+      final res = await _dio.post(
+        ApiEndpoints.maintenanceManualCreditAdjustment,
+        data: {
+          'villaId': villaId,
+          'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
+          'amount': amount,
+          'type': type,
+          if (remarks != null && remarks.isNotEmpty) 'remarks': remarks,
+        },
+      );
+      final body = res.data;
+      return body is Map<String, dynamic> ? body : {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to adjust credit');
+    }
+  }
+
+  /// Edit villa grid row (expected / paid amounts) for a cycle.
+  Future<Map<String, dynamic>> editVillaGridRow({
+    required String cycleId,
+    required String villaId,
+    double? expectedAmount,
+    double? paidAmount,
+  }) async {
+    try {
+      final res = await _dio.put(
+        ApiEndpoints.maintenanceVillaGridRow(cycleId),
+        data: {
+          'villaId': villaId,
+          if (expectedAmount != null) 'expectedAmount': expectedAmount,
+          if (paidAmount != null) 'paidAmount': paidAmount,
+        },
+      );
+      final body = res.data;
+      return body is Map<String, dynamic> ? body : {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update villa row');
+    }
+  }
+
+  /// Get outstanding dues across all billing cycles.
+  Future<Map<String, dynamic>> getOutstandingDues() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.maintenanceOutstandingDues,
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load outstanding dues');
+    }
+  }
+
+  /// Get payment history for a single villa.
+  Future<Map<String, dynamic>> getVillaHistory(String villaId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.maintenanceVillaHistory(villaId),
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load villa history');
+    }
+  }
 }

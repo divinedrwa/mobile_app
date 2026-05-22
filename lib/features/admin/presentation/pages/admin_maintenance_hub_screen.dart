@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/admin_providers.dart';
 import '../../../resident/presentation/widgets/maintenance/maintenance_stat_chip.dart';
 import '../../../resident/presentation/widgets/maintenance/payment_list_tile.dart';
@@ -856,6 +859,9 @@ class _AdminMaintenanceHubScreenState
     );
   }
 
+  bool get _isAdmin =>
+      ref.read(authProvider).user?.role == UserRole.admin;
+
   Widget _residentRow(
     Map<String, dynamic> r,
     PaymentTileStatus status, {
@@ -871,9 +877,11 @@ class _AdminMaintenanceHubScreenState
     final dueDate = DateTime.tryParse(r['dueDate']?.toString() ?? '');
     final paidAt = DateTime.tryParse(r['paidAt']?.toString() ?? '');
 
-    final actionable = status == PaymentTileStatus.pending ||
-        status == PaymentTileStatus.overdue ||
-        status == PaymentTileStatus.partial;
+    final isAdmin = _isAdmin;
+    final actionable = isAdmin &&
+        (status == PaymentTileStatus.pending ||
+            status == PaymentTileStatus.overdue ||
+            status == PaymentTileStatus.partial);
 
     String subtitle;
     if (paidToward != null && paidToward > 0) {
@@ -905,18 +913,64 @@ class _AdminMaintenanceHubScreenState
           const SizedBox(width: 8),
         ],
         Expanded(
-          child: PaymentListTile(
-            title: 'Villa $villaNumber',
-            subtitle: subtitle,
-            amount: amount,
-            status: status,
-            dueDate: status == PaymentTileStatus.paid ? null : dueDate,
-            paidDate: status == PaymentTileStatus.paid ? paidAt : null,
-            actionLabel: actionable ? 'Mark paid' : null,
-            onAction: actionable ? () => _openMarkCashSheet(r) : null,
+          child: GestureDetector(
+            onLongPress: isAdmin ? () => _showRowMenu(r) : null,
+            child: PaymentListTile(
+              title: 'Villa $villaNumber',
+              subtitle: subtitle,
+              amount: amount,
+              status: status,
+              dueDate: status == PaymentTileStatus.paid ? null : dueDate,
+              paidDate: status == PaymentTileStatus.paid ? paidAt : null,
+              actionLabel: actionable ? 'Actions' : null,
+              onAction: actionable ? () => _openMarkCashSheet(r) : null,
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  void _showRowMenu(Map<String, dynamic> resident) {
+    final villaId = resident['villaId']?.toString() ?? '';
+    final villaNumber = resident['villaNumber']?.toString() ?? '—';
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                'Villa $villaNumber',
+                style: DesignTypography.headingM.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit amounts'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openEditVillaRowSheet(resident);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Payment history'),
+              onTap: () {
+                Navigator.pop(ctx);
+                if (villaId.isNotEmpty) {
+                  context.go('/resident/admin-villa-history/$villaId');
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
@@ -925,9 +979,18 @@ class _AdminMaintenanceHubScreenState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MarkCashSheet(resident: resident),
+      builder: (_) => _PaymentActionsSheet(resident: resident),
     );
-    // Refresh after a successful mark-cash to reflect the new status.
+    ref.invalidate(adminMaintenanceDashboardProvider);
+  }
+
+  Future<void> _openEditVillaRowSheet(Map<String, dynamic> resident) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditVillaRowSheet(resident: resident),
+    );
     ref.invalidate(adminMaintenanceDashboardProvider);
   }
 
@@ -1038,14 +1101,15 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
   }
 }
 
-/// Modal bottom sheet for marking a payment against a single resident.
-class _MarkCashSheet extends ConsumerStatefulWidget {
-  const _MarkCashSheet({required this.resident});
+/// Unified payment actions sheet with 3 tabs: Record payment, Add credit, Deduct credit.
+class _PaymentActionsSheet extends ConsumerStatefulWidget {
+  const _PaymentActionsSheet({required this.resident});
 
   final Map<String, dynamic> resident;
 
   @override
-  ConsumerState<_MarkCashSheet> createState() => _MarkCashSheetState();
+  ConsumerState<_PaymentActionsSheet> createState() =>
+      _PaymentActionsSheetState();
 }
 
 const _paymentModes = <String, String>{
@@ -1055,9 +1119,13 @@ const _paymentModes = <String, String>{
   'CHEQUE': 'Cheque',
 };
 
-class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
+class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabCtl;
   final _amountCtl = TextEditingController();
   final _remarksCtl = TextEditingController();
+  final _creditAmountCtl = TextEditingController();
+  final _creditRemarksCtl = TextEditingController();
   String _paymentMode = 'CASH';
   bool _busy = false;
   String? _error;
@@ -1068,6 +1136,12 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
   @override
   void initState() {
     super.initState();
+    _tabCtl = TabController(length: 3, vsync: this);
+    _tabCtl.addListener(() {
+      if (!_tabCtl.indexIsChanging) {
+        setState(() => _error = null);
+      }
+    });
     final amount = (widget.resident['amount'] as num?)?.toDouble() ?? 0;
     final paidToward =
         (widget.resident['paidTowardCycle'] as num?)?.toDouble() ?? 0;
@@ -1079,8 +1153,11 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
 
   @override
   void dispose() {
+    _tabCtl.dispose();
     _amountCtl.dispose();
     _remarksCtl.dispose();
+    _creditAmountCtl.dispose();
+    _creditRemarksCtl.dispose();
     super.dispose();
   }
 
@@ -1097,23 +1174,21 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.md,
-          AppSpacing.xl,
-          AppSpacing.xl,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: const BoxDecoration(
           color: DesignColors.surface,
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(DesignRadius.xl)),
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.md),
+              child: Center(
                 child: Container(
                   width: 40,
                   height: 4,
@@ -1123,172 +1198,331 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Record payment',
-                style: DesignTypography.headingM.copyWith(
-                  color: DesignColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Villa $villa · $owner · expected ${inr.format(amount)}',
-                style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textSecondary,
-                ),
-              ),
-              if (_advanceCredit > 0) ...[
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
-                    borderRadius: BorderRadius.circular(DesignRadius.sm),
-                  ),
-                  child: Text(
-                    'Advance credit available: ${inr.format(_advanceCredit)}',
-                    style: DesignTypography.bodySmall.copyWith(
-                      color: const Color(0xFF166534),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              TextField(
-                controller: _amountCtl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Amount (₹)',
-                  prefixText: '₹ ',
-                  border: OutlineInputBorder(),
-                ),
-                autofocus: false,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                initialValue: _paymentMode,
-                decoration: const InputDecoration(
-                  labelText: 'Payment mode',
-                  border: OutlineInputBorder(),
-                ),
-                items: _paymentModes.entries
-                    .map((e) => DropdownMenuItem(
-                          value: e.key,
-                          child: Text(e.value),
-                        ))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _paymentMode = v);
-                },
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: _remarksCtl,
-                decoration: const InputDecoration(
-                  labelText: 'Remarks (optional)',
-                  hintText: 'e.g. cash handed over at gate',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  _error!,
-                  style: DesignTypography.bodySmall
-                      .copyWith(color: DesignColors.error),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              if (_advanceCredit > 0) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _busy ? null : _submitApplyCredit,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF166534),
-                      side: const BorderSide(color: Color(0xFF86EFAC)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(DesignRadius.md),
-                      ),
-                    ),
-                    child: Text(
-                      'Apply credit only (no cash)',
-                      style: DesignTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-              Row(
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed:
-                          _busy ? null : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(DesignRadius.md),
-                        ),
-                      ),
-                      child: const Text('Cancel'),
+                  Text(
+                    'Villa $villa',
+                    style: DesignTypography.headingM.copyWith(
+                      color: DesignColors.textPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _busy ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: DesignColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(DesignRadius.md),
-                        ),
-                      ),
-                      child: _busy
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              'Confirm payment',
-                              style: DesignTypography.bodyMedium.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$owner · expected ${inr.format(amount)}'
+                    '${_advanceCredit > 0 ? ' · credit ${inr.format(_advanceCredit)}' : ''}',
+                    style: DesignTypography.bodySmall.copyWith(
+                      color: DesignColors.textSecondary,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Tabs
+            TabBar(
+              controller: _tabCtl,
+              labelColor: DesignColors.primary,
+              unselectedLabelColor: DesignColors.textSecondary,
+              indicatorColor: DesignColors.primary,
+              labelStyle: DesignTypography.bodySmall
+                  .copyWith(fontWeight: FontWeight.w700),
+              tabs: const [
+                Tab(text: 'Payment'),
+                Tab(text: 'Add credit'),
+                Tab(text: 'Deduct credit'),
+              ],
+            ),
+            // Tab content
+            Flexible(
+              child: TabBarView(
+                controller: _tabCtl,
+                children: [
+                  _recordPaymentTab(inr),
+                  _creditTab(isAdd: true),
+                  _creditTab(isAdd: false),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<void> _submit() async {
+  Widget _recordPaymentTab(NumberFormat inr) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_advanceCredit > 0) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+                borderRadius: BorderRadius.circular(DesignRadius.sm),
+              ),
+              child: Text(
+                'Advance credit available: ${inr.format(_advanceCredit)}',
+                style: DesignTypography.bodySmall.copyWith(
+                  color: const Color(0xFF166534),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          TextField(
+            controller: _amountCtl,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Amount (₹)',
+              prefixText: '₹ ',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          DropdownButtonFormField<String>(
+            value: _paymentMode,
+            decoration: const InputDecoration(
+              labelText: 'Payment mode',
+              border: OutlineInputBorder(),
+            ),
+            items: _paymentModes.entries
+                .map((e) => DropdownMenuItem(
+                      value: e.key,
+                      child: Text(e.value),
+                    ))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _paymentMode = v);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _remarksCtl,
+            decoration: const InputDecoration(
+              labelText: 'Remarks (optional)',
+              hintText: 'e.g. cash handed over at gate',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          if (_error != null && _tabCtl.index == 0) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              _error!,
+              style: DesignTypography.bodySmall
+                  .copyWith(color: DesignColors.error),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          if (_advanceCredit > 0) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _busy ? null : _submitApplyCredit,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF166534),
+                  side: const BorderSide(color: Color(0xFF86EFAC)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(DesignRadius.md),
+                  ),
+                ),
+                child: Text(
+                  'Apply credit only (no cash)',
+                  style: DesignTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed:
+                      _busy ? null : () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: _busy ? null : _submitPayment,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesignColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
+                  ),
+                  child: _busy && _tabCtl.index == 0
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Confirm payment',
+                          style: DesignTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _creditTab({required bool isAdd}) {
+    final tabIndex = isAdd ? 1 : 2;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isAdd
+                ? 'Add advance credit to this villa\'s account.'
+                : 'Deduct credit from this villa\'s balance.',
+            style: DesignTypography.bodySmall.copyWith(
+              color: DesignColors.textSecondary,
+            ),
+          ),
+          if (!isAdd && _advanceCredit > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Available credit: ${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(_advanceCredit)}',
+              style: DesignTypography.bodySmall.copyWith(
+                color: const Color(0xFF166534),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          TextField(
+            controller: _creditAmountCtl,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Amount (₹)',
+              prefixText: '₹ ',
+              border: const OutlineInputBorder(),
+              helperText:
+                  !isAdd ? 'Cannot exceed available credit' : null,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _creditRemarksCtl,
+            decoration: InputDecoration(
+              labelText: 'Reason / remarks',
+              hintText: isAdd
+                  ? 'e.g. overpayment correction'
+                  : 'e.g. penalty deduction',
+              border: const OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          if (_error != null && _tabCtl.index == tabIndex) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              _error!,
+              style: DesignTypography.bodySmall
+                  .copyWith(color: DesignColors.error),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed:
+                      _busy ? null : () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed:
+                      _busy ? null : () => _submitCreditAdjustment(isAdd),
+                  style: FilledButton.styleFrom(
+                    backgroundColor:
+                        isAdd ? DesignColors.primary : DesignColors.error,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
+                  ),
+                  child: _busy && _tabCtl.index == tabIndex
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          isAdd ? 'Add credit' : 'Deduct credit',
+                          style: DesignTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitPayment() async {
     final amount = double.tryParse(_amountCtl.text.trim());
     if (amount == null || amount <= 0) {
       setState(() => _error = 'Enter a valid amount.');
@@ -1303,7 +1537,6 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
       if (villaId.isEmpty) throw 'Missing villa id on this row.';
 
       final filter = ref.read(adminMaintenanceFilterProvider);
-
       final idempotencyKey = 'payment-${const Uuid().v4()}';
 
       await ref.read(adminMaintenanceRepositoryProvider).markPaidCash(
@@ -1376,6 +1609,304 @@ class _MarkCashSheetState extends ConsumerState<_MarkCashSheet> {
       setState(() {
         _busy = false;
         _error = 'Couldn\'t apply credit: $e';
+      });
+    }
+  }
+
+  Future<void> _submitCreditAdjustment(bool isAdd) async {
+    final amount = double.tryParse(_creditAmountCtl.text.trim());
+    if (amount == null || amount <= 0) {
+      setState(() => _error = 'Enter a valid amount.');
+      return;
+    }
+    if (!isAdd && amount > _advanceCredit) {
+      setState(
+          () => _error = 'Amount exceeds available credit of ₹${_advanceCredit.toStringAsFixed(0)}.');
+      return;
+    }
+    final remarks = _creditRemarksCtl.text.trim();
+    if (remarks.isEmpty) {
+      setState(() => _error = 'Please provide a reason.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final villaId = widget.resident['villaId']?.toString() ?? '';
+      if (villaId.isEmpty) throw 'Missing villa id on this row.';
+
+      final filter = ref.read(adminMaintenanceFilterProvider);
+      final cycleId = filter.maintenanceCollectionCycleId;
+      if (cycleId == null || cycleId.isEmpty) {
+        throw 'No billing cycle selected.';
+      }
+
+      await ref
+          .read(adminMaintenanceRepositoryProvider)
+          .manualCreditAdjustment(
+            villaId: villaId,
+            maintenanceCollectionCycleId: cycleId,
+            amount: amount,
+            type: isAdd ? 'ADD' : 'DEDUCT',
+            remarks: remarks,
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: DesignColors.success,
+          content: Text(
+            '${isAdd ? "Added" : "Deducted"} ₹${amount.toStringAsFixed(0)} credit for villa '
+            '${widget.resident['villaNumber'] ?? ""}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = 'Couldn\'t adjust credit: $e';
+      });
+    }
+  }
+}
+
+/// Bottom sheet for editing villa grid row amounts.
+class _EditVillaRowSheet extends ConsumerStatefulWidget {
+  const _EditVillaRowSheet({required this.resident});
+
+  final Map<String, dynamic> resident;
+
+  @override
+  ConsumerState<_EditVillaRowSheet> createState() =>
+      _EditVillaRowSheetState();
+}
+
+class _EditVillaRowSheetState extends ConsumerState<_EditVillaRowSheet> {
+  final _expectedCtl = TextEditingController();
+  final _paidCtl = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final expected = (widget.resident['amount'] as num?)?.toDouble() ?? 0;
+    final paid =
+        (widget.resident['paidTowardCycle'] as num?)?.toDouble() ?? 0;
+    _expectedCtl.text = expected.toStringAsFixed(0);
+    _paidCtl.text = paid.toStringAsFixed(0);
+  }
+
+  @override
+  void dispose() {
+    _expectedCtl.dispose();
+    _paidCtl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final villa = widget.resident['villaNumber']?.toString() ?? '—';
+    final owner = widget.resident['ownerName']?.toString() ?? 'Unknown';
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.md,
+          AppSpacing.xl,
+          AppSpacing.xl,
+        ),
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(DesignRadius.xl)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: DesignColors.borderLight,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Edit amounts',
+                style: DesignTypography.headingM.copyWith(
+                  color: DesignColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Villa $villa · $owner',
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                  borderRadius: BorderRadius.circular(DesignRadius.sm),
+                ),
+                child: Text(
+                  'This updates the billing snapshot. Any amount above expected becomes advance credit.',
+                  style: DesignTypography.caption.copyWith(
+                    color: const Color(0xFF92400E),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              TextField(
+                controller: _expectedCtl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Expected amount (₹)',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _paidCtl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Paid / collected (₹)',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  _error!,
+                  style: DesignTypography.bodySmall
+                      .copyWith(color: DesignColors.error),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed:
+                          _busy ? null : () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(DesignRadius.md),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: _busy ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DesignColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(DesignRadius.md),
+                        ),
+                      ),
+                      child: _busy
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Save changes',
+                              style: DesignTypography.bodyMedium.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final expected = double.tryParse(_expectedCtl.text.trim());
+    final paid = double.tryParse(_paidCtl.text.trim());
+    if (expected == null && paid == null) {
+      setState(() => _error = 'Enter at least one amount.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final villaId = widget.resident['villaId']?.toString() ?? '';
+      if (villaId.isEmpty) throw 'Missing villa id on this row.';
+
+      final filter = ref.read(adminMaintenanceFilterProvider);
+      final cycleId = filter.maintenanceCollectionCycleId;
+      if (cycleId == null || cycleId.isEmpty) {
+        throw 'No billing cycle selected.';
+      }
+
+      await ref.read(adminMaintenanceRepositoryProvider).editVillaGridRow(
+            cycleId: cycleId,
+            villaId: villaId,
+            expectedAmount: expected,
+            paidAmount: paid,
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: DesignColors.success,
+          content: Text(
+            'Updated amounts for villa ${widget.resident['villaNumber'] ?? ""}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _error = 'Couldn\'t update: $e';
       });
     }
   }

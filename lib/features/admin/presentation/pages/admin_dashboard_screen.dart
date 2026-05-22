@@ -1323,6 +1323,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           title: 'Operations',
           subtitle: 'Day-to-day management',
           items: const [
+            _QA(Icons.account_balance_wallet, 'Maintenance Actions',
+                Color(0xFF0D9488), '/resident/admin-maintenance-actions'),
             _QA(Icons.report_problem_outlined, 'Complaints', Color(0xFFEF4444),
                 '/resident/admin-complaints'),
             _QA(Icons.notifications_active_outlined, 'Reminders',

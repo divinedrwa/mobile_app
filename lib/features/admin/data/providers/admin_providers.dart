@@ -237,6 +237,23 @@ final adminCollectionCyclesForFYProvider = FutureProvider.autoDispose
       .getCollectionCyclesForFY(financialYearId);
 });
 
+/// Admin outstanding dues (cross-cycle view).
+final adminOutstandingDuesProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref
+      .watch(adminMaintenanceRepositoryProvider)
+      .getOutstandingDues();
+});
+
+/// Admin villa payment history for a single villa.
+final adminVillaHistoryProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, villaId) async {
+  if (villaId.isEmpty) return {};
+  return ref
+      .watch(adminMaintenanceRepositoryProvider)
+      .getVillaHistory(villaId);
+});
+
 // ── Gate Utilities ───────────────────────────────────────────────────
 
 final adminGateUtilitiesRepositoryProvider =

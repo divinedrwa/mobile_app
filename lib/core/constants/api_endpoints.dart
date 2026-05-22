@@ -263,6 +263,16 @@ class ApiEndpoints {
   static const String adminBankAccounts = '/bank-accounts';
   static String adminBankAccountById(String id) => '/bank-accounts/$id';
 
+  // Admin — Maintenance Management (credit, grid edit, outstanding, history)
+  static const String maintenanceManualCreditAdjustment =
+      '/maintenance-management/manual-credit-adjustment';
+  static String maintenanceVillaGridRow(String cycleId) =>
+      '/maintenance-management/collection/cycles/$cycleId/villa-grid-row';
+  static const String maintenanceOutstandingDues =
+      '/maintenance-management/outstanding-dues';
+  static String maintenanceVillaHistory(String villaId) =>
+      '/maintenance-management/villa-history/$villaId';
+
   // Admin — Water Supply Analytics
   static const String waterSupplyAnalyticsOverview = '/water-supply-analytics/overview';
   static const String waterSupplyAnalyticsDailyUsage = '/water-supply-analytics/daily-usage';
