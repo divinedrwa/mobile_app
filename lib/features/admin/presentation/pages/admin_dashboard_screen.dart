@@ -1337,6 +1337,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 '/resident/admin-parcels'),
             _QA(Icons.currency_rupee_rounded, 'UPI Verifications',
                 Color(0xFF16A34A), '/resident/admin-upi-verifications'),
+            _QA(Icons.construction_rounded, 'Special Projects',
+                Color(0xFF7C3AED), '/resident/admin-special-projects'),
           ],
         ),
         const SizedBox(height: 14),

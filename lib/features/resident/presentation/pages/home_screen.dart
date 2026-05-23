@@ -23,6 +23,7 @@ import '../../data/providers/maintenance_provider.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/security_contact_provider.dart';
+import '../../data/providers/special_project_provider.dart';
 import '../../data/models/billing_cycle_current_model.dart';
 import '../../data/models/resident_dashboard_model.dart';
 import '../../data/models/security_contact_model.dart';
@@ -215,6 +216,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       _buildMaintenanceCard(context),
                       const SizedBox(height: _kSectionGap),
                     ],
+
+                    // Special Projects — quick view of active projects
+                    _buildSpecialProjectsCard(context),
+                    const SizedBox(height: _kSectionGap),
 
                     // Community-level ledger — informational, not actionable.
                     // Hidden from tenants: fund balance is internal governance data.
@@ -3263,6 +3268,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // ── Special Projects card ───────────────────────────────────────
+  Widget _buildSpecialProjectsCard(BuildContext context) {
+    final projectsAsync = ref.watch(residentSpecialProjectsProvider);
+
+    return projectsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (projects) {
+        final active =
+            projects.where((p) => p.status == 'ACTIVE').toList();
+        if (active.isEmpty) return const SizedBox.shrink();
+
+        final inr = NumberFormat.currency(
+            locale: 'en_IN', symbol: '\u20b9', decimalDigits: 0);
+        final totalOutstanding =
+            active.fold(0.0, (sum, p) => sum + p.outstanding);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(_kRadiusLg),
+            border: Border.all(color: Colors.grey[200]!),
+            boxShadow: _cardShadow(),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(_kRadiusLg),
+              onTap: () => context.push('/resident/special-projects'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color:
+                            const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.construction_rounded,
+                          color: Color(0xFF7C3AED), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${active.length} Active Project${active.length != 1 ? 's' : ''}',
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${inr.format(totalOutstanding)} outstanding',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios,
+                        size: 14, color: Colors.grey[400]),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

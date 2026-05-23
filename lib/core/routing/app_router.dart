@@ -59,6 +59,11 @@ import '../../features/admin/presentation/pages/admin_incidents_screen.dart';
 import '../../features/admin/presentation/pages/admin_maintenance_actions_screen.dart';
 import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.dart';
 import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
+import '../../features/resident/presentation/pages/special_projects/special_projects_screen.dart';
+import '../../features/resident/presentation/pages/special_projects/special_project_detail_screen.dart';
+import '../../features/resident/presentation/pages/special_projects/admin_special_projects_screen.dart';
+import '../../features/resident/presentation/pages/special_projects/admin_special_project_detail_screen.dart';
+import '../../features/resident/presentation/pages/special_projects/admin_create_special_project_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
@@ -285,6 +290,38 @@ class AppRouter {
             GoRoute(
               path: 'overview',
               builder: (context, state) => const ResidentOverviewScreen(),
+            ),
+            // Special Projects (resident + admin)
+            GoRoute(
+              path: 'special-projects',
+              builder: (context, state) => const SpecialProjectsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) => SpecialProjectDetailScreen(
+                    projectId: state.pathParameters['id'] ?? '',
+                  ),
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'admin-special-projects',
+              builder: (context, state) =>
+                  const AdminSpecialProjectsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'create',
+                  builder: (context, state) =>
+                      const AdminCreateSpecialProjectScreen(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) =>
+                      AdminSpecialProjectDetailScreen(
+                    projectId: state.pathParameters['id'] ?? '',
+                  ),
+                ),
+              ],
             ),
             // Admin placeholder routes (Phase 1)
             GoRoute(

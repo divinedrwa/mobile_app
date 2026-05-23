@@ -345,4 +345,32 @@ class ApiEndpoints {
 
   // ── Admin / Guard: Incidents ────────────────────────────────────────
   static const String incidents = '/incidents';
+
+  // ── Special Projects ──────────────────────────────────────────────
+  // Resident
+  static const String residentSpecialProjects = '/residents/special-projects';
+  static String residentSpecialProjectDetail(String id) =>
+      '/residents/special-projects/$id';
+  static String residentSpecialProjectExpenses(String id) =>
+      '/residents/special-projects/$id/expenses';
+
+  // Admin
+  static const String adminSpecialProjects = '/special-projects';
+  static String adminSpecialProjectDetail(String id) =>
+      '/special-projects/$id';
+  static String adminSpecialProjectStatus(String id) =>
+      '/special-projects/$id/status';
+  static String adminSpecialProjectPayment(
+          String projectId, String contribId) =>
+      '/special-projects/$projectId/contributions/$contribId/payments';
+  static String adminSpecialProjectExpenses(String id) =>
+      '/special-projects/$id/expenses';
+  static String adminSpecialProjectExpenseDetail(
+          String projectId, String expId) =>
+      '/special-projects/$projectId/expenses/$expId';
+  static String adminSpecialProjectContributions(String id) =>
+      '/special-projects/$id/contributions';
+  static String adminSpecialProjectPaymentDetail(
+          String projectId, String contribId, String paymentId) =>
+      '/special-projects/$projectId/contributions/$contribId/payments/$paymentId';
 }

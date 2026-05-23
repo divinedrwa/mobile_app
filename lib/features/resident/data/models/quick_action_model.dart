@@ -64,6 +64,13 @@ final residentHomeQuickActionsGrid = [
     color: Color(0xFF7E57C2),
     route: '/resident/amenity-bookings',
   ),
+  const QuickAction(
+    id: 'special_projects',
+    label: 'Projects',
+    icon: Icons.construction_rounded,
+    color: Color(0xFF7C3AED),
+    route: '/resident/special-projects',
+  ),
 ];
 
 /// Reserved for a future “More” sheet — not on the home grid until you add [moreQuickAction] back.

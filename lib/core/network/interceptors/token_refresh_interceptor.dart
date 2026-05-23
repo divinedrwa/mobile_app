@@ -19,9 +19,27 @@ bool _isRefreshExempt(String path) {
 
 /// Intercepts 401 responses and attempts a single token refresh before
 /// forwarding the error. Uses [QueuedInterceptor] so concurrent requests
-/// that hit 401 at the same time share a single refresh call.
+/// that hit 401 at the same time are serialised — only the first one
+/// actually calls `/auth/refresh`; subsequent ones just retry with the
+/// already-refreshed token.
 class TokenRefreshInterceptor extends QueuedInterceptor {
-  bool _isRefreshing = false;
+  /// Timestamp of the most recent successful token refresh. Concurrent 401s
+  /// that arrive after a recent refresh skip the refresh call and just retry
+  /// with the already-stored token.
+  DateTime? _lastRefreshAt;
+
+  /// Timestamp of the most recent *failed* refresh. Once a refresh fails the
+  /// session is dead — subsequent queued 401s should not retry the refresh
+  /// and should just propagate the 401 immediately.
+  DateTime? _lastRefreshFailedAt;
+
+  Dio _makeFreshDio() => Dio(BaseOptions(
+        baseUrl: DioClient.dio.options.baseUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ));
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
@@ -30,9 +48,40 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
-    // Prevent re-entrant refresh
-    if (_isRefreshing) {
+    // If a refresh recently failed, the session is dead. Don't attempt
+    // another refresh — just let the 401 propagate immediately.
+    if (_lastRefreshFailedAt != null &&
+        DateTime.now().difference(_lastRefreshFailedAt!) <
+            const Duration(seconds: 10)) {
+      if (kDebugMode) {
+        debugPrint('[TokenRefresh] skipping — refresh failed recently, '
+            'letting 401 propagate');
+      }
       return handler.next(err);
+    }
+
+    // If tokens were refreshed very recently (by a preceding queued 401),
+    // skip the refresh call and just retry with the stored token.
+    if (_lastRefreshAt != null &&
+        DateTime.now().difference(_lastRefreshAt!) <
+            const Duration(seconds: 5)) {
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('[TokenRefresh] skipping refresh — tokens refreshed '
+              '${DateTime.now().difference(_lastRefreshAt!).inMilliseconds}ms ago, retrying');
+        }
+        try {
+          final opts = err.requestOptions;
+          opts.headers['Authorization'] = 'Bearer $token';
+          final retryResponse = await _makeFreshDio().fetch(opts);
+          return handler.resolve(retryResponse);
+        } on DioException catch (retryErr) {
+          return handler.next(retryErr);
+        } catch (_) {
+          return handler.next(err);
+        }
+      }
     }
 
     final refreshToken = await StorageService.getRefreshToken();
@@ -40,16 +89,8 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
-    _isRefreshing = true;
     try {
-      // Use a fresh Dio instance to avoid interceptor loops.
-      final freshDio = Dio(BaseOptions(
-        baseUrl: DioClient.dio.options.baseUrl,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ));
+      final freshDio = _makeFreshDio();
 
       final response = await freshDio.post(
         ApiEndpoints.refreshToken,
@@ -61,6 +102,7 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       final newRefreshToken = data['refreshToken'] as String?;
 
       if (newAccessToken == null || newRefreshToken == null) {
+        _lastRefreshFailedAt = DateTime.now();
         return handler.next(err);
       }
 
@@ -68,6 +110,8 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       await StorageService.saveToken(newAccessToken);
       await StorageService.saveRefreshToken(newRefreshToken);
       AuthInterceptor.clearCache();
+      _lastRefreshAt = DateTime.now();
+      _lastRefreshFailedAt = null; // clear any prior failure
 
       if (kDebugMode) {
         debugPrint('[TokenRefresh] tokens refreshed successfully');
@@ -77,16 +121,26 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
       final opts = err.requestOptions;
       opts.headers['Authorization'] = 'Bearer $newAccessToken';
 
-      final retryResponse = await freshDio.fetch(opts);
-      return handler.resolve(retryResponse);
+      try {
+        final retryResponse = await freshDio.fetch(opts);
+        return handler.resolve(retryResponse);
+      } on DioException catch (retryErr) {
+        // Refresh succeeded but the retry itself failed (timeout, 500, etc.).
+        // The session is still valid — propagate the RETRY error, not the
+        // original 401, so ErrorInterceptor does NOT trigger logout.
+        if (kDebugMode) {
+          debugPrint('[TokenRefresh] retry failed after successful refresh '
+              '(${retryErr.response?.statusCode}), forwarding retry error');
+        }
+        return handler.next(retryErr);
+      }
     } on DioException {
-      // Refresh failed — let the original 401 propagate so
-      // ErrorInterceptor triggers SessionExpiredHandler.
+      // Refresh itself failed — the session truly expired.
+      _lastRefreshFailedAt = DateTime.now();
       return handler.next(err);
     } catch (_) {
+      _lastRefreshFailedAt = DateTime.now();
       return handler.next(err);
-    } finally {
-      _isRefreshing = false;
     }
   }
 }

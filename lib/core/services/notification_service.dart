@@ -616,6 +616,16 @@ class NotificationService {
           router.go('/resident');
           return;
         }
+        if (type == 'SPECIAL_PROJECT_CREATED' ||
+            type == 'SPECIAL_PROJECT_PAYMENT_RECORDED') {
+          final projectId = data['projectId'] ?? '';
+          if (projectId.isNotEmpty) {
+            router.push('/resident/special-projects/$projectId');
+          } else {
+            router.push('/resident/special-projects');
+          }
+          return;
+        }
         fcmDiag(
           'NAV_SKIP',
           'no matching route type="$type" openDetails=$openDetails '
