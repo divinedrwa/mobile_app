@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/parcel_model.dart';
 import '../repositories/parcel_repository.dart';
 
@@ -33,15 +34,16 @@ class ParcelNotifier extends StateNotifier<AsyncValue<List<ParcelModel>>> {
     }
   }
 
-  /// Mark parcel as collected
-  Future<bool> markAsCollected(String parcelId) async {
+  /// Mark parcel as collected.
+  /// Returns `null` on success, or an error message string on failure.
+  Future<String?> markAsCollected(String parcelId) async {
     try {
       await _repository.markAsCollected(parcelId);
       await fetchParcels();
-      return true;
+      return null;
     } catch (e) {
       debugPrint('Error marking parcel as collected: $e');
-      return false;
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 

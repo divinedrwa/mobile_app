@@ -220,6 +220,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
         body: SafeArea(
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: CustomScrollView(
               slivers: [
                 SliverPadding(
@@ -831,7 +832,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     GuardTokens.radiusCard,
                                   ),
                                   child: Image.memory(
-                                    _photoBytes!,
+                                    _photoBytes,
                                     height: 172,
                                     width: double.infinity,
                                     fit: BoxFit.cover,

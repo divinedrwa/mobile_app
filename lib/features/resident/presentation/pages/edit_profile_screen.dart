@@ -99,6 +99,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       backgroundColor: _kPageBg,
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [

@@ -245,7 +245,7 @@ class AuthRepository {
         debugPrint('❌ Unexpected error: $e');
         debugPrint('❌ Stack trace: ${StackTrace.current}');
       }
-      throw AppException(message: 'Unexpected error: $e');
+      throw AppException(message: 'An unexpected error occurred. Please try again.');
     }
   }
 

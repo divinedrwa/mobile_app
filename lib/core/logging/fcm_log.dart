@@ -22,15 +22,9 @@ void fcmDiag(String phase, String message,
     if (err != null) {
       debugPrint('$divineFcmTag err=$err');
     }
-  } else {
-    // Release/profile: rely on dart developer.log → Android log buffer.
-    // ignore: avoid_print
-    print(line);
-    if (err != null) {
-      // ignore: avoid_print
-      print('$divineFcmTag err=$err');
-    }
   }
+  // Release/profile: developer.log (above) writes to the structured dart
+  // log which is NOT visible via logcat to other apps. No print() fallback.
 }
 
 String describeRemoteMessage(RemoteMessage m) {

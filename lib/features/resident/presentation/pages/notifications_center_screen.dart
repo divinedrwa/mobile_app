@@ -151,10 +151,10 @@ class _NotificationsCenterScreenState
               child: TextButton(
                 onPressed: () async {
                   final pageContext = context;
-                  final ok = await ref
+                  final error = await ref
                       .read(notificationProvider.notifier)
                       .markAllAsRead();
-                  if (!pageContext.mounted || !ok) return;
+                  if (!pageContext.mounted || error != null) return;
                   ScaffoldMessenger.of(pageContext).showSnackBar(
                     SnackBar(
                       behavior: SnackBarBehavior.floating,

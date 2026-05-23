@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/document_model.dart';
 import '../models/notice_model.dart';
 import '../repositories/content_repository.dart';
@@ -66,15 +67,15 @@ class EventRegistrationNotifier extends StateNotifier<AsyncValue<void>> {
 
   final ContentRepository _repository;
 
-  Future<bool> register(String eventId) async {
+  Future<String?> register(String eventId) async {
     state = const AsyncValue.loading();
     try {
       await _repository.registerForEvent(eventId);
       state = const AsyncValue.data(null);
-      return true;
+      return null;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      return false;
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 }

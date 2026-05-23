@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/daily_help_model.dart';
 import '../repositories/daily_help_repository.dart';
 
@@ -20,7 +21,7 @@ class DailyHelpNotifier
     }
   }
 
-  Future<bool> addDailyHelp({
+  Future<String?> addDailyHelp({
     required String name,
     required String type,
     required String phone,
@@ -34,19 +35,19 @@ class DailyHelpNotifier
         address: address,
       );
       await fetchDailyHelp();
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 
-  Future<bool> removeDailyHelp(String assignmentId) async {
+  Future<String?> removeDailyHelp(String assignmentId) async {
     try {
       await _repository.removeDailyHelp(assignmentId);
       await fetchDailyHelp();
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 }

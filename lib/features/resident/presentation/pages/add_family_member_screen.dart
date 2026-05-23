@@ -61,6 +61,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
@@ -201,7 +202,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
       );
       return;
     }
-    final success = widget.member == null
+    final error = widget.member == null
         ? await notifier.addFamilyMember(
             name: _nameController.text.trim(),
             relationship: _selectedRelationship,
@@ -230,7 +231,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
       setState(() {
         _isSubmitting = false;
       });
-      if (success) {
+      if (error == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -244,8 +245,8 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save family member'),
+          SnackBar(
+            content: Text(error),
             backgroundColor: DesignColors.error,
           ),
         );

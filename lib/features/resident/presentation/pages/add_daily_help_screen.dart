@@ -57,6 +57,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
@@ -162,8 +163,8 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      setState(() => _selectedImage = image);
       if (!mounted) return;
+      setState(() => _selectedImage = image);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Photo selected! Will upload on save.')),
       );
@@ -174,7 +175,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
 
-    final success = await ref
+    final error = await ref
         .read(dailyHelpProvider.notifier)
         .addDailyHelp(
           name: _nameController.text.trim(),
@@ -187,7 +188,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
 
     if (mounted) {
       setState(() => _isSubmitting = false);
-      if (success) {
+      if (error == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -199,8 +200,8 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save vendor'),
+          SnackBar(
+            content: Text(error),
             backgroundColor: DesignColors.error,
           ),
         );

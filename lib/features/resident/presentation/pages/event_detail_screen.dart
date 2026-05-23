@@ -346,7 +346,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       _isRegistering = true;
     });
 
-    final success = await ref.read(eventRegistrationProvider.notifier).register(
+    final error = await ref.read(eventRegistrationProvider.notifier).register(
           widget.event.id,
         );
 
@@ -354,14 +354,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success
-                ? 'Successfully registered for event!'
-                : 'Could not register for this event',
+            error ?? 'Successfully registered for event!',
           ),
-          backgroundColor: success ? DesignColors.success : DesignColors.error,
+          backgroundColor: error == null ? DesignColors.success : DesignColors.error,
         ),
       );
-      if (success) Navigator.pop(context);
+      if (error == null) Navigator.pop(context);
       setState(() => _isRegistering = false);
     }
   }

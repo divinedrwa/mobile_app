@@ -1,7 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/family_member_model.dart';
 import '../repositories/family_member_repository.dart';
+
+String _errorMessage(Object e) {
+  if (e is AppException) return e.message;
+  return 'Something went wrong. Please try again.';
+}
 
 /// Family Member State Notifier
 class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberModel>>> {
@@ -22,8 +28,8 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
     }
   }
 
-  /// Add family member
-  Future<bool> addFamilyMember({
+  /// Add family member. Returns null on success, error message on failure.
+  Future<String?> addFamilyMember({
     required String name,
     required String relationship,
     String? phone,
@@ -38,16 +44,16 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
         email: email,
         dateOfBirth: dateOfBirth,
       );
-      await fetchFamilyMembers(); // Refresh list
-      return true;
+      await fetchFamilyMembers();
+      return null;
     } catch (e) {
       debugPrint('Error adding family member: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Update family member
-  Future<bool> updateFamilyMember({
+  /// Update family member. Returns null on success, error message on failure.
+  Future<String?> updateFamilyMember({
     required String id,
     String? name,
     String? relationship,
@@ -64,23 +70,23 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
         email: email,
         dateOfBirth: dateOfBirth,
       );
-      await fetchFamilyMembers(); // Refresh list
-      return true;
+      await fetchFamilyMembers();
+      return null;
     } catch (e) {
       debugPrint('Error updating family member: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Delete family member
-  Future<bool> deleteFamilyMember(String id) async {
+  /// Delete family member. Returns null on success, error message on failure.
+  Future<String?> deleteFamilyMember(String id) async {
     try {
       await _repository.deleteFamilyMember(id);
-      await fetchFamilyMembers(); // Refresh list
-      return true;
+      await fetchFamilyMembers();
+      return null;
     } catch (e) {
       debugPrint('Error deleting family member: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 }

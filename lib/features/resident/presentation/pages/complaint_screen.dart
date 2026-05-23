@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
@@ -59,6 +58,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
             DesignSpacing.screenPaddingH,
@@ -238,7 +238,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
       _isSubmitting = true;
     });
 
-    final success = await ref.read(complaintSubmitProvider.notifier).submit(
+    final error = await ref.read(complaintSubmitProvider.notifier).submit(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           category: _selectedCategory!,
@@ -246,7 +246,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
         );
 
     if (mounted) {
-      if (success) {
+      if (error == null) {
         DesignHaptics.success();
         ref.invalidate(myComplaintsProvider);
         setState(() {
@@ -261,9 +261,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
         );
         context.pop();
       } else {
-        final err = ref.read(complaintSubmitProvider).error;
-        final message =
-            userFacingMessage(err ?? '', 'Failed to submit complaint');
+        final message = error;
         setState(() {
           _isSubmitting = false;
         });

@@ -173,18 +173,18 @@ class VehiclesScreen extends ConsumerWidget {
                 );
                 return;
               }
-              final ok = await ref
+              final error = await ref
                   .read(vehicleProvider.notifier)
                   .deleteVehicle(vehicle.id!);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    ok
+                    error == null
                         ? '${vehicle.vehicleNumber} removed'
-                        : 'Failed to remove vehicle',
+                        : error,
                   ),
-                  backgroundColor: ok
+                  backgroundColor: error == null
                       ? DesignColors.success
                       : DesignColors.error,
                 ),

@@ -279,16 +279,16 @@ class DailyHelpScreen extends ConsumerWidget {
                 );
                 return;
               }
-              final ok = await ref
+              final error = await ref
                   .read(dailyHelpProvider.notifier)
                   .removeDailyHelp(helper.assignmentId!);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    ok ? '${helper.name} removed' : 'Failed to remove helper',
+                    error ?? '${helper.name} removed',
                   ),
-                  backgroundColor: ok
+                  backgroundColor: error == null
                       ? DesignColors.success
                       : DesignColors.error,
                 ),

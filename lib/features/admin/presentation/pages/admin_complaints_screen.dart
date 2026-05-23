@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -853,7 +854,7 @@ class _UpdateStatusSheetState extends ConsumerState<_UpdateStatusSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Update failed: $e'),
+          content: Text(userFacingMessage(e, 'Update failed')),
           backgroundColor: DesignColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(

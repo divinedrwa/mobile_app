@@ -40,7 +40,7 @@ class NoticeDetailScreen extends ConsumerWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Notice shared!'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: DesignColors.success,
                   behavior: SnackBarBehavior.floating,
                 ),
               );

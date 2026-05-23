@@ -4,11 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
-
 import '../../../../core/theme/design_animations.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../data/models/emergency_contact_model.dart';
 import '../../data/providers/emergency_contact_provider.dart';
 import 'add_emergency_contact_screen.dart';
 
@@ -112,16 +113,16 @@ class EmergencyContactsScreen extends ConsumerWidget {
     );
   }
 
-  void _deleteContact(BuildContext context, WidgetRef ref, String? id) async {
+  Future<void> _deleteContact(BuildContext context, WidgetRef ref, String? id) async {
     if (id == null || id.isEmpty) return;
-    final ok = await ref
+    final error = await ref
         .read(emergencyContactProvider.notifier)
         .deleteContact(id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? 'Contact removed' : 'Failed to remove contact'),
-        backgroundColor: ok ? Colors.green : Colors.red,
+        content: Text(error ?? 'Contact removed'),
+        backgroundColor: error == null ? DesignColors.success : DesignColors.error,
       ),
     );
   }
@@ -133,7 +134,7 @@ class _EmergencyContactCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  final dynamic contact;
+  final EmergencyContactModel contact;
   final VoidCallback onDelete;
 
   @override
@@ -211,7 +212,7 @@ class _EmergencyContactCard extends StatelessWidget {
     );
   }
 
-  void _makeCall(String phone) async {
+  Future<void> _makeCall(String phone) async {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);

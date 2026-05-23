@@ -1,7 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/notification_model.dart';
 import '../repositories/notification_repository.dart';
+
+String _errorMessage(Object e) {
+  if (e is AppException) return e.message;
+  return 'Something went wrong. Please try again.';
+}
 
 /// Notification State Notifier
 class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationModel>>> {
@@ -30,11 +36,11 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
     }
   }
 
-  /// Mark notification as read
-  Future<bool> markAsRead(String notificationId) async {
+  /// Mark notification as read. Returns null on success, error message on failure.
+  Future<String?> markAsRead(String notificationId) async {
     try {
       await _repository.markAsRead(notificationId);
-      
+
       // Update local state
       state.whenData((notifications) {
         final updatedNotifications = notifications.map((n) {
@@ -45,47 +51,47 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
         }).toList();
         state = AsyncValue.data(updatedNotifications);
       });
-      
-      return true;
+
+      return null;
     } catch (e) {
       debugPrint('Error marking notification as read: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Mark all notifications as read
-  Future<bool> markAllAsRead() async {
+  /// Mark all notifications as read. Returns null on success, error message on failure.
+  Future<String?> markAllAsRead() async {
     try {
       await _repository.markAllAsRead();
-      
+
       // Update local state
       state.whenData((notifications) {
         final updatedNotifications = notifications.map((n) => n.copyWith(isRead: true)).toList();
         state = AsyncValue.data(updatedNotifications);
       });
-      
-      return true;
+
+      return null;
     } catch (e) {
       debugPrint('Error marking all notifications as read: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Delete notification
-  Future<bool> deleteNotification(String notificationId) async {
+  /// Delete notification. Returns null on success, error message on failure.
+  Future<String?> deleteNotification(String notificationId) async {
     try {
       await _repository.deleteNotification(notificationId);
-      
+
       // Update local state
       state.whenData((notifications) {
         final updatedNotifications = notifications.where((n) => n.id != notificationId).toList();
         state = AsyncValue.data(updatedNotifications);
       });
-      
-      return true;
+
+      return null;
     } catch (e) {
       debugPrint('Error deleting notification: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 

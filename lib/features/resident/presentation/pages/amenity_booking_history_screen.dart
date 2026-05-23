@@ -474,7 +474,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await ref.read(amenityBookingProvider.notifier).cancelBooking(
+              final error = await ref.read(amenityBookingProvider.notifier).cancelBooking(
                     booking.id!,
                     reason: reasonController.text.isNotEmpty ? reasonController.text : null,
                   );
@@ -482,16 +482,14 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
               ScaffoldMessenger.of(parentContext).showSnackBar(
                 SnackBar(
                   content: Text(
-                    success
-                        ? 'Booking cancelled successfully'
-                        : 'Failed to cancel booking',
+                    error ?? 'Booking cancelled successfully',
                   ),
-                  backgroundColor: success ? Colors.green : Colors.red,
+                  backgroundColor: error == null ? DesignColors.success : DesignColors.error,
                 ),
               );
             },
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: DesignColors.error,
             ),
             child: const Text('Yes, Cancel'),
           ),

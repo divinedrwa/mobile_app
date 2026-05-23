@@ -150,16 +150,16 @@ class FamilyMembersScreen extends ConsumerWidget {
                 );
                 return;
               }
-              final ok = await ref
+              final error = await ref
                   .read(familyMemberProvider.notifier)
                   .deleteFamilyMember(member.id!);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    ok ? '${member.name} removed' : 'Failed to remove member',
+                    error ?? '${member.name} removed',
                   ),
-                  backgroundColor: ok
+                  backgroundColor: error == null
                       ? DesignColors.success
                       : DesignColors.error,
                 ),

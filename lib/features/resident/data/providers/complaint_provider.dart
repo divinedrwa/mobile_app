@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../repositories/complaint_repository.dart';
 import '../models/complaint_list_item.dart';
 
@@ -7,7 +8,7 @@ class ComplaintSubmitNotifier extends StateNotifier<AsyncValue<void>> {
 
   final ComplaintRepository _repository;
 
-  Future<bool> submit({
+  Future<String?> submit({
     required String title,
     required String description,
     required String category,
@@ -22,10 +23,10 @@ class ComplaintSubmitNotifier extends StateNotifier<AsyncValue<void>> {
         priority: priority,
       );
       state = const AsyncValue.data(null);
-      return true;
+      return null;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      return false;
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 }

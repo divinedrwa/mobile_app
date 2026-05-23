@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/amenity_model.dart';
 import '../models/amenity_booking_model.dart';
 import '../repositories/amenity_booking_repository.dart';
@@ -45,15 +46,16 @@ class AmenityBookingNotifier extends StateNotifier<AsyncValue<List<AmenityBookin
     }
   }
 
-  /// Cancel booking
-  Future<bool> cancelBooking(String bookingId, {String? reason}) async {
+  /// Cancel booking.
+  /// Returns `null` on success, or an error message string on failure.
+  Future<String?> cancelBooking(String bookingId, {String? reason}) async {
     try {
       await _repository.cancelBooking(bookingId, reason: reason);
       await fetchBookings();
-      return true;
+      return null;
     } catch (e) {
       debugPrint('Error canceling booking: $e');
-      return false;
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 
@@ -100,7 +102,7 @@ class AmenityBookingActionNotifier extends StateNotifier<AsyncValue<void>> {
 
   final AmenityBookingRepository _repository;
 
-  Future<bool> createBooking({
+  Future<String?> createBooking({
     required String amenityId,
     required DateTime startTime,
     required DateTime endTime,
@@ -115,10 +117,10 @@ class AmenityBookingActionNotifier extends StateNotifier<AsyncValue<void>> {
         notes: notes,
       );
       state = const AsyncValue.data(null);
-      return true;
+      return null;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      return false;
+      return e is AppException ? e.message : 'Something went wrong. Please try again.';
     }
   }
 }

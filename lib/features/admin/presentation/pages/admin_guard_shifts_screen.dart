@@ -478,6 +478,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
             20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,

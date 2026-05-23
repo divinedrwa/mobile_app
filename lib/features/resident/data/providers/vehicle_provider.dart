@@ -1,7 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/vehicle_model.dart';
 import '../repositories/vehicle_repository.dart';
+
+String _errorMessage(Object e) {
+  if (e is AppException) return e.message;
+  return 'Something went wrong. Please try again.';
+}
 
 /// Vehicle State Notifier
 class VehicleNotifier extends StateNotifier<AsyncValue<List<VehicleModel>>> {
@@ -22,8 +28,8 @@ class VehicleNotifier extends StateNotifier<AsyncValue<List<VehicleModel>>> {
     }
   }
 
-  /// Add vehicle
-  Future<bool> addVehicle({
+  /// Add vehicle. Returns null on success, error message on failure.
+  Future<String?> addVehicle({
     required String vehicleNumber,
     required String type,
     String? brand,
@@ -39,15 +45,15 @@ class VehicleNotifier extends StateNotifier<AsyncValue<List<VehicleModel>>> {
         color: color,
       );
       await fetchVehicles();
-      return true;
+      return null;
     } catch (e) {
       debugPrint('Error adding vehicle: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Update vehicle
-  Future<bool> updateVehicle({
+  /// Update vehicle. Returns null on success, error message on failure.
+  Future<String?> updateVehicle({
     required String id,
     String? vehicleNumber,
     String? type,
@@ -65,22 +71,22 @@ class VehicleNotifier extends StateNotifier<AsyncValue<List<VehicleModel>>> {
         color: color,
       );
       await fetchVehicles();
-      return true;
+      return null;
     } catch (e) {
       debugPrint('Error updating vehicle: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 
-  /// Delete vehicle
-  Future<bool> deleteVehicle(String id) async {
+  /// Delete vehicle. Returns null on success, error message on failure.
+  Future<String?> deleteVehicle(String id) async {
     try {
       await _repository.deleteVehicle(id);
       await fetchVehicles();
-      return true;
+      return null;
     } catch (e) {
       debugPrint('Error deleting vehicle: $e');
-      return false;
+      return _errorMessage(e);
     }
   }
 }

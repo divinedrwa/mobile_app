@@ -34,25 +34,26 @@ class _AddEmergencyContactScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Emergency Contact'),
-        backgroundColor: Colors.red,
+        backgroundColor: DesignColors.error,
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             Card(
-              color: Colors.red.withValues(alpha: 0.1),
+              color: DesignColors.error.withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning, color: Colors.red),
+                    Icon(Icons.warning, color: DesignColors.error),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         'This contact will be notified during SOS alerts',
-                        style: TextStyle(color: Colors.red[700]),
+                        style: TextStyle(color: DesignColors.error),
                       ),
                     ),
                   ],
@@ -98,7 +99,7 @@ class _AddEmergencyContactScreenState
               onPressed: _isSubmitting ? null : _submitForm,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.red,
+                backgroundColor: DesignColors.error,
               ),
               child: _isSubmitting
                   ? const SizedBox(
@@ -117,7 +118,7 @@ class _AddEmergencyContactScreenState
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
-    final ok = await ref
+    final error = await ref
         .read(emergencyContactProvider.notifier)
         .addContact(
           name: _nameController.text.trim(),
@@ -126,7 +127,7 @@ class _AddEmergencyContactScreenState
         );
     if (mounted) {
       setState(() => _isSubmitting = false);
-      if (ok) {
+      if (error == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Emergency contact added!'),
@@ -136,8 +137,8 @@ class _AddEmergencyContactScreenState
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to add emergency contact'),
+          SnackBar(
+            content: Text(error),
             backgroundColor: DesignColors.error,
           ),
         );

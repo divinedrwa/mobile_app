@@ -78,14 +78,14 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
       return;
     }
 
-    final success = await ref.read(amenityBookingActionProvider.notifier).createBooking(
+    final error = await ref.read(amenityBookingActionProvider.notifier).createBooking(
           amenityId: amenity.id,
           startTime: startDateTime,
           endTime: endDateTime,
         );
 
     if (!mounted) return;
-    if (success) {
+    if (error == null) {
       ref.invalidate(amenitiesProvider);
       unawaited(ref.read(amenityBookingProvider.notifier).fetchBookings());
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,8 +97,6 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
         ),
       );
     } else {
-      final error = ref.read(amenityBookingActionProvider).error?.toString() ??
-          'Failed to create booking';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error),

@@ -220,6 +220,7 @@ class _GuardPreApprovedArrivalScreenState
         body: SafeArea(
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               children: [
                 Expanded(

@@ -1,6 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../models/emergency_contact_model.dart';
 import '../repositories/emergency_contact_repository.dart';
+
+String _errorMessage(Object e) {
+  if (e is AppException) return e.message;
+  return 'Something went wrong. Please try again.';
+}
 
 class EmergencyContactNotifier
     extends StateNotifier<AsyncValue<List<EmergencyContactModel>>> {
@@ -21,7 +28,8 @@ class EmergencyContactNotifier
     }
   }
 
-  Future<bool> addContact({
+  /// Add contact. Returns null on success, error message on failure.
+  Future<String?> addContact({
     required String name,
     required String relationship,
     required String phone,
@@ -35,19 +43,22 @@ class EmergencyContactNotifier
         address: address,
       );
       await fetchContacts();
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      debugPrint('Error adding emergency contact: $e');
+      return _errorMessage(e);
     }
   }
 
-  Future<bool> deleteContact(String id) async {
+  /// Delete contact. Returns null on success, error message on failure.
+  Future<String?> deleteContact(String id) async {
     try {
       await _repository.deleteContact(id);
       await fetchContacts();
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      debugPrint('Error deleting emergency contact: $e');
+      return _errorMessage(e);
     }
   }
 }

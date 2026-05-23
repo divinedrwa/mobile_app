@@ -58,6 +58,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
@@ -181,7 +182,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       );
       return;
     }
-    final success = widget.vehicle == null
+    final error = widget.vehicle == null
         ? await notifier.addVehicle(
             vehicleNumber: _numberController.text.trim(),
             type: _selectedType,
@@ -214,7 +215,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       setState(() {
         _isSubmitting = false;
       });
-      if (success) {
+      if (error == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -228,8 +229,8 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save vehicle'),
+          SnackBar(
+            content: Text(error),
             backgroundColor: DesignColors.error,
           ),
         );

@@ -382,16 +382,14 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await ref.read(parcelProvider.notifier).markAsCollected(parcel.id!);
+              final error = await ref.read(parcelProvider.notifier).markAsCollected(parcel.id!);
               if (!pageContext.mounted) return;
               ScaffoldMessenger.of(pageContext).showSnackBar(
                 SnackBar(
                   content: Text(
-                    success
-                        ? 'Parcel marked as collected'
-                        : 'Failed to mark parcel as collected',
+                    error ?? 'Parcel marked as collected',
                   ),
-                  backgroundColor: success ? Colors.green : Colors.red,
+                  backgroundColor: error == null ? DesignColors.success : DesignColors.error,
                 ),
               );
             },
