@@ -540,7 +540,11 @@ class AuthRepository {
       // Ignore
     }
     try {
-      await _dio.post(ApiEndpoints.logout);
+      final refreshToken = await StorageService.getRefreshToken();
+      await _dio.post(ApiEndpoints.logout, data: {
+        if (refreshToken != null && refreshToken.isNotEmpty)
+          'refreshToken': refreshToken,
+      });
     } catch (e) {
       // Ignore API errors on logout
     } finally {

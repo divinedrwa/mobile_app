@@ -283,6 +283,35 @@ class MaintenanceRepository {
     }
   }
 
+  /// Initiate a PhonePe payment. Returns { redirectUrl, merchantTransactionId, paymentId, totalDue }.
+  Future<Map<String, dynamic>> initiatePhonePePayment({
+    required String cycleId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.phonePeInitiate,
+        data: {'cycleId': cycleId},
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not start PhonePe payment');
+    }
+  }
+
+  /// Poll PhonePe payment status.
+  Future<Map<String, dynamic>> checkPhonePeStatus(String txnId) async {
+    try {
+      final response = await _dio.get(ApiEndpoints.phonePeStatus(txnId));
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to check PhonePe payment status');
+    }
+  }
+
   /// Creates a Razorpay order on the server. Completing payment still requires gateway capture + webhook.
   Future<Map<String, dynamic>> createBillingOrder({
     required String cycleId,

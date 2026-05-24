@@ -23,6 +23,12 @@ class _AdminSocietySettingsScreenState
   final _upiVpaController = TextEditingController();
   bool _editingVpa = false;
 
+  @override
+  void dispose() {
+    _upiVpaController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(adminSocietySettingsProvider);
   }

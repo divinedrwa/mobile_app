@@ -51,6 +51,12 @@ class ApiEndpoints {
   /// `POST /v1/payments/create-order`
   static const String billingCreateOrder = '/v1/payments/create-order';
 
+  /// PhonePe payment initiation (`POST`).
+  static const String phonePeInitiate = '/v1/payments/phonepe/initiate';
+
+  /// PhonePe payment status poll (`GET`).
+  static String phonePeStatus(String txnId) => '/v1/payments/phonepe/status/$txnId';
+
   /// Financial years for billing (`GET /v1/financial-years`) — admin + resident.
   static const String billingFinancialYears = '/v1/financial-years';
 
@@ -123,6 +129,12 @@ class ApiEndpoints {
   static String updateVehicle(String id) => '/residents/vehicles/$id';
   static String deleteVehicle(String id) => '/residents/vehicles/$id';
   
+  // Resident - Vehicle Log
+  static const String myVehicleLog = '/residents/my-vehicle-log';
+
+  // Resident - Community Directory
+  static const String communityDirectory = '/residents/community-directory';
+
   // Resident - Documents
   static const String documents = '/residents/my-documents';
 

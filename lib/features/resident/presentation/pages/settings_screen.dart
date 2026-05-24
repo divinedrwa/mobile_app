@@ -7,8 +7,7 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
-// TODO: Re-enable when theme toggle is restored in the Appearance section.
-// import '../../../../theme/widgets/theme_mode_toggle.dart';
+import '../../../../theme/theme.dart' as gp_theme;
 import '../../../../core/utils/play_store_launch.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/utils/validators.dart';
@@ -208,20 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   );
                 },
               ),
-              _SettingsTile(
-                icon: Icons.light_mode_outlined,
-                title: 'Theme',
-                subtitle:
-                    'Light mode is currently active across the mobile experience',
-                onTap: () {
-                  _showInfoDialog(
-                    context,
-                    title: 'Theme',
-                    message:
-                        'Dark and system theme options are being refined for a future update.',
-                  );
-                },
-              ),
+              _ThemeModeTile(),
             ],
           ),
           SizedBox(height: context.spacing.s24),
@@ -902,6 +888,60 @@ class _SettingsSwitchTile extends StatelessWidget {
         ),
         Switch.adaptive(value: value, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+class _ThemeModeTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(gp_theme.themeModeProvider);
+
+    String label;
+    IconData icon;
+    switch (mode) {
+      case ThemeMode.light:
+        label = 'Light';
+        icon = Icons.light_mode_outlined;
+      case ThemeMode.dark:
+        label = 'Dark';
+        icon = Icons.dark_mode_outlined;
+      case ThemeMode.system:
+        label = 'System';
+        icon = Icons.brightness_auto_outlined;
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: context.brand.primary),
+      title: Text(
+        'Theme',
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: context.text.primary,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+      subtitle: Text(
+        '$label mode',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.text.secondary,
+            ),
+      ),
+      trailing: SegmentedButton<ThemeMode>(
+        showSelectedIcon: false,
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        segments: const [
+          ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode, size: 16)),
+          ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 16)),
+          ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode, size: 16)),
+        ],
+        selected: {mode},
+        onSelectionChanged: (s) =>
+            ref.read(gp_theme.themeModeProvider.notifier).setMode(s.first),
+      ),
     );
   }
 }

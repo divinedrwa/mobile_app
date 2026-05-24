@@ -161,7 +161,12 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera);
+    final image = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1280,
+      maxHeight: 1280,
+      imageQuality: 75,
+    );
     if (image != null) {
       if (!mounted) return;
       setState(() => _selectedImage = image);

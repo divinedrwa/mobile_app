@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -24,6 +25,9 @@ import '../../data/providers/notification_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/security_contact_provider.dart';
 import '../../data/providers/special_project_provider.dart';
+import '../../data/providers/banner_provider.dart';
+import '../../data/providers/utilities_provider.dart';
+import '../../data/models/banner_model.dart';
 import '../../data/models/billing_cycle_current_model.dart';
 import '../../data/models/resident_dashboard_model.dart';
 import '../../data/models/security_contact_model.dart';
@@ -77,6 +81,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(notificationProvider);
     ref.invalidate(visitorApprovalRequestsProvider('pending'));
     ref.invalidate(visitorApprovalRequestsProvider('all'));
+    ref.invalidate(activeBannersProvider);
+    ref.invalidate(waterSupplyStatusProvider);
+    ref.invalidate(garbageCollectionActiveProvider);
   }
 
   String _greeting() {
@@ -167,6 +174,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // === BANNER zone — promotional/event banners ===
+                    _buildBannerCarousel(context),
+
+                    // === UTILITY status strip ===
+                    _buildUtilityStatusStrip(context),
+
                     // === URGENCY zone — time-sensitive, only renders when relevant ===
 
                     // Gate visitor requests: "someone is at the gate right
@@ -1738,6 +1751,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return 'Raise a complaint';
       case 'daily_help':
         return 'Service vendors';
+      case 'utilities':
+        return 'Water supply & garbage collection';
+      case 'directory':
+        return 'Searchable resident directory';
+      case 'incidents':
+        return 'Society incident reports';
+      case 'vehicle_log':
+        return 'Vehicle gate entry/exit log';
       default:
         return '';
     }
@@ -2099,6 +2120,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ],
     );
+  }
+
+  // ── Banner Carousel ──────────────────────────────────────────────────
+  Widget _buildBannerCarousel(BuildContext context) {
+    final bannersAsync = ref.watch(activeBannersProvider);
+    return bannersAsync.maybeWhen(
+      data: (banners) {
+        if (banners.isEmpty) return const SizedBox.shrink();
+        return _BannerCarouselWidget(banners: banners);
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  // ── Utility Status Strip ───────────────────────────────────────────
+  Widget _buildUtilityStatusStrip(BuildContext context) {
+    final waterAsync = ref.watch(waterSupplyStatusProvider);
+    final garbageAsync = ref.watch(garbageCollectionActiveProvider);
+
+    final waterGates = waterAsync.valueOrNull ?? [];
+    final garbageStatus = garbageAsync.valueOrNull;
+    final collectorInside = garbageStatus?.isInside ?? false;
+
+    if (waterGates.isEmpty && !collectorInside) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: _kSectionGap),
+      child: GestureDetector(
+        onTap: () => context.push('/resident/utilities'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: context.surface.defaultSurface,
+            borderRadius: BorderRadius.circular(_kRadiusMd),
+            border: Border.all(color: context.surface.border),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.water_drop_rounded, size: 16, color: DesignColors.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    ...waterGates.map((g) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: g.isOn
+                            ? DesignColors.success.withValues(alpha: 0.12)
+                            : DesignColors.error.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(DesignRadius.full),
+                      ),
+                      child: Text(
+                        '${g.gateName.isNotEmpty ? g.gateName : "Water"} ${g.isOn ? "ON" : "OFF"}',
+                        style: DesignTypography.captionSmall.copyWith(
+                          color: g.isOn ? DesignColors.success : DesignColors.error,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )),
+                    if (collectorInside)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: DesignColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(DesignRadius.full),
+                        ),
+                        child: Text(
+                          'Collector inside',
+                          style: DesignTypography.captionSmall.copyWith(
+                            color: DesignColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: context.text.tertiary),
+            ],
+          ),
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(duration: DesignAnimations.durationEntrance);
   }
 
   /// Tight header: avoids [TextButton] minimum vertical insets that widen the gap to the grid.
@@ -3423,5 +3531,210 @@ class _HeaderAvatar extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  Banner Carousel Widget
+// ══════════════════════════════════════════════════════════════════════
+class _BannerCarouselWidget extends StatefulWidget {
+  const _BannerCarouselWidget({required this.banners});
+  final List<BannerModel> banners;
+
+  @override
+  State<_BannerCarouselWidget> createState() => _BannerCarouselWidgetState();
+}
+
+class _BannerCarouselWidgetState extends State<_BannerCarouselWidget> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    if (widget.banners.length > 1) {
+      _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!mounted) return;
+        final next = (_currentPage + 1) % widget.banners.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Color _bannerTypeColor(String type) {
+    return switch (type.toUpperCase()) {
+      'EMERGENCY' => DesignColors.error,
+      'MAINTENANCE' => DesignColors.warning,
+      'EVENT' || 'FESTIVAL' => const Color(0xFF7C3AED),
+      'OFFER' => const Color(0xFF2563EB),
+      'COMMUNITY' => DesignColors.primary,
+      _ => DesignColors.info,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: _kSectionGap),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 160,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: widget.banners.length,
+              onPageChanged: (i) => setState(() => _currentPage = i),
+              itemBuilder: (context, index) {
+                final banner = widget.banners[index];
+                final typeColor = _bannerTypeColor(banner.type);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (banner.actionUrl != null &&
+                          banner.actionUrl!.isNotEmpty) {
+                        launchUrl(Uri.parse(banner.actionUrl!),
+                            mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(_kRadiusLg),
+                        border: Border.all(
+                          color: typeColor.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (banner.imageUrl != null &&
+                              banner.imageUrl!.isNotEmpty)
+                            CachedNetworkImage(
+                              imageUrl: resolveServerFileUrl(banner.imageUrl!) ?? banner.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: typeColor.withValues(alpha: 0.06),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: typeColor.withValues(alpha: 0.06),
+                              ),
+                            ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.65),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            left: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: typeColor,
+                                borderRadius: BorderRadius.circular(
+                                    DesignRadius.full),
+                              ),
+                              child: Text(
+                                banner.type,
+                                style:
+                                    DesignTypography.captionSmall.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 14,
+                            left: 14,
+                            right: 14,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  banner.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: DesignTypography.headingM.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (banner.description != null &&
+                                    banner.description!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    banner.description!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: DesignTypography.bodySmall
+                                        .copyWith(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (widget.banners.length > 1) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.banners.length, (i) {
+                final active = i == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: active ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? DesignColors.primary
+                        : DesignColors.primary.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: DesignAnimations.durationEntrance)
+        .slideY(begin: DesignAnimations.slideSubtle, end: 0);
   }
 }

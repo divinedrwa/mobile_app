@@ -19,6 +19,9 @@ import '../../features/resident/presentation/pages/maintenance/maintenance_histo
 import '../../features/resident/presentation/pages/maintenance/maintenance_hub_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/my_dues_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/upi_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/payment_method_selection_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/razorpay_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/phonepe_payment_screen.dart';
 import '../../features/admin/presentation/pages/admin_upi_verifications_screen.dart';
 import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
@@ -59,6 +62,10 @@ import '../../features/admin/presentation/pages/admin_incidents_screen.dart';
 import '../../features/admin/presentation/pages/admin_maintenance_actions_screen.dart';
 import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.dart';
 import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
+import '../../features/resident/presentation/pages/utilities_screen.dart';
+import '../../features/resident/presentation/pages/incidents_screen.dart';
+import '../../features/resident/presentation/pages/vehicle_log_screen.dart';
+import '../../features/resident/presentation/pages/community_directory_screen.dart';
 import '../../features/resident/presentation/pages/special_projects/special_projects_screen.dart';
 import '../../features/resident/presentation/pages/special_projects/special_project_detail_screen.dart';
 import '../../features/resident/presentation/pages/special_projects/admin_special_projects_screen.dart';
@@ -230,6 +237,45 @@ class AppRouter {
                       year: int.tryParse(q['year'] ?? ''),
                       cycleId: q['cycleId'],
                       remark: q['remark'],
+                      vpa: q['vpa'],
+                      qrCodeUrl: q['qrCodeUrl'],
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'pay',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return PaymentMethodSelectionScreen(
+                      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+                      month: int.tryParse(q['month'] ?? '1') ?? 1,
+                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      cycleId: q['cycleId'],
+                      remark: q['remark'],
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'razorpay-pay',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return RazorpayPaymentScreen(
+                      cycleId: q['cycleId'] ?? '',
+                      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+                      month: int.tryParse(q['month'] ?? '1') ?? 1,
+                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'phonepe-pay',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return PhonePePaymentScreen(
+                      cycleId: q['cycleId'] ?? '',
+                      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+                      month: int.tryParse(q['month'] ?? '1') ?? 1,
+                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
                     );
                   },
                 ),
@@ -290,6 +336,22 @@ class AppRouter {
             GoRoute(
               path: 'overview',
               builder: (context, state) => const ResidentOverviewScreen(),
+            ),
+            GoRoute(
+              path: 'utilities',
+              builder: (context, state) => const UtilitiesScreen(),
+            ),
+            GoRoute(
+              path: 'incidents',
+              builder: (context, state) => const IncidentsScreen(),
+            ),
+            GoRoute(
+              path: 'vehicle-log',
+              builder: (context, state) => const VehicleLogScreen(),
+            ),
+            GoRoute(
+              path: 'directory',
+              builder: (context, state) => const CommunityDirectoryScreen(),
             ),
             // Special Projects (resident + admin)
             GoRoute(

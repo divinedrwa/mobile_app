@@ -151,7 +151,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                 child: FadeTransition(
                   opacity: _backgroundFade,
                   child: Image.asset(
-                    'assets/splash/splash_background.png',
+                    'assets/splash/splash_background.jpg',
                     fit: BoxFit.cover,
                     alignment: Alignment.bottomCenter,
                   ),

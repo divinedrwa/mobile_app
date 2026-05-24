@@ -86,10 +86,15 @@ class VisitorApprovalFormNotifier
   }
 
   /// Verifies OTP for the selected resident's villa.
+  /// [fallbackVillaId] is used when no resident is selected (e.g. from QR scan payload).
   /// Returns an [ApprovalActionResult].
-  Future<ApprovalActionResult> verifyOtp({required String otp}) async {
-    final resident = state.resident ?? await firstResident();
-    if (resident == null) {
+  Future<ApprovalActionResult> verifyOtp({
+    required String otp,
+    String? fallbackVillaId,
+  }) async {
+    final resident = state.resident;
+    final villaId = resident?.villaId ?? fallbackVillaId;
+    if (villaId == null || villaId.isEmpty) {
       return const ApprovalActionResult(
         success: false,
         message: 'Select a resident first',
@@ -106,7 +111,7 @@ class VisitorApprovalFormNotifier
     try {
       final res = await _ref
           .read(guardRepositoryProvider)
-          .verifyVisitorOtp(otp: otp.trim(), villaId: resident.villaId);
+          .verifyVisitorOtp(otp: otp.trim(), villaId: villaId);
       final ok = res['verified'] == true;
       state = state.copyWith(submittingOtp: false, otpVerified: ok);
       return ApprovalActionResult(
@@ -168,13 +173,16 @@ class VisitorApprovalFormNotifier
   }
 
   /// OTP-based gate entry: verifies + creates visitor in one call.
+  /// [fallbackVillaId] is used when no resident is selected (e.g. from QR scan payload).
   Future<ApprovalActionResult> allowEntry({
     required String otp,
     required String visitorName,
     required String visitorPhone,
+    String? fallbackVillaId,
   }) async {
-    final resident = state.resident ?? await firstResident();
-    if (resident == null) {
+    final resident = state.resident;
+    final villaId = resident?.villaId ?? fallbackVillaId;
+    if (villaId == null || villaId.isEmpty) {
       return const ApprovalActionResult(
         success: false,
         message: 'Select a resident',
@@ -192,7 +200,7 @@ class VisitorApprovalFormNotifier
     try {
       final res = await _ref.read(guardRepositoryProvider).approveVisitorEntry(
             otp: otp.trim(),
-            villaId: resident.villaId,
+            villaId: villaId,
             visitorName: visitorName.trim(),
             visitorPhone: visitorPhone.trim(),
           );

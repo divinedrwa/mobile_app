@@ -24,6 +24,8 @@ class UpiPaymentScreen extends ConsumerStatefulWidget {
     this.year,
     this.cycleId,
     this.remark,
+    this.vpa,
+    this.qrCodeUrl,
   });
 
   final double? amount;
@@ -31,6 +33,10 @@ class UpiPaymentScreen extends ConsumerStatefulWidget {
   final int? year;
   final String? cycleId;
   final String? remark;
+  /// Pre-filled VPA from payment method selection (overrides upiConfig provider).
+  final String? vpa;
+  /// Pre-filled QR code URL from payment method selection.
+  final String? qrCodeUrl;
 
   @override
   ConsumerState<UpiPaymentScreen> createState() => _UpiPaymentScreenState();
@@ -182,9 +188,10 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
           ),
         ),
         data: (config) {
-          final vpa = config['upiVpa']?.toString() ?? '';
+          // Use pre-filled params from payment method selection, or fall back to config
+          final vpa = widget.vpa ?? config['upiVpa']?.toString() ?? '';
           final payeeName = config['payeeName']?.toString() ?? 'Society';
-          final qrImageUrl = config['upiQrCodeUrl']?.toString();
+          final qrImageUrl = widget.qrCodeUrl ?? config['upiQrCodeUrl']?.toString();
           if (vpa.isEmpty) {
             return const Center(
               child: Padding(

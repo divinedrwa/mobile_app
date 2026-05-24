@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -93,6 +95,48 @@ class _MyPreApprovedVisitorsScreenState
   Future<void> _refresh() async {
     ref.invalidate(preApprovedVisitorsProvider);
     await ref.read(preApprovedVisitorsProvider.future);
+  }
+
+  String _buildShareMessage(PreApprovedVisitorModel v) {
+    final otp = v.passcode?.trim() ?? '';
+    final expiry = v.passcodeExpiry != null
+        ? '\nValid until: ${DateFormat('dd MMM yyyy, hh:mm a').format(v.passcodeExpiry!.toLocal())}'
+        : '';
+    return 'Visitor Pass for ${v.name}\n\n'
+        'Passcode: $otp\n\n'
+        'Date: ${DateFormat('dd MMM yyyy').format(v.visitDate)}'
+        '$expiry\n\n'
+        'Please show this code at the gate.\n'
+        '- ${AppConstants.appName}';
+  }
+
+  void _sharePasscode(BuildContext context, PreApprovedVisitorModel v) {
+    final pass = v.passcode?.trim();
+    if (pass == null || pass.isEmpty) return;
+    Share.share(_buildShareMessage(v));
+  }
+
+  Future<void> _shareViaWhatsApp(
+    BuildContext context,
+    PreApprovedVisitorModel v,
+  ) async {
+    final pass = v.passcode?.trim();
+    if (pass == null || pass.isEmpty) return;
+    final message = Uri.encodeComponent(_buildShareMessage(v));
+    final phone = v.phone.replaceAll(RegExp(r'\D'), '');
+    final waUri = phone.length >= 10
+        ? Uri.parse('https://wa.me/$phone?text=$message')
+        : Uri.parse('https://wa.me/?text=$message');
+    if (await canLaunchUrl(waUri)) {
+      await launchUrl(waUri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('WhatsApp not installed'),
+        ),
+      );
+    }
   }
 
   Future<void> _copyPasscode(BuildContext context, String code) async {
@@ -414,6 +458,8 @@ class _MyPreApprovedVisitorsScreenState
                     typeAccent: _typeAccent(rows[i].type),
                     onDelete: () => _confirmDelete(context, rows[i]),
                     onCopyPasscode: (code) => _copyPasscode(context, code),
+                    onShare: () => _sharePasscode(context, rows[i]),
+                    onWhatsApp: () => _shareViaWhatsApp(context, rows[i]),
                   );
                 },
               ),
@@ -443,6 +489,8 @@ class _PreApprovalVisitorCard extends StatelessWidget {
     required this.typeAccent,
     required this.onDelete,
     required this.onCopyPasscode,
+    required this.onShare,
+    required this.onWhatsApp,
   });
 
   final PreApprovedVisitorModel visitor;
@@ -453,6 +501,8 @@ class _PreApprovalVisitorCard extends StatelessWidget {
   final Color typeAccent;
   final VoidCallback onDelete;
   final void Function(String code) onCopyPasscode;
+  final VoidCallback onShare;
+  final VoidCallback onWhatsApp;
 
   @override
   Widget build(BuildContext context) {
@@ -673,7 +723,27 @@ class _PreApprovalVisitorCard extends StatelessWidget {
                         IconButton.filledTonal(
                           tooltip: 'Copy',
                           onPressed: () => onCopyPasscode(passDisplay),
-                          icon: const Icon(Icons.copy_rounded, size: 20),
+                          icon: const Icon(Icons.copy_rounded, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: DesignColors.surface,
+                            foregroundColor: DesignColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton.filledTonal(
+                          tooltip: 'WhatsApp',
+                          onPressed: expired ? null : onWhatsApp,
+                          icon: const Icon(Icons.chat_rounded, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.15),
+                            foregroundColor: const Color(0xFF25D366),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton.filledTonal(
+                          tooltip: 'Share',
+                          onPressed: expired ? null : onShare,
+                          icon: const Icon(Icons.ios_share_rounded, size: 18),
                           style: IconButton.styleFrom(
                             backgroundColor: DesignColors.surface,
                             foregroundColor: DesignColors.primary,

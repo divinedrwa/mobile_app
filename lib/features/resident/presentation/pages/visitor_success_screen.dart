@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
@@ -181,6 +182,44 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                       ),
                     ],
                   ),
+                  if (_hasPasscode) ...[
+                    const SizedBox(height: DesignSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.chat_rounded, size: 18),
+                            label: const Text('WhatsApp'),
+                            onPressed: () => _shareViaWhatsApp(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF25D366),
+                              side: const BorderSide(color: Color(0xFF25D366)),
+                              padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm + 2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: DesignRadius.borderMD,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: DesignSpacing.md),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.sms_rounded, size: 18),
+                            label: const Text('SMS'),
+                            onPressed: () => _shareViaSms(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: DesignColors.textPrimary,
+                              side: const BorderSide(color: DesignColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm + 2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: DesignRadius.borderMD,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ).animate().fadeIn(delay: 400.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
@@ -367,13 +406,12 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
     context.go('/resident');
   }
 
-  void _sharePasscode() {
+  String _shareMessage() {
     final otp = visitor.passcode!.trim();
     final expiry = visitor.passcodeExpiry != null
         ? '\nValid until: ${DateFormat('dd MMM yyyy, hh:mm a').format(visitor.passcodeExpiry!.toLocal())}'
         : '';
-    final message =
-        '''
+    return '''
 Visitor Pass for ${visitor.name}
 
 Passcode: $otp
@@ -384,8 +422,47 @@ ${visitor.visitTime != null ? 'Time: ${visitor.visitTime}\n' : ''}$expiry
 Please show this code at the gate.
 - ${AppConstants.appName}
 ''';
+  }
 
-    Share.share(message);
+  void _sharePasscode() {
+    Share.share(_shareMessage());
+  }
+
+  Future<void> _shareViaWhatsApp(BuildContext context) async {
+    final message = Uri.encodeComponent(_shareMessage());
+    final phone = visitor.phone.replaceAll(RegExp(r'\D'), '');
+    // Try opening WhatsApp with the visitor's phone pre-filled
+    final waUri = phone.length >= 10
+        ? Uri.parse('https://wa.me/$phone?text=$message')
+        : Uri.parse('https://wa.me/?text=$message');
+    if (await canLaunchUrl(waUri)) {
+      await launchUrl(waUri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('WhatsApp not installed'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _shareViaSms(BuildContext context) async {
+    final body = Uri.encodeComponent(_shareMessage());
+    final phone = visitor.phone.replaceAll(RegExp(r'\D'), '');
+    final smsUri = phone.length >= 10
+        ? Uri.parse('sms:$phone?body=$body')
+        : Uri.parse('sms:?body=$body');
+    if (await canLaunchUrl(smsUri)) {
+      await launchUrl(smsUri);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Cannot open SMS'),
+        ),
+      );
+    }
   }
 
   String? _qrPayload() {

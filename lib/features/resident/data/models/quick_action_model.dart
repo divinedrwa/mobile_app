@@ -96,6 +96,34 @@ final residentQuickActionsOverflow = [
     color: Color(0xFFFF6D00),
     route: '',
   ),
+  const QuickAction(
+    id: 'utilities',
+    label: 'Utilities',
+    icon: Icons.water_drop_outlined,
+    color: Color(0xFF0288D1),
+    route: '/resident/utilities',
+  ),
+  const QuickAction(
+    id: 'directory',
+    label: 'Directory',
+    icon: Icons.people_outline_rounded,
+    color: Color(0xFF00897B),
+    route: '/resident/directory',
+  ),
+  const QuickAction(
+    id: 'incidents',
+    label: 'Incidents',
+    icon: Icons.shield_outlined,
+    color: Color(0xFFD84315),
+    route: '/resident/incidents',
+  ),
+  const QuickAction(
+    id: 'vehicle_log',
+    label: 'Vehicle Log',
+    icon: Icons.directions_car_outlined,
+    color: Color(0xFF5C6BC0),
+    route: '/resident/vehicle-log',
+  ),
 ];
 
 /// “More” tile — keep for future use; omit from [residentHomeQuickActionsGrid] until needed.

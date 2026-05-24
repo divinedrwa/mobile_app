@@ -7,8 +7,18 @@ import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/maintenance_due_model.dart';
+import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
+import '../../../data/repositories/payment_methods_repository.dart';
+
+final _paymentMethodsRepoProvider =
+    Provider<PaymentMethodsRepository>((ref) => PaymentMethodsRepository());
+
+final _paymentMethodsListProvider =
+    FutureProvider.autoDispose<List<PaymentMethodModel>>((ref) async {
+  return ref.watch(_paymentMethodsRepoProvider).getPaymentMethods();
+});
 
 /// Dedicated screen for the resident's outstanding bills.
 ///
@@ -56,13 +66,18 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     } catch (_) {/* surfaced inline */}
   }
 
-  bool get _hasUpiVpa {
+  /// True if at least one payment method is available (UPI VPA, bank, etc.).
+  bool get _hasPaymentMethods {
+    // Check new payment methods API first
+    final methods = ref.watch(_paymentMethodsListProvider).valueOrNull;
+    if (methods != null && methods.isNotEmpty) return true;
+    // Fallback: check legacy UPI config
     final config = ref.watch(upiConfigProvider).valueOrNull;
     final vpa = config?['upiVpa']?.toString() ?? '';
     return vpa.isNotEmpty;
   }
 
-  void _navigateToUpiPayment({
+  void _navigateToPayment({
     required double amount,
     required int month,
     required int year,
@@ -77,7 +92,14 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     if (cycleId != null && cycleId.isNotEmpty) params['cycleId'] = cycleId;
     if (remark != null && remark.isNotEmpty) params['remark'] = remark;
     final query = '?${Uri(queryParameters: params).query}';
-    context.push('/resident/maintenance/upi-pay$query');
+
+    // If new payment methods exist, go to selection screen; else fallback to UPI
+    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+    if (methods != null && methods.isNotEmpty) {
+      context.push('/resident/maintenance/pay$query');
+    } else {
+      context.push('/resident/maintenance/upi-pay$query');
+    }
   }
 
   /// Build a human-readable remark for a single cycle.
@@ -129,7 +151,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
       ),
       bottomNavigationBar: async.whenOrNull(
         data: (items) {
-          if (items.isEmpty || !_hasUpiVpa) return null;
+          if (items.isEmpty || !_hasPaymentMethods) return null;
           final total = items.fold<double>(0, (acc, m) => acc + m.remainingDue);
           if (total <= 0) return null;
           final inr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -145,7 +167,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _navigateToUpiPayment(
+                  onPressed: () => _navigateToPayment(
                     amount: total,
                     month: oldest.month,
                     year: oldest.year,
@@ -153,7 +175,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
                   ),
                   icon: const Icon(Icons.currency_rupee, size: 18),
                   label: Text(
-                    'Pay all ${inr.format(total)} via UPI',
+                    'Pay all ${inr.format(total)}',
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                   style: FilledButton.styleFrom(
@@ -230,8 +252,8 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
             item: items[i],
             inr: inr,
             onTap: () => _open(items[i]),
-            showPay: _hasUpiVpa,
-            onPay: () => _navigateToUpiPayment(
+            showPay: _hasPaymentMethods,
+            onPay: () => _navigateToPayment(
               amount: items[i].remainingDue,
               month: items[i].month,
               year: items[i].year,

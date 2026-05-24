@@ -847,7 +847,10 @@ class _GuardVisitorApprovalPageState
   Future<void> _verifyOtp() async {
     final result = await ref
         .read(visitorApprovalFormProvider.notifier)
-        .verifyOtp(otp: _otp.text);
+        .verifyOtp(
+          otp: _otp.text,
+          fallbackVillaId: widget.initialExtra?['villaId'],
+        );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -877,6 +880,7 @@ class _GuardVisitorApprovalPageState
           otp: _otp.text,
           visitorName: _name.text.trim(),
           visitorPhone: _phone.text.trim(),
+          fallbackVillaId: widget.initialExtra?['villaId'],
         );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

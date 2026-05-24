@@ -156,8 +156,9 @@ final guardVillasProvider =
   return ref.read(guardRepositoryProvider).getVillasForSociety();
 });
 
-/// Flat list of individual residents (not ADMIN/GUARD) derived from villas.
+/// Flat list of individual residents derived from villas.
 /// Each entry = one person the guard can select as a visitor/delivery target.
+/// Includes ADMIN users who have a villa assigned (admin-cum-resident).
 final guardResidentsPickerProvider =
     FutureProvider.autoDispose<List<ResidentPickerItem>>((ref) async {
   final villas = await ref.watch(guardVillasProvider.future);
@@ -165,7 +166,7 @@ final guardResidentsPickerProvider =
   for (final v in villas) {
     for (final r in v.residents) {
       final role = (r.role ?? '').toUpperCase();
-      if (role == 'ADMIN' || role == 'GUARD' || role == 'SUPER_ADMIN') continue;
+      if (role == 'GUARD' || role == 'SUPER_ADMIN') continue;
       if (r.name.isEmpty) continue;
       residents.add(ResidentPickerItem.fromVillaAndResident(v, r));
     }
