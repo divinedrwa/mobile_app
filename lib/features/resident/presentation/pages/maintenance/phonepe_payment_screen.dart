@@ -35,10 +35,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   String? _error;
   bool _paymentComplete = false;
   bool _showWebView = false;
-  String? _redirectUrl;
   String? _merchantTxnId;
   Timer? _pollTimer;
   int _pollCount = 0;
+  bool _polling = false;
   static const _maxPolls = 10;
 
   late final WebViewController _webViewController;
@@ -85,7 +85,6 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       }
 
       _merchantTxnId = txnId;
-      _redirectUrl = url;
       _webViewController.loadRequest(Uri.parse(url));
 
       setState(() {
@@ -123,7 +122,8 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   Future<void> _pollStatus() async {
-    if (_merchantTxnId == null) return;
+    if (_merchantTxnId == null || _polling) return;
+    _polling = true;
     _pollCount++;
 
     try {
@@ -151,6 +151,8 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       }
     } catch (_) {
       // Network error during poll — continue trying
+    } finally {
+      _polling = false;
     }
 
     if (_pollCount >= _maxPolls) {
@@ -189,25 +191,6 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         ],
       ),
     );
-  }
-
-  String _monthName(int month) {
-    const names = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return (month >= 1 && month <= 12) ? names[month] : '';
   }
 
   @override
