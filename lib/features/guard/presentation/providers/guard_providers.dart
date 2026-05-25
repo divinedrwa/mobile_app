@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/guard_repository.dart';
 import '../../data/models/guard_models.dart';
 import '../../../resident/data/models/parcel_model.dart';
+import '../../../../shared/utils/provider_cache.dart';
 
 /// Pending-visitor API first, then fills gaps from [getTodayVisitors] (same source
 /// as dashboard live feed) so Active → Visitors matches home after "View all".
@@ -38,6 +39,7 @@ final guardDashboardProvider =
 /// Current shift gate (`GET /guards/my-gate`). `null` when no assignment.
 final guardMyGateProvider =
     FutureProvider.autoDispose<GuardMyGateData?>((ref) async {
+  cacheFor(ref, const Duration(minutes: 15));
   return ref.read(guardRepositoryProvider).getMyGate();
 });
 
@@ -153,6 +155,7 @@ final guardPendingParcelsProvider =
 
 final guardVillasProvider =
     FutureProvider.autoDispose<List<VillaPickerItem>>((ref) async {
+  cacheFor(ref, const Duration(hours: 1));
   return ref.read(guardRepositoryProvider).getVillasForSociety();
 });
 
@@ -178,6 +181,7 @@ final guardResidentsPickerProvider =
 final guardResidentsDirectoryProvider = FutureProvider.autoDispose
     .family<List<ResidentDirectoryRow>, String>(
   (ref, query) async {
+    cacheFor(ref, const Duration(minutes: 10));
     return ref.read(guardRepositoryProvider).getResidentsDirectory(
           query: query.trim().isEmpty ? null : query.trim(),
         );
@@ -211,10 +215,12 @@ final guardPatrolsTodayProvider =
 /// Recent patrols (`GET /guards/my-patrols`).
 final guardMyPatrolsProvider =
     FutureProvider.autoDispose<List<GuardPatrolRow>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 10));
   return ref.read(guardRepositoryProvider).getMyPatrols();
 });
 
 final guardMyShiftsProvider =
     FutureProvider.autoDispose<List<GuardShiftRow>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 30));
   return ref.read(guardRepositoryProvider).getMyShifts();
 });

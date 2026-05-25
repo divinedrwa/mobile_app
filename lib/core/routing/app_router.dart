@@ -22,6 +22,7 @@ import '../../features/resident/presentation/pages/maintenance/upi_payment_scree
 import '../../features/resident/presentation/pages/maintenance/payment_method_selection_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/razorpay_payment_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/phonepe_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/payment_success_screen.dart';
 import '../../features/admin/presentation/pages/admin_upi_verifications_screen.dart';
 import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
@@ -249,7 +250,7 @@ class AppRouter {
                     return PaymentMethodSelectionScreen(
                       amount: double.tryParse(q['amount'] ?? '0') ?? 0,
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
-                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      year: int.tryParse(q['year'] ?? '') ?? DateTime.now().year,
                       cycleId: q['cycleId'],
                       remark: q['remark'],
                       payAllPending: q['payAll'] == 'true',
@@ -264,7 +265,7 @@ class AppRouter {
                       cycleId: q['cycleId'] ?? '',
                       amount: double.tryParse(q['amount'] ?? '0') ?? 0,
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
-                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      year: int.tryParse(q['year'] ?? '') ?? DateTime.now().year,
                       payAllPending: q['payAll'] == 'true',
                     );
                   },
@@ -277,7 +278,26 @@ class AppRouter {
                       cycleId: q['cycleId'] ?? '',
                       amount: double.tryParse(q['amount'] ?? '0') ?? 0,
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
-                      year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      year: int.tryParse(q['year'] ?? '') ?? DateTime.now().year,
+                      payAllPending: q['payAll'] == 'true',
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'payment-success',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return PaymentSuccessScreen(
+                      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+                      platformFee:
+                          double.tryParse(q['platformFee'] ?? '0') ?? 0,
+                      platformFeeGst:
+                          double.tryParse(q['platformFeeGst'] ?? '0') ?? 0,
+                      totalPaid:
+                          double.tryParse(q['totalPaid'] ?? '0') ?? 0,
+                      transactionId: q['txnId'],
+                      paymentMethod: q['method'] ?? 'Online',
+                      billingPeriod: q['period'],
                       payAllPending: q['payAll'] == 'true',
                     );
                   },

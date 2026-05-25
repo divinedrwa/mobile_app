@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -26,18 +25,28 @@ class VisitorHistoryScreen extends ConsumerStatefulWidget {
 class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _scrollController = ScrollController();
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(paginatedVisitorHistoryProvider.notifier).loadMore();
+    }
   }
 
   static String _normalizeStatusKey(String raw) {
@@ -112,7 +121,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final visitorsState = ref.watch(visitorHistoryProvider);
+    final pState = ref.watch(paginatedVisitorHistoryProvider);
 
     return Scaffold(
       backgroundColor: context.surface.background,
@@ -202,72 +211,69 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
           ),
         ),
       ),
-      body: visitorsState.when(
-        loading: () => const ListSkeleton(),
-        error: (error, _) => Padding(
-          padding: EdgeInsets.all(context.spacing.s16),
-          child: EnterpriseInfoBanner(
-            icon: Icons.cloud_off_outlined,
-            title: 'Could not load visitor history',
-            message: userFacingMessage(error),
-            tone: EnterpriseTone.danger,
-            actionLabel: 'Retry',
-            onAction: () => ref.invalidate(visitorHistoryProvider),
-          ),
-        ),
-        data: (visitors) {
-          if (visitors.isEmpty) return _buildEmptyState();
-          return Builder(
-            builder: (context) {
-              var filteredVisitors = visitors;
-              if (_searchQuery.isNotEmpty) {
-                final q = _searchQuery.toLowerCase();
-                filteredVisitors = visitors
-                    .where(
-                      (v) =>
-                          v.name.toLowerCase().contains(q) ||
-                          v.phone.toLowerCase().contains(q),
-                    )
-                    .toList();
-              }
-
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              final weekAgo = today.subtract(const Duration(days: 7));
-
-              final todayVisitors = filteredVisitors.where((v) {
-                final visitDate = DateTime(
-                  v.visitDate.year,
-                  v.visitDate.month,
-                  v.visitDate.day,
-                );
-                return visitDate.isAtSameMomentAs(today);
-              }).toList();
-
-              final weekVisitors = filteredVisitors
-                  .where((v) => v.visitDate.isAfter(weekAgo))
-                  .toList();
-
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildVisitorsList(filteredVisitors),
-                  todayVisitors.isEmpty
-                      ? _buildNoResultsState('No visitors today')
-                      : _buildVisitorsList(todayVisitors),
-                  weekVisitors.isEmpty
-                      ? _buildNoResultsState('No visitors this week')
-                      : _buildVisitorsList(weekVisitors),
-                ],
-              );
-            },
-          );
-        },
-      ),
+      body: _buildBody(context, pState),
     );
   }
 
-  Widget _buildVisitorsList(List<VisitorModel> visitors) {
+  Widget _buildBody(BuildContext context, dynamic pState) {
+    if (pState.isInitialLoad) return const ListSkeleton();
+
+    if (pState.error != null && pState.items.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.all(context.spacing.s16),
+        child: EnterpriseInfoBanner(
+          icon: Icons.cloud_off_outlined,
+          title: 'Could not load visitor history',
+          message: pState.error!,
+          tone: EnterpriseTone.danger,
+          actionLabel: 'Retry',
+          onAction: () => ref.read(paginatedVisitorHistoryProvider.notifier).refresh(),
+        ),
+      );
+    }
+
+    final List<VisitorModel> visitors = List<VisitorModel>.from(pState.items);
+    if (visitors.isEmpty) return _buildEmptyState();
+
+    var filteredVisitors = visitors;
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filteredVisitors = visitors
+          .where((v) =>
+              v.name.toLowerCase().contains(q) ||
+              v.phone.toLowerCase().contains(q))
+          .toList();
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekAgo = today.subtract(const Duration(days: 7));
+
+    final todayVisitors = filteredVisitors.where((v) {
+      final visitDate = DateTime(v.visitDate.year, v.visitDate.month, v.visitDate.day);
+      return visitDate.isAtSameMomentAs(today);
+    }).toList();
+
+    final weekVisitors = filteredVisitors
+        .where((v) => v.visitDate.isAfter(weekAgo))
+        .toList();
+
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildVisitorsList(filteredVisitors, showLoadMore: true),
+        todayVisitors.isEmpty
+            ? _buildNoResultsState('No visitors today')
+            : _buildVisitorsList(todayVisitors),
+        weekVisitors.isEmpty
+            ? _buildNoResultsState('No visitors this week')
+            : _buildVisitorsList(weekVisitors),
+      ],
+    );
+  }
+
+  Widget _buildVisitorsList(List<VisitorModel> visitors, {bool showLoadMore = false}) {
+    final pState = ref.watch(paginatedVisitorHistoryProvider);
     final groupedVisitors = <String, List<VisitorModel>>{};
     for (final visitor in visitors) {
       final local = visitor.visitDate.toLocal();
@@ -278,15 +284,37 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final sortedDates = groupedVisitors.keys.toList()
       ..sort((a, b) => b.compareTo(a));
 
+    final hasFooter = showLoadMore && (pState.hasMore || pState.isLoadingMore);
+
     return RefreshIndicator(
       color: DesignColors.primary,
       onRefresh: () async {
-        ref.invalidate(visitorHistoryProvider);
+        await ref.read(paginatedVisitorHistoryProvider.notifier).refresh();
       },
       child: ListView.builder(
+        controller: showLoadMore ? _scrollController : null,
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        itemCount: sortedDates.length,
+        itemCount: sortedDates.length + (hasFooter ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index >= sortedDates.length) {
+            // Load more footer
+            if (pState.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Center(
+                child: TextButton(
+                  onPressed: () => ref.read(paginatedVisitorHistoryProvider.notifier).loadMore(),
+                  child: const Text('Load more'),
+                ),
+              ),
+            );
+          }
+
           final dateKey = sortedDates[index];
           final dateVisitors = groupedVisitors[dateKey]!;
           final date = DateTime.parse(dateKey);

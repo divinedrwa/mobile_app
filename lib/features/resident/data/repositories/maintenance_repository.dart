@@ -287,6 +287,7 @@ class MaintenanceRepository {
   Future<Map<String, dynamic>> initiatePhonePePayment({
     String? cycleId,
     bool payAllPending = false,
+    String? idempotencyKey,
   }) async {
     try {
       final response = await _dio.post(
@@ -295,6 +296,8 @@ class MaintenanceRepository {
           if (payAllPending) 'payAllPending': true,
           if (!payAllPending && cycleId != null && cycleId.isNotEmpty)
             'cycleId': cycleId,
+          if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+            'idempotencyKey': idempotencyKey,
         },
       );
       final data = response.data;

@@ -12,9 +12,35 @@ import '../../../../theme/context_extensions.dart';
 import '../../data/providers/complaint_provider.dart';
 import '../widgets/list_skeleton.dart';
 
-/// Lists complaints from GET /residents/my-complaints (replaces former mock screen).
-class MyComplaintsScreen extends ConsumerWidget {
+/// Lists complaints from GET /residents/my-complaints with pagination.
+class MyComplaintsScreen extends ConsumerStatefulWidget {
   const MyComplaintsScreen({super.key});
+
+  @override
+  ConsumerState<MyComplaintsScreen> createState() => _MyComplaintsScreenState();
+}
+
+class _MyComplaintsScreenState extends ConsumerState<MyComplaintsScreen> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(paginatedComplaintsProvider.notifier).loadMore();
+    }
+  }
 
   static Color _statusColor(String status) {
     switch (status.toUpperCase()) {
@@ -42,8 +68,8 @@ class MyComplaintsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(myComplaintsProvider);
+  Widget build(BuildContext context) {
+    final pState = ref.watch(paginatedComplaintsProvider);
 
     return Scaffold(
       backgroundColor: context.surface.background,
@@ -71,69 +97,108 @@ class MyComplaintsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: async.when(
-        loading: () => const ListSkeleton(),
-        error: (err, _) => Padding(
-          padding: EdgeInsets.all(context.spacing.s16),
-          child: EnterpriseInfoBanner(
-            icon: Icons.report_problem_outlined,
-            title: 'Could not load complaints',
-            message: err.toString(),
-            tone: EnterpriseTone.danger,
-            actionLabel: 'Retry',
-            onAction: () => ref.invalidate(myComplaintsProvider),
-          ),
+      body: _buildBody(context, pState),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, dynamic pState) {
+    if (pState.isInitialLoad) {
+      return const ListSkeleton();
+    }
+
+    if (pState.error != null && pState.items.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.all(context.spacing.s16),
+        child: EnterpriseInfoBanner(
+          icon: Icons.report_problem_outlined,
+          title: 'Could not load complaints',
+          message: pState.error!,
+          tone: EnterpriseTone.danger,
+          actionLabel: 'Retry',
+          onAction: () => ref.read(paginatedComplaintsProvider.notifier).refresh(),
         ),
-        data: (items) {
-          if (items.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.check_circle_outline_rounded,
-              title: 'No complaints filed',
-              subtitle: 'That\'s a good sign! If something comes up, you can file a complaint from the home screen.',
-              iconColor: DesignColors.success,
-              actionLabel: 'File a complaint',
-              onAction: () => context.push('/resident/complaint'),
+      );
+    }
+
+    final items = pState.items;
+
+    if (items.isEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.check_circle_outline_rounded,
+        title: 'No complaints filed',
+        subtitle: 'That\'s a good sign! If something comes up, you can file a complaint from the home screen.',
+        iconColor: DesignColors.success,
+        actionLabel: 'File a complaint',
+        onAction: () => context.push('/resident/complaint'),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(paginatedComplaintsProvider.notifier).refresh();
+      },
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: EdgeInsets.fromLTRB(
+          context.spacing.s16,
+          context.spacing.s16,
+          context.spacing.s16,
+          context.spacing.s32,
+        ),
+        itemCount: items.length + (pState.hasMore || pState.isLoadingMore ? 1 : 0) + 2,
+        itemBuilder: (context, index) {
+          // Header items
+          if (index == 0) {
+            return const EnterpriseInfoBanner(
+              icon: Icons.assignment_outlined,
+              title: 'Track service issues clearly',
+              message: 'Review what has been filed, what is being worked on, and what has already been resolved.',
+              tone: EnterpriseTone.info,
             );
           }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(myComplaintsProvider);
-              await ref.read(myComplaintsProvider.future);
-            },
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                context.spacing.s16,
-                context.spacing.s16,
-                context.spacing.s16,
-                context.spacing.s32,
+          if (index == 1) {
+            return Padding(
+              padding: EdgeInsets.only(top: context.spacing.s24, bottom: context.spacing.s12),
+              child: EnterpriseSectionHeader(
+                title: 'Complaint history',
+                subtitle: '${pState.total} ${pState.total == 1 ? 'issue' : 'issues'} recorded for your home',
               ),
-              children: [
-                const EnterpriseInfoBanner(
-                  icon: Icons.assignment_outlined,
-                  title: 'Track service issues clearly',
-                  message:
-                      'Review what has been filed, what is being worked on, and what has already been resolved.',
-                  tone: EnterpriseTone.info,
+            );
+          }
+
+          final itemIndex = index - 2;
+
+          // Load more indicator
+          if (itemIndex >= items.length) {
+            if (pState.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+            if (pState.hasMore) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => ref.read(paginatedComplaintsProvider.notifier).loadMore(),
+                    child: const Text('Load more'),
+                  ),
                 ),
-                SizedBox(height: context.spacing.s24),
-                EnterpriseSectionHeader(
-                  title: 'Complaint history',
-                  subtitle:
-                      '${items.length} ${items.length == 1 ? 'issue' : 'issues'} recorded for your home',
-                ),
-                SizedBox(height: context.spacing.s12),
-                for (int index = 0; index < items.length; index++)
-                  _ComplaintCard(
-                    item: items[index],
-                    color: _statusColor(items[index].status),
-                    statusLabel: _statusLabel(items[index].status),
-                  ).animate().fadeIn(
-                        duration: 250.ms,
-                        delay: DesignAnimations.staggerFor(index),
-                      ),
-              ],
-            ),
-          );
+              );
+            }
+            return const SizedBox.shrink();
+          }
+
+          final item = items[itemIndex];
+          return _ComplaintCard(
+            item: item,
+            color: _statusColor(item.status),
+            statusLabel: _statusLabel(item.status),
+          ).animate().fadeIn(
+                duration: 250.ms,
+                delay: DesignAnimations.staggerFor(itemIndex),
+              );
         },
       ),
     );

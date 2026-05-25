@@ -29,6 +29,37 @@ class ComplaintRepository {
     }
   }
 
+  /// Paginated variant: returns `{items, total, hasMore}`.
+  Future<({List<ComplaintListItem> items, int total, bool hasMore})>
+      getMyComplaintsPaginated({
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.myComplaints,
+        queryParameters: {
+          'limit': limit,
+          'offset': offset,
+          if (status != null) 'status': status,
+        },
+      );
+      final data = res.data ?? {};
+      final raw = data['complaints'] as List<dynamic>? ?? [];
+      final items = raw
+          .map((e) => ComplaintListItem.fromJson(
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+              ))
+          .toList();
+      final total = (data['total'] as num?)?.toInt() ?? items.length;
+      final hasMore = data['hasMore'] as bool? ?? (offset + items.length < total);
+      return (items: items, total: total, hasMore: hasMore);
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load complaints');
+    }
+  }
+
   Future<void> submitComplaint({
     required String title,
     required String description,

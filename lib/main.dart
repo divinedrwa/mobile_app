@@ -154,7 +154,7 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       debugShowCheckedModeBanner: false,
       theme: gp_theme.AppTheme.light(palette: tokens.light),
       darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
-      themeMode: ref.watch(gp_theme.themeModeProvider),
+      themeMode: ThemeMode.light, // locked to light; dark mode disabled for now
       routerConfig: _router!,
       builder: (context, child) {
         final scaled = _buildFixedScale(context, child);

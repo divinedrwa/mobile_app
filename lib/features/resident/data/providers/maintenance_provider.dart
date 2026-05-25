@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../shared/utils/provider_cache.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../models/billing_cycle_current_model.dart';
 import '../models/maintenance_due_model.dart';
@@ -11,27 +12,29 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
 
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+      cacheFor(ref, const Duration(minutes: 10));
       final user = ref.watch(authProvider).user;
       if (user == null) return {};
       if (user.role != UserRole.admin && user.role != UserRole.resident) return {};
       return ref.watch(maintenanceRepositoryProvider).getOutstandingDues();
     });
 
-final pendingMaintenanceProvider = FutureProvider<List<MaintenanceDueModel>>((
-  ref,
-) async {
-  return ref.watch(maintenanceRepositoryProvider).getPendingMaintenance();
-});
+final pendingMaintenanceProvider =
+    FutureProvider.autoDispose<List<MaintenanceDueModel>>((ref) async {
+      cacheFor(ref, const Duration(minutes: 5));
+      return ref.watch(maintenanceRepositoryProvider).getPendingMaintenance();
+    });
 
-final maintenanceHistoryProvider = FutureProvider<List<MaintenanceDueModel>>((
-  ref,
-) async {
-  return ref.watch(maintenanceRepositoryProvider).getMaintenanceHistory();
-});
+final maintenanceHistoryProvider =
+    FutureProvider.autoDispose<List<MaintenanceDueModel>>((ref) async {
+      cacheFor(ref, const Duration(minutes: 5));
+      return ref.watch(maintenanceRepositoryProvider).getMaintenanceHistory();
+    });
 
 /// Server-driven billing window for residents (`GET /v1/cycles/current`). Skips fetch for admins.
 final residentBillingCycleProvider =
     FutureProvider.autoDispose<BillingCycleCurrent>((ref) async {
+      cacheFor(ref, const Duration(minutes: 15));
       final user = ref.watch(authProvider).user;
       if (user == null || user.role == UserRole.admin) {
         return BillingCycleCurrent.fromJson(const {});
@@ -51,6 +54,7 @@ final residentBillingCycleProvider =
 /// Financial years for billing period selection (admin + resident).
 final billingFinancialYearsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      cacheFor(ref, const Duration(hours: 1));
       final user = ref.watch(authProvider).user;
       if (user == null) return [];
       if (user.role != UserRole.admin && user.role != UserRole.resident) {
@@ -62,6 +66,7 @@ final billingFinancialYearsProvider =
 /// Billing cycles for a financial year (only months where a cycle was created).
 final billingCyclesForFinancialYearProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, financialYearId) async {
+      cacheFor(ref, const Duration(hours: 1));
       if (financialYearId.isEmpty) {
         return {'financialYear': null, 'cycles': <Map<String, dynamic>>[]};
       }

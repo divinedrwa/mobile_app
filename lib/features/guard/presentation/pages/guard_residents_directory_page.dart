@@ -166,18 +166,24 @@ class _GuardResidentsDirectoryPageState
                       ),
                     );
                   }
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      GuardTokens.padScreen,
-                      GuardTokens.g2,
-                      GuardTokens.padScreen,
-                      GuardTokens.g3,
-                    ),
-                    itemCount: rows.length,
-                    itemBuilder: (_, i) {
-                      final r = rows[i];
-                      return _ResidentCard(row: r, initials: _initials(r.name));
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(guardResidentsDirectoryProvider(_debouncedQuery));
+                      await ref.read(guardResidentsDirectoryProvider(_debouncedQuery).future);
                     },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        GuardTokens.padScreen,
+                        GuardTokens.g2,
+                        GuardTokens.padScreen,
+                        GuardTokens.g3,
+                      ),
+                      itemCount: rows.length,
+                      itemBuilder: (_, i) {
+                        final r = rows[i];
+                        return _ResidentCard(row: r, initials: _initials(r.name));
+                      },
+                    ),
                   );
                 },
               ),

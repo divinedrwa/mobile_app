@@ -3,14 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/providers/maintenance_provider.dart';
-import '../../../data/repositories/maintenance_repository.dart';
-
-final _maintenanceRepoProvider =
-    Provider<MaintenanceRepository>((ref) => MaintenanceRepository());
 
 class PhonePePaymentScreen extends ConsumerStatefulWidget {
   const PhonePePaymentScreen({
@@ -43,6 +41,8 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   int _pollCount = 0;
   bool _polling = false;
   static const _maxPolls = 10;
+  String _idempotencyKey = const Uuid().v4();
+  double _serverAmount = 0;
 
   late final WebViewController _webViewController;
 
@@ -64,6 +64,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   Future<void> _initiatePayment() async {
+    _idempotencyKey = const Uuid().v4();
     setState(() {
       _loading = true;
       _error = null;
@@ -72,11 +73,14 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     });
 
     try {
-      final repo = ref.read(_maintenanceRepoProvider);
+      final repo = ref.read(maintenanceRepositoryProvider);
       final result = await repo.initiatePhonePePayment(
         cycleId: widget.cycleId.isNotEmpty ? widget.cycleId : null,
         payAllPending: widget.payAllPending,
+        idempotencyKey: _idempotencyKey,
       );
+
+      if (!mounted) return;
 
       final url = result['redirectUrl'] as String?;
       final txnId = result['merchantTransactionId'] as String?;
@@ -90,6 +94,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       }
 
       _merchantTxnId = txnId;
+      _serverAmount = _readAmount(result['totalDue']) ?? widget.amount;
       _webViewController.loadRequest(Uri.parse(url));
 
       setState(() {
@@ -97,9 +102,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         _showWebView = true;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = userFacingMessage(e);
       });
     }
   }
@@ -132,8 +138,11 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     _pollCount++;
 
     try {
-      final repo = ref.read(_maintenanceRepoProvider);
+      final repo = ref.read(maintenanceRepositoryProvider);
       final result = await repo.checkPhonePeStatus(_merchantTxnId!);
+
+      if (!mounted) return;
+
       final status = result['status'] as String? ?? 'UNKNOWN';
 
       if (status == 'SUCCESS') {
@@ -146,7 +155,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
           _loading = false;
           _paymentComplete = true;
         });
-        _showSuccessDialog();
+        _showSuccessScreen();
         return;
       }
 
@@ -164,6 +173,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       _polling = false;
     }
 
+    if (!mounted) return;
     if (_pollCount >= _maxPolls) {
       _pollTimer?.cancel();
       setState(() {
@@ -173,66 +183,95 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     }
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: const Icon(Icons.check_circle,
-            color: DesignColors.success, size: 48),
-        title: const Text('Payment Successful'),
-        content: Text(
-          widget.payAllPending
-              ? 'All outstanding bills (\u20B9${widget.amount.toStringAsFixed(0)}) have been recorded. Pull to refresh if any month still shows due.'
-              : 'Your payment of \u20B9${widget.amount.toStringAsFixed(0)} has been processed successfully.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.pop(true);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: DesignColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
+  String _monthName(int month) {
+    const names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return (month >= 1 && month <= 12) ? names[month] : '';
+  }
+
+  void _showSuccessScreen() {
+    if (!mounted) return;
+    final amount = _serverAmount > 0 ? _serverAmount : widget.amount;
+    final period = widget.payAllPending
+        ? 'All outstanding'
+        : '${_monthName(widget.month)} ${widget.year}';
+
+    context.go(
+      Uri(
+        path: '/resident/maintenance/payment-success',
+        queryParameters: {
+          'amount': amount.toStringAsFixed(2),
+          'totalPaid': amount.toStringAsFixed(2),
+          'txnId': _merchantTxnId ?? '',
+          'method': 'PhonePe',
+          'period': period,
+          if (widget.payAllPending) 'payAll': 'true',
+        },
+      ).toString(),
     );
   }
 
+  double? _readAmount(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  bool get _canPop =>
+      !_showWebView && !_loading || _paymentComplete || _error != null;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DesignColors.background,
-      appBar: AppBar(
-        elevation: 0,
+    return PopScope(
+      canPop: _canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please complete or cancel the payment first'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
         backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon:
-              const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'PhonePe Payment',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: DesignColors.background,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon:
+                const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+            onPressed: () {
+              if (_canPop) {
+                context.pop();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please complete or cancel the payment first'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+          title: Text(
+            'PhonePe Payment',
+            style: DesignTypography.headingM.copyWith(
+              color: DesignColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-      ),
-      body: _showWebView
-          ? WebViewWidget(controller: _webViewController)
-          : Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: _buildContent(),
+        body: _showWebView
+            ? WebViewWidget(controller: _webViewController)
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: _buildContent(),
+                ),
               ),
-            ),
+      ),
     );
   }
 

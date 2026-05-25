@@ -63,6 +63,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     ref.invalidate(residentBillingCycleProvider);
     ref.invalidate(pendingMaintenanceProvider);
     ref.invalidate(maintenanceHistoryProvider);
+    ref.invalidate(outstandingDuesProvider);
     ref.invalidate(upiConfigProvider);
   }
 

@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/providers/maintenance_provider.dart';
-import '../../../data/repositories/maintenance_repository.dart';
-
-final _maintenanceRepoProvider =
-    Provider<MaintenanceRepository>((ref) => MaintenanceRepository());
 
 class RazorpayPaymentScreen extends ConsumerStatefulWidget {
   const RazorpayPaymentScreen({
@@ -37,10 +35,12 @@ class _RazorpayPaymentScreenState
   bool _loading = true;
   String? _error;
   bool _paymentComplete = false;
+  bool _orderCreated = false;
   double _maintenanceDue = 0;
   double _platformFee = 0;
   double _platformFeeGst = 0;
   double _totalPayable = 0;
+  String _idempotencyKey = const Uuid().v4();
 
   @override
   void initState() {
@@ -59,15 +59,17 @@ class _RazorpayPaymentScreenState
   }
 
   Future<void> _createOrder() async {
+    _idempotencyKey = const Uuid().v4();
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final repo = ref.read(_maintenanceRepoProvider);
+      final repo = ref.read(maintenanceRepositoryProvider);
       final result = await repo.createBillingOrder(
         cycleId: widget.cycleId.isNotEmpty ? widget.cycleId : null,
         payAllPending: widget.payAllPending,
+        idempotencyKey: _idempotencyKey,
       );
 
       final orderId = result['orderId'] as String?;
@@ -122,14 +124,16 @@ class _RazorpayPaymentScreenState
       }
 
       if (!mounted) return;
+      _orderCreated = true;
       setState(() {
         _loading = false;
       });
       _razorpay.open(options);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = userFacingMessage(e);
       });
     }
   }
@@ -146,35 +150,25 @@ class _RazorpayPaymentScreenState
     setState(() {
       _paymentComplete = true;
     });
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: const Icon(Icons.check_circle,
-            color: DesignColors.success, size: 48),
-        title: const Text('Payment Successful'),
-        content: Text(
-          widget.payAllPending
-              ? 'All outstanding maintenance (\u20B9${_maintenanceDue.toStringAsFixed(0)}) will appear as paid once the server confirms payment.'
-              : 'Maintenance of \u20B9${_maintenanceDue.toStringAsFixed(0)} was recorded successfully.'
-                  '${_platformFee > 0 ? '\n(Total paid at gateway: \u20B9${_totalPayable.toStringAsFixed(0)} including platform fee & GST.)' : ''}'
-                  '\n\nPayment ID: ${response.paymentId ?? "N/A"}',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.pop(true);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: DesignColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
+
+    final period = widget.payAllPending
+        ? 'All outstanding'
+        : '${_monthName(widget.month)} ${widget.year}';
+
+    context.go(
+      Uri(
+        path: '/resident/maintenance/payment-success',
+        queryParameters: {
+          'amount': _maintenanceDue.toStringAsFixed(2),
+          'platformFee': _platformFee.toStringAsFixed(2),
+          'platformFeeGst': _platformFeeGst.toStringAsFixed(2),
+          'totalPaid': _totalPayable.toStringAsFixed(2),
+          'txnId': response.paymentId ?? '',
+          'method': 'Razorpay',
+          'period': period,
+          if (widget.payAllPending) 'payAll': 'true',
+        },
+      ).toString(),
     );
   }
 
@@ -288,29 +282,53 @@ class _RazorpayPaymentScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DesignColors.background,
-      appBar: AppBar(
-        elevation: 0,
+    return PopScope(
+      canPop: !_orderCreated || _paymentComplete || _error != null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please complete or cancel the payment first'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
         backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon:
-              const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Online Payment',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: DesignColors.background,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon:
+                const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+            onPressed: () {
+              if (!_orderCreated || _paymentComplete || _error != null) {
+                context.pop();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please complete or cancel the payment first'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+          title: Text(
+            'Online Payment',
+            style: DesignTypography.headingM.copyWith(
+              color: DesignColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _buildContent(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: _buildContent(),
+          ),
         ),
       ),
     );

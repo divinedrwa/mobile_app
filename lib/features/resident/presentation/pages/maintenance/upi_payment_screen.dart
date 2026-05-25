@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/upi_payment_model.dart';
+import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
 
 /// Resident screen for paying maintenance via UPI.
@@ -136,6 +138,8 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
             remark: _paymentRemark,
           );
       ref.invalidate(myUpiPaymentsProvider);
+      ref.invalidate(pendingMaintenanceProvider);
+      ref.invalidate(residentBillingCycleProvider);
       if (mounted) {
         setState(() => _submitted = true);
       }
@@ -657,7 +661,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => context.pop(),
               child: const Text('Done'),
             ),
           ],

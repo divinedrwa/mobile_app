@@ -21,26 +21,42 @@ class CommunityDirectoryScreen extends ConsumerStatefulWidget {
 class _CommunityDirectoryScreenState
     extends ConsumerState<CommunityDirectoryScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
-  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(paginatedDirectoryProvider.notifier).loadMore();
+    }
   }
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      if (mounted) setState(() => _query = value.trim());
+      if (mounted) {
+        ref.read(paginatedDirectoryProvider.notifier).search(value.trim());
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final directoryAsync = ref.watch(directorySearchProvider(_query));
+    final pState = ref.watch(paginatedDirectoryProvider);
 
     return Scaffold(
       backgroundColor: context.surface.background,
@@ -69,7 +85,9 @@ class _CommunityDirectoryScreenState
                             size: 18, color: context.text.tertiary),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() => _query = '');
+                          ref
+                              .read(paginatedDirectoryProvider.notifier)
+                              .search('');
                         },
                       )
                     : null,
@@ -99,130 +117,161 @@ class _CommunityDirectoryScreenState
             ),
           ),
           const SizedBox(height: DesignSpacing.sm),
-          Expanded(
-            child: directoryAsync.when(
-              loading: () => _buildShimmer(),
-              error: (err, _) => _buildError(context),
-              data: (residents) {
-                if (residents.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: Icons.people_outline_rounded,
-                    title: 'No residents found',
-                    subtitle: _query.isNotEmpty
-                        ? 'Try a different search term.'
-                        : 'Community directory will appear here.',
-                    actionLabel: 'Refresh',
-                    onAction: () =>
-                        ref.invalidate(directorySearchProvider(_query)),
+          Expanded(child: _buildList(context, pState)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildList(BuildContext context, dynamic pState) {
+    if (pState.isInitialLoad) return _buildShimmer();
+
+    if (pState.error != null && pState.items.isEmpty) {
+      return _buildError(context);
+    }
+
+    final residents = pState.items;
+    if (residents.isEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.people_outline_rounded,
+        title: 'No residents found',
+        subtitle: _searchController.text.isNotEmpty
+            ? 'Try a different search term.'
+            : 'Community directory will appear here.',
+        actionLabel: 'Refresh',
+        onAction: () =>
+            ref.read(paginatedDirectoryProvider.notifier).refresh(),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: DesignSpacing.lg),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: context.surface.defaultSurface,
+              borderRadius:
+                  BorderRadius.circular(DesignRadius.full),
+              border: Border.all(color: context.surface.border),
+            ),
+            child: Text(
+              '${pState.total} resident${pState.total != 1 ? "s" : ""}',
+              style: DesignTypography.labelSmall.copyWith(
+                color: context.text.secondary,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: DesignSpacing.sm),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(paginatedDirectoryProvider.notifier).refresh();
+            },
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: DesignSpacing.lg),
+              itemCount: residents.length +
+                  (pState.hasMore || pState.isLoadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index >= residents.length) {
+                  if (pState.isLoadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: TextButton(
+                        onPressed: () => ref
+                            .read(paginatedDirectoryProvider.notifier)
+                            .loadMore(),
+                        child: const Text('Load more'),
+                      ),
+                    ),
                   );
                 }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: DesignSpacing.lg),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: context.surface.defaultSurface,
-                          borderRadius:
-                              BorderRadius.circular(DesignRadius.full),
-                          border:
-                              Border.all(color: context.surface.border),
-                        ),
-                        child: Text(
-                          '${residents.length} resident${residents.length != 1 ? "s" : ""}',
-                          style: DesignTypography.labelSmall.copyWith(
-                            color: context.text.secondary,
+
+                final r = residents[index];
+                return Padding(
+                  padding:
+                      const EdgeInsets.only(bottom: DesignSpacing.xs),
+                  child: EnterprisePanel(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DesignSpacing.md,
+                      vertical: DesignSpacing.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: _avatarColor(r.name),
+                          child: Text(
+                            _initials(r.name),
+                            style:
+                                DesignTypography.labelSmall.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: DesignSpacing.sm),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: DesignSpacing.lg),
-                        itemCount: residents.length,
-                        itemBuilder: (context, index) {
-                          final r = residents[index];
-                          return Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: DesignSpacing.xs),
-                            child: EnterprisePanel(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: DesignSpacing.md,
-                                vertical: DesignSpacing.sm,
+                        const SizedBox(width: DesignSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                r.name,
+                                style: DesignTypography.bodyMedium
+                                    .copyWith(
+                                  color: context.text.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor:
-                                        _avatarColor(r.name),
-                                    child: Text(
-                                      _initials(r.name),
-                                      style: DesignTypography.labelSmall
-                                          .copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
+                              if (r.flatLabel.isNotEmpty)
+                                Text(
+                                  r.flatLabel,
+                                  style: DesignTypography.caption
+                                      .copyWith(
+                                    color: context.text.secondary,
                                   ),
-                                  const SizedBox(width: DesignSpacing.md),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          r.name,
-                                          style: DesignTypography.bodyMedium
-                                              .copyWith(
-                                            color: context.text.primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        if (r.flatLabel.isNotEmpty)
-                                          Text(
-                                            r.flatLabel,
-                                            style: DesignTypography.caption
-                                                .copyWith(
-                                              color: context.text.secondary,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (r.phoneMasked != null)
-                                    Text(
-                                      r.phoneMasked!,
-                                      style:
-                                          DesignTypography.caption.copyWith(
-                                        color: context.text.tertiary,
-                                      ),
-                                    ),
-                                ],
-                              ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (r.phoneMasked != null)
+                          Text(
+                            r.phoneMasked!,
+                            style:
+                                DesignTypography.caption.copyWith(
+                              color: context.text.tertiary,
                             ),
-                          )
-                              .animate(
-                                  delay: DesignAnimations.staggerFor(index))
-                              .fadeIn(
-                                  duration:
-                                      DesignAnimations.durationEntrance);
-                        },
-                      ),
+                          ),
+                      ],
                     ),
-                  ],
-                );
+                  ),
+                )
+                    .animate(
+                        delay: DesignAnimations.staggerFor(index))
+                    .fadeIn(
+                        duration:
+                            DesignAnimations.durationEntrance);
               },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -233,9 +282,9 @@ class _CommunityDirectoryScreenState
         child: Column(
           children: List.generate(
             6,
-            (_) => Padding(
-              padding: const EdgeInsets.only(bottom: DesignSpacing.xs),
-              child: const ShimmerBox(height: 56),
+            (_) => const Padding(
+              padding: EdgeInsets.only(bottom: DesignSpacing.xs),
+              child: ShimmerBox(height: 56),
             ),
           ),
         ),
@@ -248,7 +297,7 @@ class _CommunityDirectoryScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, color: DesignColors.error, size: 48),
+          const Icon(Icons.error_outline, color: DesignColors.error, size: 48),
           const SizedBox(height: DesignSpacing.sm),
           Text(
             'Failed to load directory',
@@ -258,7 +307,7 @@ class _CommunityDirectoryScreenState
           const SizedBox(height: DesignSpacing.sm),
           TextButton(
             onPressed: () =>
-                ref.invalidate(directorySearchProvider(_query)),
+                ref.read(paginatedDirectoryProvider.notifier).refresh(),
             child: const Text('Retry'),
           ),
         ],

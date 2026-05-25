@@ -94,34 +94,63 @@ class VisitorRepository {
     try {
       final response = await _dioClient.get(ApiEndpoints.myVisitors);
       final list = response.data['visitors'] as List? ?? [];
-      return list.whereType<Map>().map((raw) {
-        final json = Map<String, dynamic>.from(raw);
-        final checkInRaw = json['checkInTime'] ?? json['checkInAt'];
-        json['visitDate'] = checkInRaw ?? json['createdAt'];
-        json['checkInTime'] = checkInRaw;
-        json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
-
-        final checkIn = checkInRaw != null
-            ? DateTime.tryParse(checkInRaw.toString())
-            : null;
-        if (checkIn != null) {
-          json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());
-        } else {
-          json['visitTime'] = null;
-        }
-
-        final purpose = json['purpose']?.toString().trim();
-        if (purpose == null || purpose.isEmpty) {
-          json['purpose'] = null;
-        } else {
-          json['purpose'] = purpose;
-        }
-
-        return VisitorModel.fromJson(json);
-      }).toList();
+      return _parseVisitors(list);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to fetch visitor history');
     }
+  }
+
+  /// Paginated visitor history
+  Future<({List<VisitorModel> items, int total, bool hasMore})>
+      getVisitorHistoryPaginated({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dioClient.get(
+        ApiEndpoints.myVisitors,
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final list = data['visitors'] as List? ?? [];
+      final items = _parseVisitors(list);
+      final total = (data['total'] as num?)?.toInt() ?? items.length;
+      final hasMore =
+          data['hasMore'] as bool? ?? (offset + items.length < total);
+      return (items: items, total: total, hasMore: hasMore);
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to fetch visitor history');
+    }
+  }
+
+  List<VisitorModel> _parseVisitors(List<dynamic> list) {
+    return list.whereType<Map>().map((raw) {
+      final json = Map<String, dynamic>.from(raw);
+      final checkInRaw = json['checkInTime'] ?? json['checkInAt'];
+      json['visitDate'] = checkInRaw ?? json['createdAt'];
+      json['checkInTime'] = checkInRaw;
+      json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
+
+      final checkIn = checkInRaw != null
+          ? DateTime.tryParse(checkInRaw.toString())
+          : null;
+      if (checkIn != null) {
+        json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());
+      } else {
+        json['visitTime'] = null;
+      }
+
+      final purpose = json['purpose']?.toString().trim();
+      if (purpose == null || purpose.isEmpty) {
+        json['purpose'] = null;
+      } else {
+        json['purpose'] = purpose;
+      }
+
+      return VisitorModel.fromJson(json);
+    }).toList();
   }
 
   /// Gate requests where the guard asked for your flat’s approval.
