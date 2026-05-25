@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/society_banner_type.dart';
 
 /// Premium, type-specific cards for Community → Events (view-only; no RSVP).
@@ -298,7 +299,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
               ),
             ),
             Container(
-              color: Colors.white,
+              color: context.surface.defaultSurface,
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,9 +369,9 @@ class _MaintenancePremiumCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surface.defaultSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.surface.border),
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: 0.12),
@@ -531,12 +532,12 @@ class _AnnouncementPremiumCard extends StatelessWidget {
                         const SizedBox(height: 12),
                         Text(
                           event['title'] as String,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
                             height: 1.25,
                             letterSpacing: -0.4,
-                            color: Color(0xFF1E293B),
+                            color: context.text.primary,
                           ),
                         ),
                       ],
@@ -599,7 +600,7 @@ class _ScheduledEventPremiumCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
             ),
             Container(
-              color: Colors.white,
+              color: context.surface.defaultSurface,
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,12 +637,12 @@ class _ScheduledEventPremiumCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     event['title'] as String,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.45,
                       height: 1.25,
-                      color: Color(0xFF0F172A),
+                      color: context.text.primary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -732,7 +733,7 @@ class _FestivalPremiumCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
                       height: 1.2,
-                      color: Colors.brown.shade900,
+                      color: context.text.primary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -763,7 +764,7 @@ class _CommunityPremiumCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        color: Colors.white,
+        color: context.surface.defaultSurface,
         border: Border.all(color: accent.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
@@ -953,7 +954,7 @@ class _OfferPremiumCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.4,
                       height: 1.25,
-                      color: Colors.green.shade900,
+                      color: context.text.primary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -984,12 +985,12 @@ Widget _standardBody(
       if (!skipTitle && event['title'] != null) ...[
         Text(
           event['title'] as String,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.35,
             height: 1.25,
-            color: Color(0xFF0F172A),
+            color: context.text.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -1007,9 +1008,9 @@ Widget _standardBody(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: context.surface.elevated,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: context.surface.border),
           ),
           child: Text(
             desc,

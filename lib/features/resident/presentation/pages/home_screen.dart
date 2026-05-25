@@ -51,9 +51,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 // —— Reference design spec (resident landing) — GatePass+ brand ——
 const Color _kOrange = Color(0xFFF39C12); // Brand warning amber
 const Color _kGreen = DesignColors.primary; // Brand forest green
-const Color _kPageBg = DesignColors.background;
-const Color _kTextSecondary = Color(0xFF64748B);
-
 const double _kPadH = 20;
 const double _kSectionGap = 20;
 const double _kRadiusLg = 16;
@@ -153,7 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       orElse: () => null,
     );
     return Scaffold(
-      backgroundColor: _kPageBg,
+      backgroundColor: context.surface.background,
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _handleRefresh,
@@ -1222,10 +1219,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                   child: Text(
                     'Collection includes additional funds of ${inr.format(fund.additionalMergedInflowAllTime)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: _kTextSecondary,
+                      color: context.text.secondary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -1352,7 +1349,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 10),
             _infoRow(
-              _kTextSecondary,
+              context.text.secondary,
               'In bank',
               'Total cash in the society account (spendable + advance credit).',
             ),
@@ -1362,7 +1359,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  static Widget _infoRow(Color color, String title, String description) {
+  Widget _infoRow(Color color, String title, String description) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1391,10 +1388,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: 2),
               Text(
                 description,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: _kTextSecondary,
+                  color: context.text.secondary,
                   height: 1.35,
                 ),
               ),
@@ -1557,10 +1554,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(width: 6),
                           Text(
                             cycle.cycleKey!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              color: _kTextSecondary,
+                              color: context.text.secondary,
                             ),
                           ),
                         ],
@@ -1582,9 +1579,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       amountLine,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: _kTextSecondary,
+                        color: context.text.secondary,
                         height: 1.25,
                       ),
                     ),
@@ -1969,7 +1966,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Icon(
                           Icons.how_to_reg_rounded,
                           size: 20,
-                          color: hasPending ? DesignColors.primary : _kTextSecondary,
+                          color: hasPending ? DesignColors.primary : context.text.secondary,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1994,10 +1991,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               hasPending
                                   ? 'Approve or decline — security is waiting'
                                   : 'Visitors registered for your flat appear here',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
-                                color: _kTextSecondary,
+                                color: context.text.secondary,
                                 height: 1.25,
                               ),
                               maxLines: 2,
@@ -2460,10 +2457,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
-                        color: _kTextSecondary,
+                        color: context.text.secondary,
                         height: 1.3,
                       ),
                       maxLines: 2,
@@ -2684,10 +2681,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           '$scheduleLine$countHint',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
-                            color: _kTextSecondary,
+                            color: context.text.secondary,
                             height: 1.25,
                           ),
                         ),
@@ -2783,7 +2780,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       subtitle:
                           '${latest[i].message} • ${_timeAgo(latest[i].createdAt)}',
                       status: latest[i].isRead ? 'Seen' : 'New',
-                      statusColor: latest[i].isRead ? _kTextSecondary : _kGreen,
+                      statusColor: latest[i].isRead ? context.text.secondary : _kGreen,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
@@ -2849,10 +2846,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: _kTextSecondary,
+                        color: context.text.secondary,
                         height: 1.35,
                       ),
                     ),
@@ -3099,15 +3096,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: _kTextSecondary),
+          Icon(Icons.info_outline, color: context.text.secondary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: _kTextSecondary,
+                color: context.text.secondary,
               ),
             ),
           ),
@@ -3202,7 +3199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Icon(
                                   Icons.schedule_rounded,
                                   size: 14,
-                                  color: _kTextSecondary.withValues(alpha: 0.88),
+                                  color: context.text.secondary.withValues(alpha: 0.88),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -3210,7 +3207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
-                                    color: _kTextSecondary.withValues(alpha: 0.92),
+                                    color: context.text.secondary.withValues(alpha: 0.92),
                                   ),
                                 ),
                               ],
@@ -3233,7 +3230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     style: TextStyle(
                       fontSize: bodySize,
                       fontWeight: FontWeight.w500,
-                      color: _kTextSecondary.withValues(alpha: 0.95),
+                      color: context.text.secondary.withValues(alpha: 0.95),
                       height: 1.38,
                     ),
                   ),

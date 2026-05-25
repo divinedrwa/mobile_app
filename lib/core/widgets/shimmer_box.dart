@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../theme/design_tokens.dart';
+import '../../theme/context_extensions.dart';
 
 /// A single shimmer placeholder box used in skeleton loaders.
 ///
@@ -30,7 +31,7 @@ class ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: DesignColors.surface,
+        color: context.surface.defaultSurface,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -60,15 +61,9 @@ class ShimmerWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Shimmer.fromColors(
-      baseColor: isDark
-          ? const Color(0xFF2A2F3D) // dark mode shimmer base
-          : DesignColors.surfaceSoft,
-      highlightColor: isDark
-          ? const Color(0xFF353B4A) // dark mode shimmer highlight
-          : DesignColors.surface,
+      baseColor: context.surface.defaultSurface,
+      highlightColor: context.surface.elevated,
       child: child,
     );
   }

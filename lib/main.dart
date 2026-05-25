@@ -154,7 +154,7 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       debugShowCheckedModeBanner: false,
       theme: gp_theme.AppTheme.light(palette: tokens.light),
       darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
-      themeMode: ThemeMode.light, // locked to light; dark mode disabled for now
+      themeMode: ref.watch(gp_theme.themeModeProvider),
       routerConfig: _router!,
       builder: (context, child) {
         final scaled = _buildFixedScale(context, child);
@@ -178,7 +178,7 @@ class _DivineAppState extends ConsumerState<DivineApp> {
 
     // 1. Lock text scaling and bold-text accessibility override.
     var fixedData = data.copyWith(
-      textScaler: TextScaler.noScaling,
+      textScaler: TextScaler.linear(data.textScaler.scale(14).clamp(14, 18.2) / 14),
       boldText: false,
     );
 

@@ -193,6 +193,57 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radius.md),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface.elevated,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.lg),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface.elevated,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radius.lg)),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface.elevated,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.md),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: brand.primary,
+        foregroundColor: text.inverse,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: brand.primary.withValues(alpha: 0.15),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: surface.defaultSurface,
+        selectedItemColor: brand.primary,
+        unselectedItemColor: text.tertiary,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return brand.primary;
+          return text.tertiary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return brand.primary.withValues(alpha: 0.3);
+          }
+          return surface.border;
+        }),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: brand.primary,
+        linearTrackColor: surface.border,
+      ),
     );
   }
 }

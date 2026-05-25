@@ -893,8 +893,20 @@ class _SettingsSwitchTile extends StatelessWidget {
 }
 
 class _ThemeModeTile extends ConsumerWidget {
+  static String _label(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light:
+        return 'Light mode';
+      case ThemeMode.dark:
+        return 'Dark mode';
+      case ThemeMode.system:
+        return 'System default';
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(gp_theme.themeModeProvider);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.light_mode_outlined, color: context.brand.primary),
@@ -906,7 +918,7 @@ class _ThemeModeTile extends ConsumerWidget {
             ),
       ),
       subtitle: Text(
-        'Light mode',
+        _label(current),
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: context.text.secondary,
             ),
@@ -922,8 +934,10 @@ class _ThemeModeTile extends ConsumerWidget {
           ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 16)),
           ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode, size: 16)),
         ],
-        selected: const {ThemeMode.light},
-        onSelectionChanged: null, // disabled — dark mode coming soon
+        selected: {current},
+        onSelectionChanged: (modes) {
+          ref.read(gp_theme.themeModeProvider.notifier).setMode(modes.first);
+        },
       ),
     );
   }

@@ -139,7 +139,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
@@ -218,13 +218,13 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         opacity: _featuresOpacity,
                         child: SlideTransition(
                           position: _featuresSlide,
-                          child: const Text(
+                          child: Text(
                             'An initiative of Divine Residency Welfare Association',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
+                              color: Theme.of(context).textTheme.bodySmall?.color,
                               letterSpacing: 0.2,
                               height: 1.3,
                             ),
@@ -320,10 +320,10 @@ class _FeatureTile extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF334155),
+              color: Theme.of(context).textTheme.bodyMedium?.color,
               height: 1.25,
               letterSpacing: 0.1,
             ),
