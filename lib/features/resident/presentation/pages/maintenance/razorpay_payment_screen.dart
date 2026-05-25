@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/repositories/maintenance_repository.dart';
 
 final _maintenanceRepoProvider =
@@ -16,12 +17,14 @@ class RazorpayPaymentScreen extends ConsumerStatefulWidget {
     required this.amount,
     required this.month,
     required this.year,
+    this.payAllPending = false,
   });
 
   final String cycleId;
   final double amount;
   final int month;
   final int year;
+  final bool payAllPending;
 
   @override
   ConsumerState<RazorpayPaymentScreen> createState() =>
@@ -34,6 +37,10 @@ class _RazorpayPaymentScreenState
   bool _loading = true;
   String? _error;
   bool _paymentComplete = false;
+  double _maintenanceDue = 0;
+  double _platformFee = 0;
+  double _platformFeeGst = 0;
+  double _totalPayable = 0;
 
   @override
   void initState() {
@@ -58,7 +65,10 @@ class _RazorpayPaymentScreenState
     });
     try {
       final repo = ref.read(_maintenanceRepoProvider);
-      final result = await repo.createBillingOrder(cycleId: widget.cycleId);
+      final result = await repo.createBillingOrder(
+        cycleId: widget.cycleId.isNotEmpty ? widget.cycleId : null,
+        payAllPending: widget.payAllPending,
+      );
 
       final orderId = result['orderId'] as String?;
       final key = result['key'] as String?;
@@ -73,17 +83,45 @@ class _RazorpayPaymentScreenState
         return;
       }
 
+      final maintenance = _readAmount(result['maintenanceAmount']) ??
+          _readAmount(result['totalDue']) ??
+          widget.amount;
+      final platformFee = _readAmount(result['platformFee']) ?? 0;
+      final platformFeeGst = _readAmount(result['platformFeeGst']) ?? 0;
+      final totalPayable =
+          _readAmount(result['totalPayable']) ?? (maintenance + platformFee + platformFeeGst);
+
+      _maintenanceDue = maintenance;
+      _platformFee = platformFee;
+      _platformFeeGst = platformFeeGst;
+      _totalPayable = totalPayable;
+
       final options = {
         'key': key,
         'amount': amountPaise,
         'currency': currency,
         'order_id': orderId,
         'name': 'Society Maintenance',
-        'description':
-            'Maintenance for ${_monthName(widget.month)} ${widget.year}',
+        'description': widget.payAllPending
+            ? 'Pay all outstanding maintenance'
+            : 'Maintenance for ${_monthName(widget.month)} ${widget.year}',
         'timeout': 300, // 5 minutes
       };
 
+      if (!mounted) return;
+      if (platformFee > 0 || platformFeeGst > 0) {
+        final proceed = await _confirmGatewayFees();
+        if (!proceed) {
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+          }
+          return;
+        }
+      }
+
+      if (!mounted) return;
       setState(() {
         _loading = false;
       });
@@ -96,7 +134,15 @@ class _RazorpayPaymentScreenState
     }
   }
 
+  void _invalidateDues() {
+    ref.invalidate(pendingMaintenanceProvider);
+    ref.invalidate(outstandingDuesProvider);
+    ref.invalidate(maintenanceHistoryProvider);
+    ref.invalidate(residentBillingCycleProvider);
+  }
+
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    _invalidateDues();
     setState(() {
       _paymentComplete = true;
     });
@@ -109,7 +155,11 @@ class _RazorpayPaymentScreenState
             color: DesignColors.success, size: 48),
         title: const Text('Payment Successful'),
         content: Text(
-          'Your payment of \u20B9${widget.amount.toStringAsFixed(0)} has been processed successfully.\n\nPayment ID: ${response.paymentId ?? "N/A"}',
+          widget.payAllPending
+              ? 'All outstanding maintenance (\u20B9${_maintenanceDue.toStringAsFixed(0)}) will appear as paid once the server confirms payment.'
+              : 'Maintenance of \u20B9${_maintenanceDue.toStringAsFixed(0)} was recorded successfully.'
+                  '${_platformFee > 0 ? '\n(Total paid at gateway: \u20B9${_totalPayable.toStringAsFixed(0)} including platform fee & GST.)' : ''}'
+                  '\n\nPayment ID: ${response.paymentId ?? "N/A"}',
         ),
         actions: [
           FilledButton(
@@ -140,6 +190,80 @@ class _RazorpayPaymentScreenState
       SnackBar(
           content: Text(
               'External wallet selected: ${response.walletName ?? "Unknown"}')),
+    );
+  }
+
+  double? _readAmount(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  Future<bool> _confirmGatewayFees() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Payment summary'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _feeRow('Maintenance due', _maintenanceDue),
+            if (_platformFee > 0) _feeRow('Razorpay platform fee', _platformFee),
+            if (_platformFeeGst > 0) _feeRow('GST on platform fee', _platformFeeGst),
+            const Divider(),
+            _feeRow('Total payable now', _totalPayable, bold: true),
+            const SizedBox(height: 8),
+            Text(
+              'Platform fee and GST are added on top of your maintenance due.',
+              style: DesignTypography.bodySmall
+                  .copyWith(color: DesignColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: DesignColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Continue to pay'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Widget _feeRow(String label, double amount, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: DesignTypography.label.copyWith(
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: DesignColors.textPrimary,
+            ),
+          ),
+          Text(
+            '\u20B9${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)}',
+            style: DesignTypography.label.copyWith(
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+              color: DesignColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

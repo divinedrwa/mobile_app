@@ -78,13 +78,15 @@ class MaintenancePaymentNotifier
   final MaintenanceRepository _repository;
 
   Future<Map<String, dynamic>?> createOrder({
-    required String cycleId,
+    String? cycleId,
+    bool payAllPending = false,
     String? idempotencyKey,
   }) async {
     state = const AsyncValue.loading();
     try {
       final response = await _repository.createBillingOrder(
         cycleId: cycleId,
+        payAllPending: payAllPending,
         idempotencyKey: idempotencyKey,
       );
       state = AsyncValue.data(response);

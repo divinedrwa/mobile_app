@@ -252,6 +252,7 @@ class AppRouter {
                       year: int.tryParse(q['year'] ?? '2026') ?? 2026,
                       cycleId: q['cycleId'],
                       remark: q['remark'],
+                      payAllPending: q['payAll'] == 'true',
                     );
                   },
                 ),
@@ -264,6 +265,7 @@ class AppRouter {
                       amount: double.tryParse(q['amount'] ?? '0') ?? 0,
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
                       year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      payAllPending: q['payAll'] == 'true',
                     );
                   },
                 ),
@@ -276,6 +278,7 @@ class AppRouter {
                       amount: double.tryParse(q['amount'] ?? '0') ?? 0,
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
                       year: int.tryParse(q['year'] ?? '2026') ?? 2026,
+                      payAllPending: q['payAll'] == 'true',
                     );
                   },
                 ),

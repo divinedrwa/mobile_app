@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/repositories/maintenance_repository.dart';
 
 final _maintenanceRepoProvider =
@@ -18,12 +19,14 @@ class PhonePePaymentScreen extends ConsumerStatefulWidget {
     required this.amount,
     required this.month,
     required this.year,
+    this.payAllPending = false,
   });
 
   final String cycleId;
   final double amount;
   final int month;
   final int year;
+  final bool payAllPending;
 
   @override
   ConsumerState<PhonePePaymentScreen> createState() =>
@@ -70,8 +73,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
     try {
       final repo = ref.read(_maintenanceRepoProvider);
-      final result =
-          await repo.initiatePhonePePayment(cycleId: widget.cycleId);
+      final result = await repo.initiatePhonePePayment(
+        cycleId: widget.cycleId.isNotEmpty ? widget.cycleId : null,
+        payAllPending: widget.payAllPending,
+      );
 
       final url = result['redirectUrl'] as String?;
       final txnId = result['merchantTransactionId'] as String?;
@@ -133,6 +138,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       if (status == 'SUCCESS') {
         _pollTimer?.cancel();
+        ref.invalidate(pendingMaintenanceProvider);
+        ref.invalidate(outstandingDuesProvider);
+        ref.invalidate(maintenanceHistoryProvider);
+        ref.invalidate(residentBillingCycleProvider);
         setState(() {
           _loading = false;
           _paymentComplete = true;
@@ -174,7 +183,9 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
             color: DesignColors.success, size: 48),
         title: const Text('Payment Successful'),
         content: Text(
-          'Your payment of \u20B9${widget.amount.toStringAsFixed(0)} has been processed successfully.',
+          widget.payAllPending
+              ? 'All outstanding bills (\u20B9${widget.amount.toStringAsFixed(0)}) have been recorded. Pull to refresh if any month still shows due.'
+              : 'Your payment of \u20B9${widget.amount.toStringAsFixed(0)} has been processed successfully.',
         ),
         actions: [
           FilledButton(

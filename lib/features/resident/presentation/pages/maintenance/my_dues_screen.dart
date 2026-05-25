@@ -83,23 +83,29 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     required int year,
     String? cycleId,
     String? remark,
+    bool payAllPending = false,
   }) {
     final params = <String, String>{
       'amount': amount.toStringAsFixed(0),
       'month': '$month',
       'year': '$year',
     };
+    if (payAllPending) params['payAll'] = 'true';
     if (cycleId != null && cycleId.isNotEmpty) params['cycleId'] = cycleId;
     if (remark != null && remark.isNotEmpty) params['remark'] = remark;
     final query = '?${Uri(queryParameters: params).query}';
 
-    // If new payment methods exist, go to selection screen; else fallback to UPI
     final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
-    if (methods != null && methods.isNotEmpty) {
-      context.push('/resident/maintenance/pay$query');
-    } else {
-      context.push('/resident/maintenance/upi-pay$query');
-    }
+    final route = methods != null && methods.isNotEmpty
+        ? '/resident/maintenance/pay$query'
+        : '/resident/maintenance/upi-pay$query';
+    context.push<bool>(route).then((paid) {
+      if (paid == true && mounted) {
+        ref.invalidate(pendingMaintenanceProvider);
+        ref.invalidate(outstandingDuesProvider);
+        _refresh();
+      }
+    });
   }
 
   /// Build a human-readable remark for a single cycle.
@@ -171,7 +177,9 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
                     amount: total,
                     month: oldest.month,
                     year: oldest.year,
+                    cycleId: oldest.cycleId,
                     remark: _allCyclesRemark(items),
+                    payAllPending: true,
                   ),
                   icon: const Icon(Icons.currency_rupee, size: 18),
                   label: Text(

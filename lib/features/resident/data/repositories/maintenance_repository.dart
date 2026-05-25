@@ -285,12 +285,17 @@ class MaintenanceRepository {
 
   /// Initiate a PhonePe payment. Returns { redirectUrl, merchantTransactionId, paymentId, totalDue }.
   Future<Map<String, dynamic>> initiatePhonePePayment({
-    required String cycleId,
+    String? cycleId,
+    bool payAllPending = false,
   }) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.phonePeInitiate,
-        data: {'cycleId': cycleId},
+        data: {
+          if (payAllPending) 'payAllPending': true,
+          if (!payAllPending && cycleId != null && cycleId.isNotEmpty)
+            'cycleId': cycleId,
+        },
       );
       final data = response.data;
       if (data is Map<String, dynamic>) return data;
@@ -314,14 +319,17 @@ class MaintenanceRepository {
 
   /// Creates a Razorpay order on the server. Completing payment still requires gateway capture + webhook.
   Future<Map<String, dynamic>> createBillingOrder({
-    required String cycleId,
+    String? cycleId,
+    bool payAllPending = false,
     String? idempotencyKey,
   }) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.billingCreateOrder,
         data: {
-          'cycleId': cycleId,
+          if (payAllPending) 'payAllPending': true,
+          if (!payAllPending && cycleId != null && cycleId.isNotEmpty)
+            'cycleId': cycleId,
           if (idempotencyKey != null && idempotencyKey.isNotEmpty) 'idempotencyKey': idempotencyKey,
         },
       );

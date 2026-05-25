@@ -30,6 +30,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
     required this.year,
     this.cycleId,
     this.remark,
+    this.payAllPending = false,
   });
 
   final double amount;
@@ -37,6 +38,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
   final int year;
   final String? cycleId;
   final String? remark;
+  final bool payAllPending;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -174,36 +176,42 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
         _showBankDetails(context, method);
 
       case 'RAZORPAY':
-        if (cycleId == null || cycleId!.isEmpty) {
+        if (!payAllPending && (cycleId == null || cycleId!.isEmpty)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Online payment requires a billing cycle')),
           );
           return;
         }
         final rpParams = <String, String>{
-          'cycleId': cycleId!,
           'amount': amount.toStringAsFixed(0),
           'month': '$month',
           'year': '$year',
+          if (payAllPending) 'payAll': 'true',
+          if (cycleId != null && cycleId!.isNotEmpty) 'cycleId': cycleId!,
         };
         final rpQuery = '?${Uri(queryParameters: rpParams).query}';
-        context.push('/resident/maintenance/razorpay-pay$rpQuery');
+        context.push<bool>('/resident/maintenance/razorpay-pay$rpQuery').then((paid) {
+          if (paid == true && context.mounted) context.pop(true);
+        });
 
       case 'PHONEPE':
-        if (cycleId == null || cycleId!.isEmpty) {
+        if (!payAllPending && (cycleId == null || cycleId!.isEmpty)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Online payment requires a billing cycle')),
           );
           return;
         }
         final ppParams = <String, String>{
-          'cycleId': cycleId!,
           'amount': amount.toStringAsFixed(0),
           'month': '$month',
           'year': '$year',
+          if (payAllPending) 'payAll': 'true',
+          if (cycleId != null && cycleId!.isNotEmpty) 'cycleId': cycleId!,
         };
         final ppQuery = '?${Uri(queryParameters: ppParams).query}';
-        context.push('/resident/maintenance/phonepe-pay$ppQuery');
+        context.push<bool>('/resident/maintenance/phonepe-pay$ppQuery').then((paid) {
+          if (paid == true && context.mounted) context.pop(true);
+        });
     }
   }
 
