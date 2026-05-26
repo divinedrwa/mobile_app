@@ -51,6 +51,9 @@ class ApiEndpoints {
   /// `POST /v1/payments/create-order`
   static const String billingCreateOrder = '/v1/payments/create-order';
 
+  /// Razorpay order status poll (`GET`) — reconciles after SDK success.
+  static String razorpayStatus(String orderId) => '/v1/payments/razorpay/status/$orderId';
+
   /// PhonePe payment initiation (`POST`).
   static const String phonePeInitiate = '/v1/payments/phonepe/initiate';
 

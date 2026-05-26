@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import 'gateway_payment_poll_actions.dart';
 
 class RazorpayPaymentScreen extends ConsumerStatefulWidget {
   const RazorpayPaymentScreen({
@@ -36,6 +39,11 @@ class _RazorpayPaymentScreenState
   String? _error;
   bool _paymentComplete = false;
   bool _orderCreated = false;
+  String? _razorpayOrderId;
+  Timer? _verifyTimer;
+  int _verifyPollCount = 0;
+  bool _verifying = false;
+  static const _maxVerifyPolls = 20;
   double _maintenanceDue = 0;
   double _platformFee = 0;
   double _platformFeeGst = 0;
@@ -54,6 +62,7 @@ class _RazorpayPaymentScreenState
 
   @override
   void dispose() {
+    _verifyTimer?.cancel();
     _razorpay.clear();
     super.dispose();
   }
@@ -76,6 +85,29 @@ class _RazorpayPaymentScreenState
       final key = result['key'] as String?;
       final amountPaise = result['amountPaise'];
       final currency = result['currency'] as String? ?? 'INR';
+      final autoSettled = result['autoSettledFromCredit'] == true;
+
+      if (autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
+        _maintenanceDue = _readAmount(result['totalDue']) ?? widget.amount;
+        invalidateMaintenancePaymentProviders(ref);
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _paymentComplete = true;
+        });
+        GatewayPaymentPollActions.navigateToPaymentSuccess(
+          context,
+          maintenanceAmount: _maintenanceDue,
+          totalPaid: _maintenanceDue,
+          paymentMethod: 'Razorpay',
+          periodLabel: widget.payAllPending
+              ? 'All outstanding'
+              : '${_monthName(widget.month)} ${widget.year}',
+          transactionId: result['paymentId']?.toString() ?? '',
+          payAllPending: widget.payAllPending,
+        );
+        return;
+      }
 
       if (orderId == null || key == null || amountPaise == null) {
         setState(() {
@@ -124,6 +156,7 @@ class _RazorpayPaymentScreenState
       }
 
       if (!mounted) return;
+      _razorpayOrderId = orderId;
       _orderCreated = true;
       setState(() {
         _loading = false;
@@ -138,44 +171,114 @@ class _RazorpayPaymentScreenState
     }
   }
 
-  void _invalidateDues() {
-    ref.invalidate(pendingMaintenanceProvider);
-    ref.invalidate(outstandingDuesProvider);
-    ref.invalidate(maintenanceHistoryProvider);
-    ref.invalidate(residentBillingCycleProvider);
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    _verifyPollCount = 0;
+    _verifyTimer?.cancel();
+    _verifyTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _verifyServerPayment(response.paymentId);
+    });
+    _verifyServerPayment(response.paymentId);
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    _invalidateDues();
-    setState(() {
-      _paymentComplete = true;
-    });
+  Future<void> _verifyServerPayment(String? razorpayPaymentId) async {
+    final orderId = _razorpayOrderId;
+    if (orderId == null || orderId.isEmpty || !mounted || _verifying) return;
 
-    final period = widget.payAllPending
-        ? 'All outstanding'
-        : '${_monthName(widget.month)} ${widget.year}';
+    _verifying = true;
+    _verifyPollCount++;
+    try {
+      final repo = ref.read(maintenanceRepositoryProvider);
+      final poll = await repo.checkRazorpayStatus(orderId);
 
-    context.go(
-      Uri(
-        path: '/resident/maintenance/payment-success',
-        queryParameters: {
-          'amount': _maintenanceDue.toStringAsFixed(2),
-          'platformFee': _platformFee.toStringAsFixed(2),
-          'platformFeeGst': _platformFeeGst.toStringAsFixed(2),
-          'totalPaid': _totalPayable.toStringAsFixed(2),
-          'txnId': response.paymentId ?? '',
-          'method': 'Razorpay',
-          'period': period,
-          if (widget.payAllPending) 'payAll': 'true',
+      if (!mounted) return;
+
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+
+      final handled = GatewayPaymentPollActions.handlePollResult(
+        poll: poll,
+        onSuccess: () {
+          _verifyTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
+          setState(() {
+            _loading = false;
+            _paymentComplete = true;
+            _error = null;
+          });
+          GatewayPaymentPollActions.navigateToPaymentSuccess(
+            context,
+            maintenanceAmount: _maintenanceDue,
+            totalPaid: _totalPayable,
+            paymentMethod: 'Razorpay',
+            periodLabel: period,
+            transactionId: razorpayPaymentId ?? orderId,
+            payAllPending: widget.payAllPending,
+            platformFee: _platformFee,
+            platformFeeGst: _platformFeeGst,
+          );
         },
-      ).toString(),
-    );
+        onFailed: (message) {
+          _verifyTimer?.cancel();
+          setState(() {
+            _loading = false;
+            _error = message;
+          });
+        },
+        onGatewayUnavailable: (message) {
+          _verifyTimer?.cancel();
+          setState(() {
+            _loading = false;
+            _error = message;
+          });
+        },
+      );
+      if (handled) return;
+    } catch (_) {
+      // keep polling on transient network errors
+    } finally {
+      _verifying = false;
+    }
+
+    if (!mounted) return;
+    if (_verifyPollCount >= _maxVerifyPolls) {
+      _verifyTimer?.cancel();
+      invalidateMaintenancePaymentProviders(ref);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Payment received at Razorpay. It will appear in your dues shortly.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      context.pop(true);
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    final message = response.message ?? 'Payment failed';
+    _verifyTimer?.cancel();
+    final sdkMessage = response.message ?? 'Payment failed';
+    // SDK can report failure while server already captured — verify once.
     setState(() {
-      _error = message;
+      _loading = true;
+      _error = null;
+    });
+    _verifyPollCount = 0;
+    _verifyServerPayment(null).whenComplete(() {
+      if (!mounted || _paymentComplete) return;
+      if (_loading && _error == null && !_paymentComplete) {
+        setState(() {
+          _loading = false;
+          _error = sdkMessage;
+        });
+      }
     });
   }
 
@@ -356,7 +459,9 @@ class _RazorpayPaymentScreenState
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(
-            'Creating payment order...',
+            _orderCreated
+                ? 'Verifying payment on server...'
+                : 'Creating payment order...',
             style: DesignTypography.label
                 .copyWith(color: DesignColors.textSecondary),
           ),

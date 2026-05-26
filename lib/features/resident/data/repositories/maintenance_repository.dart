@@ -4,6 +4,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/billing_cycle_current_model.dart';
 import '../models/maintenance_due_model.dart';
+import '../utils/gateway_payment_status.dart';
 
 class MaintenanceRepository {
   Dio get _dio => DioClient.dio;
@@ -308,15 +309,31 @@ class MaintenanceRepository {
     }
   }
 
-  /// Poll PhonePe payment status.
-  Future<Map<String, dynamic>> checkPhonePeStatus(String txnId) async {
+  /// Poll PhonePe payment status (structured; never returns an empty map).
+  Future<GatewayPaymentPollResult> checkPhonePeStatus(String txnId) async {
     try {
       final response = await _dio.get(ApiEndpoints.phonePeStatus(txnId));
       final data = response.data;
-      if (data is Map<String, dynamic>) return data;
-      return {};
+      if (data is Map<String, dynamic>) {
+        return GatewayPaymentPollResult.fromJson(data);
+      }
+      return GatewayPaymentPollResult.empty();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to check PhonePe payment status');
+    }
+  }
+
+  /// Poll Razorpay order status and reconcile on server when captured.
+  Future<GatewayPaymentPollResult> checkRazorpayStatus(String orderId) async {
+    try {
+      final response = await _dio.get(ApiEndpoints.razorpayStatus(orderId));
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return GatewayPaymentPollResult.fromJson(data);
+      }
+      return GatewayPaymentPollResult.empty();
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to verify Razorpay payment');
     }
   }
 

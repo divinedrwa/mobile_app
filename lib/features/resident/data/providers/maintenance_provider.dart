@@ -10,6 +10,14 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
   (ref) => MaintenanceRepository(),
 );
 
+/// Refresh all resident maintenance billing providers after a payment settles.
+void invalidateMaintenancePaymentProviders(WidgetRef ref) {
+  ref.invalidate(pendingMaintenanceProvider);
+  ref.invalidate(outstandingDuesProvider);
+  ref.invalidate(maintenanceHistoryProvider);
+  ref.invalidate(residentBillingCycleProvider);
+}
+
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
       cacheFor(ref, const Duration(minutes: 10));

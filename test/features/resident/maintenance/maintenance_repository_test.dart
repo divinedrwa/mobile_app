@@ -46,6 +46,7 @@ void main() {
       expect(repository.getFinancialDashboard, isA<Function>());
       expect(repository.initiatePhonePePayment, isA<Function>());
       expect(repository.checkPhonePeStatus, isA<Function>());
+      expect(repository.checkRazorpayStatus, isA<Function>());
       expect(repository.createBillingOrder, isA<Function>());
       expect(repository.getOutstandingDues, isA<Function>());
     });

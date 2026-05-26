@@ -9,6 +9,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import 'gateway_payment_poll_actions.dart';
 
 class PhonePePaymentScreen extends ConsumerStatefulWidget {
   const PhonePePaymentScreen({
@@ -95,11 +96,19 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       _merchantTxnId = txnId;
       _serverAmount = _readAmount(result['totalDue']) ?? widget.amount;
-      _webViewController.loadRequest(Uri.parse(url));
+      unawaited(_webViewController.loadRequest(Uri.parse(url)));
 
       setState(() {
         _loading = false;
         _showWebView = true;
+      });
+
+      // Poll while the checkout WebView is open — sandbox often never hits our
+      // redirect URL, so waiting for redirect-only polling leaves PENDING forever.
+      _pollCount = 0;
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        _pollStatus();
       });
     } catch (e) {
       if (!mounted) return;
@@ -111,8 +120,9 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   NavigationDecision _onNavigation(NavigationRequest request) {
-    // Detect redirect back from PhonePe (our redirect URL)
-    if (request.url.contains('/phonepe/redirect')) {
+    final url = request.url;
+    // Detect redirect back from PhonePe (our redirect URL on API_BASE_URL host)
+    if (url.contains('/phonepe/redirect')) {
       _onPaymentRedirect();
       return NavigationDecision.prevent;
     }
@@ -120,15 +130,11 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   void _onPaymentRedirect() {
+    if (!mounted) return;
     setState(() {
       _showWebView = false;
       _loading = true;
     });
-    _pollCount = 0;
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _pollStatus();
-    });
-    // Also poll immediately
     _pollStatus();
   }
 
@@ -139,35 +145,37 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
     try {
       final repo = ref.read(maintenanceRepositoryProvider);
-      final result = await repo.checkPhonePeStatus(_merchantTxnId!);
+      final poll = await repo.checkPhonePeStatus(_merchantTxnId!);
 
       if (!mounted) return;
 
-      final status = result['status'] as String? ?? 'UNKNOWN';
-      final phonepeState = result['phonepeState'] as String? ?? 'UNKNOWN';
-
-      if (status == 'SUCCESS') {
-        _pollTimer?.cancel();
-        ref.invalidate(pendingMaintenanceProvider);
-        ref.invalidate(outstandingDuesProvider);
-        ref.invalidate(maintenanceHistoryProvider);
-        ref.invalidate(residentBillingCycleProvider);
-        setState(() {
-          _loading = false;
-          _paymentComplete = true;
-        });
-        _showSuccessScreen();
-        return;
-      }
-
-      if (status == 'FAILED' || phonepeState == 'FAILED') {
-        _pollTimer?.cancel();
-        setState(() {
-          _loading = false;
-          _error = 'Payment failed. Please try again.';
-        });
-        return;
-      }
+      final handled = GatewayPaymentPollActions.handlePollResult(
+        poll: poll,
+        onSuccess: () {
+          _pollTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
+          setState(() {
+            _loading = false;
+            _paymentComplete = true;
+          });
+          _showSuccessScreen();
+        },
+        onFailed: (message) {
+          _pollTimer?.cancel();
+          setState(() {
+            _loading = false;
+            _error = message;
+          });
+        },
+        onGatewayUnavailable: (message) {
+          _pollTimer?.cancel();
+          setState(() {
+            _loading = false;
+            _error = message;
+          });
+        },
+      );
+      if (handled) return;
     } catch (_) {
       // Network error during poll — continue trying
     } finally {
@@ -180,8 +188,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       // Payment was not explicitly confirmed or rejected — likely still
       // processing. Pop back so the parent refreshes data; a toast tells
       // the user the amount will reflect shortly.
-      ref.invalidate(pendingMaintenanceProvider);
-      ref.invalidate(maintenanceHistoryProvider);
+      invalidateMaintenancePaymentProviders(ref);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -207,18 +214,14 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         ? 'All outstanding'
         : '${_monthName(widget.month)} ${widget.year}';
 
-    context.go(
-      Uri(
-        path: '/resident/maintenance/payment-success',
-        queryParameters: {
-          'amount': amount.toStringAsFixed(2),
-          'totalPaid': amount.toStringAsFixed(2),
-          'txnId': _merchantTxnId ?? '',
-          'method': 'PhonePe',
-          'period': period,
-          if (widget.payAllPending) 'payAll': 'true',
-        },
-      ).toString(),
+    GatewayPaymentPollActions.navigateToPaymentSuccess(
+      context,
+      maintenanceAmount: amount,
+      totalPaid: amount,
+      paymentMethod: 'PhonePe',
+      periodLabel: period,
+      transactionId: _merchantTxnId ?? '',
+      payAllPending: widget.payAllPending,
     );
   }
 
