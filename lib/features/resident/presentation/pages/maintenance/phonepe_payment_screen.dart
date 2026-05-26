@@ -40,7 +40,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   Timer? _pollTimer;
   int _pollCount = 0;
   bool _polling = false;
-  static const _maxPolls = 10;
+  static const _maxPolls = 20;
   String _idempotencyKey = const Uuid().v4();
   double _serverAmount = 0;
 
@@ -144,6 +144,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       if (!mounted) return;
 
       final status = result['status'] as String? ?? 'UNKNOWN';
+      final phonepeState = result['phonepeState'] as String? ?? 'UNKNOWN';
 
       if (status == 'SUCCESS') {
         _pollTimer?.cancel();
@@ -159,7 +160,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         return;
       }
 
-      if (status == 'FAILED') {
+      if (status == 'FAILED' || phonepeState == 'FAILED') {
         _pollTimer?.cancel();
         setState(() {
           _loading = false;
@@ -176,10 +177,21 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     if (!mounted) return;
     if (_pollCount >= _maxPolls) {
       _pollTimer?.cancel();
-      setState(() {
-        _loading = false;
-        _error = 'Payment is being processed. Please check back later.';
-      });
+      // Payment was not explicitly confirmed or rejected — likely still
+      // processing. Pop back so the parent refreshes data; a toast tells
+      // the user the amount will reflect shortly.
+      ref.invalidate(pendingMaintenanceProvider);
+      ref.invalidate(maintenanceHistoryProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment is being verified. It will reflect shortly.'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        context.pop(true);
+      }
     }
   }
 

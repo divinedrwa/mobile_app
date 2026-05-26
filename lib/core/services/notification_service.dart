@@ -608,7 +608,8 @@ class NotificationService {
         }
         if (type == 'BILLING_CYCLE_CREATED' ||
             type == 'MAINTENANCE_REMINDER' ||
-            type == 'MAINTENANCE_PAYMENT_RECORDED') {
+            type == 'MAINTENANCE_PAYMENT_RECORDED' ||
+            type == 'MAINTENANCE_PAYMENT_REVERSED') {
           router.push('/resident/maintenance');
           return;
         }

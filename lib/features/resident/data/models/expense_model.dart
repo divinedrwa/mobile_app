@@ -48,6 +48,20 @@ class ExpenseModel {
     required this.createdAt,
   });
 
+  /// Parse a value that may arrive as num or String (Prisma Decimal).
+  static double _toDouble(dynamic v, [double fallback = 0]) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  static double? _toDoubleOrNull(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
+
   factory ExpenseModel.fromJson(Map<String, dynamic> json) {
     final rawAttachments = json['attachments'] as List<dynamic>?;
     final attachments = rawAttachments
@@ -69,10 +83,10 @@ class ExpenseModel {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String?,
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      netAmount: (json['netAmount'] as num?)?.toDouble() ?? 0,
-      gstAmount: (json['gstAmount'] as num?)?.toDouble(),
-      tdsAmount: (json['tdsAmount'] as num?)?.toDouble(),
+      amount: _toDouble(json['amount']),
+      netAmount: _toDouble(json['netAmount']),
+      gstAmount: _toDoubleOrNull(json['gstAmount']),
+      tdsAmount: _toDoubleOrNull(json['tdsAmount']),
       paymentDate: DateTime.tryParse(
             (json['paymentDate'] ?? '') as String,
           ) ??

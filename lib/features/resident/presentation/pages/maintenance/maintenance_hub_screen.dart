@@ -7,12 +7,22 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
+import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
+import '../../../data/repositories/payment_methods_repository.dart';
 import '../../widgets/maintenance/maintenance_hub_skeleton.dart';
 import '../../widgets/maintenance/maintenance_stat_chip.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 import '../../widgets/maintenance/payment_list_tile.dart';
+
+final _paymentMethodsRepoProvider =
+    Provider<PaymentMethodsRepository>((ref) => PaymentMethodsRepository());
+
+final _paymentMethodsListProvider =
+    FutureProvider.autoDispose<List<PaymentMethodModel>>((ref) async {
+  return ref.watch(_paymentMethodsRepoProvider).getPaymentMethods();
+});
 /// Resident-facing maintenance landing screen.
 ///
 /// One scroll, three sections:
@@ -334,13 +344,13 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                 onTap: () => context.push('/resident/expenses'),
               ),
             ),
-            // Show "Pay via UPI" shortcut when VPA is configured
-            if (_hasUpiVpa) ...[
+            // Show "Pay now" shortcut when any payment method is configured
+            if (_hasPaymentMethods) ...[
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: _ShortcutCard(
                   icon: Icons.currency_rupee,
-                  label: 'Pay via UPI',
+                  label: 'Pay now',
                   tone: const Color(0xFF16A34A),
                   onTap: () {
                     final cycle = ref.read(residentBillingCycleProvider).valueOrNull;
@@ -355,7 +365,11 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     final remark = cycle?.title ?? 'Maintenance ${DateFormat('MMM yyyy').format(now)}';
                     params['remark'] = remark;
                     final query = '?${Uri(queryParameters: params).query}';
-                    context.push('/resident/maintenance/upi-pay$query');
+                    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+                    final route = methods != null && methods.isNotEmpty
+                        ? '/resident/maintenance/pay$query'
+                        : '/resident/maintenance/upi-pay$query';
+                    context.push(route);
                   },
                 ),
               ),
@@ -366,7 +380,9 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     );
   }
 
-  bool get _hasUpiVpa {
+  bool get _hasPaymentMethods {
+    final methods = ref.watch(_paymentMethodsListProvider).valueOrNull;
+    if (methods != null && methods.isNotEmpty) return true;
     final config = ref.watch(upiConfigProvider).valueOrNull;
     final vpa = config?['upiVpa']?.toString() ?? '';
     return vpa.isNotEmpty;
@@ -512,9 +528,9 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     amount: m.remainingDue,
                     status: _pendingStatus(m),
                     dueDate: m.dueDate,
-                    actionLabel: _hasUpiVpa ? 'Pay' : 'View',
-                    onAction: _hasUpiVpa
-                        ? () => _navigateToUpiPayment(m)
+                    actionLabel: _hasPaymentMethods ? 'Pay' : 'View',
+                    onAction: _hasPaymentMethods
+                        ? () => _navigateToPayment(m)
                         : () => _openCycleDetail(m),
                     onTap: () => _openCycleDetail(m),
                   ),
@@ -640,7 +656,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     context.push('/resident/maintenance/cycle/${m.cycleId}');
   }
 
-  void _navigateToUpiPayment(MaintenanceDueModel m) {
+  void _navigateToPayment(MaintenanceDueModel m) {
     final monthName = DateFormat('MMM yyyy').format(DateTime(m.year, m.month));
     final remark = m.title.isNotEmpty ? m.title : 'Maintenance $monthName';
     final params = <String, String>{
@@ -651,7 +667,11 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     };
     if (m.cycleId.isNotEmpty) params['cycleId'] = m.cycleId;
     final query = '?${Uri(queryParameters: params).query}';
-    context.push('/resident/maintenance/upi-pay$query');
+    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+    final route = methods != null && methods.isNotEmpty
+        ? '/resident/maintenance/pay$query'
+        : '/resident/maintenance/upi-pay$query';
+    context.push(route);
   }
 
   Widget _listSkeleton(int count) {

@@ -914,64 +914,24 @@ class _IntroBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(GuardTokens.padScreen),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GuardTokens.radiusLg),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  GuardTokens.guardAccentDeep.withValues(alpha: 0.35),
-                  GuardTokens.darkCard,
-                ]
-              : [
-                  GuardTokens.guardAccent.withValues(alpha: 0.12),
-                  GuardTokens.surfaceCard,
-                ],
-        ),
-        border: Border.all(
-          color: isDark ? GuardTokens.darkBorder : GuardTokens.borderSubtle,
-        ),
-        boxShadow: isDark ? null : GuardTokens.softCardShadow(context),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: GuardTokens.guardAccent.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
-            ),
-            child: Icon(
-              Icons.how_to_reg_rounded,
-              size: 28,
-              color: isDark
-                  ? GuardTokens.guardAccent
-                  : GuardTokens.guardAccentDeep,
-            ),
+          Icon(
+            Icons.how_to_reg_rounded,
+            size: 18,
+            color: isDark
+                ? GuardTokens.guardAccent
+                : GuardTokens.guardAccentDeep,
           ),
-          const SizedBox(width: GuardTokens.g2),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Gate check-in',
-                  style: GuardTokens.headingStyle(
-                    context,
-                  ).copyWith(fontSize: GuardTokens.title),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Accurate contact + flat selection keeps residents informed.',
-                  style: GuardTokens.bodyStyle(
-                    context,
-                  ).copyWith(color: cs.onSurface.withValues(alpha: 0.82)),
-                ),
-              ],
+            child: Text(
+              'Accurate contact + flat selection keeps residents informed.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.7),
+                  ),
             ),
           ),
         ],

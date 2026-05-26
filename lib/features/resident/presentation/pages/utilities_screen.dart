@@ -530,12 +530,14 @@ class _GarbageCollectionTab extends ConsumerWidget {
 }
 
 String _relativeTime(DateTime dt) {
+  final local = dt.toLocal();
   final diff = DateTime.now().difference(dt);
+  final clock = DateFormat.jm().format(local);
   if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return DateFormat.yMMMd().format(dt.toLocal());
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago · $clock';
+  if (diff.inHours < 24) return '${diff.inHours}h ago · $clock';
+  if (diff.inDays < 7) return '${diff.inDays}d ago · $clock';
+  return '${DateFormat.yMMMd().format(local)} · $clock';
 }
 
 String _formatDuration(Duration? d) {

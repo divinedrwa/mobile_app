@@ -171,11 +171,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // === BANNER zone — promotional/event banners ===
-                    _buildBannerCarousel(context),
-
                     // === UTILITY status strip ===
                     _buildUtilityStatusStrip(context),
+
+                    // === BANNER zone — promotional/event banners ===
+                    _buildBannerCarousel(context),
 
                     // === URGENCY zone — time-sensitive, only renders when relevant ===
 
@@ -2147,56 +2147,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: GestureDetector(
         onTap: () => context.push('/resident/utilities'),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: context.surface.defaultSurface,
             borderRadius: BorderRadius.circular(_kRadiusMd),
-            border: Border.all(color: context.surface.border),
+            border: Border.all(
+              color: context.surface.border.withValues(alpha: 0.6),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Icon(Icons.water_drop_rounded, size: 16, color: DesignColors.primary),
-              const SizedBox(width: 6),
               Expanded(
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
+                  spacing: 10,
+                  runSpacing: 6,
                   children: [
-                    ...waterGates.map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: g.isOn
-                            ? DesignColors.success.withValues(alpha: 0.12)
-                            : DesignColors.error.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(DesignRadius.full),
-                      ),
-                      child: Text(
-                        '${g.gateName.isNotEmpty ? g.gateName : "Water"} ${g.isOn ? "ON" : "OFF"}',
-                        style: DesignTypography.captionSmall.copyWith(
-                          color: g.isOn ? DesignColors.success : DesignColors.error,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    )),
+                    ...waterGates.map((g) => _UtilityChip(
+                          icon: Icons.water_drop_rounded,
+                          label: g.gateName.isNotEmpty ? g.gateName : 'Water',
+                          status: g.isOn ? 'ON' : 'OFF',
+                          isPositive: g.isOn,
+                          fgColor: g.isOn
+                              ? context.state.approved.fg
+                              : context.state.denied.fg,
+                          bgColor: g.isOn
+                              ? context.state.approved.bg
+                              : context.state.denied.bg,
+                        )),
                     if (collectorInside)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: DesignColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(DesignRadius.full),
-                        ),
-                        child: Text(
-                          'Collector inside',
-                          style: DesignTypography.captionSmall.copyWith(
-                            color: DesignColors.warning,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      _UtilityChip(
+                        icon: Icons.delete_rounded,
+                        label: 'Collector',
+                        status: 'Inside',
+                        isPositive: true,
+                        fgColor: context.state.pending.fg,
+                        bgColor: context.state.pending.bg,
                       ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: context.text.tertiary),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: context.text.tertiary),
             ],
           ),
         ),
@@ -3454,6 +3453,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 /// Tab index for [ResidentShell] (home / community / profile).
 final currentTabProvider = StateProvider<int>((ref) => 0);
+
+/// Compact chip used in the utility status strip.
+class _UtilityChip extends StatelessWidget {
+  const _UtilityChip({
+    required this.icon,
+    required this.label,
+    required this.status,
+    required this.isPositive,
+    required this.fgColor,
+    required this.bgColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final String status;
+  final bool isPositive;
+  final Color fgColor;
+  final Color bgColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(DesignRadius.full),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: fgColor),
+          const SizedBox(width: 5),
+          Text(
+            '$label ',
+            style: DesignTypography.captionSmall.copyWith(
+              color: fgColor.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            status,
+            style: DesignTypography.captionSmall.copyWith(
+              color: fgColor,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Static data describing one Overview metric tile.
 class _OverviewTileSpec {
