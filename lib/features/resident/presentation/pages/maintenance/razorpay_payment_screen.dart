@@ -43,7 +43,8 @@ class _RazorpayPaymentScreenState
   Timer? _verifyTimer;
   int _verifyPollCount = 0;
   bool _verifying = false;
-  static const _maxVerifyPolls = 20;
+  static const _maxVerifyPolls = 40;
+  static const _verifyPollInterval = Duration(seconds: 2);
   double _maintenanceDue = 0;
   double _platformFee = 0;
   double _platformFeeGst = 0;
@@ -179,10 +180,10 @@ class _RazorpayPaymentScreenState
     });
     _verifyPollCount = 0;
     _verifyTimer?.cancel();
-    _verifyTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _verifyTimer = Timer.periodic(_verifyPollInterval, (_) {
       _verifyServerPayment(response.paymentId);
     });
-    _verifyServerPayment(response.paymentId);
+    unawaited(_verifyServerPayment(response.paymentId));
   }
 
   Future<void> _verifyServerPayment(String? razorpayPaymentId) async {
@@ -248,17 +249,22 @@ class _RazorpayPaymentScreenState
     if (!mounted) return;
     if (_verifyPollCount >= _maxVerifyPolls) {
       _verifyTimer?.cancel();
-      invalidateMaintenancePaymentProviders(ref);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Payment received at Razorpay. It will appear in your dues shortly.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 4),
-        ),
+      if (!mounted) return;
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+      GatewayPaymentPollActions.navigateToPaymentPending(
+        context,
+        transactionId: orderId,
+        paymentMethod: 'Razorpay',
+        gateway: 'razorpay',
+        amount: _maintenanceDue,
+        periodLabel: period,
+        payAllPending: widget.payAllPending,
+        platformFee: _platformFee,
+        platformFeeGst: _platformFeeGst,
+        totalPaid: _totalPayable,
       );
-      context.pop(true);
     }
   }
 

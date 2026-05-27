@@ -22,6 +22,7 @@ import '../../features/resident/presentation/pages/maintenance/upi_payment_scree
 import '../../features/resident/presentation/pages/maintenance/payment_method_selection_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/razorpay_payment_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/phonepe_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/payment_pending_verification_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/payment_success_screen.dart';
 import '../../features/admin/presentation/pages/admin_upi_verifications_screen.dart';
 import '../../features/resident/presentation/pages/amenities_screen.dart';
@@ -280,6 +281,26 @@ class AppRouter {
                       month: int.tryParse(q['month'] ?? '1') ?? 1,
                       year: int.tryParse(q['year'] ?? '') ?? DateTime.now().year,
                       payAllPending: q['payAll'] == 'true',
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'payment-pending',
+                  builder: (context, state) {
+                    final q = state.uri.queryParameters;
+                    return PaymentPendingVerificationScreen(
+                      transactionId: q['txnId'] ?? '',
+                      paymentMethod: q['method'] ?? 'Online',
+                      gateway: q['gateway'] ?? 'phonepe',
+                      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+                      periodLabel: q['period'],
+                      payAllPending: q['payAll'] == 'true',
+                      platformFee:
+                          double.tryParse(q['platformFee'] ?? '0') ?? 0,
+                      platformFeeGst:
+                          double.tryParse(q['platformFeeGst'] ?? '0') ?? 0,
+                      totalPaid:
+                          double.tryParse(q['totalPaid'] ?? '0') ?? 0,
                     );
                   },
                 ),

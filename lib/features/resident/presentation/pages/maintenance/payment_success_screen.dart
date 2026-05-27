@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../data/providers/maintenance_provider.dart';
 
 /// Full-screen payment success confirmation shown after Razorpay / PhonePe /
 /// UPI payment completes. Displays transaction details, amount breakdown, and
 /// a prominent success indicator with haptic feedback.
-class PaymentSuccessScreen extends StatefulWidget {
+class PaymentSuccessScreen extends ConsumerStatefulWidget {
   const PaymentSuccessScreen({
     super.key,
     required this.amount,
@@ -30,10 +32,10 @@ class PaymentSuccessScreen extends StatefulWidget {
   final bool payAllPending;
 
   @override
-  State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
+  ConsumerState<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
 }
 
-class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
+class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnim;
@@ -43,6 +45,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
   void initState() {
     super.initState();
     DesignHaptics.success();
+    invalidateMaintenancePaymentProviders(ref);
 
     _controller = AnimationController(
       vsync: this,
@@ -62,6 +65,11 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
     super.dispose();
   }
 
+  void _done() {
+    invalidateMaintenancePaymentProviders(ref);
+    context.go('/resident/maintenance/dues');
+  }
+
   String _fmt(double n) {
     final formatted = n.truncateToDouble() == n
         ? n.toStringAsFixed(0)
@@ -77,7 +85,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.pop(true);
+        if (!didPop) _done();
       },
       child: Scaffold(
         backgroundColor: DesignColors.background,
@@ -91,7 +99,6 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
               children: [
                 const Spacer(flex: 1),
 
-                // Animated check icon
                 ScaleTransition(
                   scale: _scaleAnim,
                   child: Container(
@@ -111,7 +118,6 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
 
                 const SizedBox(height: DesignSpacing.xl),
 
-                // Title
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: Text(
@@ -139,7 +145,6 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
 
                 const SizedBox(height: DesignSpacing.xxl),
 
-                // Receipt card
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: Container(
@@ -180,11 +185,10 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
 
                 const Spacer(flex: 2),
 
-                // Done button
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => context.pop(true),
+                    onPressed: _done,
                     style: FilledButton.styleFrom(
                       backgroundColor: DesignColors.primary,
                       foregroundColor: Colors.white,
@@ -195,7 +199,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
                         borderRadius: DesignRadius.borderMD,
                       ),
                     ),
-                    child: const Text('Done', style: TextStyle(fontSize: 16)),
+                    child: const Text('View outstanding bills', style: TextStyle(fontSize: 16)),
                   ),
                 ),
               ],

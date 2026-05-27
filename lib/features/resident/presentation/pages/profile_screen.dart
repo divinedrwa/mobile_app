@@ -7,6 +7,7 @@ import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/user_model.dart';
+import '../../../../shared/utils/resident_capabilities.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'family_members_screen.dart';
 import 'vehicles_screen.dart';
@@ -485,7 +486,7 @@ String _profileSubtitle(UserModel? user) {
     return '${_roleLabel(null)} · Your society';
   }
 
-  if (user.role != UserRole.resident) {
+  if (!userShowsResidentPropertyProfile(user)) {
     final role = _roleLabel(user.role);
     final society = user.societyName?.trim();
     if (society != null && society.isNotEmpty) {

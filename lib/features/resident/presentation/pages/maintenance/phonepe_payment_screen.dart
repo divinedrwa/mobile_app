@@ -41,7 +41,9 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   Timer? _pollTimer;
   int _pollCount = 0;
   bool _polling = false;
-  static const _maxPolls = 20;
+  /// ~2 minutes at 2s interval.
+  static const _maxPolls = 40;
+  static const _pollInterval = Duration(seconds: 2);
   String _idempotencyKey = const Uuid().v4();
   double _serverAmount = 0;
 
@@ -107,7 +109,8 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       // redirect URL, so waiting for redirect-only polling leaves PENDING forever.
       _pollCount = 0;
       _pollTimer?.cancel();
-      _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      unawaited(_pollStatus());
+      _pollTimer = Timer.periodic(_pollInterval, (_) {
         _pollStatus();
       });
     } catch (e) {
@@ -185,20 +188,21 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     if (!mounted) return;
     if (_pollCount >= _maxPolls) {
       _pollTimer?.cancel();
-      // Payment was not explicitly confirmed or rejected — likely still
-      // processing. Pop back so the parent refreshes data; a toast tells
-      // the user the amount will reflect shortly.
-      invalidateMaintenancePaymentProviders(ref);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment is being verified. It will reflect shortly.'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
-          ),
-        );
-        context.pop(true);
-      }
+      if (!mounted) return;
+      final amount = _serverAmount > 0 ? _serverAmount : widget.amount;
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+      GatewayPaymentPollActions.navigateToPaymentPending(
+        context,
+        transactionId: _merchantTxnId ?? '',
+        paymentMethod: 'PhonePe',
+        gateway: 'phonepe',
+        amount: amount,
+        periodLabel: period,
+        payAllPending: widget.payAllPending,
+        totalPaid: amount,
+      );
     }
   }
 

@@ -13,6 +13,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../features/guard/data/guard_data_refresh.dart';
+import '../../features/resident/data/resident_data_refresh.dart';
 import '../logging/fcm_log.dart';
 import '../routing/app_navigator_keys.dart';
 import '../utils/notification_preference_storage.dart';
@@ -316,6 +318,7 @@ class NotificationService {
   void _setupMessageListeners() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       fcmDiag('RX_FOREGROUND', describeRemoteMessage(message));
+      _refreshProvidersForPushType(_normalizeData(message.data)['type'] ?? '');
       unawaited(_showForegroundLocalNotification(message));
     });
 
@@ -609,7 +612,9 @@ class NotificationService {
         if (type == 'BILLING_CYCLE_CREATED' ||
             type == 'MAINTENANCE_REMINDER' ||
             type == 'MAINTENANCE_PAYMENT_RECORDED' ||
-            type == 'MAINTENANCE_PAYMENT_REVERSED') {
+            type == 'MAINTENANCE_PAYMENT_REVERSED' ||
+            type == 'MAINTENANCE_LEDGER_UPDATED') {
+          requestResidentDataRefresh();
           router.push('/resident/maintenance');
           return;
         }
@@ -652,6 +657,49 @@ class NotificationService {
       fcmDiag('NAV', 'post-frame navigate type=$type openDetails=$openDetails');
       go();
     });
+  }
+
+  /// Invalidate cached providers when a push indicates server data changed.
+  void _refreshProvidersForPushType(String type) {
+    if (type.isEmpty) return;
+
+    const maintenanceTypes = {
+      'MAINTENANCE_PAYMENT_REVERSED',
+      'MAINTENANCE_PAYMENT_RECORDED',
+      'MAINTENANCE_LEDGER_UPDATED',
+      'BILLING_CYCLE_CREATED',
+      'MAINTENANCE_REMINDER',
+      'billing_payment_success',
+      'billing_window_open',
+      'billing_due_reminder',
+      'BILLING_GRACE_REMINDER',
+    };
+    const residentContentTypes = {
+      'PARCEL_RECEIVED',
+      'complaint_status',
+      'notice',
+      'amenity_booking_status',
+      'SPECIAL_PROJECT_CREATED',
+      'SPECIAL_PROJECT_PAYMENT_RECORDED',
+    };
+    const visitorTypes = {
+      'VISITOR_APPROVAL_REQUEST',
+      'VISITOR_PRE_APPROVED_ARRIVED',
+      'VISITOR_PRE_APPROVED_CREATED',
+      'VISITOR_APPROVAL_RESOLVED',
+      'VISITOR_CHECKED_IN',
+      'VISITOR_CHECKED_OUT',
+    };
+
+    if (maintenanceTypes.contains(type) ||
+        residentContentTypes.contains(type) ||
+        visitorTypes.contains(type) ||
+        type.startsWith('VISITOR_')) {
+      requestResidentDataRefresh();
+    }
+    if (visitorTypes.contains(type) || type.startsWith('VISITOR_')) {
+      requestGuardDataRefresh();
+    }
   }
 
   /// Drain navigation queued before the first frame (cold start).

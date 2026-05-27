@@ -11,6 +11,7 @@ void main() {
         'razorpayState': 'paid',
         'razorpayAvailable': true,
         'reconciled': true,
+        'ledgerSynced': true,
       });
       expect(poll.isRecordedOrCompleted, isTrue);
       expect(poll.isFailed, isFalse);
@@ -41,6 +42,15 @@ void main() {
       final poll = GatewayPaymentPollResult.empty();
       expect(poll.outcome, 'unknown');
       expect(poll.gatewayAvailable, isFalse);
+    });
+
+    test('SUCCESS without ledgerSynced is not success', () {
+      final poll = GatewayPaymentPollResult.fromJson({
+        'status': 'SUCCESS',
+        'outcome': 'recorded',
+        'ledgerSynced': false,
+      });
+      expect(poll.isRecordedOrCompleted, isFalse);
     });
 
     test('pending is not terminal', () {

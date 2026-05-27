@@ -155,7 +155,8 @@ class UserModel {
   String? get effectiveOccupantDisplay {
     final o = occupantRoleLabel?.trim();
     if (o != null && o.isNotEmpty) return o;
-    if (role == UserRole.resident && residentType != null) {
+    if ((role == UserRole.resident || role == UserRole.admin) &&
+        residentType != null) {
       return residentType!.displayLabel;
     }
     return null;

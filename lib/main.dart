@@ -14,6 +14,18 @@ import 'core/telemetry/guard_analytics_bridge.dart';
 import 'core/utils/app_restart.dart';
 import 'theme/theme.dart' as gp_theme;
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/guard/data/guard_data_refresh.dart';
+import 'features/guard/presentation/providers/guard_providers.dart';
+import 'features/resident/data/providers/banner_provider.dart';
+import 'features/resident/data/providers/complaint_provider.dart';
+import 'features/resident/data/providers/content_provider.dart';
+import 'features/resident/data/providers/dashboard_provider.dart';
+import 'features/resident/data/providers/maintenance_provider.dart';
+import 'features/resident/data/providers/notification_provider.dart';
+import 'features/resident/data/providers/parcel_provider.dart';
+import 'features/resident/data/providers/special_project_provider.dart';
+import 'features/resident/presentation/providers/visitor_provider.dart';
+import 'features/resident/data/resident_data_refresh.dart';
 import 'core/session/account_deactivated_handler.dart';
 import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
@@ -124,7 +136,42 @@ class _DivineAppState extends ConsumerState<DivineApp> {
         } catch (_) {}
         // logout() calls restartApp() — no navigation needed.
       });
+      _registerResidentDataRefresh();
+      _registerGuardDataRefresh();
     });
+  }
+
+  void _registerResidentDataRefresh() {
+    onResidentDataRefreshRequested = () {
+      unawaited(ref.read(authProvider.notifier).refreshProfile());
+      ref.invalidate(pendingMaintenanceProvider);
+      ref.invalidate(outstandingDuesProvider);
+      ref.invalidate(maintenanceHistoryProvider);
+      ref.invalidate(residentBillingCycleProvider);
+      ref.invalidate(billingFinancialYearsProvider);
+      ref.invalidate(residentDashboardProvider);
+      ref.invalidate(noticesProvider);
+      ref.invalidate(pollsProvider);
+      ref.invalidate(eventsProvider);
+      ref.invalidate(documentsProvider);
+      ref.invalidate(notificationProvider);
+      ref.invalidate(myComplaintsProvider);
+      ref.invalidate(activeBannersProvider);
+      ref.read(residentSpecialProjectsProvider.notifier).fetchProjects();
+      ref.invalidate(visitorApprovalRequestsProvider('pending'));
+      ref.invalidate(visitorApprovalRequestsProvider('all'));
+      ref.read(parcelProvider.notifier).fetchParcels();
+    };
+  }
+
+  void _registerGuardDataRefresh() {
+    onGuardDataRefreshRequested = () {
+      ref.invalidate(guardMyGateProvider);
+      ref.invalidate(guardVillasProvider);
+      ref.invalidate(guardResidentsDirectoryProvider);
+      ref.invalidate(guardMyPatrolsProvider);
+      ref.invalidate(guardMyShiftsProvider);
+    };
   }
 
   @override

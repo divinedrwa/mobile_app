@@ -7,6 +7,7 @@ class GatewayPaymentPollResult {
     this.detail,
     this.gatewayAvailable = true,
     this.reconciled = false,
+    this.ledgerSynced = false,
     this.rawGatewayState,
     this.rawGatewayCode,
   });
@@ -16,6 +17,8 @@ class GatewayPaymentPollResult {
   final String? detail;
   final bool gatewayAvailable;
   final bool reconciled;
+  /// Maintenance ledger + snapshot updated (admin grid / resident dues).
+  final bool ledgerSynced;
   final String? rawGatewayState;
   final String? rawGatewayCode;
 
@@ -29,6 +32,7 @@ class GatewayPaymentPollResult {
           json['razorpayAvailable'] as bool? ??
           true,
       reconciled: json['reconciled'] == true,
+      ledgerSynced: json['ledgerSynced'] == true,
       rawGatewayState:
           json['phonepeState']?.toString() ?? json['razorpayState']?.toString(),
       rawGatewayCode:
@@ -45,11 +49,12 @@ class GatewayPaymentPollResult {
     );
   }
 
-  /// Server recorded payment (ledger updated or already SUCCESS).
+  /// Server recorded payment on billing AND maintenance ledger (admin + resident).
   bool get isRecordedOrCompleted =>
-      status == 'SUCCESS' ||
-      outcome == 'recorded' ||
-      outcome == 'completed';
+      ledgerSynced &&
+      (outcome == 'completed' ||
+          outcome == 'recorded' ||
+          (status == 'SUCCESS' && outcome != 'reconcile_failed'));
 
   bool get isFailed =>
       status == 'FAILED' ||
@@ -61,6 +66,8 @@ class GatewayPaymentPollResult {
 
   bool get isGatewayUnavailable =>
       outcome == 'gateway_unavailable' && !gatewayAvailable;
+
+  bool get isReconcileFailed => outcome == 'reconcile_failed';
 
   String get failureMessage =>
       (detail != null && detail!.isNotEmpty)

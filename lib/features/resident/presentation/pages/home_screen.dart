@@ -21,6 +21,7 @@ import '../../data/models/quick_action_model.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/providers/content_provider.dart';
 import '../../data/providers/maintenance_provider.dart';
+import '../../data/resident_data_refresh.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/security_contact_provider.dart';
@@ -65,12 +66,28 @@ List<BoxShadow> _cardShadow([double opacity = 0.06]) => [
       ),
     ];
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      requestResidentDataRefresh();
+    }
+  }
+
   Future<void> _handleRefresh() async {
-    ref.invalidate(pendingMaintenanceProvider);
-    ref.invalidate(maintenanceHistoryProvider);
-    ref.invalidate(residentBillingCycleProvider);
-    ref.invalidate(residentDashboardProvider);
+    invalidateMaintenancePaymentProviders(ref);
     ref.invalidate(noticesProvider);
     ref.invalidate(eventsProvider);
     ref.invalidate(pollsProvider);
@@ -107,15 +124,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// Home header pill: show Owner / Tenant / Family member when `/residents/me` provides it.
   String _headerOccupantOrRoleBadge(UserRole role, UserModel? user) {
-    if (role == UserRole.resident) {
+    if (role == UserRole.resident || role == UserRole.admin) {
       final occ = user?.effectiveOccupantDisplay;
       if (occ != null && occ.isNotEmpty) return occ;
+    }
+    if (role == UserRole.admin && user?.villaId != null && user!.villaId!.isNotEmpty) {
+      return 'Admin · Resident';
     }
     return _roleLabel(role);
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authProvider, (prev, next) {
+      final pu = prev?.user;
+      final nu = next.user;
+      if (pu?.id != nu?.id ||
+          pu?.villaId != nu?.villaId ||
+          pu?.maintenanceBillingRole != nu?.maintenanceBillingRole) {
+        invalidateMaintenancePaymentProviders(ref);
+      }
+    });
+
     final authState = ref.watch(authProvider);
     final pendingState = ref.watch(pendingMaintenanceProvider);
     final noticesState = ref.watch(noticesProvider);

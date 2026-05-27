@@ -22,6 +22,10 @@ class GatewayPaymentPollActions {
       onFailed(poll.failureMessage);
       return true;
     }
+    if (poll.isReconcileFailed) {
+      onFailed(poll.failureMessage);
+      return true;
+    }
     if (poll.isGatewayUnavailable) {
       onGatewayUnavailable(
         poll.detail?.isNotEmpty == true
@@ -31,6 +35,36 @@ class GatewayPaymentPollActions {
       return true;
     }
     return false;
+  }
+
+  static void navigateToPaymentPending(
+    BuildContext context, {
+    required String transactionId,
+    required String paymentMethod,
+    required String gateway,
+    required double amount,
+    String? periodLabel,
+    bool payAllPending = false,
+    double platformFee = 0,
+    double platformFeeGst = 0,
+    double totalPaid = 0,
+  }) {
+    context.go(
+      Uri(
+        path: '/resident/maintenance/payment-pending',
+        queryParameters: {
+          'txnId': transactionId,
+          'method': paymentMethod,
+          'gateway': gateway,
+          'amount': amount.toStringAsFixed(2),
+          if (periodLabel != null && periodLabel.isNotEmpty) 'period': periodLabel,
+          if (payAllPending) 'payAll': 'true',
+          if (platformFee > 0) 'platformFee': platformFee.toStringAsFixed(2),
+          if (platformFeeGst > 0) 'platformFeeGst': platformFeeGst.toStringAsFixed(2),
+          if (totalPaid > 0) 'totalPaid': totalPaid.toStringAsFixed(2),
+        },
+      ).toString(),
+    );
   }
 
   static void navigateToPaymentSuccess(

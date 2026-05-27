@@ -10,6 +10,7 @@ import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../data/providers/notification_provider.dart';
+import '../../data/resident_data_refresh.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
@@ -156,6 +157,9 @@ class ResidentShell extends ConsumerWidget {
           onTap: () {
             DesignHaptics.selection();
             ref.read(currentTabProvider.notifier).state = index;
+            if (index == 0) {
+              requestResidentDataRefresh();
+            }
           },
           borderRadius: BorderRadius.circular(14),
           child: AnimatedContainer(

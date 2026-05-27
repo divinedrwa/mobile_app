@@ -44,7 +44,7 @@ final complaintSubmitProvider =
 
 final myComplaintsProvider =
     FutureProvider.autoDispose<List<ComplaintListItem>>((ref) async {
-  cacheFor(ref, const Duration(minutes: 10));
+  cacheFor(ref, const Duration(seconds: 30));
   final repo = ref.watch(complaintRepositoryProvider);
   return repo.getMyComplaints();
 });

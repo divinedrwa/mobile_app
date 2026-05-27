@@ -11,7 +11,7 @@ final bannerRepositoryProvider = Provider<BannerRepository>((ref) {
 
 final activeBannersProvider =
     FutureProvider.autoDispose<List<BannerModel>>((ref) async {
-  cacheFor(ref, const Duration(minutes: 15));
+  cacheFor(ref, const Duration(minutes: 2));
   final repo = ref.read(bannerRepositoryProvider);
   return repo.getActiveBanners();
 });

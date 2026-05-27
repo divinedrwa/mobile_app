@@ -13,6 +13,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/admin_providers.dart';
+import '../../../resident/data/resident_data_refresh.dart';
 import '../../../resident/presentation/widgets/maintenance/maintenance_stat_chip.dart';
 import '../../../resident/presentation/widgets/maintenance/payment_list_tile.dart';
 
@@ -1552,6 +1553,8 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
                 filter.maintenanceCollectionCycleId,
             idempotencyKey: idempotencyKey,
           );
+      requestResidentDataRefresh();
+      ref.invalidate(adminMaintenanceDashboardProvider);
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
