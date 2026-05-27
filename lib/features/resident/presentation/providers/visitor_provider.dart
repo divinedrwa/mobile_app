@@ -9,15 +9,6 @@ final visitorRepositoryProvider = Provider<VisitorRepository>((ref) {
   return VisitorRepository(dioClient);
 });
 
-/// Provider for pre-approving a visitor
-final preApproveVisitorProvider = FutureProvider.autoDispose
-    .family<PreApprovedVisitorModel, PreApprovedVisitorModel>(
-  (ref, visitor) async {
-    final repository = ref.read(visitorRepositoryProvider);
-    return await repository.preApproveVisitor(visitor);
-  },
-);
-
 /// Provider for fetching pre-approved visitors
 final preApprovedVisitorsProvider =
     FutureProvider.autoDispose<List<PreApprovedVisitorModel>>((ref) async {

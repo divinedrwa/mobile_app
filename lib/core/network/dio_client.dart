@@ -1,11 +1,7 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../constants/app_constants.dart';
-import '../security/certificate_pins.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
@@ -51,21 +47,21 @@ class DioClient {
         ),
     ]);
 
-    // Certificate pinning — only when pins are configured.
-    // When enabled, only certificates whose DER-encoded bytes match a
-    // known pin are accepted. The `badCertificateCallback` fires for
-    // ALL certificates when pins are set, rejecting any that don't match.
-    if (CertificatePins.enabled && CertificatePins.sha256Pins.isNotEmpty) {
-      (_dio!.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
-        client.badCertificateCallback = (cert, host, port) {
-          // Convert DER bytes to hex for comparison against pin list.
-          final derHex = cert.der.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-          return CertificatePins.sha256Pins.any((pin) => derHex.contains(pin));
-        };
-        return client;
-      };
-    }
+    // Certificate pinning — disabled until production pins are configured.
+    // To enable: add `dart:io`, `package:dio/io.dart`, `package:crypto`,
+    // and `../security/certificate_pins.dart` imports, set
+    // `CertificatePins.enabled = true`, then uncomment:
+    //
+    // if (CertificatePins.enabled && CertificatePins.sha256Pins.isNotEmpty) {
+    //   (_dio!.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+    //     final client = HttpClient();
+    //     client.badCertificateCallback = (cert, host, port) {
+    //       final digest = sha256.convert(cert.der);
+    //       return CertificatePins.sha256Pins.any((pin) => pin == digest.toString());
+    //     };
+    //     return client;
+    //   };
+    // }
 
     return _dio!;
   }

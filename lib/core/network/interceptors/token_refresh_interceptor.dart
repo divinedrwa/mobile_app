@@ -33,13 +33,18 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
   /// and should just propagate the 401 immediately.
   DateTime? _lastRefreshFailedAt;
 
-  Dio _makeFreshDio() => Dio(BaseOptions(
-        baseUrl: DioClient.dio.options.baseUrl,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ));
+  Dio _makeFreshDio() {
+    final parentOpts = DioClient.dio.options;
+    return Dio(BaseOptions(
+      baseUrl: parentOpts.baseUrl,
+      connectTimeout: parentOpts.connectTimeout,
+      receiveTimeout: parentOpts.receiveTimeout,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+  }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {

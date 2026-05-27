@@ -69,7 +69,8 @@ class _RazorpayPaymentScreenState
   }
 
   Future<void> _createOrder() async {
-    _idempotencyKey = const Uuid().v4();
+    // Keep the same idempotency key across retries so the server can
+    // deduplicate. A new key is already generated per screen instance.
     setState(() {
       _loading = true;
       _error = null;
@@ -226,6 +227,7 @@ class _RazorpayPaymentScreenState
         },
         onFailed: (message) {
           _verifyTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
             _error = message;
@@ -233,6 +235,7 @@ class _RazorpayPaymentScreenState
         },
         onGatewayUnavailable: (message) {
           _verifyTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
             _error = message;

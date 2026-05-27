@@ -467,9 +467,7 @@ class _PreApproveVisitorScreenState
             : null,
       );
 
-      final result = await ref.read(
-        preApproveVisitorProvider(visitor).future,
-      );
+      final result = await ref.read(visitorRepositoryProvider).preApproveVisitor(visitor);
 
       if (mounted) {
         ref.invalidate(preApprovedVisitorsProvider);

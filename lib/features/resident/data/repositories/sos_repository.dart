@@ -82,9 +82,12 @@ class SOSRepository {
   Future<List<SOSAlertModel>> getSOSAlerts() async {
     try {
       final response = await _dioClient.get(ApiEndpoints.sosAlerts);
-      final alertsList = response.data['alerts'] as List? ?? [];
+      final raw = response.data;
+      final map = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final alertsList = map['alerts'] as List? ?? [];
       return alertsList
-          .map((json) => SOSAlertModel.fromJson(Map<String, dynamic>.from(json as Map)))
+          .whereType<Map>()
+          .map((json) => SOSAlertModel.fromJson(Map<String, dynamic>.from(json)))
           .toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to fetch SOS alerts');

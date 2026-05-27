@@ -655,8 +655,10 @@ class _AdminSpecialProjectDetailScreenState
       await SpecialProjectRepository()
           .updateProjectStatus(widget.projectId, status);
       if (!mounted) return;
-      _refresh();
-      ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      await _refresh();
+      if (!mounted) return;
+      await ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Project ${status.toLowerCase()}')),
       );
@@ -692,7 +694,8 @@ class _AdminSpecialProjectDetailScreenState
     try {
       await SpecialProjectRepository().deleteProject(widget.projectId);
       if (!mounted) return;
-      ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      await ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Project deleted')),
       );
@@ -731,8 +734,10 @@ class _AdminSpecialProjectDetailScreenState
       await SpecialProjectRepository()
           .deletePayment(project.id, contrib.id, payment.id);
       if (!mounted) return;
-      _refresh();
-      ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      await _refresh();
+      if (!mounted) return;
+      await ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment deleted')),
       );
@@ -768,8 +773,10 @@ class _AdminSpecialProjectDetailScreenState
       await SpecialProjectRepository()
           .deleteExpense(widget.projectId, expense.id);
       if (!mounted) return false;
-      _refresh();
-      ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      await _refresh();
+      if (!mounted) return false;
+      await ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Expense deleted')),
       );

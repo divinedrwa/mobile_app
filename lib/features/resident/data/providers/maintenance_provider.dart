@@ -23,7 +23,7 @@ void invalidateMaintenancePaymentProviders(WidgetRef ref) {
 
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-      cacheFor(ref, const Duration(seconds: 15));
+      cacheFor(ref, const Duration(seconds: 5));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return {};
       return ref.watch(maintenanceRepositoryProvider).getOutstandingDues();
@@ -37,7 +37,7 @@ final pendingMaintenanceProvider =
           (s) => '${s.user?.id}:${s.user?.villaId}:${s.user?.maintenanceBillingRole}',
         ),
       );
-      cacheFor(ref, const Duration(seconds: 10));
+      cacheFor(ref, const Duration(seconds: 5));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return [];
       return ref.watch(maintenanceRepositoryProvider).getPendingMaintenance();
@@ -46,7 +46,7 @@ final pendingMaintenanceProvider =
 final maintenanceHistoryProvider =
     FutureProvider.autoDispose<List<MaintenanceDueModel>>((ref) async {
       ref.watch(authProvider.select((s) => s.user?.id));
-      cacheFor(ref, const Duration(seconds: 15));
+      cacheFor(ref, const Duration(seconds: 5));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return [];
       return ref.watch(maintenanceRepositoryProvider).getMaintenanceHistory();
@@ -60,7 +60,7 @@ final residentBillingCycleProvider =
           (s) => '${s.user?.id}:${s.user?.villaId}:${s.user?.maintenanceBillingRole}',
         ),
       );
-      cacheFor(ref, const Duration(seconds: 30));
+      cacheFor(ref, const Duration(seconds: 5));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) {
         return BillingCycleCurrent.fromJson(const {});

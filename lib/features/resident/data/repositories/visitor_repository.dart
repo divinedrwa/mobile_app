@@ -93,7 +93,9 @@ class VisitorRepository {
   Future<List<VisitorModel>> getVisitorHistory() async {
     try {
       final response = await _dioClient.get(ApiEndpoints.myVisitors);
-      final list = response.data['visitors'] as List? ?? [];
+      final raw = response.data;
+      final data = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final list = data['visitors'] as List? ?? [];
       return _parseVisitors(list);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to fetch visitor history');
@@ -162,7 +164,9 @@ class VisitorRepository {
         ApiEndpoints.visitorApprovalRequests,
         queryParameters: {'filter': filter},
       );
-      final list = response.data['visitors'] as List? ?? [];
+      final raw = response.data;
+      final data = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final list = data['visitors'] as List? ?? [];
       return list
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))

@@ -28,7 +28,10 @@ class AdminSosRepository {
         ApiEndpoints.adminSosAlertsActive,
       );
       final list = res.data?['alerts'] as List? ?? [];
-      return list.cast<Map<String, dynamic>>();
+      return list
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load active SOS alerts');
     }

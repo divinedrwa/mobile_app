@@ -178,22 +178,10 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
           );
         }
 
-        // Roll up everything the resident actually owes right now: the
-        // current cycle's remaining due plus any prior overdue cycles.
-        // Filter out the current cycle from pending to avoid double-counting
-        // (the pending list already includes the current cycle when unpaid).
-        final currentCycleId = cycle.cycleId;
-        final priorPendingTotal = pending
-            .where((e) =>
-                currentCycleId == null ||
-                currentCycleId.isEmpty ||
-                e.cycleId != currentCycleId)
-            .fold<double>(
-              0,
-              (acc, e) => acc + e.remainingDue,
-            );
-        final cycleDue = cycle.remainingDue ?? 0;
-        final totalActionable = (cycleDue + priorPendingTotal).clamp(0, double.infinity).toDouble();
+        // Single source: sum all cycles from maintenance-pending (ledger-backed).
+        final totalActionable = pending
+            .where((e) => e.remainingDue > 0)
+            .fold<double>(0, (acc, e) => acc + e.remainingDue);
         final hasDues = totalActionable > 0.5;
 
         if (!hasDues && cycle.isPaid) {
@@ -493,30 +481,26 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                 ],
               );
             }
-            // Cap the preview at 3 — anything more belongs on the dedicated
-            // Dues screen, otherwise the hub becomes a long scroll on
-            // residents with backlog. The trailing "View all" link makes
-            // the rest reachable in one tap.
-            const previewCount = 3;
+            // Cap preview at 5 tiles to keep the hub lightweight on
+            // devices with large backlogs. Full list on the Dues screen.
+            const previewCount = 5;
             final preview = items.take(previewCount).toList();
             final hidden = items.length - preview.length;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _SectionHeader(
-                  title: 'Pending bills',
-                  trailing: items.length > previewCount
-                      ? TextButton(
-                          onPressed: () => context.push('/resident/maintenance/dues'),
-                          child: Text(
-                            'View all (${items.length})',
-                            style: DesignTypography.bodySmall.copyWith(
-                              color: DesignColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        )
-                      : null,
+                  title: 'Pending bills (${items.length})',
+                  trailing: TextButton(
+                    onPressed: () => context.push('/resident/maintenance/dues'),
+                    child: Text(
+                      hidden > 0 ? 'View all' : 'Pay all',
+                      style: DesignTypography.bodySmall.copyWith(
+                        color: DesignColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 for (final m in preview) ...[

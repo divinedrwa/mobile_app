@@ -114,7 +114,8 @@ class _AdminCreateSpecialProjectScreenState
       });
 
       if (!mounted) return;
-      ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      await ref.read(adminSpecialProjectsProvider.notifier).fetchProjects();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Project created successfully')),
       );
@@ -179,7 +180,7 @@ class _AdminCreateSpecialProjectScreenState
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
-                  initialValue: _type,
+                  value: _type,
                   decoration: DesignComponents.inputDecoration(label: 'Type'),
                   items: const [
                     DropdownMenuItem(value: 'OTHER', child: Text('Other')),

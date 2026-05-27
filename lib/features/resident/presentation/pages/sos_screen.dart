@@ -129,7 +129,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
         location: 'On premises',
       );
 
-      await ref.read(sendSOSAlertProvider(alert).future);
+      await ref.read(sosRepositoryProvider).sendSOSAlert(alert);
       ref.invalidate(activeSosProvider);
       ref.invalidate(sosAlertsProvider);
 

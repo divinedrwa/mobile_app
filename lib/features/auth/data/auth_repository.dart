@@ -289,10 +289,10 @@ class AuthRepository {
     try {
       final payload = <String, dynamic>{
         'token': token.trim(),
-        'username': username.trim(),
+        'username': _sanitizeInput(username),
         'name': name.trim(),
         'email': email.trim(),
-        'password': password,
+        'password': _sanitizeInput(password),
         if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
         if (villaId != null && villaId.trim().isNotEmpty)
           'villaId': villaId.trim(),

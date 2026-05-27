@@ -67,7 +67,8 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   Future<void> _initiatePayment() async {
-    _idempotencyKey = const Uuid().v4();
+    // Keep the same idempotency key across retries so the server can
+    // deduplicate. A new key is already generated per screen instance.
     setState(() {
       _loading = true;
       _error = null;
@@ -165,6 +166,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         },
         onFailed: (message) {
           _pollTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
             _error = message;
@@ -172,6 +174,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         },
         onGatewayUnavailable: (message) {
           _pollTimer?.cancel();
+          invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
             _error = message;

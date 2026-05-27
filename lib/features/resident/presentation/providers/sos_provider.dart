@@ -15,14 +15,6 @@ final activeSosProvider =
   return repository.fetchActiveSos();
 });
 
-final sendSOSAlertProvider =
-    FutureProvider.autoDispose.family<SOSAlertModel, SOSAlertModel>(
-  (ref, alert) async {
-    final repository = ref.read(sosRepositoryProvider);
-    return repository.sendSOSAlert(alert);
-  },
-);
-
 final sosAlertsProvider =
     FutureProvider.autoDispose<List<SOSAlertModel>>((ref) async {
   final repository = ref.read(sosRepositoryProvider);

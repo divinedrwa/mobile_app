@@ -735,6 +735,10 @@ class GuardRepository {
       if (raw is Map) {
         final map = Map<String, dynamic>.from(raw);
         if (map.containsKey('verified')) {
+          // Propagate domain-level rejection with error flag so callers
+          // can distinguish a 200 success from a 4xx with data.
+          map['_httpError'] = true;
+          map['_statusCode'] = e.response?.statusCode;
           return map;
         }
       }
@@ -772,6 +776,8 @@ class GuardRepository {
       if (raw is Map) {
         final map = Map<String, dynamic>.from(raw);
         if (map.containsKey('admitted') || map.containsKey('verified')) {
+          map['_httpError'] = true;
+          map['_statusCode'] = e.response?.statusCode;
           return map;
         }
       }
