@@ -43,6 +43,8 @@ class _RazorpayPaymentScreenState
   Timer? _verifyTimer;
   int _verifyPollCount = 0;
   bool _verifying = false;
+  /// Incremented on each _createOrder call. Stale poll responses are ignored.
+  int _verifyGeneration = 0;
   static const _maxVerifyPolls = 40;
   static const _verifyPollInterval = Duration(seconds: 2);
   double _maintenanceDue = 0;
@@ -74,6 +76,8 @@ class _RazorpayPaymentScreenState
     if (_error != null) {
       _idempotencyKey = const Uuid().v4();
     }
+    _verifyTimer?.cancel();
+    _verifyGeneration++;
     setState(() {
       _loading = true;
       _error = null;
@@ -197,11 +201,12 @@ class _RazorpayPaymentScreenState
 
     _verifying = true;
     _verifyPollCount++;
+    final gen = _verifyGeneration; // Capture so stale responses are ignored
     try {
       final repo = ref.read(maintenanceRepositoryProvider);
       final poll = await repo.checkRazorpayStatus(orderId);
 
-      if (!mounted) return;
+      if (!mounted || gen != _verifyGeneration) return;
 
       final period = widget.payAllPending
           ? 'All outstanding'
@@ -253,7 +258,7 @@ class _RazorpayPaymentScreenState
       _verifying = false;
     }
 
-    if (!mounted) return;
+    if (!mounted || gen != _verifyGeneration) return;
     if (_verifyPollCount >= _maxVerifyPolls) {
       _verifyTimer?.cancel();
       if (!mounted) return;

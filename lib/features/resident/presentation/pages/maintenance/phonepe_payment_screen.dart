@@ -41,6 +41,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   Timer? _pollTimer;
   int _pollCount = 0;
   bool _polling = false;
+  /// Incremented on each initiate call. Poll responses whose generation
+  /// doesn't match are stale and ignored — prevents a slow response from
+  /// a previous attempt from cancelling the current timer or setting error.
+  int _pollGeneration = 0;
   /// ~2 minutes at 2s interval.
   static const _maxPolls = 40;
   static const _pollInterval = Duration(seconds: 2);
@@ -74,6 +78,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     if (_error != null) {
       _idempotencyKey = const Uuid().v4();
     }
+    // Cancel any in-flight polls and bump generation so stale responses
+    // from a previous attempt are ignored.
+    _pollTimer?.cancel();
+    _pollGeneration++;
     setState(() {
       _loading = true;
       _error = null;
@@ -190,12 +198,13 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     if (_merchantTxnId == null || _polling) return;
     _polling = true;
     _pollCount++;
+    final gen = _pollGeneration; // Capture so stale responses are ignored
 
     try {
       final repo = ref.read(maintenanceRepositoryProvider);
       final poll = await repo.checkPhonePeStatus(_merchantTxnId!);
 
-      if (!mounted) return;
+      if (!mounted || gen != _pollGeneration) return;
 
       final handled = GatewayPaymentPollActions.handlePollResult(
         poll: poll,
@@ -232,7 +241,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       _polling = false;
     }
 
-    if (!mounted) return;
+    if (!mounted || gen != _pollGeneration) return;
     if (_pollCount >= _maxPolls) {
       _pollTimer?.cancel();
       if (!mounted) return;
