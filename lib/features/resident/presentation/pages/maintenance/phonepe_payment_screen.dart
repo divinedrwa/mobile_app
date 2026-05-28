@@ -222,6 +222,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
+            _showWebView = false;
             _error = message;
           });
         },
@@ -230,6 +231,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
+            _showWebView = false;
             _error = message;
           });
         },
@@ -245,20 +247,13 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     if (_pollCount >= _maxPolls) {
       _pollTimer?.cancel();
       if (!mounted) return;
-      final amount = _serverAmount > 0 ? _serverAmount : widget.amount;
-      final period = widget.payAllPending
-          ? 'All outstanding'
-          : '${_monthName(widget.month)} ${widget.year}';
-      GatewayPaymentPollActions.navigateToPaymentPending(
-        context,
-        transactionId: _merchantTxnId ?? '',
-        paymentMethod: 'PhonePe',
-        gateway: 'phonepe',
-        amount: amount,
-        periodLabel: period,
-        payAllPending: widget.payAllPending,
-        totalPaid: amount,
-      );
+      invalidateMaintenancePaymentProviders(ref);
+      setState(() {
+        _loading = false;
+        _showWebView = false;
+        _error = 'Could not confirm payment status. If your account was '
+            'debited, the payment will appear in your bills once verified.';
+      });
     }
   }
 
