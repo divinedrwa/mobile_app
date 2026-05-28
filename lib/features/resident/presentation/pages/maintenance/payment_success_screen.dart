@@ -45,7 +45,6 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
   void initState() {
     super.initState();
     DesignHaptics.success();
-    invalidateMaintenancePaymentProviders(ref);
 
     _controller = AnimationController(
       vsync: this,
@@ -57,6 +56,17 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
       curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
     );
     _controller.forward();
+  }
+
+  bool _didInvalidate = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInvalidate) {
+      _didInvalidate = true;
+      invalidateMaintenancePaymentProviders(ref);
+    }
   }
 
   @override
