@@ -22,7 +22,7 @@ class AppConstants {
   /// `flutter build apk --dart-define=API_BASE_URL=https://gatepass-v037.onrender.com/api`
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://gatepass-v037.onrender.com/api',
   );
 
   /// LAN host only (no scheme/port). Used when `API_BASE_URL` and saved URL are empty.
