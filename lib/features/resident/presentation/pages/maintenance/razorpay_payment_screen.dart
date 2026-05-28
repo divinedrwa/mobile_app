@@ -39,6 +39,9 @@ class _RazorpayPaymentScreenState
   String? _error;
   bool _paymentComplete = false;
   bool _orderCreated = false;
+  /// Set once Razorpay SDK returns (success or error). Once the SDK has
+  /// dismissed, always allow back — the user shouldn't be trapped.
+  bool _sdkReturned = false;
   String? _razorpayOrderId;
   Timer? _verifyTimer;
   int _verifyPollCount = 0;
@@ -78,6 +81,7 @@ class _RazorpayPaymentScreenState
     }
     _verifyTimer?.cancel();
     _verifyGeneration++;
+    _sdkReturned = false;
     setState(() {
       _loading = true;
       _error = null;
@@ -183,6 +187,7 @@ class _RazorpayPaymentScreenState
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     if (!mounted) return;
+    _sdkReturned = true;
     setState(() {
       _loading = true;
       _error = null;
@@ -281,6 +286,7 @@ class _RazorpayPaymentScreenState
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
+    _sdkReturned = true;
     _verifyTimer?.cancel();
     final sdkMessage = response.message ?? 'Payment failed';
     // SDK can report failure while server already captured — verify once.
@@ -404,7 +410,7 @@ class _RazorpayPaymentScreenState
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_orderCreated || _paymentComplete || _error != null,
+      canPop: !_orderCreated || _paymentComplete || _error != null || _sdkReturned,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -425,7 +431,7 @@ class _RazorpayPaymentScreenState
             icon:
                 const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
             onPressed: () {
-              if (!_orderCreated || _paymentComplete || _error != null) {
+              if (!_orderCreated || _paymentComplete || _error != null || _sdkReturned) {
                 context.pop();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(

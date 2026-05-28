@@ -291,8 +291,11 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
     return null;
   }
 
+  /// Block back only during the initial order-creation API call (no txnId yet).
+  /// Once the gateway has been presented, always allow back — the webhook
+  /// handles settlement regardless of whether the user stays on this screen.
   bool get _canPop =>
-      !_showWebView && !_loading || _paymentComplete || _error != null;
+      _merchantTxnId != null || !_loading || _paymentComplete || _error != null;
 
   @override
   Widget build(BuildContext context) {
