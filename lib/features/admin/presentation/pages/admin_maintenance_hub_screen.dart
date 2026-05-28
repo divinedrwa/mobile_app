@@ -861,7 +861,7 @@ class _AdminMaintenanceHubScreenState
   }
 
   bool get _isAdmin =>
-      ref.read(authProvider).user?.role == UserRole.admin;
+      ref.read(authProvider).user?.role.isAdminLike ?? false;
 
   Widget _residentRow(
     Map<String, dynamic> r,

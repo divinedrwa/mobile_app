@@ -1,10 +1,9 @@
 import '../models/user_model.dart';
-import '../../core/constants/app_constants.dart';
 
 /// Residents and society admins with a linked villa use the same billing/home APIs.
 bool userCanViewResidentBilling(UserModel? user) {
   if (user == null) return false;
-  if (user.role != UserRole.resident && user.role != UserRole.admin) {
+  if (!user.role.isResidentLike) {
     return false;
   }
   final villa = user.villaId;

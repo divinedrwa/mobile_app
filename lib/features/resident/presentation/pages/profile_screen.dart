@@ -524,6 +524,8 @@ String _roleLabel(UserRole? role) {
       return 'Platform admin';
     case UserRole.admin:
       return 'Administrator';
+    case UserRole.residentCumAdmin:
+      return 'Admin · Resident';
     case UserRole.guard:
       return 'Security staff';
     case UserRole.resident:

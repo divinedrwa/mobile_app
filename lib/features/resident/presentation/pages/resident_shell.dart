@@ -24,7 +24,7 @@ class ResidentShell extends ConsumerWidget {
     final currentTab = ref.watch(currentTabProvider);
     final unreadCount = ref.watch(unreadCountProvider);
     final user = ref.watch(authProvider).user;
-    final isAdmin = user?.role == UserRole.admin;
+    final isAdmin = user?.role.isAdminLike ?? false;
     final hasVilla = user?.villaId != null &&
         (user?.villaId?.isNotEmpty ?? false);
 

@@ -159,7 +159,7 @@ class _AdminRoleManagementScreenState
   // ── Hero card ───────────────────────────────────────────────────────
 
   Widget _buildHero(List<UserModel> users) {
-    final admins = users.where((u) => u.role == UserRole.admin).length;
+    final admins = users.where((u) => u.role.isAdminLike).length;
     final residents = users.where((u) => u.role == UserRole.resident).length;
     final guards = users.where((u) => u.role == UserRole.guard).length;
     final active = users.where((u) => u.isActive).length;
@@ -403,6 +403,7 @@ class _AdminRoleManagementScreenState
   static Color _roleColor(UserRole role) {
     switch (role) {
       case UserRole.admin:
+      case UserRole.residentCumAdmin:
         return DesignColors.warning;
       case UserRole.resident:
         return DesignColors.primary;
@@ -417,6 +418,8 @@ class _AdminRoleManagementScreenState
     switch (role) {
       case UserRole.admin:
         return 'ADMIN';
+      case UserRole.residentCumAdmin:
+        return 'ADMIN · RESIDENT';
       case UserRole.resident:
         return 'RESIDENT';
       case UserRole.guard:

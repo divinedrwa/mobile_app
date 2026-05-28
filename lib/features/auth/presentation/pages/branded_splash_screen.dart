@@ -125,6 +125,9 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
           case UserRole.admin:
             target = '/resident';
             break;
+          case UserRole.residentCumAdmin:
+            target = '/resident';
+            break;
         }
       } else {
         target = '/resident';

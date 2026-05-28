@@ -140,7 +140,7 @@ class AppRouter {
               return '/guard/dashboard';
             }
             // Admin shares the resident shell — only block guard routes.
-            if (role == UserRole.admin && isGuardRoute) {
+            if (role.isAdminLike && isGuardRoute) {
               return '/resident';
             }
 
@@ -153,6 +153,8 @@ class AppRouter {
                 case UserRole.guard:
                   return '/guard/dashboard';
                 case UserRole.admin:
+                  return '/resident';
+                case UserRole.residentCumAdmin:
                   return '/resident';
               }
             }

@@ -119,16 +119,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         return 'Guard';
       case UserRole.resident:
         return 'Resident';
+      case UserRole.residentCumAdmin:
+        return 'Admin · Resident';
     }
   }
 
   /// Home header pill: show Owner / Tenant / Family member when `/residents/me` provides it.
   String _headerOccupantOrRoleBadge(UserRole role, UserModel? user) {
-    if (role == UserRole.resident || role == UserRole.admin) {
+    if (role.isResidentLike) {
       final occ = user?.effectiveOccupantDisplay;
       if (occ != null && occ.isNotEmpty) return occ;
     }
-    if (role == UserRole.admin && user?.villaId != null && user!.villaId!.isNotEmpty) {
+    if (role.isAdminLike && user?.villaId != null && user!.villaId!.isNotEmpty) {
       return 'Admin · Resident';
     }
     return _roleLabel(role);

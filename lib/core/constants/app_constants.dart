@@ -270,11 +270,15 @@ enum UserRole {
   superAdmin('SUPER_ADMIN'),
   admin('ADMIN'),
   resident('RESIDENT'),
-  guard('GUARD');
+  guard('GUARD'),
+  residentCumAdmin('RESIDENT_CUM_ADMIN');
 
   final String value;
   const UserRole(this.value);
-  
+
+  bool get isAdminLike => this == admin || this == residentCumAdmin;
+  bool get isResidentLike => this == resident || this == admin || this == residentCumAdmin;
+
   static UserRole fromString(String role) {
     final u = role.toUpperCase().trim();
     return UserRole.values.firstWhere(
