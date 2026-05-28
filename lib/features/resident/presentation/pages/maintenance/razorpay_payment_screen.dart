@@ -49,7 +49,12 @@ class _RazorpayPaymentScreenState
   /// Incremented on each _createOrder call. Stale poll responses are ignored.
   int _verifyGeneration = 0;
   static const _maxVerifyPolls = 40;
+  /// After SDK error, poll briefly (5 attempts ≈ 10s) then show the SDK error.
+  static const _maxErrorVerifyPolls = 5;
   static const _verifyPollInterval = Duration(seconds: 2);
+  /// SDK-reported error message — when set, poll timeout shows this error
+  /// instead of navigating to the "Payment received" pending screen.
+  String? _sdkErrorMessage;
   double _maintenanceDue = 0;
   double _platformFee = 0;
   double _platformFeeGst = 0;
@@ -82,6 +87,7 @@ class _RazorpayPaymentScreenState
     _verifyTimer?.cancel();
     _verifyGeneration++;
     _sdkReturned = false;
+    _sdkErrorMessage = null;
     setState(() {
       _loading = true;
       _error = null;
@@ -161,9 +167,8 @@ class _RazorpayPaymentScreenState
         final proceed = await _confirmGatewayFees();
         if (!proceed) {
           if (mounted) {
-            setState(() {
-              _loading = false;
-            });
+            // User cancelled fee confirmation — go back to previous screen
+            context.pop();
           }
           return;
         }
@@ -188,6 +193,7 @@ class _RazorpayPaymentScreenState
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     if (!mounted) return;
     _sdkReturned = true;
+    _sdkErrorMessage = null;
     setState(() {
       _loading = true;
       _error = null;
@@ -264,49 +270,61 @@ class _RazorpayPaymentScreenState
     }
 
     if (!mounted || gen != _verifyGeneration) return;
-    if (_verifyPollCount >= _maxVerifyPolls) {
+    final maxPolls =
+        _sdkErrorMessage != null ? _maxErrorVerifyPolls : _maxVerifyPolls;
+    if (_verifyPollCount >= maxPolls) {
       _verifyTimer?.cancel();
       if (!mounted) return;
-      final period = widget.payAllPending
-          ? 'All outstanding'
-          : '${_monthName(widget.month)} ${widget.year}';
-      GatewayPaymentPollActions.navigateToPaymentPending(
-        context,
-        transactionId: orderId,
-        paymentMethod: 'Razorpay',
-        gateway: 'razorpay',
-        amount: _maintenanceDue,
-        periodLabel: period,
-        payAllPending: widget.payAllPending,
-        platformFee: _platformFee,
-        platformFeeGst: _platformFeeGst,
-        totalPaid: _totalPayable,
-      );
+      if (_sdkErrorMessage != null) {
+        // SDK reported failure, brief verification didn't find success → show error
+        invalidateMaintenancePaymentProviders(ref);
+        setState(() {
+          _loading = false;
+          _error = _sdkErrorMessage;
+        });
+      } else {
+        // SDK reported success but server hasn't confirmed → show pending
+        final period = widget.payAllPending
+            ? 'All outstanding'
+            : '${_monthName(widget.month)} ${widget.year}';
+        GatewayPaymentPollActions.navigateToPaymentPending(
+          context,
+          transactionId: orderId,
+          paymentMethod: 'Razorpay',
+          gateway: 'razorpay',
+          amount: _maintenanceDue,
+          periodLabel: period,
+          payAllPending: widget.payAllPending,
+          platformFee: _platformFee,
+          platformFeeGst: _platformFeeGst,
+          totalPaid: _totalPayable,
+        );
+      }
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     _sdkReturned = true;
     _verifyTimer?.cancel();
-    final sdkMessage = response.message ?? 'Payment failed';
-    // SDK can report failure while server already captured — verify once.
+    _sdkErrorMessage = response.message ?? 'Payment failed';
+    // SDK can report failure while server already captured.
+    // Poll briefly (≈10 s) — if server confirms success, navigate to success;
+    // otherwise show the SDK error. Using a timer (like the success handler)
+    // avoids the .whenComplete() race where a transient network error during
+    // a single verify call prematurely shows "Payment failed".
     setState(() {
       _loading = true;
       _error = null;
     });
     _verifyPollCount = 0;
-    _verifyServerPayment(null).whenComplete(() {
-      if (!mounted || _paymentComplete) return;
-      if (_loading && _error == null && !_paymentComplete) {
-        setState(() {
-          _loading = false;
-          _error = sdkMessage;
-        });
-      }
+    _verifyTimer = Timer.periodic(_verifyPollInterval, (_) {
+      _verifyServerPayment(null);
     });
+    unawaited(_verifyServerPayment(null));
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
+    _sdkReturned = true;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text(

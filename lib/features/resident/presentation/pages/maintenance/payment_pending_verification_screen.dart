@@ -129,7 +129,7 @@ class _PaymentPendingVerificationScreenState
               ),
               const SizedBox(height: 20),
               Text(
-                'Payment received',
+                _error != null ? 'Payment status unclear' : 'Payment processing',
                 style: DesignTypography.headingM.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -137,9 +137,13 @@ class _PaymentPendingVerificationScreenState
               ),
               const SizedBox(height: 12),
               Text(
-                'Your bank or ${widget.paymentMethod} has accepted the payment. '
-                'We are waiting for the society server to record it — this usually '
-                'takes under a minute, but can take longer on slow networks.',
+                _error != null
+                    ? 'We could not confirm whether your payment went through. '
+                      'Tap "Check again" to verify. If your account was debited, '
+                      'the payment will be recorded automatically.'
+                    : 'Your payment is being processed. '
+                      'We are waiting for the server to confirm it — this usually '
+                      'takes under a minute, but can take longer on slow networks.',
                 style: DesignTypography.bodySmall.copyWith(
                   color: DesignColors.textSecondary,
                 ),

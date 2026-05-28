@@ -187,6 +187,9 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
   void _onPaymentRedirect() {
     if (!mounted) return;
+    // Reset poll count so the user gets a full poll window after returning
+    // from the gateway page (time spent on PhonePe shouldn't eat the budget).
+    _pollCount = 0;
     setState(() {
       _showWebView = false;
       _loading = true;
@@ -248,12 +251,20 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       _pollTimer?.cancel();
       if (!mounted) return;
       invalidateMaintenancePaymentProviders(ref);
-      setState(() {
-        _loading = false;
-        _showWebView = false;
-        _error = 'Could not confirm payment status. If your account was '
-            'debited, the payment will appear in your bills once verified.';
-      });
+      final amount = _serverAmount > 0 ? _serverAmount : widget.amount;
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+      GatewayPaymentPollActions.navigateToPaymentPending(
+        context,
+        transactionId: _merchantTxnId ?? '',
+        paymentMethod: 'PhonePe',
+        gateway: 'phonepe',
+        amount: amount,
+        periodLabel: period,
+        payAllPending: widget.payAllPending,
+        totalPaid: amount,
+      );
     }
   }
 
