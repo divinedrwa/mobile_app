@@ -67,8 +67,13 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
   }
 
   Future<void> _initiatePayment() async {
-    // Keep the same idempotency key across retries so the server can
-    // deduplicate. A new key is already generated per screen instance.
+    // After a confirmed failure, generate a new idempotency key so the
+    // server creates a truly fresh PhonePe order. Within the same attempt
+    // (e.g. network retry before failure), the key stays the same to
+    // prevent duplicate charges.
+    if (_error != null) {
+      _idempotencyKey = const Uuid().v4();
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -88,8 +93,10 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       final url = result['redirectUrl'] as String?;
       final txnId = result['merchantTransactionId'] as String?;
+      final existingOrder = result['existingOrder'] == true;
+      final autoSettled = result['autoSettled'] == true;
 
-      if (url == null || txnId == null) {
+      if (txnId == null) {
         setState(() {
           _loading = false;
           _error = 'Invalid response from server';
@@ -99,6 +106,43 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       _merchantTxnId = txnId;
       _serverAmount = _readAmount(result['totalDue']) ?? widget.amount;
+
+      // Server says this order was already completed at PhonePe.
+      if (autoSettled) {
+        invalidateMaintenancePaymentProviders(ref);
+        setState(() {
+          _loading = false;
+          _paymentComplete = true;
+        });
+        _showSuccessScreen();
+        return;
+      }
+
+      // Existing PENDING order without a redirectUrl — the user may have
+      // closed the app mid-checkout. Go straight to polling mode instead
+      // of showing a blank WebView.
+      if (existingOrder && url == null) {
+        setState(() {
+          _loading = true;
+          _showWebView = false;
+        });
+        _pollCount = 0;
+        _pollTimer?.cancel();
+        unawaited(_pollStatus());
+        _pollTimer = Timer.periodic(_pollInterval, (_) {
+          _pollStatus();
+        });
+        return;
+      }
+
+      if (url == null) {
+        setState(() {
+          _loading = false;
+          _error = 'Invalid response from server';
+        });
+        return;
+      }
+
       unawaited(_webViewController.loadRequest(Uri.parse(url)));
 
       setState(() {

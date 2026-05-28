@@ -69,8 +69,11 @@ class _RazorpayPaymentScreenState
   }
 
   Future<void> _createOrder() async {
-    // Keep the same idempotency key across retries so the server can
-    // deduplicate. A new key is already generated per screen instance.
+    // After a confirmed failure, generate a new idempotency key so the
+    // server creates a truly fresh Razorpay order.
+    if (_error != null) {
+      _idempotencyKey = const Uuid().v4();
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -87,9 +90,10 @@ class _RazorpayPaymentScreenState
       final key = result['key'] as String?;
       final amountPaise = result['amountPaise'];
       final currency = result['currency'] as String? ?? 'INR';
-      final autoSettled = result['autoSettledFromCredit'] == true;
+      final autoSettledFromCredit = result['autoSettledFromCredit'] == true;
+      final autoSettled = result['autoSettled'] == true;
 
-      if (autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
+      if (autoSettledFromCredit || autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
         _maintenanceDue = _readAmount(result['totalDue']) ?? widget.amount;
         invalidateMaintenancePaymentProviders(ref);
         if (!mounted) return;
