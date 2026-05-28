@@ -2,9 +2,17 @@ import 'dart:io' show Platform;
 
 /// Application-wide constants
 class AppConstants {
-  // App Info
+  // App Info — single source of truth for all branding strings.
   static const String appName = 'GatePass+';
+  static const String appTagline = 'Society Management Platform';
   static const String appVersion = '1.0.0';
+
+  /// Splash screen credit line. Override per-build:
+  /// `--dart-define=ORG_NAME=Your Welfare Association`
+  static const String orgName = String.fromEnvironment(
+    'ORG_NAME',
+    defaultValue: 'Divine Residency Welfare Association',
+  );
 
   /// Persisted override: full API base including `/api` when applicable.
   static const String keyApiBaseUrl = 'api_base_url';
@@ -14,7 +22,7 @@ class AppConstants {
   /// `flutter build apk --dart-define=API_BASE_URL=https://gatepass-v037.onrender.com/api`
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://gatepass-v037.onrender.com/api',
+    defaultValue: '',
   );
 
   /// LAN host only (no scheme/port). Used when `API_BASE_URL` and saved URL are empty.
@@ -29,14 +37,14 @@ class AppConstants {
   /// Last detected on this machine (en0): `192.168.1.5`.
   static const String defaultPhysicalLanHost = '192.168.1.5';
 
-  /// Android Emulator fallback: points to the deployed Render backend so
-  /// simulator builds work out-of-the-box without `--dart-define` overrides.
-  /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://10.0.2.2:4000/api`.
-  static const String simulatorAndroidApiBase = 'https://gatepass-v037.onrender.com/api';
+  /// Android Emulator fallback: points to host machine's loopback via the
+  /// special `10.0.2.2` alias so simulator builds work out-of-the-box.
+  /// For deployed backend, use `--dart-define=API_BASE_URL=https://your-api.example.com/api`.
+  static const String simulatorAndroidApiBase = 'http://10.0.2.2:4000/api';
 
-  /// iOS Simulator fallback: same as Android -- points to deployed backend.
-  /// For local dev against localhost, use `--dart-define=API_BASE_URL=http://127.0.0.1:4000/api`.
-  static const String simulatorIosApiBase = 'https://gatepass-v037.onrender.com/api';
+  /// iOS Simulator fallback: points to localhost on host machine.
+  /// For deployed backend, use `--dart-define=API_BASE_URL=https://your-api.example.com/api`.
+  static const String simulatorIosApiBase = 'http://127.0.0.1:4000/api';
 
   static String? _runtimeBaseUrlOverride;
 
@@ -145,7 +153,7 @@ class AppConstants {
       if (_isAndroidEmulator) {
         return simulatorAndroidApiBase;
       }
-      return 'https://gatepass-v037.onrender.com/api';
+      return 'http://${defaultPhysicalLanHost}:4000/api';
     }
     if (Platform.isIOS) {
       if (_apiHostFromEnv.isNotEmpty) {
@@ -154,9 +162,9 @@ class AppConstants {
       if (_isIosSimulator) {
         return simulatorIosApiBase;
       }
-      return 'https://gatepass-v037.onrender.com/api';
+      return 'http://${defaultPhysicalLanHost}:4000/api';
     }
-    return 'https://gatepass-v037.onrender.com/api';
+    return 'http://localhost:4000/api';
   }
   
   // Storage Keys

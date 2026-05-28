@@ -222,7 +222,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                         child: SlideTransition(
                           position: _featuresSlide,
                           child: Text(
-                            'An initiative of Divine Residency Welfare Association',
+                            'An initiative of ${AppConstants.orgName}',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
