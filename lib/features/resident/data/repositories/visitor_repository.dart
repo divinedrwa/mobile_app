@@ -45,16 +45,17 @@ class VisitorRepository {
     }
   }
 
-  /// Get pre-approved visitors for the logged-in resident’s flat (newest first).
-  /// [limit] maps to backend `?limit=` (capped 1–500).
+  /// Get pre-approved visitors for the logged-in resident's flat (newest first).
+  /// [limit] maps to backend `?limit=` (capped 1-500). [offset] for pagination.
   Future<List<PreApprovedVisitorModel>> getPreApprovedVisitors({
     int limit = 200,
+    int offset = 0,
   }) async {
     try {
       final capped = limit.clamp(1, 500);
       final response = await _dioClient.get(
         ApiEndpoints.preApprovedVisitors,
-        queryParameters: {'limit': capped},
+        queryParameters: {'limit': capped, 'offset': offset},
       );
 
       final data = response.data;
@@ -155,7 +156,7 @@ class VisitorRepository {
     }).toList();
   }
 
-  /// Gate requests where the guard asked for your flat’s approval.
+  /// Gate requests where the guard asked for your flat's approval.
   Future<List<Map<String, dynamic>>> getVisitorApprovalRequests({
     String filter = 'all',
   }) async {

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/amenity_model.dart';
@@ -10,7 +11,7 @@ class AmenityBookingRepository {
 
   Future<List<AmenityModel>> getAmenities() async {
     try {
-      final response = await _dio.get('/residents/my-amenities');
+      final response = await _dio.get(ApiEndpoints.amenities);
       final list = response.data is List
           ? response.data as List
           : (response.data['amenities'] as List? ?? []);
@@ -27,13 +28,13 @@ class AmenityBookingRepository {
   /// Get all bookings
   Future<List<AmenityBookingModel>> getBookings() async {
     try {
-      final response = await _dio.get('/residents/my-bookings');
-      
+      final response = await _dio.get(ApiEndpoints.myBookings);
+
       // Backend might return { "bookings": [...] } or direct array
-      final bookingsList = response.data is List 
+      final bookingsList = response.data is List
           ? response.data as List
           : (response.data['bookings'] as List? ?? []);
-      
+
       return bookingsList
           .map((json) => AmenityBookingModel.fromJson(json))
           .toList();
@@ -70,7 +71,7 @@ class AmenityBookingRepository {
   Future<void> cancelBooking(String bookingId, {String? reason}) async {
     try {
       await _dio.patch(
-        '/residents/bookings/$bookingId/cancel',
+        ApiEndpoints.cancelBooking(bookingId),
         data: {
           'reason': ?reason,
         },
@@ -88,7 +89,7 @@ class AmenityBookingRepository {
   }) async {
     try {
       await _dio.post(
-        '/residents/book-amenity',
+        ApiEndpoints.createBooking,
         data: {
           'amenityId': amenityId,
           'startTime': startTime.toUtc().toIso8601String(),

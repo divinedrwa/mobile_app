@@ -155,7 +155,9 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
     _initialised = false;
     try {
       await ref.read(adminMaintenanceDashboardProvider.future);
-    } catch (_) {/* surfaced inline */}
+    } catch (e) {
+      debugPrint('AdminRemindersScreen._refresh failed: $e');
+    }
   }
 
   // ── send ────────────────────────────────────────────────────────
@@ -188,8 +190,8 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
           try {
             final result = await repo.sendVillaReminder(villaId: villaId);
             totalNotified += (result['sent'] as num?)?.toInt() ?? 0;
-          } catch (_) {
-            // Continue sending to remaining villas.
+          } catch (e) {
+            debugPrint('Failed to send reminder for villa $villaId: $e');
           }
         }
       }
@@ -217,7 +219,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: DesignColors.error,
-          content: Text('Couldn\'t send reminders: $e'),
+          content: Text('Couldn\'t send reminders. Please try again.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -350,7 +352,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
               error: (e, _) => EmptyStateWidget(
                 icon: Icons.error_outline_rounded,
                 title: 'Failed to load data',
-                subtitle: '$e',
+                subtitle: 'Something went wrong. Please try again.',
                 iconColor: DesignColors.error,
                 actionLabel: 'Retry',
                 onAction: _refresh,

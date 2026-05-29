@@ -17,7 +17,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.get(
-        '/residents/maintenance-dashboard',
+        ApiEndpoints.maintenanceDashboard,
         queryParameters: {
           'month': month,
           'year': year,
@@ -46,7 +46,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/maintenance-management/send-dues-reminders',
+        ApiEndpoints.sendDuesReminders,
         data: {
           'month': month,
           'year': year,
@@ -82,7 +82,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/maintenance/payments',
+        ApiEndpoints.maintenancePayments,
         data: {
           'villaId': villaId,
           'month': month,
@@ -114,7 +114,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.post(
-        '/maintenance-management/apply-credit',
+        ApiEndpoints.applyCredit,
         data: {
           'villaId': villaId,
           'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
@@ -134,7 +134,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.get<List<int>>(
-        '/residents/maintenance-dashboard/report-pdf',
+        ApiEndpoints.maintenanceDashboardReportPdf,
         queryParameters: {
           'month': month,
           'year': year,
@@ -176,7 +176,7 @@ class MaintenanceRepository {
 
   Future<List<MaintenanceDueModel>> getPendingMaintenance() async {
     try {
-      final response = await _dio.get('/residents/maintenance-pending');
+      final response = await _dio.get(ApiEndpoints.maintenancePending);
       final data = response.data;
       final list = data is Map<String, dynamic>
           ? (data['pending'] as List? ?? const [])
@@ -371,7 +371,7 @@ class MaintenanceRepository {
   }) async {
     try {
       await _dio.post(
-        '/maintenance/payments',
+        ApiEndpoints.maintenancePayments,
         data: {
           'villaId': villaId,
           'month': month,

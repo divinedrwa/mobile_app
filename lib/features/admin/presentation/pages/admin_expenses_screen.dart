@@ -61,7 +61,9 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
     ref.invalidate(adminExpenseCategoriesProvider);
     try {
       await ref.read(adminExpensesProvider.future);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AdminExpensesScreen._refresh failed: $e');
+    }
   }
 
   @override
@@ -567,7 +569,7 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed: $e'),
+          content: Text('Something went wrong. Please try again.'),
           backgroundColor: DesignColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(

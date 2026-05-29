@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/daily_help_model.dart';
@@ -8,7 +9,7 @@ class DailyHelpRepository {
 
   Future<List<DailyHelpModel>> getDailyHelp() async {
     try {
-      final response = await _dio.get('/residents/my-staff');
+      final response = await _dio.get(ApiEndpoints.myStaff);
       final list = response.data['staff'] as List? ?? [];
       return list.whereType<Map>().map((raw) {
         final json = Map<String, dynamic>.from(raw);
@@ -35,7 +36,7 @@ class DailyHelpRepository {
   }) async {
     try {
       await _dio.post(
-        '/residents/add-staff',
+        ApiEndpoints.addStaff,
         data: {
           'name': name,
           'type': _labelToType(type),
@@ -51,7 +52,7 @@ class DailyHelpRepository {
 
   Future<void> removeDailyHelp(String assignmentId) async {
     try {
-      await _dio.delete('/residents/staff/$assignmentId');
+      await _dio.delete(ApiEndpoints.removeStaff(assignmentId));
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to remove daily help');
     }

@@ -46,7 +46,7 @@ class VehicleRepository {
           apiType = 'FOUR_WHEELER';
       }
       final response = await _dio.post(
-        '/residents/register-vehicle',
+        ApiEndpoints.registerVehicle,
         data: {
           'registrationNumber': vehicleNumber,
           'type': apiType,
@@ -62,14 +62,13 @@ class VehicleRepository {
     }
   }
 
-  /// Update vehicle
+  /// Update vehicle (backend accepts: make, model, color, parkingSlot)
   Future<VehicleModel> updateVehicle({
     required String id,
-    String? vehicleNumber,
-    String? type,
     String? brand,
     String? model,
     String? color,
+    String? parkingSlot,
   }) async {
     try {
       final response = await _dio.patch(
@@ -78,6 +77,7 @@ class VehicleRepository {
           'make': ?brand,
           'model': ?model,
           'color': ?color,
+          'parkingSlot': ?parkingSlot,
         },
       );
 

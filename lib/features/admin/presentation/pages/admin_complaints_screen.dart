@@ -57,7 +57,9 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
         ref.read(adminComplaintsProvider.future),
         ref.read(complaintAnalyticsSummaryProvider.future),
       ]);
-    } catch (_) {/* surfaced inline */}
+    } catch (e) {
+      debugPrint('AdminComplaintsScreen._refresh failed: $e');
+    }
   }
 
   @override

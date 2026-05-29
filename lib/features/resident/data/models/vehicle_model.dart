@@ -6,6 +6,8 @@ class VehicleModel {
   final String? brand;
   final String? model;
   final String? color;
+  final String? parkingSlot;
+  final String? rcCopy;
 
   VehicleModel({
     this.id,
@@ -14,6 +16,8 @@ class VehicleModel {
     this.brand,
     this.model,
     this.color,
+    this.parkingSlot,
+    this.rcCopy,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +31,8 @@ class VehicleModel {
       brand: json['brand'] as String? ?? json['make'] as String?,
       model: json['model'] as String?,
       color: json['color'] as String?,
+      parkingSlot: json['parkingSlot'] as String?,
+      rcCopy: json['rcCopy'] as String?,
     );
   }
 
@@ -38,6 +44,8 @@ class VehicleModel {
       if (brand != null) 'brand': brand,
       if (model != null) 'model': model,
       if (color != null) 'color': color,
+      if (parkingSlot != null) 'parkingSlot': parkingSlot,
+      if (rcCopy != null) 'rcCopy': rcCopy,
     };
   }
 }

@@ -328,6 +328,7 @@ class _AdminInvitationsScreenState
 
   void _showCreateSheet() {
     String selectedRole = 'RESIDENT';
+    final formKey = GlobalKey<FormState>();
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
 
@@ -348,95 +349,108 @@ class _AdminInvitationsScreenState
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: DesignColors.borderLight,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('New Invitation', style: DesignTypography.headingM),
-                  const SizedBox(height: 16),
-                  Text('Role',
-                      style: DesignTypography.labelSmall
-                          .copyWith(color: DesignColors.textSecondary)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: ['RESIDENT', 'GUARD', 'ADMIN'].map((r) {
-                      final sel = selectedRole == r;
-                      return ChoiceChip(
-                        label: Text(r),
-                        selected: sel,
-                        onSelected: (_) =>
-                            setSheetState(() => selectedRole = r),
-                        selectedColor: const Color(0xFFEC4899),
-                        backgroundColor: DesignColors.surfaceSoft,
-                        labelStyle: TextStyle(
-                          color: sel
-                              ? Colors.white
-                              : DesignColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: DesignColors.borderLight,
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        showCheckmark: false,
-                        visualDensity: VisualDensity.compact,
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(DesignRadius.md),
                       ),
-                      isDense: true,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      labelText: 'Phone (optional)',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(DesignRadius.md),
-                      ),
-                      isDense: true,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _handleCreate(
-                          selectedRole,
-                          emailCtrl.text.trim(),
-                          phoneCtrl.text.trim(),
+                    const SizedBox(height: 16),
+                    Text('New Invitation', style: DesignTypography.headingM),
+                    const SizedBox(height: 16),
+                    Text('Role',
+                        style: DesignTypography.labelSmall
+                            .copyWith(color: DesignColors.textSecondary)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: ['RESIDENT', 'GUARD', 'ADMIN'].map((r) {
+                        final sel = selectedRole == r;
+                        return ChoiceChip(
+                          label: Text(r),
+                          selected: sel,
+                          onSelected: (_) =>
+                              setSheetState(() => selectedRole = r),
+                          selectedColor: const Color(0xFFEC4899),
+                          backgroundColor: DesignColors.surfaceSoft,
+                          labelStyle: TextStyle(
+                            color: sel
+                                ? Colors.white
+                                : DesignColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                          showCheckmark: false,
+                          visualDensity: VisualDensity.compact,
                         );
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFEC4899),
-                      ),
-                      child: const Text('Send Invitation'),
+                      }).toList(),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(DesignRadius.md),
+                        ),
+                        isDense: true,
+                      ),
+                      validator: (v) {
+                        // At least email or phone is required; validated in cross-field check below
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone (optional)',
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(DesignRadius.md),
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          if (emailCtrl.text.trim().isEmpty && phoneCtrl.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Please provide email or phone')),
+                            );
+                            return;
+                          }
+                          Navigator.pop(ctx);
+                          _handleCreate(
+                            selectedRole,
+                            emailCtrl.text.trim(),
+                            phoneCtrl.text.trim(),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFEC4899),
+                        ),
+                        child: const Text('Send Invitation'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -447,12 +461,6 @@ class _AdminInvitationsScreenState
 
   Future<void> _handleCreate(
       String role, String email, String phone) async {
-    if (email.isEmpty && phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide email or phone')),
-      );
-      return;
-    }
     try {
       await ref.read(adminInvitationRepositoryProvider).createInvitation(
             role: role,

@@ -20,7 +20,7 @@ class EmergencyContactModel {
     return EmergencyContactModel(
       id: json['id'] as String?,
       name: json['name'] as String? ?? '',
-      relationship: json['relationship'] as String? ?? '',
+      relationship: (json['relationship'] ?? json['relation']) as String? ?? '',
       phone: json['phone'] as String? ?? '',
       alternatePhone: json['alternatePhone'] as String?,
       address: json['address'] as String?,

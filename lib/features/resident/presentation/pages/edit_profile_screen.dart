@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
@@ -570,7 +571,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           backgroundColor: DesignColors.success,
         ),
       );
-      Navigator.pop(context);
+      context.pop();
     } on DioException catch (e) {
       if (!mounted) return;
       final msg = mapDioException(e, 'Failed to update profile').message;

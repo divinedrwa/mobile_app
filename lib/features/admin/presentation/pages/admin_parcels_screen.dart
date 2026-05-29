@@ -52,7 +52,9 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
     ref.invalidate(adminParcelsProvider);
     try {
       await ref.read(adminParcelsProvider.future);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AdminParcelsScreen._refresh failed: $e');
+    }
   }
 
   @override

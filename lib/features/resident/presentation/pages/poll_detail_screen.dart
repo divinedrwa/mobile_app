@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_animations.dart';
@@ -401,7 +402,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
               errorMsg != null ? DesignColors.error : DesignColors.success,
         ),
       );
-      if (errorMsg == null) Navigator.pop(context);
+      if (errorMsg == null) context.pop();
     }
     if (mounted) setState(() => _isSubmitting = false);
   }

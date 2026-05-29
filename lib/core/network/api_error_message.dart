@@ -10,21 +10,26 @@ String parseApiErrorMessage(dynamic data, [String fallback = 'Something went wro
   }
   if (data is! Map) return fallback;
 
+  // Check for well-known error codes in both 'message' and legacy 'error' fields.
+  final message = data['message'];
   final error = data['error'];
-  if (error == 'RATE_LIMIT_EXCEEDED') {
+  final code = message is String ? message : (error is String ? error : null);
+
+  if (code == 'RATE_LIMIT_EXCEEDED') {
     final retryAfter = data['retryAfter']?.toString() ?? '60';
     return 'Too many requests. Please wait $retryAfter seconds and try again.';
   }
-  
-  if (error == 'DUPLICATE_PAYMENT') {
+
+  if (code == 'DUPLICATE_PAYMENT') {
     return 'This payment has already been recorded.';
   }
-  
-  if (error == 'INVALID_AMOUNT') {
+
+  if (code == 'INVALID_AMOUNT') {
     final msg = data['message'];
     return msg is String ? msg : 'Payment amount must be positive';
   }
 
+  // Zod validation issues array
   final issues = data['issues'];
   if (issues is List && issues.isNotEmpty) {
     final parts = <String>[];
@@ -43,13 +48,12 @@ String parseApiErrorMessage(dynamic data, [String fallback = 'Something went wro
     }
   }
 
-  final msg = data['message'];
-  if (msg is String && msg.trim().isNotEmpty) {
-    return msg.trim();
+  // Prefer 'message' (backend standard), fall back to 'error' (legacy)
+  if (message is String && message.trim().isNotEmpty) {
+    return message.trim();
   }
-  final err = data['error'];
-  if (err is String && err.trim().isNotEmpty) {
-    return err.trim();
+  if (error is String && error.trim().isNotEmpty) {
+    return error.trim();
   }
   return fallback;
 }

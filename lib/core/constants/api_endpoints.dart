@@ -26,14 +26,22 @@ class ApiEndpoints {
   // Resident - Dashboard
   static const String dashboard = '/residents/dashboard';
   static const String banners = '/banners/active/list';
+  static String bannerRegister(String id) => '/banners/$id/register';
   static const String vendors = '/vendors';
   
   // Resident - Maintenance
   static const String myMaintenance = '/residents/my-maintenance';
   static const String maintenanceHistory = '/residents/my-maintenance';
   static const String paymentHistory = '/residents/my-maintenance';
+  static const String maintenanceDashboard = '/residents/maintenance-dashboard';
+  static const String maintenanceDashboardReportPdf = '/residents/maintenance-dashboard/report-pdf';
+  static const String maintenancePending = '/residents/maintenance-pending';
+  static const String maintenancePayments = '/maintenance/payments';
+  static const String sendDuesReminders = '/maintenance-management/send-dues-reminders';
+  static const String applyCredit = '/maintenance-management/apply-credit';
   static const String outstandingDues = '/residents/outstanding-dues';
   static const String sendVillaReminder = '/maintenance-management/send-villa-reminder';
+  static const String paymentMethods = '/residents/payment-methods';
 
   /// SaaS billing cycle (UTC windows; status from server): `GET /v1/cycles/current?societyId=&billingCycleId=`
   static String billingCyclesCurrent({
@@ -96,12 +104,13 @@ class ApiEndpoints {
   // Resident - Parcels
   static const String myParcels = '/residents/my-parcels';
   static String parcelById(String id) => '/residents/my-parcels/$id';
+  static String parcelCollect(String id) => '/residents/parcels/$id/collected';
   
   // Resident - Amenities
   static const String amenities = '/residents/my-amenities';
   static const String myBookings = '/residents/my-bookings';
-  static const String createBooking = '/residents/my-bookings';
-  static String cancelBooking(String id) => '/residents/my-bookings/$id';
+  static const String createBooking = '/residents/book-amenity';
+  static String cancelBooking(String id) => '/residents/bookings/$id/cancel';
   
   // Resident - SOS
   /// List SOS history for the signed-in resident.
@@ -129,9 +138,15 @@ class ApiEndpoints {
   static String deleteEmergencyContact(String id) => '/residents/emergency-contacts/$id';
   
   static const String vehicles = '/residents/my-vehicles';
+  static const String registerVehicle = '/residents/register-vehicle';
   static String updateVehicle(String id) => '/residents/vehicles/$id';
   static String deleteVehicle(String id) => '/residents/vehicles/$id';
   
+  // Resident - Daily Help / Staff
+  static const String myStaff = '/residents/my-staff';
+  static const String addStaff = '/residents/add-staff';
+  static String removeStaff(String assignmentId) => '/residents/staff/$assignmentId';
+
   // Resident - Vehicle Log
   static const String myVehicleLog = '/residents/my-vehicle-log';
 
@@ -148,8 +163,7 @@ class ApiEndpoints {
 
   // Resident - Polls
   static const String polls = '/residents/my-polls';
-  static String votePoll(String pollId, String optionId) => 
-      '/residents/my-polls/$pollId/vote/$optionId';
+  static String votePoll(String pollId) => '/polls/$pollId/vote';
   
   // Resident — UPI Payments
   static const String upiConfig = '/residents/upi-config';
@@ -214,8 +228,7 @@ class ApiEndpoints {
   static const String adminPolls = '/polls';
   static String adminPollById(String id) => '/polls/$id';
   static String adminPollClose(String id) => '/polls/$id/close';
-  static String adminPollVote(String pollId, String optionId) =>
-      '/polls/$pollId/vote/$optionId';
+  static String adminPollVote(String pollId) => '/polls/$pollId/vote';
 
   // Admin — Staff
   static const String adminStaff = '/staff';

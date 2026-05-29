@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -202,7 +203,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
             backgroundColor: DesignColors.success,
           ),
         );
-        Navigator.pop(context, true);
+        context.pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

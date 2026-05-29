@@ -54,7 +54,9 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
     ref.invalidate(adminNoticesProvider);
     try {
       await ref.read(adminNoticesProvider.future);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AdminNoticesScreen._refresh failed: $e');
+    }
   }
 
   @override
@@ -486,7 +488,7 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed: $e'),
+          content: Text('Something went wrong. Please try again.'),
           backgroundColor: DesignColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(

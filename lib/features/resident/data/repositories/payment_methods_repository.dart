@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/payment_method_model.dart';
@@ -9,7 +10,7 @@ class PaymentMethodsRepository {
   /// Fetch enabled payment methods for the resident's society.
   Future<List<PaymentMethodModel>> getPaymentMethods() async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>('/residents/payment-methods');
+      final res = await _dio.get<Map<String, dynamic>>(ApiEndpoints.paymentMethods);
       final list = res.data?['methods'] as List? ?? [];
       return list
           .whereType<Map<String, dynamic>>()

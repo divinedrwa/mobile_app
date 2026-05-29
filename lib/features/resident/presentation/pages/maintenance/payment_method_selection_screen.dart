@@ -5,15 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/payment_method_model.dart';
-import '../../../data/repositories/payment_methods_repository.dart';
-
-final _paymentMethodsRepoProvider =
-    Provider<PaymentMethodsRepository>((ref) => PaymentMethodsRepository());
-
-final _paymentMethodsProvider =
-    FutureProvider.autoDispose<List<PaymentMethodModel>>((ref) async {
-  return ref.watch(_paymentMethodsRepoProvider).getPaymentMethods();
-});
+import '../../../data/providers/payment_methods_provider.dart';
 
 /// Screen that shows enabled payment methods and lets the resident pick one.
 ///
@@ -42,7 +34,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_paymentMethodsProvider);
+    final async = ref.watch(paymentMethodsListProvider);
 
     return Scaffold(
       backgroundColor: DesignColors.background,
@@ -77,7 +69,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => ref.invalidate(_paymentMethodsProvider),
+                onPressed: () => ref.invalidate(paymentMethodsListProvider),
                 child: const Text('Retry'),
               ),
             ],

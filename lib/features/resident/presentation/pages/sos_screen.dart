@@ -29,6 +29,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
     with WidgetsBindingObserver {
   SOSType? _selectedType;
   bool _arming = false;
+  bool _isSubmitting = false;
   double _holdProgress = 0;
   Timer? _holdTicker;
   DateTime? _holdStart;
@@ -55,7 +56,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
   }
 
   void _beginHold() {
-    if (_arming) return;
+    if (_arming || _isSubmitting) return;
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select an emergency type first')),
@@ -108,7 +109,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
 
   Future<void> _confirmAndSend() async {
     final type = _selectedType;
-    if (type == null) return;
+    if (type == null || _isSubmitting) return;
 
     final send = await showDialog<bool>(
       context: context,
@@ -122,6 +123,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
 
     if (send != true || !mounted) return;
 
+    setState(() => _isSubmitting = true);
     try {
       final alert = SOSAlertModel(
         type: type,
@@ -167,6 +169,8 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
           SnackBar(content: Text(msg), backgroundColor: DesignColors.error),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -219,6 +223,8 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
           Semantics(
             label: 'Hold to trigger SOS alert',
             button: true,
+            child: IgnorePointer(
+            ignoring: _isSubmitting,
             child: Listener(
             onPointerDown: (_) => _beginHold(),
             onPointerUp: (_) => _cancelHold(),
@@ -255,19 +261,29 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                       ),
                     ),
                     Center(
-                      child: Text(
-                        _arming
-                            ? 'Hold… ${(_holdProgress * 100).toInt()}%'
-                            : 'Press & hold to trigger SOS (2 sec)',
-                        style: DesignTypography.button.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _arming
+                                  ? 'Hold… ${(_holdProgress * 100).toInt()}%'
+                                  : 'Press & hold to trigger SOS (2 sec)',
+                              style: DesignTypography.button.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                     ),
                   ],
                 ),
               ),
+          ),
           ),
           ),
           const SizedBox(height: AppSpacing.xxl),

@@ -99,7 +99,7 @@ class NotificationRepository {
     } on DioException catch (e) {
       if (_isNotFound(e)) {
         try {
-          await _dio.patch('$_legacyBase/read-all');
+          await _dio.post('$_legacyBase/read-all');
           return;
         } on DioException catch (legacyError) {
           throw mapDioException(
@@ -112,22 +112,12 @@ class NotificationRepository {
     }
   }
 
-  /// Delete notification
+  /// Delete notification — backend has no DELETE endpoint; this is a local-only
+  /// dismiss. The notification will reappear on the next full fetch but the UI
+  /// removes it immediately for a snappy UX.
   Future<void> deleteNotification(String notificationId) async {
-    try {
-      await _dio.delete('$_newBase/$notificationId');
-    } on DioException catch (e) {
-      if (_isNotFound(e)) {
-        try {
-          await _dio.delete('$_legacyBase/$notificationId');
-          return;
-        } on DioException catch (_) {
-          // Some backend versions do not expose delete; keep local dismiss behavior.
-          return;
-        }
-      }
-      throw mapDioException(e, 'Failed to delete notification');
-    }
+    // No-op: backend does not expose DELETE /notifications/:id.
+    // The provider removes it from local state.
   }
 
   /// Get unread count (backend embeds `unreadCount` on `GET /notifications`).

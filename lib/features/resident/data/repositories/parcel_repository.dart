@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/parcel_model.dart';
@@ -10,13 +11,13 @@ class ParcelRepository {
   /// Get all parcels
   Future<List<ParcelModel>> getParcels() async {
     try {
-      final response = await _dio.get('/residents/my-parcels');
-      
+      final response = await _dio.get(ApiEndpoints.myParcels);
+
       // Backend returns { "parcels": [...] } or direct array
-      final parcelsList = response.data is List 
+      final parcelsList = response.data is List
           ? response.data as List
           : (response.data['parcels'] as List? ?? []);
-      
+
       return parcelsList
           .map((json) => ParcelModel.fromJson(json))
           .toList();
@@ -28,12 +29,15 @@ class ParcelRepository {
   /// Get pending parcels only
   Future<List<ParcelModel>> getPendingParcels() async {
     try {
-      final response = await _dio.get('/residents/my-parcels');
-      
-      final parcelsList = response.data is List 
+      final response = await _dio.get(
+        ApiEndpoints.myParcels,
+        queryParameters: {'status': 'PENDING'},
+      );
+
+      final parcelsList = response.data is List
           ? response.data as List
           : (response.data['parcels'] as List? ?? []);
-      
+
       return parcelsList
           .map((json) => ParcelModel.fromJson(json))
           .where((parcel) => parcel.status == ParcelStatus.pending)
@@ -47,24 +51,24 @@ class ParcelRepository {
   Future<ParcelModel> markAsCollected(String parcelId) async {
     try {
       final response = await _dio.patch(
-        '/residents/parcels/$parcelId/collected',
+        ApiEndpoints.parcelCollect(parcelId),
       );
-      
+
       return ParcelModel.fromJson(response.data['parcel']);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to mark parcel as collected');
     }
   }
 
-  /// Get parcel history (last 30 days)
+  /// Get parcel history — same endpoint, backend returns most recent parcels.
   Future<List<ParcelModel>> getParcelHistory() async {
     try {
-      final response = await _dio.get('/residents/my-parcels?history=true');
-      
-      final parcelsList = response.data is List 
+      final response = await _dio.get(ApiEndpoints.myParcels);
+
+      final parcelsList = response.data is List
           ? response.data as List
           : (response.data['parcels'] as List? ?? []);
-      
+
       return parcelsList
           .map((json) => ParcelModel.fromJson(json))
           .toList();

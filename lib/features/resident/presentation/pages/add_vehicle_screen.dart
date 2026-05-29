@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -198,8 +199,6 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           )
         : await notifier.updateVehicle(
             id: widget.vehicle!.id!,
-            vehicleNumber: _numberController.text.trim(),
-            type: _selectedType,
             brand: _brandController.text.trim().isEmpty
                 ? null
                 : _brandController.text.trim(),
@@ -226,7 +225,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
             backgroundColor: DesignColors.success,
           ),
         );
-        Navigator.pop(context, true);
+        context.pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -665,7 +665,7 @@ class _AdminSpecialProjectDetailScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     }
   }
 
@@ -703,7 +703,7 @@ class _AdminSpecialProjectDetailScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     }
   }
 
@@ -744,7 +744,7 @@ class _AdminSpecialProjectDetailScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     }
   }
 
@@ -784,7 +784,7 @@ class _AdminSpecialProjectDetailScreenState
     } catch (e) {
       if (!mounted) return false;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
       return false;
     }
   }
@@ -953,7 +953,7 @@ class _RecordPaymentSheetState extends State<_RecordPaymentSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1150,7 +1150,7 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1312,7 +1312,7 @@ class _EditProjectSheetState extends State<_EditProjectSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+          .showSnackBar(const SnackBar(content: Text('Something went wrong. Please try again.')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

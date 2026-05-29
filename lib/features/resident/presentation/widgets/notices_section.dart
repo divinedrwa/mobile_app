@@ -11,7 +11,9 @@ class NoticesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fallback preview cards for the home surface.
+    // TODO: Replace hardcoded dummy data with real notices from the API
+    // (e.g. via a Riverpod provider fetching from /residents/notices).
+    // Keeping static placeholders for now to avoid breaking the home UI.
     final notices = [
       NoticeItem(
         title: 'Water supply off tomorrow',

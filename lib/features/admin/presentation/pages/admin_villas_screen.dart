@@ -250,6 +250,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
 
   void _showVillaForm({Map<String, dynamic>? existing}) {
     final isEdit = existing != null;
+    final formKey = GlobalKey<FormState>();
     final numberCtrl =
         TextEditingController(text: existing?['villaNumber']?.toString() ?? '');
     final blockCtrl =
@@ -281,90 +282,94 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DesignColors.borderLight,
-                      borderRadius: BorderRadius.circular(2),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: DesignColors.borderLight,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(isEdit ? 'Edit Villa' : 'Add Villa',
-                    style: DesignTypography.headingM),
-                const SizedBox(height: 16),
-                _formField('Villa Number *', numberCtrl),
-                _formField('Block', blockCtrl),
-                _formField('Floors', floorsCtrl,
-                    keyboardType: TextInputType.number),
-                _formField('Owner Name', ownerNameCtrl),
-                _formField('Owner Phone', ownerPhoneCtrl,
-                    keyboardType: TextInputType.phone),
-                _formField('Owner Email', ownerEmailCtrl,
-                    keyboardType: TextInputType.emailAddress),
-                _formField('Monthly Maintenance', maintenanceCtrl,
-                    keyboardType: TextInputType.number),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    if (isEdit) ...[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _handleDelete(existing['id']?.toString() ?? '');
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: DesignColors.error,
-                            side: const BorderSide(color: DesignColors.error),
+                  const SizedBox(height: 16),
+                  Text(isEdit ? 'Edit Villa' : 'Add Villa',
+                      style: DesignTypography.headingM),
+                  const SizedBox(height: 16),
+                  _formField('Villa Number *', numberCtrl, required: true),
+                  _formField('Block', blockCtrl),
+                  _formField('Floors', floorsCtrl,
+                      keyboardType: TextInputType.number),
+                  _formField('Owner Name', ownerNameCtrl),
+                  _formField('Owner Phone', ownerPhoneCtrl,
+                      keyboardType: TextInputType.phone),
+                  _formField('Owner Email', ownerEmailCtrl,
+                      keyboardType: TextInputType.emailAddress),
+                  _formField('Monthly Maintenance', maintenanceCtrl,
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (isEdit) ...[
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _handleDelete(existing['id']?.toString() ?? '');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: DesignColors.error,
+                              side: const BorderSide(color: DesignColors.error),
+                            ),
+                            child: const Text('Delete'),
                           ),
-                          child: const Text('Delete'),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () {
+                            if (!(formKey.currentState?.validate() ?? false)) return;
+                            Navigator.pop(ctx);
+                            if (isEdit) {
+                              _handleUpdate(
+                                existing['id']?.toString() ?? '',
+                                numberCtrl.text,
+                                blockCtrl.text,
+                                ownerNameCtrl.text,
+                                ownerPhoneCtrl.text,
+                                ownerEmailCtrl.text,
+                                maintenanceCtrl.text,
+                                floorsCtrl.text,
+                              );
+                            } else {
+                              _handleCreate(
+                                numberCtrl.text,
+                                blockCtrl.text,
+                                ownerNameCtrl.text,
+                                ownerPhoneCtrl.text,
+                                ownerEmailCtrl.text,
+                                maintenanceCtrl.text,
+                                floorsCtrl.text,
+                              );
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF7C3AED),
+                          ),
+                          child: Text(isEdit ? 'Update' : 'Create'),
                         ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          if (isEdit) {
-                            _handleUpdate(
-                              existing['id']?.toString() ?? '',
-                              numberCtrl.text,
-                              blockCtrl.text,
-                              ownerNameCtrl.text,
-                              ownerPhoneCtrl.text,
-                              ownerEmailCtrl.text,
-                              maintenanceCtrl.text,
-                              floorsCtrl.text,
-                            );
-                          } else {
-                            _handleCreate(
-                              numberCtrl.text,
-                              blockCtrl.text,
-                              ownerNameCtrl.text,
-                              ownerPhoneCtrl.text,
-                              ownerEmailCtrl.text,
-                              maintenanceCtrl.text,
-                              floorsCtrl.text,
-                            );
-                          }
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C3AED),
-                        ),
-                        child: Text(isEdit ? 'Update' : 'Create'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -373,10 +378,10 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
   }
 
   Widget _formField(String label, TextEditingController ctrl,
-      {TextInputType? keyboardType}) {
+      {TextInputType? keyboardType, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
         decoration: InputDecoration(
@@ -386,6 +391,9 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
           ),
           isDense: true,
         ),
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+            : null,
       ),
     );
   }
@@ -399,7 +407,6 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
     String maintenance,
     String floors,
   ) async {
-    if (number.trim().isEmpty) return;
     try {
       await ref.read(adminVillaRepositoryProvider).createVilla(
             villaNumber: number.trim(),
@@ -462,6 +469,19 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
   }
 
   Future<void> _handleDelete(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Villa'),
+        content: const Text('Are you sure you want to delete this villa? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     try {
       await ref.read(adminVillaRepositoryProvider).deleteVilla(id);
       if (mounted) {

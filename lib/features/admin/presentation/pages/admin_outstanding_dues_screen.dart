@@ -52,7 +52,7 @@ class AdminOutstandingDuesScreen extends ConsumerWidget {
               EmptyStateWidget(
                 icon: Icons.cloud_off_outlined,
                 title: 'Something went wrong',
-                subtitle: '$e\nPull down to retry.',
+                subtitle: 'Could not load data.\nPull down to retry.',
               ),
             ],
           ),

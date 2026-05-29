@@ -14,18 +14,14 @@ bool _accountDisabledMessage(String message) {
   return false;
 }
 
-/// Endpoints where a 401 must NOT trigger the session-expired flow.
+/// Endpoints where a 401 must NOT trigger the session-expired flow or token
+/// refresh. Shared between [ErrorInterceptor] and [TokenRefreshInterceptor].
 ///
 /// • `/auth/login`, `/auth/register-with-invitation` — a 401 here means
-///   "bad credentials / invalid invitation", not "session expired". Treating
-///   it as expired would wipe storage and bounce the user away from the form.
-///
-/// • `/auth/logout`, `/notifications/devices/remove` — these are teardown
-///   calls made *during* logout. The JWT may already be revoked (e.g. after
-///   a password change), so a 401 is expected. Feeding it back into
-///   SessionExpiredHandler would trigger another logout() → another 401 →
-///   infinite loop.
-bool _isSessionExpiryExempt(String path) {
+///   "bad credentials / invalid invitation", not "session expired".
+/// • `/auth/logout`, `/notifications/devices/remove` — teardown calls made
+///   during logout. The JWT may already be revoked.
+bool isAuthExemptPath(String path) {
   final p = path.toLowerCase();
   return p.endsWith('/auth/login') ||
       p.endsWith('/auth/register-with-invitation') ||
@@ -75,7 +71,7 @@ class ErrorInterceptor extends Interceptor {
             exception = UnauthorizedException(message: message);
             if (_accountDisabledMessage(message)) {
               unawaited(AccountDeactivatedHandler.triggerIfRegistered());
-            } else if (!_isSessionExpiryExempt(
+            } else if (!isAuthExemptPath(
               err.requestOptions.path,
             )) {
               // Generic 401 on an authenticated endpoint = token expired /

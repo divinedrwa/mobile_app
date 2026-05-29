@@ -10,7 +10,9 @@ class RecentActivitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lightweight preview shown on home.
+    // TODO: Replace hardcoded dummy data with real activity from the API
+    // (e.g. via a Riverpod provider fetching recent visitor/parcel/payment events).
+    // Keeping static placeholders for now to avoid breaking the home UI.
     final activities = [
       ActivityItem(
         icon: Icons.person,

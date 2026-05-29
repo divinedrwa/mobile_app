@@ -550,11 +550,15 @@ class GuardRepository {
     }
   }
 
-  Future<List<GuardPatrolRow>> getMyPatrols({int days = 7}) async {
+  Future<List<GuardPatrolRow>> getMyPatrols({
+    int days = 7,
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
       final response = await _dio.get(
         ApiEndpoints.guardMyPatrols,
-        queryParameters: {'days': days},
+        queryParameters: {'days': days, 'limit': limit, 'offset': offset},
       );
       final data = response.data;
       if (data is! Map) return [];
@@ -806,9 +810,15 @@ class GuardRepository {
     }
   }
 
-  Future<List<GuardPreApprovedEntry>> getPreApprovedEntries() async {
+  Future<List<GuardPreApprovedEntry>> getPreApprovedEntries({
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
-      final response = await _dio.get(ApiEndpoints.guardPreApprovedEntries);
+      final response = await _dio.get(
+        ApiEndpoints.guardPreApprovedEntries,
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
       final data = response.data;
       if (data == null) return [];
       final maps = _takeMapList(

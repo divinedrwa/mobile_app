@@ -68,7 +68,10 @@ class AdminPollRepository {
   /// Vote on a poll option.
   Future<void> vote(String pollId, String optionId) async {
     try {
-      await _dio.post(ApiEndpoints.adminPollVote(pollId, optionId));
+      await _dio.post(
+        ApiEndpoints.adminPollVote(pollId),
+        data: {'optionId': optionId},
+      );
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to vote');
     }

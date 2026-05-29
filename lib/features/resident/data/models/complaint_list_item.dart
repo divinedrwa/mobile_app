@@ -7,6 +7,8 @@ class ComplaintListItem {
     required this.category,
     required this.status,
     required this.createdAt,
+    this.priority,
+    this.resolvedAt,
   });
 
   final String id;
@@ -15,9 +17,12 @@ class ComplaintListItem {
   final String category;
   final String status;
   final DateTime createdAt;
+  final String? priority;
+  final DateTime? resolvedAt;
 
   factory ComplaintListItem.fromJson(Map<String, dynamic> json) {
     final created = json['createdAt'];
+    final resolved = json['resolvedAt'];
     return ComplaintListItem(
       id: json['id']?.toString() ?? '',
       title: (json['title'] as String?) ?? '',
@@ -27,6 +32,8 @@ class ComplaintListItem {
       createdAt: created is String
           ? (DateTime.tryParse(created) ?? DateTime.now())
           : DateTime.now(),
+      priority: json['priority'] as String?,
+      resolvedAt: resolved is String ? DateTime.tryParse(resolved) : null,
     );
   }
 }

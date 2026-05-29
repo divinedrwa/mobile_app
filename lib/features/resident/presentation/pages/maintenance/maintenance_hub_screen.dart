@@ -7,22 +7,13 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
-import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
-import '../../../data/repositories/payment_methods_repository.dart';
 import '../../widgets/maintenance/maintenance_hub_skeleton.dart';
 import '../../widgets/maintenance/maintenance_stat_chip.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 import '../../widgets/maintenance/payment_list_tile.dart';
-
-final _paymentMethodsRepoProvider =
-    Provider<PaymentMethodsRepository>((ref) => PaymentMethodsRepository());
-
-final _paymentMethodsListProvider =
-    FutureProvider.autoDispose<List<PaymentMethodModel>>((ref) async {
-  return ref.watch(_paymentMethodsRepoProvider).getPaymentMethods();
-});
 /// Resident-facing maintenance landing screen.
 ///
 /// One scroll, three sections:
@@ -353,7 +344,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     final remark = cycle?.title ?? 'Maintenance ${DateFormat('MMM yyyy').format(now)}';
                     params['remark'] = remark;
                     final query = '?${Uri(queryParameters: params).query}';
-                    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+                    final methods = ref.read(paymentMethodsListProvider).valueOrNull;
                     final route = methods != null && methods.isNotEmpty
                         ? '/resident/maintenance/pay$query'
                         : '/resident/maintenance/upi-pay$query';
@@ -369,7 +360,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
   }
 
   bool get _hasPaymentMethods {
-    final methods = ref.watch(_paymentMethodsListProvider).valueOrNull;
+    final methods = ref.watch(paymentMethodsListProvider).valueOrNull;
     if (methods != null && methods.isNotEmpty) return true;
     final config = ref.watch(upiConfigProvider).valueOrNull;
     final vpa = config?['upiVpa']?.toString() ?? '';
@@ -651,7 +642,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     };
     if (m.cycleId.isNotEmpty) params['cycleId'] = m.cycleId;
     final query = '?${Uri(queryParameters: params).query}';
-    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+    final methods = ref.read(paymentMethodsListProvider).valueOrNull;
     final route = methods != null && methods.isNotEmpty
         ? '/resident/maintenance/pay$query'
         : '/resident/maintenance/upi-pay$query';

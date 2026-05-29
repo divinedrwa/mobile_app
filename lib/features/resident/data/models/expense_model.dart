@@ -88,7 +88,7 @@ class ExpenseModel {
       gstAmount: _toDoubleOrNull(json['gstAmount']),
       tdsAmount: _toDoubleOrNull(json['tdsAmount']),
       paymentDate: DateTime.tryParse(
-            (json['paymentDate'] ?? '') as String,
+            (json['paymentDate'] ?? '').toString(),
           ) ??
           DateTime.now(),
       paymentMode: json['paymentMode'] as String? ?? '',
@@ -105,7 +105,7 @@ class ExpenseModel {
       attachmentCount:
           json['attachmentCount'] as int? ?? attachments.length,
       createdAt: DateTime.tryParse(
-            (json['createdAt'] ?? '') as String,
+            (json['createdAt'] ?? '').toString(),
           ) ??
           DateTime.now(),
     );

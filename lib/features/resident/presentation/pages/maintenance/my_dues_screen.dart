@@ -7,18 +7,9 @@ import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/maintenance_due_model.dart';
-import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
-import '../../../data/repositories/payment_methods_repository.dart';
-
-final _paymentMethodsRepoProvider =
-    Provider<PaymentMethodsRepository>((ref) => PaymentMethodsRepository());
-
-final _paymentMethodsListProvider =
-    FutureProvider.autoDispose<List<PaymentMethodModel>>((ref) async {
-  return ref.watch(_paymentMethodsRepoProvider).getPaymentMethods();
-});
 
 /// Dedicated screen for the resident's outstanding bills.
 ///
@@ -69,7 +60,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
   /// True if at least one payment method is available (UPI VPA, bank, etc.).
   bool get _hasPaymentMethods {
     // Check new payment methods API first
-    final methods = ref.watch(_paymentMethodsListProvider).valueOrNull;
+    final methods = ref.watch(paymentMethodsListProvider).valueOrNull;
     if (methods != null && methods.isNotEmpty) return true;
     // Fallback: check legacy UPI config
     final config = ref.watch(upiConfigProvider).valueOrNull;
@@ -95,7 +86,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     if (remark != null && remark.isNotEmpty) params['remark'] = remark;
     final query = '?${Uri(queryParameters: params).query}';
 
-    final methods = ref.read(_paymentMethodsListProvider).valueOrNull;
+    final methods = ref.read(paymentMethodsListProvider).valueOrNull;
     final route = methods != null && methods.isNotEmpty
         ? '/resident/maintenance/pay$query'
         : '/resident/maintenance/upi-pay$query';

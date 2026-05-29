@@ -83,7 +83,7 @@ class PreApprovedVisitorModel {
           : (json['validUntil'] != null
                 ? DateTime.tryParse(json['validUntil'].toString())
                 : null),
-      isFrequent: json['isFrequent'] as bool? ?? false,
+      isFrequent: (json['isFrequent'] ?? json['isRecurring']) as bool? ?? false,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)

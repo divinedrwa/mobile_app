@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -359,7 +360,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           backgroundColor: error == null ? DesignColors.success : DesignColors.error,
         ),
       );
-      if (error == null) Navigator.pop(context);
+      if (error == null) context.pop();
       setState(() => _isRegistering = false);
     }
   }

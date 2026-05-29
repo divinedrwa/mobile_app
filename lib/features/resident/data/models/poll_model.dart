@@ -25,22 +25,38 @@ class PollModel {
   });
 
   factory PollModel.fromJson(Map<String, dynamic> json) {
+    // Backend sends `title`; legacy clients may send `question`.
+    final question = (json['question'] ?? json['title']) as String? ?? '';
+
+    // Backend sends `endDate`; legacy may send `expiresAt`.
+    final expiresRaw = json['expiresAt'] ?? json['endDate'];
+
+    // Backend sends `status` enum (ACTIVE/CLOSED/DRAFT); legacy may send `isActive` bool.
+    final statusRaw = json['status'];
+    final isActive = statusRaw is String
+        ? statusRaw == 'ACTIVE'
+        : (json['isActive'] as bool? ?? true);
+
+    // Parse options — backend includes _count for votes
+    final rawOptions = json['options'] as List? ?? [];
+
+    // totalVotes can be explicit or from _count
+    final countMap = json['_count'] as Map<String, dynamic>?;
+    final totalVotes =
+        json['totalVotes'] as int? ?? countMap?['votes'] as int? ?? 0;
+
     return PollModel(
       id: json['id'] as String,
-      question: json['question'] as String,
-      options: (json['options'] as List)
-          .map((opt) => PollOption.fromJson(opt))
-          .toList(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'] as String)
-          : null,
-      isActive: json['isActive'] as bool? ?? true,
+      question: question,
+      options: rawOptions.map((opt) => PollOption.fromJson(opt as Map<String, dynamic>)).toList(),
+      createdAt: DateTime.parse((json['createdAt'] ?? DateTime.now().toIso8601String()).toString()),
+      expiresAt: expiresRaw != null ? DateTime.tryParse(expiresRaw.toString()) : null,
+      isActive: isActive,
       createdBy: json['createdBy'] as String?,
       hasVoted: json['hasVoted'] as bool? ?? false,
       myVoteId: json['myVoteId'] as String? ??
           json['myVoteOptionId'] as String?,
-      totalVotes: json['totalVotes'] as int? ?? 0,
+      totalVotes: totalVotes,
     );
   }
 
@@ -80,10 +96,17 @@ class PollOption {
   });
 
   factory PollOption.fromJson(Map<String, dynamic> json) {
+    // Backend sends `optionText`; legacy may send `text`.
+    final text = (json['text'] ?? json['optionText']) as String? ?? '';
+
+    // Vote count can be in `votes` or `_count.votes`.
+    final countMap = json['_count'] as Map<String, dynamic>?;
+    final votes = json['votes'] as int? ?? countMap?['votes'] as int? ?? 0;
+
     return PollOption(
       id: json['id'] as String,
-      text: json['text'] as String,
-      votes: json['votes'] as int? ?? 0,
+      text: text,
+      votes: votes,
     );
   }
 

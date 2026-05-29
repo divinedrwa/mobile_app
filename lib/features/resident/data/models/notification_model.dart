@@ -134,6 +134,20 @@ enum NotificationType {
       case 'NOTICE':
       case 'BROADCAST':
         return NotificationType.event;
+      case 'COMPLAINT':
+        return NotificationType.alert;
+      case 'MAINTENANCE':
+        return NotificationType.maintenance;
+      case 'EXPENSE':
+        return NotificationType.payment;
+      case 'PROJECT':
+        return NotificationType.maintenance;
+      case 'WATER_SUPPLY':
+        return NotificationType.maintenance;
+      case 'GARBAGE':
+        return NotificationType.maintenance;
+      case 'POLL':
+        return NotificationType.event;
       case 'SYSTEM':
         return NotificationType.general;
       default:

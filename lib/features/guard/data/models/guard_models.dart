@@ -620,12 +620,12 @@ class GuardShiftRow {
       startTime: parseAt(json['startTime']),
       endTime: parseAt(json['endTime']),
       recurringDaily: json['recurringDaily'] == true,
-      recurringStartMinutes: _jsonInt(json['recurringStartMinutes']) == 0
-          ? null
-          : _jsonInt(json['recurringStartMinutes']),
-      recurringEndMinutes: _jsonInt(json['recurringEndMinutes']) == 0
-          ? null
-          : _jsonInt(json['recurringEndMinutes']),
+      recurringStartMinutes: json['recurringStartMinutes'] != null
+          ? _jsonInt(json['recurringStartMinutes'])
+          : null,
+      recurringEndMinutes: json['recurringEndMinutes'] != null
+          ? _jsonInt(json['recurringEndMinutes'])
+          : null,
     );
   }
 }

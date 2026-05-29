@@ -123,7 +123,7 @@ class _AdminCreateSpecialProjectScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
+        const SnackBar(content: Text('Something went wrong. Please try again.')),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -142,7 +142,7 @@ class _AdminCreateSpecialProjectScreenState
       ),
       body: villasAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Failed to load villas: $e')),
+        error: (e, _) => const Center(child: Text('Failed to load villas. Please try again.')),
         data: (villas) => _buildForm(villas),
       ),
     );

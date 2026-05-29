@@ -176,6 +176,7 @@ class _AdminBankAccountsScreenState
 
   void _showForm({Map<String, dynamic>? existing}) {
     final isEdit = existing != null;
+    final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(
         text: existing?['accountName']?.toString() ?? '');
     final bankCtrl = TextEditingController(
@@ -202,76 +203,80 @@ class _AdminBankAccountsScreenState
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DesignColors.borderLight,
-                      borderRadius: BorderRadius.circular(2),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: DesignColors.borderLight,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(isEdit ? 'Edit Account' : 'Add Account',
-                    style: DesignTypography.headingM),
-                const SizedBox(height: 16),
-                _field('Account Name *', nameCtrl),
-                _field('Bank Name *', bankCtrl),
-                _field('Account Number *', numberCtrl,
-                    keyboardType: TextInputType.number),
-                _field('IFSC Code', ifscCtrl),
-                _field('Account Type', typeCtrl),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    if (isEdit) ...[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _handleDelete(existing['id']?.toString() ?? '');
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: DesignColors.error,
-                            side: const BorderSide(color: DesignColors.error),
+                  const SizedBox(height: 16),
+                  Text(isEdit ? 'Edit Account' : 'Add Account',
+                      style: DesignTypography.headingM),
+                  const SizedBox(height: 16),
+                  _field('Account Name *', nameCtrl, required: true),
+                  _field('Bank Name *', bankCtrl, required: true),
+                  _field('Account Number *', numberCtrl,
+                      keyboardType: TextInputType.number, required: true),
+                  _field('IFSC Code', ifscCtrl),
+                  _field('Account Type', typeCtrl),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (isEdit) ...[
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _handleDelete(existing['id']?.toString() ?? '');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: DesignColors.error,
+                              side: const BorderSide(color: DesignColors.error),
+                            ),
+                            child: const Text('Delete'),
                           ),
-                          child: const Text('Delete'),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () {
+                            if (!(formKey.currentState?.validate() ?? false)) return;
+                            Navigator.pop(ctx);
+                            if (isEdit) {
+                              _handleUpdate(
+                                existing['id']?.toString() ?? '',
+                                nameCtrl.text,
+                                bankCtrl.text,
+                                numberCtrl.text,
+                                ifscCtrl.text,
+                                typeCtrl.text,
+                              );
+                            } else {
+                              _handleCreate(nameCtrl.text, bankCtrl.text,
+                                  numberCtrl.text, ifscCtrl.text, typeCtrl.text);
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF0EA5E9),
+                          ),
+                          child: Text(isEdit ? 'Update' : 'Create'),
                         ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          if (isEdit) {
-                            _handleUpdate(
-                              existing['id']?.toString() ?? '',
-                              nameCtrl.text,
-                              bankCtrl.text,
-                              numberCtrl.text,
-                              ifscCtrl.text,
-                              typeCtrl.text,
-                            );
-                          } else {
-                            _handleCreate(nameCtrl.text, bankCtrl.text,
-                                numberCtrl.text, ifscCtrl.text, typeCtrl.text);
-                          }
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF0EA5E9),
-                        ),
-                        child: Text(isEdit ? 'Update' : 'Create'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -280,10 +285,10 @@ class _AdminBankAccountsScreenState
   }
 
   Widget _field(String label, TextEditingController ctrl,
-      {TextInputType? keyboardType}) {
+      {TextInputType? keyboardType, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
         decoration: InputDecoration(
@@ -293,15 +298,15 @@ class _AdminBankAccountsScreenState
           ),
           isDense: true,
         ),
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+            : null,
       ),
     );
   }
 
   Future<void> _handleCreate(String name, String bank, String number,
       String ifsc, String type) async {
-    if (name.trim().isEmpty || bank.trim().isEmpty || number.trim().isEmpty) {
-      return;
-    }
     try {
       await ref.read(adminBankAccountRepositoryProvider).createBankAccount(
             accountName: name.trim(),
@@ -352,6 +357,19 @@ class _AdminBankAccountsScreenState
   }
 
   Future<void> _handleDelete(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Bank Account'),
+        content: const Text('Are you sure you want to delete this bank account?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     try {
       await ref.read(adminBankAccountRepositoryProvider).deleteBankAccount(id);
       if (mounted) {

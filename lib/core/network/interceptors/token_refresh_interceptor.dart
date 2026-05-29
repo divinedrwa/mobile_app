@@ -5,17 +5,7 @@ import '../../constants/api_endpoints.dart';
 import '../../utils/storage_service.dart';
 import '../dio_client.dart';
 import 'auth_interceptor.dart';
-
-/// Endpoints that should never trigger a token refresh attempt.
-bool _isRefreshExempt(String path) {
-  final p = path.toLowerCase();
-  return p.endsWith('/auth/login') ||
-      p.endsWith('/auth/register-with-invitation') ||
-      p.endsWith('/auth/logout') ||
-      p.endsWith('/auth/refresh') ||
-      p.endsWith('/notifications/devices/remove') ||
-      p.endsWith('/notifications/devices');
-}
+import 'error_interceptor.dart' show isAuthExemptPath;
 
 /// Intercepts 401 responses and attempts a single token refresh before
 /// forwarding the error. Uses [QueuedInterceptor] so concurrent requests
@@ -49,7 +39,7 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode != 401 ||
-        _isRefreshExempt(err.requestOptions.path)) {
+        isAuthExemptPath(err.requestOptions.path)) {
       return handler.next(err);
     }
 

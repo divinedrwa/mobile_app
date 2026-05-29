@@ -192,6 +192,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
 
   void _showForm({Map<String, dynamic>? existing}) {
     final isEdit = existing != null;
+    final formKey = GlobalKey<FormState>();
     final nameCtrl =
         TextEditingController(text: existing?['name']?.toString() ?? '');
     final descCtrl =
@@ -216,55 +217,59 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DesignColors.borderLight,
-                      borderRadius: BorderRadius.circular(2),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: DesignColors.borderLight,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(isEdit ? 'Edit Amenity' : 'Add Amenity',
-                    style: DesignTypography.headingM),
-                const SizedBox(height: 16),
-                _field('Name *', nameCtrl),
-                _field('Description', descCtrl),
-                _field('Capacity', capCtrl,
-                    keyboardType: TextInputType.number),
-                _field('Price per Hour', priceCtrl,
-                    keyboardType: TextInputType.number),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      if (isEdit) {
-                        _handleUpdate(
-                            existing['id']?.toString() ?? '',
-                            nameCtrl.text,
-                            descCtrl.text,
-                            capCtrl.text,
-                            priceCtrl.text);
-                      } else {
-                        _handleCreate(nameCtrl.text, descCtrl.text,
-                            capCtrl.text, priceCtrl.text);
-                      }
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFF59E0B),
+                  const SizedBox(height: 16),
+                  Text(isEdit ? 'Edit Amenity' : 'Add Amenity',
+                      style: DesignTypography.headingM),
+                  const SizedBox(height: 16),
+                  _field('Name *', nameCtrl, required: true),
+                  _field('Description', descCtrl),
+                  _field('Capacity', capCtrl,
+                      keyboardType: TextInputType.number),
+                  _field('Price per Hour', priceCtrl,
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        if (!(formKey.currentState?.validate() ?? false)) return;
+                        Navigator.pop(ctx);
+                        if (isEdit) {
+                          _handleUpdate(
+                              existing['id']?.toString() ?? '',
+                              nameCtrl.text,
+                              descCtrl.text,
+                              capCtrl.text,
+                              priceCtrl.text);
+                        } else {
+                          _handleCreate(nameCtrl.text, descCtrl.text,
+                              capCtrl.text, priceCtrl.text);
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFF59E0B),
+                      ),
+                      child: Text(isEdit ? 'Update' : 'Create'),
                     ),
-                    child: Text(isEdit ? 'Update' : 'Create'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -273,10 +278,10 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
   }
 
   Widget _field(String label, TextEditingController ctrl,
-      {TextInputType? keyboardType}) {
+      {TextInputType? keyboardType, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
         decoration: InputDecoration(
@@ -286,13 +291,15 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
           ),
           isDense: true,
         ),
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+            : null,
       ),
     );
   }
 
   Future<void> _handleCreate(
       String name, String desc, String cap, String price) async {
-    if (name.trim().isEmpty) return;
     try {
       await ref.read(adminAmenityRepositoryProvider).createAmenity(
             name: name.trim(),

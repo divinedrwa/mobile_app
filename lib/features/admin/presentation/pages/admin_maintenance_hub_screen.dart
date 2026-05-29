@@ -73,7 +73,9 @@ class _AdminMaintenanceHubScreenState
     _selectionInitialised = false;
     try {
       await ref.read(adminMaintenanceDashboardProvider.future);
-    } catch (_) {/* surfaced inline */}
+    } catch (e) {
+      debugPrint('AdminMaintenanceHubScreen._refresh failed: $e');
+    }
   }
 
   // ── FY / cycle auto-select helpers ────────────────────────────────
@@ -699,8 +701,8 @@ class _AdminMaintenanceHubScreenState
           try {
             final result = await repo.sendVillaReminder(villaId: villaId);
             totalSent += (result['sent'] as num?)?.toInt() ?? 0;
-          } catch (_) {
-            // Continue sending to remaining villas.
+          } catch (e) {
+            debugPrint('Failed to send reminder for villa $villaId: $e');
           }
         }
       }
@@ -724,7 +726,7 @@ class _AdminMaintenanceHubScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: DesignColors.error,
-          content: Text('Couldn\'t send reminders: $e'),
+          content: Text('Couldn\'t send reminders. Please try again.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1568,9 +1570,10 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Couldn\'t record payment: $e';
+        _error = 'Couldn\'t record payment. Please try again.';
       });
     }
   }
@@ -1609,9 +1612,10 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Couldn\'t apply credit: $e';
+        _error = 'Couldn\'t apply credit. Please try again.';
       });
     }
   }
@@ -1668,9 +1672,10 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Couldn\'t adjust credit: $e';
+        _error = 'Couldn\'t adjust credit. Please try again.';
       });
     }
   }
@@ -1907,9 +1912,10 @@ class _EditVillaRowSheetState extends ConsumerState<_EditVillaRowSheet> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Couldn\'t update: $e';
+        _error = 'Couldn\'t update. Please try again.';
       });
     }
   }

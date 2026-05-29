@@ -24,95 +24,94 @@ class QuickActionCard extends StatefulWidget {
 class _QuickActionCardState extends State<QuickActionCard> {
   bool _isPressed = false;
 
+  void _handleTapDown(TapDownDetails _) => setState(() => _isPressed = true);
+  void _handleTapUp(TapUpDetails _) => setState(() => _isPressed = false);
+  void _handleTapCancel() => setState(() => _isPressed = false);
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        transform: Matrix4.identity()
-          ..scaleByDouble(_isPressed ? 0.92 : 1.0, _isPressed ? 0.92 : 1.0, 1.0, 1.0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              colors: [
-                widget.action.color.withValues(alpha: 0.12),
-                widget.action.color.withValues(alpha: 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(
-              color: widget.action.color.withValues(alpha: 0.25),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.action.color.withValues(alpha: 0.10),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      transform: Matrix4.identity()
+        ..scaleByDouble(_isPressed ? 0.92 : 1.0, _isPressed ? 0.92 : 1.0, 1.0, 1.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [
+              widget.action.color.withValues(alpha: 0.12),
+              widget.action.color.withValues(alpha: 0.06),
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: widget.onTap,
-              borderRadius: BorderRadius.circular(20),
-              splashColor: widget.action.color.withValues(alpha: 0.2),
-              highlightColor: widget.action.color.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            widget.action.color,
-                            widget.action.color.withValues(alpha: 0.85),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.action.color.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
+          border: Border.all(
+            color: widget.action.color.withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.action.color.withValues(alpha: 0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            onTapDown: _handleTapDown,
+            onTapUp: _handleTapUp,
+            onTapCancel: _handleTapCancel,
+            borderRadius: BorderRadius.circular(20),
+            splashColor: widget.action.color.withValues(alpha: 0.2),
+            highlightColor: widget.action.color.withValues(alpha: 0.1),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          widget.action.color,
+                          widget.action.color.withValues(alpha: 0.85),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      child: Icon(
-                        widget.action.icon,
-                        size: 22,
-                        color: Colors.white,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.action.color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      widget.action.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                            height: 1.2,
-                          ),
+                    child: Icon(
+                      widget.action.icon,
+                      size: 22,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    widget.action.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                          height: 1.2,
+                        ),
+                  ),
+                ],
               ),
             ),
           ),

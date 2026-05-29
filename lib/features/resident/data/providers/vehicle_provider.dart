@@ -55,20 +55,18 @@ class VehicleNotifier extends StateNotifier<AsyncValue<List<VehicleModel>>> {
   /// Update vehicle. Returns null on success, error message on failure.
   Future<String?> updateVehicle({
     required String id,
-    String? vehicleNumber,
-    String? type,
     String? brand,
     String? model,
     String? color,
+    String? parkingSlot,
   }) async {
     try {
       await _repository.updateVehicle(
         id: id,
-        vehicleNumber: vehicleNumber,
-        type: type,
         brand: brand,
         model: model,
         color: color,
+        parkingSlot: parkingSlot,
       );
       await fetchVehicles();
       return null;

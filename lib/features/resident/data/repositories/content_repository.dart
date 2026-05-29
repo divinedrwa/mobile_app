@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/document_model.dart';
@@ -9,7 +10,7 @@ class ContentRepository {
 
   Future<List<NoticeModel>> getNotices() async {
     try {
-      final response = await _dio.get('/residents/my-notices');
+      final response = await _dio.get(ApiEndpoints.notices);
       final list = response.data['notices'] as List? ?? [];
       return list
           .whereType<Map>()
@@ -22,7 +23,7 @@ class ContentRepository {
 
   Future<List<DocumentModel>> getDocuments() async {
     try {
-      final response = await _dio.get('/residents/my-documents');
+      final response = await _dio.get(ApiEndpoints.documents);
       final list = response.data['documents'] as List? ?? [];
       return list
           .whereType<Map>()
@@ -35,7 +36,7 @@ class ContentRepository {
 
   Future<List<Map<String, dynamic>>> getPolls() async {
     try {
-      final response = await _dio.get('/residents/my-polls');
+      final response = await _dio.get(ApiEndpoints.polls);
       final polls = response.data['polls'] as List? ?? [];
       return polls
           .whereType<Map>()
@@ -51,7 +52,10 @@ class ContentRepository {
     required String optionId,
   }) async {
     try {
-      await _dio.post('/polls/$pollId/vote', data: {'optionId': optionId});
+      await _dio.post(
+        ApiEndpoints.votePoll(pollId),
+        data: {'optionId': optionId},
+      );
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to submit vote');
     }
@@ -59,7 +63,7 @@ class ContentRepository {
 
   Future<List<Map<String, dynamic>>> getEventBanners() async {
     try {
-      final response = await _dio.get('/banners/active/list');
+      final response = await _dio.get(ApiEndpoints.banners);
       final banners = response.data['banners'] as List? ?? [];
       return banners
           .whereType<Map>()
@@ -71,29 +75,11 @@ class ContentRepository {
   }
 
   /// Register resident for an event banner/campaign.
-  /// Different backends name this endpoint differently; try common variants.
   Future<void> registerForEvent(String eventId) async {
-    // Backend implements POST `/banners/:id/register` (see `banners/routes.ts`).
-    final candidates = <String>[
-      '/banners/$eventId/register',
-      '/residents/events/$eventId/register',
-      '/residents/my-events/$eventId/register',
-      '/events/$eventId/register',
-    ];
-
-    DioException? lastError;
-    for (final path in candidates) {
-      try {
-        await _dio.post(path);
-        return;
-      } on DioException catch (e) {
-        lastError = e;
-      }
+    try {
+      await _dio.post(ApiEndpoints.bannerRegister(eventId));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to register for event');
     }
-
-    throw mapDioException(
-      lastError!,
-      'Failed to register for event',
-    );
   }
 }

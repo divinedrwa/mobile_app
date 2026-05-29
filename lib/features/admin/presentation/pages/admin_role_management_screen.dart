@@ -49,7 +49,9 @@ class _AdminRoleManagementScreenState
     ref.invalidate(adminUsersProvider);
     try {
       await ref.read(adminUsersProvider.future);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AdminRoleManagementScreen._refresh failed: $e');
+    }
   }
 
   @override
