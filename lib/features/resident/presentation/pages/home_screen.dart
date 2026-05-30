@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../core/widgets/animated_counter.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -28,6 +29,7 @@ import '../../data/providers/security_contact_provider.dart';
 import '../../data/providers/special_project_provider.dart';
 import '../../data/providers/banner_provider.dart';
 import '../../data/providers/utilities_provider.dart';
+import '../../data/models/water_supply_model.dart';
 import '../../data/models/banner_model.dart';
 import '../../data/models/billing_cycle_current_model.dart';
 import '../../data/models/resident_dashboard_model.dart';
@@ -2172,69 +2174,146 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final garbageStatus = garbageAsync.valueOrNull;
     final collectorInside = garbageStatus?.isInside ?? false;
 
-    if (waterGates.isEmpty && !collectorInside) return const SizedBox.shrink();
+    if (waterGates.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: _kSectionGap),
-      child: GestureDetector(
+      child: EnterprisePanel(
         onTap: () => context.push('/resident/utilities'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: context.surface.defaultSurface,
-            borderRadius: BorderRadius.circular(_kRadiusMd),
-            border: Border.all(
-              color: context.surface.border.withValues(alpha: 0.6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Icon(Icons.water_drop_rounded,
+                    size: 16, color: DesignColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Society Utilities',
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: context.text.secondary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: context.text.tertiary),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 6,
+            const SizedBox(height: 10),
+            // Water gates
+            ...waterGates.map((g) {
+              final isOn = g.isOn;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
                   children: [
-                    ...waterGates.map((g) => _UtilityChip(
-                          icon: Icons.water_drop_rounded,
-                          label: g.gateName.isNotEmpty ? g.gateName : 'Water',
-                          status: g.isOn ? 'ON' : 'OFF',
-                          isPositive: g.isOn,
-                          fgColor: g.isOn
-                              ? context.state.approved.fg
-                              : context.state.denied.fg,
-                          bgColor: g.isOn
-                              ? context.state.approved.bg
-                              : context.state.denied.bg,
-                        )),
-                    if (collectorInside)
-                      _UtilityChip(
-                        icon: Icons.delete_rounded,
-                        label: 'Collector',
-                        status: 'Inside',
-                        isPositive: true,
-                        fgColor: context.state.pending.fg,
-                        bgColor: context.state.pending.bg,
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isOn ? DesignColors.success : DesignColors.error,
+                        shape: BoxShape.circle,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        g.gateName.isNotEmpty ? g.gateName : 'Water',
+                        style: DesignTypography.bodySmall.copyWith(
+                          color: context.text.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      isOn ? 'ON' : 'OFF',
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: isOn ? DesignColors.success : DesignColors.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
+              );
+            }),
+            // Garbage collector row
+            if (collectorInside) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: DesignColors.warning,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .fadeIn(duration: 800.ms)
+                      .then()
+                      .fadeOut(duration: 800.ms),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Garbage Collector Inside',
+                      style: DesignTypography.bodySmall.copyWith(
+                        color: context.text.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (garbageStatus?.activeEvent != null)
+                    Text(
+                      DateFormat.jm().format(
+                          garbageStatus!.activeEvent!.entryTime.toLocal()),
+                      style: DesignTypography.caption.copyWith(
+                        color: DesignColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded,
-                  size: 18, color: context.text.tertiary),
             ],
-          ),
+            // Request Water button
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () => _showWaterRequestSheet(context),
+                child: Text(
+                  'Request Water',
+                  style: DesignTypography.caption.copyWith(
+                    color: DesignColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     )
         .animate()
         .fadeIn(duration: DesignAnimations.durationEntrance);
+  }
+
+  void _showWaterRequestSheet(BuildContext context) {
+    final waterGates = ref.read(waterSupplyStatusProvider).valueOrNull ?? [];
+    if (waterGates.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _WaterRequestSheet(gates: waterGates),
+    );
   }
 
   /// Tight header: avoids [TextButton] minimum vertical insets that widen the gap to the grid.
@@ -3423,12 +3502,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             locale: 'en_IN', symbol: '\u20b9', decimalDigits: 0);
         final totalOutstanding =
             active.fold(0.0, (sum, p) => sum + p.outstanding);
+        final totalCollected =
+            active.fold(0.0, (sum, p) => sum + p.totalCollected);
+        final totalTarget =
+            active.fold(0.0, (sum, p) => sum + p.targetAmount);
+        final progress = totalTarget > 0
+            ? (totalCollected / totalTarget).clamp(0.0, 1.0)
+            : 0.0;
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.surface.defaultSurface,
             borderRadius: BorderRadius.circular(_kRadiusLg),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: context.surface.border),
             boxShadow: _cardShadow(),
           ),
           child: Material(
@@ -3438,46 +3524,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               onTap: () => context.push('/resident/special-projects'),
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color:
-                            const Color(0xFF7C3AED).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.construction_rounded,
-                          color: Color(0xFF7C3AED), size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${active.length} Active Project${active.length != 1 ? 's' : ''}',
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700),
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${inr.format(totalOutstanding)} outstanding',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600]),
+                          child: const Icon(Icons.construction_rounded,
+                              color: Color(0xFF7C3AED), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${active.length} Active Project${active.length != 1 ? 's' : ''}',
+                                style: DesignTypography.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: context.text.primary,
+                                ),
+                              ),
+                              if (totalOutstanding > 0) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'My Outstanding: ${inr.format(totalOutstanding)}',
+                                  style: DesignTypography.caption.copyWith(
+                                    color: DesignColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
+                        Icon(Icons.arrow_forward_ios,
+                            size: 14, color: context.text.tertiary),
+                      ],
+                    ),
+                    // Aggregate progress bar
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(DesignRadius.full),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 5,
+                        backgroundColor: context.surface.border,
+                        valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFF7C3AED),
+                        ),
                       ),
                     ),
-                    Icon(Icons.arrow_forward_ios,
-                        size: 14, color: Colors.grey[400]),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${inr.format(totalCollected)} / ${inr.format(totalTarget)} collected',
+                        style: DesignTypography.captionSmall.copyWith(
+                          color: context.text.tertiary,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-        );
+        )
+            .animate()
+            .fadeIn(duration: DesignAnimations.durationEntrance)
+            .slideY(begin: 0.05, end: 0);
       },
     );
   }
@@ -3486,50 +3608,165 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 /// Tab index for [ResidentShell] (home / community / profile).
 final currentTabProvider = StateProvider<int>((ref) => 0);
 
-/// Compact chip used in the utility status strip.
-class _UtilityChip extends StatelessWidget {
-  const _UtilityChip({
-    required this.icon,
-    required this.label,
-    required this.status,
-    required this.isPositive,
-    required this.fgColor,
-    required this.bgColor,
-  });
+/// Bottom sheet for submitting a water supply request.
+class _WaterRequestSheet extends ConsumerStatefulWidget {
+  const _WaterRequestSheet({required this.gates});
+  final List<WaterSupplyStatus> gates;
 
-  final IconData icon;
-  final String label;
-  final String status;
-  final bool isPositive;
-  final Color fgColor;
-  final Color bgColor;
+  @override
+  ConsumerState<_WaterRequestSheet> createState() => _WaterRequestSheetState();
+}
+
+class _WaterRequestSheetState extends ConsumerState<_WaterRequestSheet> {
+  late String _selectedGateId;
+  String _requestType = 'TURN_ON';
+  final _reasonController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedGateId = widget.gates.first.gateId;
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final reason = _reasonController.text.trim();
+    if (reason.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a reason (min 3 chars)')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final repo = ref.read(utilitiesRepositoryProvider);
+      await repo.submitWaterRequest(
+        gateId: _selectedGateId,
+        requestType: _requestType,
+        reason: reason,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Water request submitted')),
+        );
+        ref.invalidate(waterSupplyMyRequestsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(DesignRadius.full),
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 13, color: fgColor),
-          const SizedBox(width: 5),
-          Text(
-            '$label ',
-            style: DesignTypography.captionSmall.copyWith(
-              color: fgColor.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w500,
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
+          const SizedBox(height: 16),
           Text(
-            status,
-            style: DesignTypography.captionSmall.copyWith(
-              color: fgColor,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+            'Request Water Supply',
+            style: DesignTypography.headingM.copyWith(
+              color: context.text.primary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Gate selector
+          DropdownButtonFormField<String>(
+            value: _selectedGateId,
+            decoration: const InputDecoration(
+              labelText: 'Gate',
+              border: OutlineInputBorder(),
+            ),
+            items: widget.gates
+                .map((g) => DropdownMenuItem(
+                      value: g.gateId,
+                      child: Text(g.gateName.isNotEmpty ? g.gateName : 'Gate'),
+                    ))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _selectedGateId = v);
+            },
+          ),
+          const SizedBox(height: 12),
+          // Request type toggle
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('Turn ON'),
+                  selected: _requestType == 'TURN_ON',
+                  selectedColor: DesignColors.success.withValues(alpha: 0.2),
+                  onSelected: (_) =>
+                      setState(() => _requestType = 'TURN_ON'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('Turn OFF'),
+                  selected: _requestType == 'TURN_OFF',
+                  selectedColor: DesignColors.error.withValues(alpha: 0.2),
+                  onSelected: (_) =>
+                      setState(() => _requestType = 'TURN_OFF'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Reason
+          TextField(
+            controller: _reasonController,
+            maxLength: 200,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Reason',
+              hintText: 'Why do you need this change?',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _submitting ? null : _submit,
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.water_drop_rounded),
+              label: const Text('Submit Request'),
             ),
           ),
         ],

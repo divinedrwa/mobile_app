@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../models/water_supply_model.dart';
+import '../models/water_request_model.dart';
 import '../models/garbage_collection_model.dart';
 import '../repositories/utilities_repository.dart';
 
@@ -31,4 +32,10 @@ final garbageCollectionHistoryProvider =
     FutureProvider.autoDispose<List<GarbageCollectionEvent>>((ref) async {
   final repo = ref.read(utilitiesRepositoryProvider);
   return repo.getGarbageCollectionHistory();
+});
+
+final waterSupplyMyRequestsProvider =
+    FutureProvider.autoDispose<List<WaterRequestModel>>((ref) async {
+  final repo = ref.read(utilitiesRepositoryProvider);
+  return repo.getMyWaterRequests();
 });

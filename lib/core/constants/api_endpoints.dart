@@ -200,6 +200,9 @@ class ApiEndpoints {
   // Admin — Gates
   static const String adminGates = '/gates';
 
+  // Resident - Water Supply Requests
+  static const String waterSupplyRequests = '/residents/water-requests';
+
   // Admin — Water Supply
   static const String waterSupplyStatus = '/water-supply/status';
   static const String waterSupplyEvents = '/water-supply/events';
