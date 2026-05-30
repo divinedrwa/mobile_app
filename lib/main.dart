@@ -73,9 +73,18 @@ void main() async {
 
   registerGuardFlowTelemetry(firebaseAvailable: r.firebaseInitialized);
 
-  // Set up Firebase Crashlytics (release builds only).
-  if (r.firebaseInitialized && kReleaseMode) {
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Set up global error handlers in release builds.
+  // Use Crashlytics when Firebase is available, fallback to debugPrint otherwise.
+  if (kReleaseMode) {
+    if (r.firebaseInitialized) {
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    } else {
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        debugPrint('[FatalError] ${details.exceptionAsString()}');
+        debugPrint('[FatalError] ${details.stack}');
+      };
+    }
   }
 
   final pushBinding = PushLifecycleBinding();
@@ -95,12 +104,17 @@ void main() async {
     );
   }
 
-  // In release builds, catch uncaught async errors via Crashlytics.
-  if (r.firebaseInitialized && kReleaseMode) {
+  // In release builds, catch uncaught async errors.
+  if (kReleaseMode) {
     runZonedGuarded(
       startApp,
       (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        if (r.firebaseInitialized) {
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        } else {
+          debugPrint('[UncaughtError] $error');
+          debugPrint('[UncaughtError] $stack');
+        }
       },
     );
   } else {

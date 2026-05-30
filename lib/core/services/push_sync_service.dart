@@ -101,8 +101,9 @@ class PushSyncService {
         ApiEndpoints.notificationsRemoveDevice,
         data: {'deviceId': deviceId},
       );
-    } catch (_) {
-      // Ignore — logout must proceed
+    } catch (e, st) {
+      // Logout still proceeds — just make the failure observable.
+      fcmDiag('API_UNREGISTER_FAIL', 'device unregister failed', e, st);
     }
   }
 }

@@ -13,6 +13,11 @@ class SecureCredentialsStore {
   static const _kUsername = 'biometric_login_username';
   static const _kPassword = 'biometric_login_password';
   static const _kSocietyId = 'biometric_login_society_id';
+  static const _kSavedAt = 'biometric_login_saved_at';
+
+  /// Biometric credentials expire after this duration to prevent stale
+  /// passwords persisting indefinitely after a password change on another device.
+  static const _maxCredentialAge = Duration(days: 90);
 
   // "Remember me" credential keys (separate from biometric).
   static const _kRememberUsername = 'remember_me_username';
@@ -26,6 +31,7 @@ class SecureCredentialsStore {
     await _storage.write(key: _kUsername, value: username);
     await _storage.write(key: _kPassword, value: password);
     await _storage.write(key: _kSocietyId, value: societyId.trim());
+    await _storage.write(key: _kSavedAt, value: DateTime.now().toIso8601String());
   }
 
   Future<({String username, String password, String societyId})?> readCredentials() async {
@@ -33,6 +39,17 @@ class SecureCredentialsStore {
     final p = await _storage.read(key: _kPassword);
     final s = await _storage.read(key: _kSocietyId);
     if (u == null || u.isEmpty || p == null || s == null || s.isEmpty) return null;
+
+    // Auto-expire stale credentials.
+    final savedAtStr = await _storage.read(key: _kSavedAt);
+    if (savedAtStr != null) {
+      final savedAt = DateTime.tryParse(savedAtStr);
+      if (savedAt != null && DateTime.now().difference(savedAt) > _maxCredentialAge) {
+        await clearCredentials();
+        return null;
+      }
+    }
+
     return (username: u, password: p, societyId: s.trim());
   }
 
@@ -46,6 +63,7 @@ class SecureCredentialsStore {
     await _storage.delete(key: _kUsername);
     await _storage.delete(key: _kPassword);
     await _storage.delete(key: _kSocietyId);
+    await _storage.delete(key: _kSavedAt);
   }
 
   /// Save username + password for "Remember me" (encrypted by OS).

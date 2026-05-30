@@ -19,7 +19,9 @@ class RetryInterceptor extends Interceptor {
     final statusCode = err.response?.statusCode;
     final isGet = err.requestOptions.method.toUpperCase() == 'GET';
 
-    if (!isGet || statusCode == null || !_retriableStatuses.contains(statusCode)) {
+    final isTimeout = err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.receiveTimeout;
+    if (!isGet || (!isTimeout && (statusCode == null || !_retriableStatuses.contains(statusCode)))) {
       return handler.next(err);
     }
 
@@ -30,7 +32,8 @@ class RetryInterceptor extends Interceptor {
 
     final delayMs = min(1000 * (1 << attempt), 4000); // 1s, 2s, 4s
     if (kDebugMode) {
-      debugPrint('[RetryInterceptor] $statusCode on ${err.requestOptions.path} '
+      final reason = isTimeout ? 'timeout(${err.type.name})' : '$statusCode';
+      debugPrint('[RetryInterceptor] $reason on ${err.requestOptions.path} '
           '— retry ${attempt + 1}/$maxRetries in ${delayMs}ms');
     }
 

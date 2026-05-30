@@ -541,6 +541,12 @@ class NotificationService {
     }
   }
 
+  /// Validates that an ID from push data is safe to embed in a route path.
+  /// Accepts alphanumeric strings with hyphens and underscores (10-50 chars),
+  /// covering UUID, CUID, and similar formats.
+  static final _safeIdPattern = RegExp(r'^[a-zA-Z0-9_-]{10,50}$');
+  static bool _isValidPushId(String id) => _safeIdPattern.hasMatch(id);
+
   /// Called when user taps a push (background/terminated) or we retry pending routes.
   void applyNavigationFromPushData(
     Map<String, String> data, {
@@ -558,7 +564,7 @@ class NotificationService {
       try {
         if (type == 'VISITOR_APPROVAL_REQUEST' && openDetails) {
           final id = data['visitorId'] ?? '';
-          if (id.isNotEmpty) {
+          if (id.isNotEmpty && _isValidPushId(id)) {
             router.push('/resident/visitor-requests/$id');
           } else {
             router.push('/resident/visitor-requests');
@@ -575,7 +581,7 @@ class NotificationService {
         }
         if (type == 'VISITOR_PRE_APPROVED_CREATED') {
           final id = data['preApprovedId'] ?? '';
-          if (id.isNotEmpty) {
+          if (id.isNotEmpty && _isValidPushId(id)) {
             router.push(
               Uri(
                 path: '/guard/pre-approved',
@@ -625,7 +631,7 @@ class NotificationService {
         if (type == 'SPECIAL_PROJECT_CREATED' ||
             type == 'SPECIAL_PROJECT_PAYMENT_RECORDED') {
           final projectId = data['projectId'] ?? '';
-          if (projectId.isNotEmpty) {
+          if (projectId.isNotEmpty && _isValidPushId(projectId)) {
             router.push('/resident/special-projects/$projectId');
           } else {
             router.push('/resident/special-projects');

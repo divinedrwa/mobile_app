@@ -92,7 +92,11 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
         data: {'refreshToken': refreshToken},
       );
 
-      final data = response.data as Map<String, dynamic>;
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        _lastRefreshFailedAt = DateTime.now();
+        return handler.next(err);
+      }
       final newAccessToken = data['token'] as String?;
       final newRefreshToken = data['refreshToken'] as String?;
 
