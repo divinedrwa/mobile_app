@@ -71,10 +71,6 @@ final residentHomeQuickActionsGrid = [
     color: Color(0xFF7C3AED),
     route: '/resident/special-projects',
   ),
-];
-
-/// Reserved for a future “More” sheet — not on the home grid until you add [moreQuickAction] back.
-final residentQuickActionsOverflow = [
   const QuickAction(
     id: 'parcels',
     label: 'Parcels',
@@ -82,6 +78,10 @@ final residentQuickActionsOverflow = [
     color: Color(0xFF2563EB),
     route: '/resident/parcels',
   ),
+];
+
+/// Reserved for a future “More” sheet — not on the home grid until you add [moreQuickAction] back.
+final residentQuickActionsOverflow = [
   const QuickAction(
     id: 'maintenance_expenses',
     label: 'Maintenance & expenses',

@@ -301,11 +301,7 @@ class _MaintenancePaymentScreenState
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(maintenanceDashboardProvider);
     final filter = ref.watch(maintenanceDashboardFilterProvider);
-    final user = ref.watch(authProvider.select((s) => s.user));
-    final isAdmin = user?.role.isAdminLike ?? false;
-    final tabs = isAdmin
-        ? const ['Overview', 'My payments', 'Year review', 'Outstanding', 'Shortfall']
-        : const ['Overview', 'My payments', 'Year review', 'Outstanding'];
+    final tabs = const ['Overview', 'My payments', 'Year review', 'Outstanding', 'Shortfall'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
 
@@ -660,8 +656,8 @@ class _MaintenancePaymentScreenState
               // Outstanding tab (admin only)
               _buildOutstandingTab(context),
 
-              // Shortfall tab (admin only)
-              if (isAdmin) _buildShortfallTab(context),
+              // Shortfall tab
+              _buildShortfallTab(context),
             ];
 
             // Block rendering until financial-year list has resolved so

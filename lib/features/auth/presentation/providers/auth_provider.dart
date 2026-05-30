@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/user_model.dart';
-import '../../data/auth_repository.dart';
+import '../../data/auth_repository.dart' show AuthRepository, RefreshResult;
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/utils/app_restart.dart';
@@ -55,13 +55,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // (or close to expiry). The user stays logged in seamlessly as long as
       // their refresh token is still valid.
       if (await _authRepository.isTokenExpired()) {
-        final refreshed = await _authRepository.refreshTokens();
-        if (!refreshed) {
-          // Refresh token is also dead — force a clean logout.
+        final result = await _authRepository.refreshTokens();
+        if (result == RefreshResult.rejected) {
+          // Server explicitly rejected the refresh token (revoked, expired,
+          // password changed) — force a clean logout.
           await _authRepository.logout();
           state = const AuthState();
           return;
         }
+        // On [RefreshResult.networkError] we proceed with cached user data
+        // and the stale access token. The TokenRefreshInterceptor will
+        // transparently retry the refresh on the next API call once the
+        // network is back. The user stays logged in.
       }
 
       await _authRepository.repairCachedUserDataIfNeeded();

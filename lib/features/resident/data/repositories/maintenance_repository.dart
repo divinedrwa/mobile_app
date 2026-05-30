@@ -186,6 +186,8 @@ class MaintenanceRepository {
           .map((e) => MaintenanceDueModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } on DioException catch (e) {
+      // 404 "Villa not assigned" — not an error, just no dues to show.
+      if (e.response?.statusCode == 404) return [];
       throw mapDioException(e, 'Failed to fetch maintenance dues');
     }
   }

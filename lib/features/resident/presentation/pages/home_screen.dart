@@ -217,7 +217,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     // now". Self-hides when there are zero pending requests
                     // so a quiet day doesn't waste prime real estate.
                     _buildGateVisitorRequestsBanner(context),
-                    const SizedBox(height: _kSectionGap),
 
                     // Society notices flagged as important / urgent.
                     if (hasImportantNotices) ...[
@@ -263,7 +262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
                     // Special Projects — quick view of active projects
                     _buildSpecialProjectsCard(context),
-                    const SizedBox(height: _kSectionGap),
+                    const SizedBox(height: 8),
 
                     // Community-level ledger — informational, not actionable.
                     // Hidden from tenants: fund balance is internal governance data.
@@ -2169,138 +2168,166 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   Widget _buildUtilityStatusStrip(BuildContext context) {
     final waterAsync = ref.watch(waterSupplyStatusProvider);
     final garbageAsync = ref.watch(garbageCollectionActiveProvider);
+    final garbageHistoryAsync = ref.watch(garbageCollectionHistoryProvider);
 
     final waterGates = waterAsync.valueOrNull ?? [];
     final garbageStatus = garbageAsync.valueOrNull;
     final collectorInside = garbageStatus?.isInside ?? false;
+    final garbageHistory = garbageHistoryAsync.valueOrNull ?? [];
 
     if (waterGates.isEmpty) return const SizedBox.shrink();
 
+    // Determine garbage status: inside / left today / absent
+    String garbageLabel;
+    Color garbageColor;
+    bool garbagePulse = false;
+    if (collectorInside) {
+      garbageLabel = 'Garbage Collection Inside';
+      garbageColor = DesignColors.warning;
+      garbagePulse = true;
+    } else {
+      // Check if collector visited today
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayVisit = garbageHistory.where((e) {
+        return e.entryTime.isAfter(todayStart) && e.exitTime != null;
+      }).toList();
+      if (todayVisit.isNotEmpty) {
+        final lastExit = todayVisit.first.exitTime!;
+        final exitTime = DateFormat.jm().format(lastExit.toLocal());
+        garbageLabel = 'Garbage Left $exitTime';
+        garbageColor = DesignColors.success;
+      } else {
+        garbageLabel = 'Garbage Absent Today';
+        garbageColor = context.text.tertiary;
+      }
+    }
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: _kSectionGap),
-      child: EnterprisePanel(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
         onTap: () => context.push('/resident/utilities'),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
-              children: [
-                Icon(Icons.water_drop_rounded,
-                    size: 16, color: DesignColors.primary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Society Utilities',
-                    style: DesignTypography.labelSmall.copyWith(
-                      color: context.text.secondary,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
+        child: EnterprisePanel(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Row 1: Water status + Request button
+              Row(
+                children: [
+                  Icon(Icons.water_drop_rounded,
+                      size: 14, color: DesignColors.primary),
+                  const SizedBox(width: 6),
+                  // Water gate chips
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: waterGates.map((g) {
+                        final isOn = g.isOn;
+                        return _statusChip(
+                          label: '${g.gateName.isNotEmpty ? g.gateName : "Water"} ${isOn ? "ON" : "OFF"}',
+                          color: isOn ? DesignColors.success : DesignColors.error,
+                        );
+                      }).toList(),
                     ),
                   ),
-                ),
-                Icon(Icons.chevron_right_rounded,
-                    size: 18, color: context.text.tertiary),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Water gates
-            ...waterGates.map((g) {
-              final isOn = g.isOn;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _showWaterRequestSheet(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isOn ? DesignColors.success : DesignColors.error,
-                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: DesignColors.primary.withValues(alpha: 0.4),
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(DesignRadius.full),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
                       child: Text(
-                        g.gateName.isNotEmpty ? g.gateName : 'Water',
-                        style: DesignTypography.bodySmall.copyWith(
-                          color: context.text.primary,
-                          fontWeight: FontWeight.w500,
+                        'Request',
+                        style: DesignTypography.captionSmall.copyWith(
+                          color: DesignColors.primary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    Text(
-                      isOn ? 'ON' : 'OFF',
-                      style: DesignTypography.labelSmall.copyWith(
-                        color: isOn ? DesignColors.success : DesignColors.error,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            // Garbage collector row
-            if (collectorInside) ...[
-              const SizedBox(height: 2),
+                  ),
+                ],
+              ),
+              // Row 2: Garbage status + view details hint
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: DesignColors.warning,
-                      shape: BoxShape.circle,
-                    ),
-                  )
-                      .animate(onPlay: (c) => c.repeat(reverse: true))
-                      .fadeIn(duration: 800.ms)
-                      .then()
-                      .fadeOut(duration: 800.ms),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Garbage Collector Inside',
-                      style: DesignTypography.bodySmall.copyWith(
-                        color: context.text.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Icon(Icons.delete_outline_rounded,
+                      size: 14, color: garbageColor),
+                  const SizedBox(width: 6),
+                  _statusChip(
+                    label: garbageLabel,
+                    color: garbageColor,
+                    pulse: garbagePulse,
+                  ),
+                  const Spacer(),
+                  Text(
+                    'View details',
+                    style: DesignTypography.captionSmall.copyWith(
+                      color: context.text.tertiary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (garbageStatus?.activeEvent != null)
-                    Text(
-                      DateFormat.jm().format(
-                          garbageStatus!.activeEvent!.entryTime.toLocal()),
-                      style: DesignTypography.caption.copyWith(
-                        color: DesignColors.warning,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  const SizedBox(width: 2),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 14, color: context.text.tertiary),
                 ],
               ),
             ],
-            // Request Water button
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () => _showWaterRequestSheet(context),
-                child: Text(
-                  'Request Water',
-                  style: DesignTypography.caption.copyWith(
-                    color: DesignColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     )
         .animate()
         .fadeIn(duration: DesignAnimations.durationEntrance);
+  }
+
+  Widget _statusChip({
+    required String label,
+    required Color color,
+    bool pulse = false,
+  }) {
+    final dot = Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DesignRadius.full),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          pulse
+              ? dot
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .fadeIn(duration: 800.ms)
+                  .then()
+                  .fadeOut(duration: 800.ms)
+              : dot,
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: DesignTypography.captionSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showWaterRequestSheet(BuildContext context) {
@@ -2370,9 +2397,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
+            crossAxisCount: 4,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
             mainAxisExtent: 80,
           ),
           itemCount: residentHomeQuickActionsGrid.length,
@@ -3500,8 +3527,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
         final inr = NumberFormat.currency(
             locale: 'en_IN', symbol: '\u20b9', decimalDigits: 0);
-        final totalOutstanding =
-            active.fold(0.0, (sum, p) => sum + p.outstanding);
+        final myOutstanding = active.fold(0.0, (sum, p) =>
+            sum + (p.myContribution?.outstanding ?? 0));
         final totalCollected =
             active.fold(0.0, (sum, p) => sum + p.totalCollected);
         final totalTarget =
@@ -3551,10 +3578,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                   color: context.text.primary,
                                 ),
                               ),
-                              if (totalOutstanding > 0) ...[
+                              if (myOutstanding > 0) ...[
                                 const SizedBox(height: 2),
                                 Text(
-                                  'My Outstanding: ${inr.format(totalOutstanding)}',
+                                  'My Outstanding: ${inr.format(myOutstanding)}',
                                   style: DesignTypography.caption.copyWith(
                                     color: DesignColors.error,
                                     fontWeight: FontWeight.w600,

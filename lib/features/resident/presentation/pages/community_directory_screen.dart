@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/design_animations.dart';
@@ -42,6 +43,13 @@ class _CommunityDirectoryScreenState
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       ref.read(paginatedDirectoryProvider.notifier).loadMore();
+    }
+  }
+
+  Future<void> _dialPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     }
   }
 
@@ -250,7 +258,7 @@ class _CommunityDirectoryScreenState
                             ],
                           ),
                         ),
-                        if (r.phoneMasked != null)
+                        if (r.phoneMasked != null) ...[
                           Text(
                             r.phoneMasked!,
                             style:
@@ -258,6 +266,16 @@ class _CommunityDirectoryScreenState
                               color: context.text.tertiary,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _dialPhone(r.phoneMasked!),
+                            child: Icon(
+                              Icons.phone_rounded,
+                              size: 20,
+                              color: DesignColors.primary,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

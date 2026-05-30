@@ -18,9 +18,9 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
   /// with the already-stored token.
   DateTime? _lastRefreshAt;
 
-  /// Timestamp of the most recent *failed* refresh. Once a refresh fails the
-  /// session is dead — subsequent queued 401s should not retry the refresh
-  /// and should just propagate the 401 immediately.
+  /// Timestamp of the most recent *rejected* refresh (server returned 401/403
+  /// on the refresh endpoint itself). Only set when the server explicitly says
+  /// the refresh token is invalid — NOT on transient network errors.
   DateTime? _lastRefreshFailedAt;
 
   Dio _makeFreshDio() {
@@ -94,15 +94,26 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
 
       final data = response.data;
       if (data is! Map<String, dynamic>) {
-        _lastRefreshFailedAt = DateTime.now();
-        return handler.next(err);
+        // Malformed response — server bug, not token rejection. Treat as
+        // transient so the user stays logged in.
+        return handler.next(DioException(
+          requestOptions: err.requestOptions,
+          type: DioExceptionType.connectionError,
+          error: 'Malformed refresh response',
+          message: 'Could not refresh session',
+        ));
       }
       final newAccessToken = data['token'] as String?;
       final newRefreshToken = data['refreshToken'] as String?;
 
       if (newAccessToken == null || newRefreshToken == null) {
-        _lastRefreshFailedAt = DateTime.now();
-        return handler.next(err);
+        // Missing fields — same as above, treat as transient.
+        return handler.next(DioException(
+          requestOptions: err.requestOptions,
+          type: DioExceptionType.connectionError,
+          error: 'Incomplete refresh response',
+          message: 'Could not refresh session',
+        ));
       }
 
       // Persist new tokens
@@ -133,13 +144,40 @@ class TokenRefreshInterceptor extends QueuedInterceptor {
         }
         return handler.next(retryErr);
       }
-    } on DioException {
-      // Refresh itself failed — the session truly expired.
-      _lastRefreshFailedAt = DateTime.now();
-      return handler.next(err);
-    } catch (_) {
-      _lastRefreshFailedAt = DateTime.now();
-      return handler.next(err);
+    } on DioException catch (refreshErr) {
+      final status = refreshErr.response?.statusCode;
+      if (status == 401 || status == 403) {
+        // Server explicitly rejected the refresh token — session is dead.
+        _lastRefreshFailedAt = DateTime.now();
+        if (kDebugMode) {
+          debugPrint('[TokenRefresh] refresh rejected by server ($status)');
+        }
+        return handler.next(err);
+      }
+      // Network / timeout / 5xx — transient failure. Don't mark the session
+      // as dead; convert the original 401 to a connection error so
+      // ErrorInterceptor does NOT trigger SessionExpiredHandler.
+      if (kDebugMode) {
+        debugPrint('[TokenRefresh] refresh failed (network/transient), '
+            'keeping session alive');
+      }
+      return handler.next(DioException(
+        requestOptions: err.requestOptions,
+        type: DioExceptionType.connectionError,
+        error: refreshErr.error ?? 'Token refresh failed (network)',
+        message: 'Could not refresh session — please check your connection',
+      ));
+    } catch (e) {
+      // Unexpected non-Dio error — treat as transient, keep session alive.
+      if (kDebugMode) {
+        debugPrint('[TokenRefresh] unexpected error during refresh: $e');
+      }
+      return handler.next(DioException(
+        requestOptions: err.requestOptions,
+        type: DioExceptionType.connectionError,
+        error: e,
+        message: 'Could not refresh session',
+      ));
     }
   }
 }

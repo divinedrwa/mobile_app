@@ -54,6 +54,10 @@ String _sanitizeInput(String input) {
   );
 }
 
+/// Outcome of a proactive token refresh attempt. Lets callers distinguish
+/// "server rejected the refresh token" from "network was down".
+enum RefreshResult { success, networkError, rejected }
+
 /// Repository for authentication operations
 class AuthRepository {
   Dio get _dio => DioClient.dio;
@@ -593,10 +597,18 @@ class AuthRepository {
   }
 
   /// Proactively refresh the access token using the stored refresh token.
-  /// Returns true on success, false on failure (caller should logout).
-  Future<bool> refreshTokens() async {
+  ///
+  /// Returns [RefreshResult.success] when new tokens were persisted,
+  /// [RefreshResult.rejected] when the server explicitly rejected the refresh
+  /// token (401/403 — it was revoked, expired, or rotated), and
+  /// [RefreshResult.networkError] when the call failed for transient reasons
+  /// (no internet, timeout, server 500, etc.) so the caller can keep the
+  /// session alive with cached data instead of force-logging out.
+  Future<RefreshResult> refreshTokens() async {
     final refreshToken = await StorageService.getRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return RefreshResult.rejected;
+    }
     try {
       // Use a fresh Dio to avoid interceptor loops.
       final freshDio = Dio(BaseOptions(
@@ -612,12 +624,22 @@ class AuthRepository {
       final data = response.data as Map<String, dynamic>;
       final newToken = data['token'] as String?;
       final newRefresh = data['refreshToken'] as String?;
-      if (newToken == null || newRefresh == null) return false;
+      if (newToken == null || newRefresh == null) {
+        return RefreshResult.rejected;
+      }
       await StorageService.saveToken(newToken);
       await StorageService.saveRefreshToken(newRefresh);
-      return true;
+      return RefreshResult.success;
+    } on DioException catch (e) {
+      // Server explicitly rejected the refresh token → session is dead.
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        return RefreshResult.rejected;
+      }
+      // Network/timeout/5xx — transient failure; session may still be valid.
+      return RefreshResult.networkError;
     } catch (_) {
-      return false;
+      return RefreshResult.networkError;
     }
   }
 
