@@ -571,6 +571,56 @@ class AuthRepository {
     return token != null && token.isNotEmpty;
   }
 
+  /// True when the stored JWT access token has expired (or is missing).
+  Future<bool> isTokenExpired() async {
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) return true;
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) return true;
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final map = jsonDecode(decoded) as Map<String, dynamic>;
+      final exp = map['exp'] as int?;
+      if (exp == null) return true;
+      // Expired if less than 60 seconds remaining.
+      return DateTime.fromMillisecondsSinceEpoch(exp * 1000)
+          .isBefore(DateTime.now().add(const Duration(seconds: 60)));
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Proactively refresh the access token using the stored refresh token.
+  /// Returns true on success, false on failure (caller should logout).
+  Future<bool> refreshTokens() async {
+    final refreshToken = await StorageService.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    try {
+      // Use a fresh Dio to avoid interceptor loops.
+      final freshDio = Dio(BaseOptions(
+        baseUrl: DioClient.dio.options.baseUrl,
+        connectTimeout: DioClient.dio.options.connectTimeout,
+        receiveTimeout: DioClient.dio.options.receiveTimeout,
+        headers: {'Content-Type': 'application/json'},
+      ));
+      final response = await freshDio.post(
+        ApiEndpoints.refreshToken,
+        data: {'refreshToken': refreshToken},
+      );
+      final data = response.data as Map<String, dynamic>;
+      final newToken = data['token'] as String?;
+      final newRefresh = data['refreshToken'] as String?;
+      if (newToken == null || newRefresh == null) return false;
+      await StorageService.saveToken(newToken);
+      await StorageService.saveRefreshToken(newRefresh);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Get cached user data
   UserModel? getCachedUser() {
     final userData = StorageService.getUserData();

@@ -245,6 +245,14 @@ final adminOutstandingDuesProvider =
       .getOutstandingDues();
 });
 
+/// Admin profit-loss report for a calendar year.
+final adminProfitLossProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, int>((ref, year) async {
+  return ref
+      .watch(adminMaintenanceRepositoryProvider)
+      .getProfitLoss(year);
+});
+
 /// Admin villa payment history for a single villa.
 final adminVillaHistoryProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, villaId) async {

@@ -298,6 +298,8 @@ class ApiEndpoints {
       '/maintenance-management/collection/cycles/$cycleId/villa-grid-row';
   static const String maintenanceOutstandingDues =
       '/maintenance-management/outstanding-dues';
+  static String maintenanceProfitLoss(int year) =>
+      '/maintenance-management/profit-loss/$year';
   static String maintenanceVillaHistory(String villaId) =>
       '/maintenance-management/villa-history/$villaId';
 

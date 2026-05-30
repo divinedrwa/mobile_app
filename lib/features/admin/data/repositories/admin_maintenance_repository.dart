@@ -227,6 +227,18 @@ class AdminMaintenanceRepository {
     }
   }
 
+  /// Fetch profit-loss report for a calendar year.
+  Future<Map<String, dynamic>> getProfitLoss(int year) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.maintenanceProfitLoss(year),
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load profit-loss report');
+    }
+  }
+
   /// Get payment history for a single villa.
   Future<Map<String, dynamic>> getVillaHistory(String villaId) async {
     try {

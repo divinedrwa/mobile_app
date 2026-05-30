@@ -51,6 +51,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _init() async {
     final isLoggedIn = await _authRepository.isLoggedIn();
     if (isLoggedIn) {
+      // Proactively refresh the access token on app launch if it's expired
+      // (or close to expiry). The user stays logged in seamlessly as long as
+      // their refresh token is still valid.
+      if (await _authRepository.isTokenExpired()) {
+        final refreshed = await _authRepository.refreshTokens();
+        if (!refreshed) {
+          // Refresh token is also dead — force a clean logout.
+          await _authRepository.logout();
+          state = const AuthState();
+          return;
+        }
+      }
+
       await _authRepository.repairCachedUserDataIfNeeded();
       final cachedUser = _authRepository.getCachedUser();
       if (cachedUser != null) {

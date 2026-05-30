@@ -82,6 +82,7 @@ class _MaintenancePaymentScreenState
     extends ConsumerState<MaintenancePaymentScreen> {
   bool _appliedInitialQueryFilter = false;
   final Set<String> _expandedOutstandingVillas = {};
+  final Set<int> _expandedShortfallMonths = {};
 
   @override
   void didChangeDependencies() {
@@ -300,7 +301,11 @@ class _MaintenancePaymentScreenState
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(maintenanceDashboardProvider);
     final filter = ref.watch(maintenanceDashboardFilterProvider);
-    final tabs = const ['Overview', 'My payments', 'Year review', 'Outstanding'];
+    final user = ref.watch(authProvider.select((s) => s.user));
+    final isAdmin = user?.role.isAdminLike ?? false;
+    final tabs = isAdmin
+        ? const ['Overview', 'My payments', 'Year review', 'Outstanding', 'Shortfall']
+        : const ['Overview', 'My payments', 'Year review', 'Outstanding'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
 
@@ -654,6 +659,9 @@ class _MaintenancePaymentScreenState
 
               // Outstanding tab (admin only)
               _buildOutstandingTab(context),
+
+              // Shortfall tab (admin only)
+              if (isAdmin) _buildShortfallTab(context),
             ];
 
             // Block rendering until financial-year list has resolved so
@@ -4163,6 +4171,449 @@ class _MaintenancePaymentScreenState
                 fontSize: 12.5,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────── Shortfall tab ──────────────────────────
+
+  /// Uses the same data source as Year Review (billing cycles + yearlyBreakdown)
+  /// to compute month-wise net position: collected − expenses.
+  /// Shows only deficit months (where expenses > collected) and the total.
+  Widget _buildShortfallTab(BuildContext context) {
+    final inr = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 0);
+    final filter = ref.watch(maintenanceDashboardFilterProvider);
+
+    final fyId = filter.financialYearId;
+    final cyclesAsync = fyId != null && fyId.isNotEmpty
+        ? ref.watch(billingCyclesForFinancialYearProvider(fyId))
+        : null;
+
+    if (cyclesAsync == null) {
+      return _wrapTabWithRefresh(
+        Center(
+          child: _emptyState(
+            icon: Icons.calendar_today_outlined,
+            title: 'Select a financial year',
+            subtitle: 'Choose a financial year from the dropdown above to view shortfall data.',
+          ),
+        ),
+      );
+    }
+
+    return cyclesAsync.when(
+      loading: () => const Center(
+        child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (e, _) => _wrapTabWithRefresh(
+        Center(
+          child: _emptyState(
+            icon: Icons.error_outline,
+            title: 'Failed to load data',
+            subtitle: e.toString(),
+          ),
+        ),
+      ),
+      data: (body) {
+        final rawCycles = body['cycles'];
+        final cycles = rawCycles is List
+            ? rawCycles.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            : <Map<String, dynamic>>[];
+
+        // Determine calendar years spanned by this FY's cycles
+        final neededYears = <int>{};
+        for (final c in cycles) {
+          final my = _monthYearFromCycleKey(c['cycleKey']?.toString() ?? '');
+          if (my != null) neededYears.add(my.year);
+        }
+
+        // Fetch yearlyBreakdown for each calendar year
+        final breakdownByKey = <String, Map<String, dynamic>>{};
+        bool allYearsLoaded = true;
+        for (final yr in neededYears) {
+          final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
+          yrAsync.whenData((rows) {
+            for (final row in rows) {
+              final m = (row['month'] as num?)?.toInt() ?? 0;
+              final y = (row['year'] as num?)?.toInt() ?? 0;
+              if (m > 0 && y > 0) {
+                breakdownByKey['$y-${m.toString().padLeft(2, '0')}'] = row;
+              }
+            }
+          });
+          if (yrAsync is! AsyncData) allYearsLoaded = false;
+        }
+
+        if (!allYearsLoaded && neededYears.isNotEmpty) {
+          return const Center(
+            child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+
+        // Build per-cycle rows with financial data
+        // Mirrors Year Review's totalExpected validation: use
+        // breakdown values only when totalExpected > 0, otherwise
+        // fall back to the cycle's configured amount.
+        final allRows = <Map<String, dynamic>>[];
+        for (final c in cycles) {
+          final cycleKey = c['cycleKey']?.toString() ?? '';
+          final my = _monthYearFromCycleKey(cycleKey);
+          final breakdown = breakdownByKey[cycleKey];
+          final cycleAmount = (c['amount'] as num?)?.toDouble() ?? 0;
+
+          double mExp, mColl, mExpense;
+          if (breakdown != null &&
+              ((breakdown['totalExpected'] as num?)?.toDouble() ?? 0) > 0) {
+            mExp = (breakdown['totalExpected'] as num?)?.toDouble() ?? 0;
+            mColl = (breakdown['totalCollected'] as num?)?.toDouble() ?? 0;
+            mExpense = (breakdown['totalExpense'] as num?)?.toDouble() ?? 0;
+          } else {
+            mExp = cycleAmount;
+            mColl = (breakdown?['totalCollected'] as num?)?.toDouble() ?? 0;
+            mExpense = (breakdown?['totalExpense'] as num?)?.toDouble() ?? 0;
+          }
+          final net = mColl - mExpense;
+
+          // Extract expense breakdown by category
+          final rawBreakdown = breakdown?['expenseBreakdown'];
+          final expenseBreakdown = <String, double>{};
+          if (rawBreakdown is Map) {
+            for (final entry in rawBreakdown.entries) {
+              final val = (entry.value as num?)?.toDouble() ?? 0;
+              if (val > 0) expenseBreakdown[entry.key.toString()] = val;
+            }
+          }
+
+          allRows.add({
+            'month': my?.month ?? 0,
+            'year': my?.year ?? 0,
+            'cycleKey': cycleKey,
+            'totalExpected': mExp,
+            'totalCollected': mColl,
+            'totalExpense': mExpense,
+            'net': net,
+            'expenseBreakdown': expenseBreakdown,
+          });
+        }
+
+        // Filter to deficit months only (where expenses > collected)
+        final deficitRows = allRows.where((r) => ((r['net'] as num?)?.toDouble() ?? 0) < 0).toList();
+
+        // Aggregated totals across ALL months
+        double totalExpected = 0;
+        double totalCollected = 0;
+        double totalExpense = 0;
+        for (final row in allRows) {
+          totalExpected += (row['totalExpected'] as num?)?.toDouble() ?? 0;
+          totalCollected += (row['totalCollected'] as num?)?.toDouble() ?? 0;
+          totalExpense += (row['totalExpense'] as num?)?.toDouble() ?? 0;
+        }
+
+        // Total shortfall = sum of |net| for deficit months only
+        final totalShortfall = deficitRows.fold<double>(
+          0, (sum, r) => sum + ((r['net'] as num?)?.toDouble() ?? 0).abs(),
+        );
+
+        return _wrapTabWithRefresh(
+          ListView(
+            padding: const EdgeInsets.only(top: 12, bottom: 32),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              // ── FY-level summary card ──
+              _shortfallSummaryCard(
+                totalExpected: totalExpected,
+                totalCollected: totalCollected,
+                totalExpense: totalExpense,
+                totalShortfall: totalShortfall,
+                deficitCount: deficitRows.length,
+                totalCycles: allRows.length,
+                inr: inr,
+              ),
+
+              const SizedBox(height: 18),
+
+              if (deficitRows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: DesignColors.success.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check_circle_outline_rounded, size: 48, color: DesignColors.success),
+                      ),
+                      const SizedBox(height: 16),
+                      Text('No deficit months',
+                        style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Collections covered expenses in every billing cycle this year.',
+                        textAlign: TextAlign.center,
+                        style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary, height: 1.4),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('Deficit months',
+                    style: DesignTypography.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                for (final row in deficitRows) _shortfallMonthCard(row, inr),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shortfallSummaryCard({
+    required double totalExpected,
+    required double totalCollected,
+    required double totalExpense,
+    required double totalShortfall,
+    required int deficitCount,
+    required int totalCycles,
+    required NumberFormat inr,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E293B).withValues(alpha: 0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Admin shortfall',
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: Colors.white60, fontWeight: FontWeight.w600, letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$totalCycles cycle${totalCycles == 1 ? '' : 's'}',
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Hero shortfall amount
+              Text(
+                deficitCount > 0 ? inr.format(totalShortfall) : inr.format(0),
+                style: DesignTypography.headingL.copyWith(
+                  color: deficitCount > 0 ? const Color(0xFFFB923C) : const Color(0xFF4ADE80),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 28,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                deficitCount > 0
+                    ? 'Extra amount paid by admin across $deficitCount deficit month${deficitCount == 1 ? '' : 's'}'
+                    : 'No shortfall — collections covered all expenses',
+                style: DesignTypography.labelSmall.copyWith(
+                  color: Colors.white54, fontWeight: FontWeight.w500, fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _yearReviewStat('Expected', inr.format(totalExpected), const Color(0xFF94A3B8)),
+                  _yearReviewStat('Collected', inr.format(totalCollected), const Color(0xFF4ADE80)),
+                  _yearReviewStat('Expenses', inr.format(totalExpense), const Color(0xFFF87171)),
+                ],
+              ),
+              if (deficitCount > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFB923C).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Shortfall = sum of (expenses − collected) for each month where expenses exceeded collections'
+                    '${deficitCount > 1 ? ' · Avg ${inr.format(totalShortfall / deficitCount)}/mo' : ''}',
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: const Color(0xFFFBBF24), fontWeight: FontWeight.w600, fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _shortfallMonthCard(Map<String, dynamic> row, NumberFormat inr) {
+    final m = (row['month'] as num?)?.toInt() ?? 1;
+    final yr = (row['year'] as num?)?.toInt() ?? DateTime.now().year;
+    final mColl = (row['totalCollected'] as num?)?.toDouble() ?? 0;
+    final mExpense = (row['totalExpense'] as num?)?.toDouble() ?? 0;
+    final mExp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
+    final net = (row['net'] as num?)?.toDouble() ?? 0;
+    final shortfall = net.abs();
+    final breakdown = (row['expenseBreakdown'] as Map<String, double>?) ?? const <String, double>{};
+    final isExpanded = _expandedShortfallMonths.contains(m * 100 + yr);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesignColors.borderLight),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => setState(() {
+                final key = m * 100 + yr;
+                if (isExpanded) { _expandedShortfallMonths.remove(key); }
+                else { _expandedShortfallMonths.add(key); }
+              }),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          DateFormat('MMMM yyyy').format(DateTime(yr, m)),
+                          style: DesignTypography.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEA580C).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '−${inr.format(shortfall)}',
+                            style: DesignTypography.bodySmall.copyWith(
+                              color: const Color(0xFFDC2626), fontWeight: FontWeight.w800, fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                          size: 18, color: DesignColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _cycleReviewStat('Expected', inr.format(mExp), DesignColors.primary),
+                        _cycleReviewStat('Collected', inr.format(mColl), DesignColors.success),
+                        _cycleReviewStat('Expenses', inr.format(mExpense), DesignColors.error),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Expanded expense breakdown
+            if (isExpanded && breakdown.isNotEmpty) ...[
+              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Expense breakdown', style: DesignTypography.labelSmall.copyWith(
+                      color: DesignColors.textSecondary, fontWeight: FontWeight.w700, fontSize: 10,
+                      letterSpacing: 0.3,
+                    )),
+                    const SizedBox(height: 6),
+                    for (final entry in breakdown.entries)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(entry.key, style: DesignTypography.bodySmall.copyWith(
+                              color: DesignColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12,
+                            ))),
+                            Text(inr.format(entry.value), style: DesignTypography.bodySmall.copyWith(
+                              color: DesignColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 12,
+                            )),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Shortfall (admin paid)', style: DesignTypography.bodySmall.copyWith(
+                            color: const Color(0xFF9A3412), fontWeight: FontWeight.w700,
+                          )),
+                          Text(inr.format(shortfall), style: DesignTypography.bodySmall.copyWith(
+                            color: const Color(0xFF9A3412), fontWeight: FontWeight.w800,
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
