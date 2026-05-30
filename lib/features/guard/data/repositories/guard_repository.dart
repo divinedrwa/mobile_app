@@ -396,6 +396,30 @@ class GuardRepository {
     }
   }
 
+  /// Logs garbage collector departure (`PATCH /garbage-collection/:id/exit`).
+  Future<void> logGarbageCollectorExit(String eventId) async {
+    try {
+      await _dio.patch(ApiEndpoints.garbageCollectionExit(eventId));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not log garbage collector exit');
+    }
+  }
+
+  /// Returns the active garbage collection event if the collector is inside.
+  Future<Map<String, dynamic>?> getActiveGarbageCollection() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.garbageCollectionActive);
+      final data = response.data;
+      if (data is Map<String, dynamic> && data['isInside'] == true) {
+        final event = data['event'];
+        return event is Map<String, dynamic> ? event : null;
+      }
+      return null;
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not check garbage collection status');
+    }
+  }
+
   Future<void> respondToSos({
     required String alertId,
     required String status,

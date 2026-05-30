@@ -27,9 +27,33 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
   bool _loadingWaterOn = false;
   bool _loadingWaterOff = false;
   bool _loadingGarbage = false;
+  bool _loadingGarbageStatus = false;
+
+  /// Non-null when garbage collector is currently inside.
+  Map<String, dynamic>? _activeGarbageEvent;
 
   bool get _anyLoading =>
       _loadingWaterOn || _loadingWaterOff || _loadingGarbage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGarbageStatus();
+  }
+
+  Future<void> _fetchGarbageStatus() async {
+    final id = widget.gateId;
+    if (id == null || id.isEmpty) return;
+    setState(() => _loadingGarbageStatus = true);
+    try {
+      final event = await ref.read(guardRepositoryProvider).getActiveGarbageCollection();
+      if (mounted) setState(() => _activeGarbageEvent = event);
+    } catch (_) {
+      // Silently ignore — fallback to "Log arrival"
+    } finally {
+      if (mounted) setState(() => _loadingGarbageStatus = false);
+    }
+  }
 
   Future<bool> _confirm({
     required String title,
@@ -112,7 +136,7 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
     }
   }
 
-  Future<void> _garbage() async {
+  Future<void> _garbageArrival() async {
     final id = widget.gateId;
     if (id == null || id.isEmpty || _anyLoading) return;
 
@@ -128,11 +152,49 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
     try {
       await ref.read(guardRepositoryProvider).logGarbageCollectorEntry(gateId: id);
       widget.onSuccess?.call();
+      await _fetchGarbageStatus();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           behavior: SnackBarBehavior.floating,
           content: Text('Garbage collector logged — residents notified'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(userFacingMessage(e)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingGarbage = false);
+    }
+  }
+
+  Future<void> _garbageDeparture() async {
+    final eventId = _activeGarbageEvent?['id'] as String?;
+    if (eventId == null || _anyLoading) return;
+
+    final confirmed = await _confirm(
+      title: 'Log garbage collector departure?',
+      message: 'This marks that the garbage collector has left the gate.',
+      confirmLabel: 'Yes, log exit',
+      confirmColor: Theme.of(context).colorScheme.error,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _loadingGarbage = true);
+    try {
+      await ref.read(guardRepositoryProvider).logGarbageCollectorExit(eventId);
+      widget.onSuccess?.call();
+      if (mounted) setState(() => _activeGarbageEvent = null);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Garbage collector departure logged'),
         ),
       );
     } catch (e) {
@@ -328,17 +390,38 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
               ],
             ),
             const SizedBox(height: 16),
-            const _UtilitySectionLabel(
+            _UtilitySectionLabel(
               title: 'Garbage pickup',
-              hint: 'Use when the collection vehicle reaches the gate.',
+              hint: _activeGarbageEvent != null
+                  ? 'Collector is inside — log departure when done.'
+                  : 'Use when the collection vehicle reaches the gate.',
             ),
             const SizedBox(height: 10),
-            _PremiumGarbageArrivalButton(
-              loading: _loadingGarbage,
-              disabled: busy,
-              isDark: isDark,
-              onTap: _garbage,
-            ),
+            if (_loadingGarbageStatus)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (_activeGarbageEvent != null)
+              _GarbageDepartureButton(
+                loading: _loadingGarbage,
+                disabled: busy,
+                isDark: isDark,
+                onTap: _garbageDeparture,
+              )
+            else
+              _PremiumGarbageArrivalButton(
+                loading: _loadingGarbage,
+                disabled: busy,
+                isDark: isDark,
+                onTap: _garbageArrival,
+              ),
           ],
         ],
       ),
@@ -619,6 +702,121 @@ class _PremiumGarbageArrivalButton extends StatelessWidget {
                           size: 18,
                           color: canTap
                               ? GuardTokens.guardAccentDeep
+                              : scheme.onSurface.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-width CTA for logging garbage collector departure (shown when collector is inside).
+class _GarbageDepartureButton extends StatelessWidget {
+  const _GarbageDepartureButton({
+    required this.loading,
+    required this.disabled,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final bool loading;
+  final bool disabled;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final canTap = !loading && !disabled;
+    final dangerColor = scheme.error;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: canTap ? onTap : null,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: dangerColor.withValues(alpha: isDark ? 0.15 : 0.08),
+            border: Border.all(
+              color: dangerColor.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: loading
+                ? Center(
+                    child: SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: dangerColor,
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: dangerColor.withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: dangerColor.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.logout_rounded,
+                          color: dangerColor,
+                          size: 23,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Log departure',
+                              style: GuardTokens.bodyStyle(context).copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                letterSpacing: -0.15,
+                                color: dangerColor,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Collector is inside. Tap when pickup is complete.',
+                              style: GuardTokens.captionStyle(context).copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                                height: 1.3,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: dangerColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: canTap
+                              ? dangerColor
                               : scheme.onSurface.withValues(alpha: 0.35),
                         ),
                       ),
