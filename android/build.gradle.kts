@@ -20,19 +20,22 @@ subprojects {
 }
 // Force plugin subprojects (not :app, which is already Java 17) to compile
 // with Java 17, eliminating "source value 8 is obsolete" warnings.
+// afterEvaluate ensures our override wins over plugin-level build.gradle defaults.
 subprojects {
     if (name != "app") {
-        plugins.withType<com.android.build.gradle.BasePlugin>().configureEach {
-            extensions.findByType<com.android.build.gradle.BaseExtension>()?.apply {
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
+        afterEvaluate {
+            plugins.withType<com.android.build.gradle.BasePlugin>().configureEach {
+                extensions.findByType<com.android.build.gradle.BaseExtension>()?.apply {
+                    compileOptions {
+                        sourceCompatibility = JavaVersion.VERSION_17
+                        targetCompatibility = JavaVersion.VERSION_17
+                    }
                 }
             }
-        }
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                }
             }
         }
     }

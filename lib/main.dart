@@ -30,6 +30,8 @@ import 'core/session/account_deactivated_handler.dart';
 import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
+import 'core/services/app_version_service.dart';
+import 'core/widgets/app_update_dialog.dart';
 import 'core/widgets/offline_banner.dart';
 
 // ---------------------------------------------------------------------------
@@ -152,7 +154,25 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       });
       _registerResidentDataRefresh();
       _registerGuardDataRefresh();
+      _checkAppVersion();
     });
+  }
+
+  Future<void> _checkAppVersion() async {
+    final result = await AppVersionService.check();
+    if (!mounted) return;
+    switch (result.status) {
+      case UpdateStatus.forceUpdate:
+        unawaited(showAppUpdateDialog(context, result, forceUpdate: true));
+      case UpdateStatus.softUpdate:
+        final dismissed = result.latestVersion != null &&
+            await wasSoftUpdateDismissed(result.latestVersion!);
+        if (!dismissed && mounted) {
+          unawaited(showAppUpdateDialog(context, result, forceUpdate: false));
+        }
+      case UpdateStatus.upToDate:
+        break;
+    }
   }
 
   void _registerResidentDataRefresh() {

@@ -4,7 +4,11 @@
 class ApiEndpoints {
   /// Dev default when reading this file only; live requests use [AppConstants.baseUrl].
   static const String baseUrl = 'https://gatepass-v037.onrender.com/api';
-  
+
+  // Public (no auth)
+  /// App version check for in-app update prompts (`GET ?platform=ANDROID`).
+  static const String appVersionCheck = '/public/app-version';
+
   // Authentication
   static const String login = '/auth/login';
   /// Public societies for login picker (`GET`).

@@ -5,7 +5,9 @@ class AppConstants {
   // App Info — single source of truth for all branding strings.
   static const String appName = 'GatePass+';
   static const String appTagline = 'Society Management Platform';
-  static const String appVersion = '1.0.0';
+  /// Fallback version string. Runtime code should use
+  /// `PackageInfo.fromPlatform()` for the actual installed version.
+  static const String appVersion = '1.1.1';
 
   /// Splash screen credit line. Override per-build:
   /// `--dart-define=ORG_NAME=Your Welfare Association`
