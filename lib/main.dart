@@ -49,6 +49,7 @@ double? _naturalLogicalWidth;
 double? _naturalLogicalHeight;
 
 Future<void> _fetchNativeScreenInfo() async {
+  if (kIsWeb) return;
   try {
     const channel = MethodChannel('com.app.gatepass/display');
     final info =
@@ -78,7 +79,7 @@ void main() async {
   // Set up global error handlers in release builds.
   // Use Crashlytics when Firebase is available, fallback to debugPrint otherwise.
   if (kReleaseMode) {
-    if (r.firebaseInitialized) {
+    if (r.firebaseInitialized && !kIsWeb) {
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     } else {
       FlutterError.onError = (details) {
@@ -111,7 +112,7 @@ void main() async {
     runZonedGuarded(
       startApp,
       (error, stack) {
-        if (r.firebaseInitialized) {
+        if (r.firebaseInitialized && !kIsWeb) {
           FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         } else {
           debugPrint('[UncaughtError] $error');
@@ -239,7 +240,23 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       routerConfig: _router!,
       builder: (context, child) {
         final scaled = _buildFixedScale(context, child);
-        return OfflineBanner(child: scaled);
+        final withBanner = OfflineBanner(child: scaled);
+        Widget result = kIsWeb ? SelectionArea(child: withBanner) : withBanner;
+
+        // On wide web viewports, cap content at 900dp centered.
+        if (kIsWeb && MediaQuery.sizeOf(context).width > 900) {
+          result = ColoredBox(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: result,
+              ),
+            ),
+          );
+        }
+
+        return result;
       },
     );
   }
@@ -262,6 +279,15 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       textScaler: TextScaler.linear(data.textScaler.scale(14).clamp(14, 18.2) / 14),
       boldText: false,
     );
+
+    // On web, browsers handle viewport sizing natively — skip all
+    // FittedBox / SizedBox scaling. Only keep textScaler clamping.
+    if (kIsWeb) {
+      return MediaQuery(
+        data: fixedData,
+        child: child!,
+      );
+    }
 
     // 2. Determine the target render width.
     //    Priority: display-zoom correction > design-width scaling > none.

@@ -22,6 +22,9 @@ analysis_options_user.yaml
 .DS_Store
 Thumbs.db
 
+# Firebase Hosting cache
+.firebase/
+
 # Firebase native config (keep local / CI secret storage)
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist

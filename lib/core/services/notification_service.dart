@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import '../utils/platform_info.dart' as platform_info;
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -12,13 +12,16 @@ import 'package:flutter/scheduler.dart' hide Priority;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../features/guard/data/guard_data_refresh.dart';
 import '../../features/resident/data/resident_data_refresh.dart';
 import '../logging/fcm_log.dart';
 import '../routing/app_navigator_keys.dart';
 import '../utils/notification_preference_storage.dart';
+import '../utils/storage_service.dart';
 import 'push_sync_service.dart';
+import 'web_notification.dart' as web_notif;
 
 /// Default channel id — must match backend FCM `android.notification.channelId`.
 const String _androidChannelId = 'default';
@@ -34,6 +37,13 @@ const String _androidNotificationIcon = '@drawable/ic_notification';
 /// Brand green; tints the silhouette + the accent line in the notification
 /// header. Mirrors `colors.xml/notification_brand` and `DesignColors.primary`.
 const Color _androidNotificationTint = Color(0xFF3D8361);
+
+/// VAPID key for web push (public key — safe to embed in client code).
+const String _webVapidKey =
+    'BDOhmKRErEsWelZkhU0NpKKXrhByTOPjt1y_SWHfghJ4E4qW8lES7KkYiE_ZCKor-jg8HyT2d7Fdj44EwqHhe84';
+
+/// SharedPreferences key for the stable web device ID.
+const String _webDeviceIdKey = 'divine_web_push_device_id';
 
 /// Service to manage push notifications, local (foreground) display, and device tokens.
 class NotificationService {
@@ -75,12 +85,15 @@ class NotificationService {
   Map<String, String>? _pendingPushData;
 
   Future<void> initialize() async {
+    if (kIsWeb) {
+      return _initializeWeb();
+    }
     try {
       fcmDiag('INIT', 'NotificationService.initialize() starting');
       await _getDeviceInfo();
 
       try {
-        if (Platform.isAndroid) {
+        if (platform_info.isAndroid) {
           final st = await Permission.notification.status;
           fcmDiag(
             'PERM_ANDROID',
@@ -120,6 +133,88 @@ class NotificationService {
       }
     } catch (e, st) {
       fcmDiag('INIT_FAIL', 'NotificationService.initialize outer', e, st);
+    }
+  }
+
+  /// Web-specific initialization: browser permission prompt, VAPID token, foreground listener.
+  Future<void> _initializeWeb() async {
+    try {
+      fcmDiag('INIT_WEB', 'NotificationService web init starting');
+
+      // Stable device ID persisted in SharedPreferences (survives sessions).
+      _deviceId = StorageService.getString(_webDeviceIdKey);
+      if (_deviceId == null || _deviceId!.isEmpty) {
+        _deviceId = const Uuid().v4();
+        await StorageService.setString(_webDeviceIdKey, _deviceId!);
+      }
+      _deviceType = 'WEB';
+      _deviceName = 'Web Browser';
+
+      // Browser notification permission prompt.
+      try {
+        final settings = await firebaseMessaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        fcmDiag(
+          'PERM_WEB',
+          'requestPermission → ${settings.authorizationStatus}',
+        );
+      } catch (e, st) {
+        fcmDiag('PERM_WEB_FAIL', '$e', e, st);
+      }
+
+      // Get FCM token with VAPID key.
+      try {
+        _fcmToken = await firebaseMessaging.getToken(vapidKey: _webVapidKey);
+        fcmDiag('TOKEN_WEB', 'getToken OK preview=${_previewToken(_fcmToken)}');
+      } catch (e, st) {
+        fcmDiag('TOKEN_WEB_FAIL', 'getToken failed', e, st);
+      }
+
+      // Token refresh.
+      _setupTokenRefreshListener();
+
+      // Foreground messages — show browser notification + refresh providers.
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        fcmDiag('RX_FOREGROUND_WEB', describeRemoteMessage(message));
+        final data = _normalizeData(message.data);
+        _refreshProvidersForPushType(data['type'] ?? '');
+
+        if (!NotificationPreferenceStorage.shouldDeliverPush) {
+          fcmDiag('RX_FOREGROUND_WEB', 'skip display: push disabled in settings');
+          return;
+        }
+        final title = message.notification?.title ?? data['title'] ?? 'Notification';
+        final body = message.notification?.body ?? data['body'] ?? '';
+        web_notif.showWebNotification(title, body, data);
+      });
+
+      // Message-opened (user clicked browser notification while app was open).
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        fcmDiag('RX_OPENED_APP_WEB', describeRemoteMessage(message));
+        final normalized = _normalizeData(message.data);
+        applyNavigationFromPushData(normalized, openDetails: true);
+      });
+
+      // Cold-start tap.
+      firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
+        if (message == null) return;
+        fcmDiag('RX_INITIAL_WEB', describeRemoteMessage(message));
+        final normalized = _normalizeData(message.data);
+        applyNavigationFromPushData(normalized, openDetails: true);
+      });
+
+      _isFirebaseAvailable = true;
+      fcmDiag(
+        'INIT_WEB_OK',
+        'deviceId=${_previewId(_deviceId)} deviceType=$_deviceType '
+            'pushBackendReady=$isPushBackendReady '
+            'fcmPreview=${_previewToken(_fcmToken)}',
+      );
+    } catch (e, st) {
+      fcmDiag('INIT_WEB_FAIL', 'web init error', e, st);
     }
   }
 
@@ -201,7 +296,7 @@ class NotificationService {
       fcmDiag('PERM_FCM_IOS_FAIL', '$e', e, st);
     }
 
-    if (Platform.isIOS) {
+    if (platform_info.isIOS) {
       try {
         await _local
             .resolvePlatformSpecificImplementation<
@@ -226,12 +321,12 @@ class NotificationService {
 
   Future<void> _getDeviceInfo() async {
     try {
-      if (Platform.isAndroid) {
+      if (platform_info.isAndroid) {
         final androidInfo = await _deviceInfo.androidInfo;
         _deviceId = androidInfo.id;
         _deviceType = 'ANDROID';
         _deviceName = '${androidInfo.manufacturer} ${androidInfo.model}';
-      } else if (Platform.isIOS) {
+      } else if (platform_info.isIOS) {
         final iosInfo = await _deviceInfo.iosInfo;
         _isIosSimulator = !iosInfo.isPhysicalDevice;
         _deviceId = iosInfo.identifierForVendor;
@@ -241,7 +336,7 @@ class NotificationService {
     } catch (e, st) {
       fcmDiag('DEVICE_INFO_FAIL', 'device id/name fallback applied', e, st);
       _deviceId = 'unknown';
-      _deviceType = Platform.isAndroid ? 'ANDROID' : 'IOS';
+      _deviceType = platform_info.isAndroid ? 'ANDROID' : 'IOS';
       _deviceName = 'Unknown Device';
     }
   }
@@ -253,7 +348,7 @@ class NotificationService {
   }
 
   Future<void> _getFCMToken() async {
-    if (Platform.isIOS && _isIosSimulator) {
+    if (platform_info.isIOS && _isIosSimulator) {
       _fcmToken = _iosSimulatorPlaceholderFcmToken();
       fcmDiag(
         'TOKEN_SIMULATOR',
@@ -263,7 +358,7 @@ class NotificationService {
     }
 
     try {
-      if (Platform.isIOS) {
+      if (platform_info.isIOS) {
         await _waitForApnsToken();
       }
       _fcmToken = await _getTokenWithRetry();
@@ -293,7 +388,7 @@ class NotificationService {
       try {
         return await firebaseMessaging.getToken();
       } catch (e) {
-        if (Platform.isIOS && _isApnsNotReadyError(e) && attempt < 3) {
+        if (platform_info.isIOS && _isApnsNotReadyError(e) && attempt < 3) {
           await Future<void>.delayed(const Duration(seconds: 1));
           continue;
         }
@@ -305,7 +400,7 @@ class NotificationService {
 
   void _setupTokenRefreshListener() {
     firebaseMessaging.onTokenRefresh.listen((newToken) {
-      if (Platform.isIOS && _isIosSimulator) return;
+      if (platform_info.isIOS && _isIosSimulator) return;
       fcmDiag(
         'TOKEN_REFRESH',
         'new token preview=${_previewToken(newToken)} → sync backend',
@@ -409,7 +504,7 @@ class NotificationService {
     }
 
     // Android 13+: show in status bar requires POST_NOTIFICATIONS.
-    if (Platform.isAndroid) {
+    if (platform_info.isAndroid) {
       PermissionStatus st = await Permission.notification.status;
       if (!st.isGranted) {
         if (st.isPermanentlyDenied) {
@@ -458,7 +553,7 @@ class NotificationService {
     final payload = jsonEncode(message.data);
 
     StyleInformation? androidStyle;
-    if (Platform.isAndroid) {
+    if (platform_info.isAndroid) {
       Uint8List? picBytes =
           _decodeDataUrlImage(message.data['photoUrl']?.toString());
       if (picBytes == null || picBytes.isEmpty) {
@@ -755,7 +850,7 @@ class NotificationService {
   }
 
   Future<void> deleteToken() async {
-    if (Platform.isIOS && _isIosSimulator) {
+    if (platform_info.isIOS && _isIosSimulator) {
       _fcmToken = null;
       return;
     }

@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_haptics.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_offline_sync_notifier.dart';
@@ -20,6 +22,7 @@ class GuardNavigationShell extends ConsumerWidget {
     final bg = isDark ? GuardTokens.darkSurface : GuardTokens.surfaceCard;
     final barBg = isDark ? GuardTokens.darkCard : Colors.white;
     final unread = ref.watch(unreadCountProvider);
+    final wide = isWideScreen(context);
 
     return PopScope(
       canPop: false,
@@ -29,99 +32,188 @@ class GuardNavigationShell extends ConsumerWidget {
           shell.goBranch(0);
           return;
         }
-        SystemNavigator.pop();
+        if (!kIsWeb) SystemNavigator.pop();
       },
       child: Material(
         color: bg,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: shell),
+            Expanded(
+              child: wide
+                  ? Row(
+                      children: [
+                        _buildNavigationRail(
+                          context,
+                          barBg: barBg,
+                          unread: unread,
+                        ),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: WebContentConstraint(child: shell)),
+                      ],
+                    )
+                  : shell,
+            ),
             _OfflineSyncStrip(),
-            Material(
-              elevation: 2,
-              shadowColor: Colors.black12,
-              color: barBg,
-              child: SafeArea(
-                top: false,
-                child: NavigationBarTheme(
-                  data: NavigationBarThemeData(
-                    height: 64,
-                    backgroundColor: barBg,
-                    indicatorColor:
-                        GuardTokens.guardAccent.withValues(alpha: 0.16),
-                    surfaceTintColor: Colors.transparent,
-                    elevation: 0,
-                    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                      final selected = states.contains(WidgetState.selected);
-                      return TextStyle(
-                        fontSize: GuardTokens.caption,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected
-                            ? GuardTokens.guardAccentDeep
-                            : GuardTokens.textSecondary,
-                      );
-                    }),
-                    iconTheme: WidgetStateProperty.resolveWith((states) {
-                      final selected = states.contains(WidgetState.selected);
-                      return IconThemeData(
-                        color: selected
-                            ? GuardTokens.guardAccentDeep
-                            : GuardTokens.textSecondary,
-                        size: 24,
-                      );
-                    }),
-                  ),
-                  child: NavigationBar(
-                    selectedIndex: shell.currentIndex,
-                    onDestinationSelected: (index) {
-                      DesignHaptics.selection();
-                      shell.goBranch(index);
-                    },
-                    destinations: [
-                      const NavigationDestination(
-                        icon: Icon(Icons.space_dashboard_outlined),
-                        selectedIcon: Icon(Icons.space_dashboard_rounded),
-                        label: 'Home',
-                      ),
-                      const NavigationDestination(
-                        icon: Icon(Icons.sensor_door_outlined),
-                        selectedIcon: Icon(Icons.sensor_door_rounded),
-                        label: 'Active',
-                      ),
-                      const NavigationDestination(
-                        icon: Icon(Icons.receipt_long_outlined),
-                        selectedIcon: Icon(Icons.receipt_long_rounded),
-                        label: 'Logs',
-                      ),
-                      NavigationDestination(
-                        icon: Badge(
-                          isLabelVisible: unread > 0,
-                          label: Text(
-                            unread > 99 ? '99+' : '$unread',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                          child: const Icon(Icons.person_outline_rounded),
+            if (!wide)
+              Material(
+                elevation: 2,
+                shadowColor: Colors.black12,
+                color: barBg,
+                child: SafeArea(
+                  top: false,
+                  child: NavigationBarTheme(
+                    data: NavigationBarThemeData(
+                      height: 64,
+                      backgroundColor: barBg,
+                      indicatorColor:
+                          GuardTokens.guardAccent.withValues(alpha: 0.16),
+                      surfaceTintColor: Colors.transparent,
+                      elevation: 0,
+                      labelTextStyle:
+                          WidgetStateProperty.resolveWith((states) {
+                        final selected =
+                            states.contains(WidgetState.selected);
+                        return TextStyle(
+                          fontSize: GuardTokens.caption,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
+                          color: selected
+                              ? GuardTokens.guardAccentDeep
+                              : GuardTokens.textSecondary,
+                        );
+                      }),
+                      iconTheme:
+                          WidgetStateProperty.resolveWith((states) {
+                        final selected =
+                            states.contains(WidgetState.selected);
+                        return IconThemeData(
+                          color: selected
+                              ? GuardTokens.guardAccentDeep
+                              : GuardTokens.textSecondary,
+                          size: 24,
+                        );
+                      }),
+                    ),
+                    child: NavigationBar(
+                      selectedIndex: shell.currentIndex,
+                      onDestinationSelected: (index) {
+                        DesignHaptics.selection();
+                        shell.goBranch(index);
+                      },
+                      destinations: [
+                        const NavigationDestination(
+                          icon: Icon(Icons.space_dashboard_outlined),
+                          selectedIcon:
+                              Icon(Icons.space_dashboard_rounded),
+                          label: 'Home',
                         ),
-                        selectedIcon: Badge(
-                          isLabelVisible: unread > 0,
-                          label: Text(
-                            unread > 99 ? '99+' : '$unread',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                          child: const Icon(Icons.person_rounded),
+                        const NavigationDestination(
+                          icon: Icon(Icons.sensor_door_outlined),
+                          selectedIcon: Icon(Icons.sensor_door_rounded),
+                          label: 'Active',
                         ),
-                        label: 'Profile',
-                      ),
-                    ],
+                        const NavigationDestination(
+                          icon: Icon(Icons.receipt_long_outlined),
+                          selectedIcon:
+                              Icon(Icons.receipt_long_rounded),
+                          label: 'Logs',
+                        ),
+                        NavigationDestination(
+                          icon: Badge(
+                            isLabelVisible: unread > 0,
+                            label: Text(
+                              unread > 99 ? '99+' : '$unread',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                            child: const Icon(
+                                Icons.person_outline_rounded),
+                          ),
+                          selectedIcon: Badge(
+                            isLabelVisible: unread > 0,
+                            label: Text(
+                              unread > 99 ? '99+' : '$unread',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                            child:
+                                const Icon(Icons.person_rounded),
+                          ),
+                          label: 'Profile',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNavigationRail(
+    BuildContext context, {
+    required Color barBg,
+    required int unread,
+  }) {
+    return NavigationRail(
+      selectedIndex: shell.currentIndex,
+      onDestinationSelected: (index) {
+        DesignHaptics.selection();
+        shell.goBranch(index);
+      },
+      labelType: NavigationRailLabelType.all,
+      backgroundColor: barBg,
+      selectedIconTheme:
+          const IconThemeData(color: GuardTokens.guardAccentDeep),
+      unselectedIconTheme:
+          const IconThemeData(color: GuardTokens.textSecondary),
+      selectedLabelTextStyle: const TextStyle(
+        fontSize: GuardTokens.caption,
+        fontWeight: FontWeight.w700,
+        color: GuardTokens.guardAccentDeep,
+      ),
+      unselectedLabelTextStyle: const TextStyle(
+        fontSize: GuardTokens.caption,
+        fontWeight: FontWeight.w500,
+        color: GuardTokens.textSecondary,
+      ),
+      destinations: [
+        const NavigationRailDestination(
+          icon: Icon(Icons.space_dashboard_outlined),
+          selectedIcon: Icon(Icons.space_dashboard_rounded),
+          label: Text('Home'),
+        ),
+        const NavigationRailDestination(
+          icon: Icon(Icons.sensor_door_outlined),
+          selectedIcon: Icon(Icons.sensor_door_rounded),
+          label: Text('Active'),
+        ),
+        const NavigationRailDestination(
+          icon: Icon(Icons.receipt_long_outlined),
+          selectedIcon: Icon(Icons.receipt_long_rounded),
+          label: Text('Logs'),
+        ),
+        NavigationRailDestination(
+          icon: Badge(
+            isLabelVisible: unread > 0,
+            label: Text(
+              unread > 99 ? '99+' : '$unread',
+              style: const TextStyle(fontSize: 10),
+            ),
+            child: const Icon(Icons.person_outline_rounded),
+          ),
+          selectedIcon: Badge(
+            isLabelVisible: unread > 0,
+            label: Text(
+              unread > 99 ? '99+' : '$unread',
+              style: const TextStyle(fontSize: 10),
+            ),
+            child: const Icon(Icons.person_rounded),
+          ),
+          label: const Text('Profile'),
+        ),
+      ],
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/payment_methods_provider.dart';
+
+/// Payment types that require native mobile capabilities (UPI intents,
+/// WebView-based PhonePe SDK). Hidden on web where only Razorpay (Checkout.js)
+/// and bank transfer (display-only) work.
+const _mobileOnlyPaymentTypes = {'UPI_VPA', 'UPI_QR', 'PHONEPE'};
 
 /// Screen that shows enabled payment methods and lets the resident pick one.
 ///
@@ -76,7 +82,10 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
           ),
         ),
         data: (methods) {
-          if (methods.isEmpty) {
+          final filtered = kIsWeb
+              ? methods.where((m) => !_mobileOnlyPaymentTypes.contains(m.type)).toList()
+              : methods;
+          if (filtered.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -88,7 +97,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
               ),
             );
           }
-          return _buildMethodList(context, methods);
+          return _buildMethodList(context, filtered);
         },
       ),
     );

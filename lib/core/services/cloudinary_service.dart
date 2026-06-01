@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/dio_client.dart';
 import '../network/dio_client_provider.dart';
+import 'multipart_file_factory.dart';
 
 /// Image Upload Service
 /// Sends multipart image to backend API
@@ -18,14 +18,9 @@ class ImageUploadService {
   /// Backend will handle Cloudinary upload
   Future<String?> uploadImage(XFile imageFile, {String? endpoint}) async {
     try {
-      final file = File(imageFile.path);
-      
       // Prepare multipart form data
       FormData formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(
-          file.path,
-          filename: imageFile.name,
-        ),
+        'image': await createMultipartFile(imageFile),
       });
 
       // Send to backend API
@@ -70,14 +65,9 @@ class ImageUploadService {
     String? endpoint,
   }) async {
     try {
-      final file = File(imageFile.path);
-      
       // Prepare multipart form data with additional fields
       Map<String, dynamic> formDataMap = {
-        'image': await MultipartFile.fromFile(
-          file.path,
-          filename: imageFile.name,
-        ),
+        'image': await createMultipartFile(imageFile),
         ...additionalData,
       };
 

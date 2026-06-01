@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,21 +253,24 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
         if (amount > 0) ...[
           // ── STEP 1: Pay via UPI App or QR ──
           if (!_returnedFromUpi) ...[
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => _launchUpiApp(upiUri),
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Pay via UPI App'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DesignRadius.md),
+            // "Pay via UPI App" uses Android/iOS intent — hidden on web.
+            if (!kIsWeb) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _launchUpiApp(upiUri),
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Pay via UPI App'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(

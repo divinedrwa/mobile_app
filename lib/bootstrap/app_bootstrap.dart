@@ -1,8 +1,9 @@
-import 'dart:io';
+import '../core/utils/platform_info.dart' as platform_info;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -38,8 +39,12 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
       'Firebase.initializeApp OK projectId=${Firebase.app().options.projectId}',
     );
 
-    FirebaseMessaging.onBackgroundMessage(fb.firebaseMessagingBackgroundEntry);
-    fcmDiag('MAIN', 'FirebaseMessaging.onBackgroundMessage registered');
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(fb.firebaseMessagingBackgroundEntry);
+      fcmDiag('MAIN', 'FirebaseMessaging.onBackgroundMessage registered');
+    } else {
+      fcmDiag('MAIN', 'onBackgroundMessage skipped on web (handled by service worker)');
+    }
   } catch (e) {
     debugPrint('⚠️  Firebase not configured (app will work without push notifications)');
     debugPrint('   Error details: $e');
@@ -54,7 +59,7 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     StorageService.getString(AppConstants.keyApiBaseUrl),
   );
 
-  if (Platform.isAndroid) {
+  if (platform_info.isAndroid) {
     try {
       final android = await DeviceInfoPlugin().androidInfo;
       AppConstants.setAndroidEmulatorResolved(!android.isPhysicalDevice);
@@ -63,7 +68,7 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     }
     DioClient.reset();
   }
-  if (Platform.isIOS) {
+  if (platform_info.isIOS) {
     try {
       final ios = await DeviceInfoPlugin().iosInfo;
       AppConstants.setIosSimulatorResolved(!ios.isPhysicalDevice);
@@ -87,12 +92,14 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     fcmDiag('MAIN', 'NotificationService skipped (Firebase unavailable)');
   }
 
-  SystemChrome.setSystemUIOverlayStyle(AppTheme.systemUiOverlayStyleLight);
+  if (!kIsWeb) {
+    SystemChrome.setSystemUIOverlayStyle(AppTheme.systemUiOverlayStyleLight);
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   return DivineBootstrapResult(firebaseInitialized: firebaseInitialized);
 }

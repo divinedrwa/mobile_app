@@ -1,4 +1,5 @@
-import 'dart:io';
+import '../../../../core/utils/xfile_image_provider.dart';
+import '../../../../core/services/multipart_file_factory.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
@@ -395,7 +396,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   radius: 58,
                   backgroundColor: DesignColors.primary.withValues(alpha: 0.12),
                   backgroundImage: _selectedImage != null
-                      ? FileImage(File(_selectedImage!.path))
+                      ? xfileImageProvider(_selectedImage!)
                       : _networkAvatarProvider(user?.photoUrl),
                   child: _selectedImage == null &&
                           resolveServerFileUrl(user?.photoUrl) == null
@@ -534,10 +535,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (_selectedImage != null) {
         final formData = FormData.fromMap({
           ...jsonBody,
-          'image': await MultipartFile.fromFile(
-            _selectedImage!.path,
-            filename: _selectedImage!.name,
-          ),
+          'image': await createMultipartFile(_selectedImage!),
         });
         try {
           await DioClient.dio.patch(ApiEndpoints.profile, data: formData);

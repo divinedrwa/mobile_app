@@ -1,11 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
@@ -36,7 +37,7 @@ class ResidentShell extends ConsumerWidget {
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          SystemNavigator.pop();
+          if (!kIsWeb) SystemNavigator.pop();
         },
         child: const Scaffold(
           body: AdminDashboardScreen(),
@@ -46,6 +47,19 @@ class ResidentShell extends ConsumerWidget {
 
     // Admin with villa → 4 tabs; Resident → 3 tabs
     final profileIndex = isAdmin ? 3 : 2;
+    final wide = isWideScreen(context);
+
+    final pages = [
+      const HomeScreen(),
+      const CommunityScreen(),
+      if (isAdmin) const AdminDashboardScreen(),
+      const ProfileScreen(),
+    ];
+
+    final body = IndexedStack(
+      index: currentTab,
+      children: pages,
+    );
 
     return PopScope(
       canPop: false,
@@ -55,87 +69,169 @@ class ResidentShell extends ConsumerWidget {
           ref.read(currentTabProvider.notifier).state = 0;
           return;
         }
-        SystemNavigator.pop();
+        if (!kIsWeb) SystemNavigator.pop();
       },
       child: Scaffold(
         backgroundColor: context.surface.background,
-        body: IndexedStack(
-          index: currentTab,
-          children: [
-            const HomeScreen(),
-            const CommunityScreen(),
-            if (isAdmin) const AdminDashboardScreen(),
-            const ProfileScreen(),
-          ],
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          minimum: EdgeInsets.fromLTRB(
-            context.spacing.s16,
-            0,
-            context.spacing.s16,
-            context.spacing.s12,
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: context.surface.defaultSurface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: context.surface.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  context,
-                  ref,
-                  icon: Icons.home_outlined,
-                  selectedIcon: Icons.home_rounded,
-                  label: 'Home',
-                  index: 0,
-                  isSelected: currentTab == 0,
-                  badgeCount: unreadCount,
-                ),
-                _buildNavItem(
-                  context,
-                  ref,
-                  icon: Icons.people_outline_rounded,
-                  selectedIcon: Icons.people_rounded,
-                  label: 'Community',
-                  index: 1,
-                  isSelected: currentTab == 1,
-                ),
-                if (isAdmin)
-                  _buildNavItem(
+        body: wide
+            ? Row(
+                children: [
+                  _buildNavigationRail(
                     context,
                     ref,
-                    icon: Icons.admin_panel_settings_outlined,
-                    selectedIcon: Icons.admin_panel_settings_rounded,
-                    label: 'Admin',
-                    index: 2,
-                    isSelected: currentTab == 2,
+                    currentTab: currentTab,
+                    isAdmin: isAdmin,
+                    profileIndex: profileIndex,
+                    unreadCount: unreadCount,
                   ),
-                _buildNavItem(
-                  context,
-                  ref,
-                  icon: Icons.person_outline_rounded,
-                  selectedIcon: Icons.person_rounded,
-                  label: 'Profile',
-                  index: profileIndex,
-                  isSelected: currentTab == profileIndex,
+                  const VerticalDivider(width: 1, thickness: 1),
+                  Expanded(child: WebContentConstraint(child: body)),
+                ],
+              )
+            : body,
+        bottomNavigationBar: wide
+            ? null
+            : SafeArea(
+                top: false,
+                minimum: EdgeInsets.fromLTRB(
+                  context.spacing.s16,
+                  0,
+                  context.spacing.s16,
+                  context.spacing.s12,
                 ),
-              ],
-            ),
-          ),
-        ),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: context.surface.defaultSurface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: context.surface.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(
+                        context,
+                        ref,
+                        icon: Icons.home_outlined,
+                        selectedIcon: Icons.home_rounded,
+                        label: 'Home',
+                        index: 0,
+                        isSelected: currentTab == 0,
+                        badgeCount: unreadCount,
+                      ),
+                      _buildNavItem(
+                        context,
+                        ref,
+                        icon: Icons.people_outline_rounded,
+                        selectedIcon: Icons.people_rounded,
+                        label: 'Community',
+                        index: 1,
+                        isSelected: currentTab == 1,
+                      ),
+                      if (isAdmin)
+                        _buildNavItem(
+                          context,
+                          ref,
+                          icon: Icons.admin_panel_settings_outlined,
+                          selectedIcon: Icons.admin_panel_settings_rounded,
+                          label: 'Admin',
+                          index: 2,
+                          isSelected: currentTab == 2,
+                        ),
+                      _buildNavItem(
+                        context,
+                        ref,
+                        icon: Icons.person_outline_rounded,
+                        selectedIcon: Icons.person_rounded,
+                        label: 'Profile',
+                        index: profileIndex,
+                        isSelected: currentTab == profileIndex,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
       ),
+    );
+  }
+
+  Widget _buildNavigationRail(
+    BuildContext context,
+    WidgetRef ref, {
+    required int currentTab,
+    required bool isAdmin,
+    required int profileIndex,
+    required int unreadCount,
+  }) {
+    return NavigationRail(
+      selectedIndex: currentTab,
+      onDestinationSelected: (index) {
+        DesignHaptics.selection();
+        ref.read(currentTabProvider.notifier).state = index;
+        if (index == 0) {
+          requestResidentDataRefresh();
+        }
+      },
+      labelType: NavigationRailLabelType.all,
+      backgroundColor: context.surface.defaultSurface,
+      selectedIconTheme: IconThemeData(color: context.brand.primary),
+      unselectedIconTheme: IconThemeData(color: context.text.tertiary),
+      selectedLabelTextStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.brand.primary,
+          ),
+      unselectedLabelTextStyle:
+          Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.text.secondary,
+              ),
+      destinations: [
+        NavigationRailDestination(
+          icon: Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text(
+              unreadCount > 99 ? '99+' : '$unreadCount',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: DesignColors.error,
+            child: const Icon(Icons.home_outlined),
+          ),
+          selectedIcon: Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text(
+              unreadCount > 99 ? '99+' : '$unreadCount',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: DesignColors.error,
+            child: const Icon(Icons.home_rounded),
+          ),
+          label: const Text('Home'),
+        ),
+        const NavigationRailDestination(
+          icon: Icon(Icons.people_outline_rounded),
+          selectedIcon: Icon(Icons.people_rounded),
+          label: Text('Community'),
+        ),
+        if (isAdmin)
+          const NavigationRailDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            selectedIcon: Icon(Icons.admin_panel_settings_rounded),
+            label: Text('Admin'),
+          ),
+        const NavigationRailDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          selectedIcon: Icon(Icons.person_rounded),
+          label: Text('Profile'),
+        ),
+      ],
     );
   }
 

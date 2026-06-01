@@ -1,12 +1,8 @@
-import 'dart:io';
-
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../constants/app_constants.dart';
-import '../security/certificate_pins.dart';
+import 'dio_cert_pinning.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
@@ -53,17 +49,8 @@ class DioClient {
     ]);
 
     // Certificate pinning — activates when CertificatePins.enabled is true
-    // and at least one SPKI SHA-256 pin is configured.
-    if (CertificatePins.enabled && CertificatePins.sha256Pins.isNotEmpty) {
-      (_dio!.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
-        client.badCertificateCallback = (cert, host, port) {
-          final digest = sha256.convert(cert.der);
-          return CertificatePins.sha256Pins.any((pin) => pin == digest.toString());
-        };
-        return client;
-      };
-    }
+    // and at least one SPKI SHA-256 pin is configured. No-op on web.
+    configureCertPinning(_dio!);
 
     return _dio!;
   }

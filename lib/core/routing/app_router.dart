@@ -173,7 +173,7 @@ class AppRouter {
           path: '/',
           builder: (context, state) => const BrandedSplashScreen(),
         ),
-        
+
         // Login Screen
         GoRoute(
           path: '/login',

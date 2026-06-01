@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../errors/exceptions.dart';
 import '../../session/account_deactivated_handler.dart';
 import '../../session/session_expired_handler.dart';
@@ -45,7 +46,14 @@ class ErrorInterceptor extends Interceptor {
         break;
 
       case DioExceptionType.connectionError:
-        exception = NetworkException(message: 'No internet connection');
+        // On web, CORS failures surface as connection errors (XMLHttpRequest
+        // error). "No internet" is misleading — the browser is online but the
+        // server rejected the cross-origin request or is unreachable.
+        exception = NetworkException(
+          message: kIsWeb
+              ? 'Cannot reach server. Check the API URL or try again.'
+              : 'No internet connection',
+        );
         break;
 
       case DioExceptionType.badResponse:

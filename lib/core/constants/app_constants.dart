@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import '../utils/platform_info.dart' as platform_info;
 
 /// Application-wide constants
 class AppConstants {
@@ -60,7 +60,7 @@ class AppConstants {
 
   /// Call once at startup on Android after [DeviceInfoPlugin].androidInfo is available.
   static void setAndroidEmulatorResolved(bool isEmulator) {
-    if (!Platform.isAndroid) return;
+    if (!platform_info.isAndroid) return;
     _androidEmulatorResolved = isEmulator;
   }
 
@@ -75,7 +75,7 @@ class AppConstants {
 
   /// Call once at startup on iOS after [DeviceInfoPlugin].iosInfo is available.
   static void setIosSimulatorResolved(bool isSimulator) {
-    if (!Platform.isIOS) return;
+    if (!platform_info.isIOS) return;
     _iosSimulatorResolved = isSimulator;
   }
 
@@ -103,24 +103,24 @@ class AppConstants {
   }
 
   static bool get _isIosSimulator {
-    if (!Platform.isIOS) return false;
+    if (!platform_info.isIOS) return false;
     if (_iosSimulatorResolved != null) return _iosSimulatorResolved!;
-    final e = Platform.environment;
+    final e = platform_info.platformEnvironment;
     return e.containsKey('SIMULATOR_DEVICE_NAME') ||
         e.containsKey('SIMULATOR_HOST_HOME');
   }
 
   static bool get _isAndroidEmulator {
-    if (!Platform.isAndroid) return false;
+    if (!platform_info.isAndroid) return false;
     if (_androidEmulatorResolved != null) return _androidEmulatorResolved!;
     // Fallback: Platform.environment is generally empty in Flutter on Android,
     // so this rarely succeeds — prefer setAndroidEmulatorResolved() from main().
-    if (Platform.environment['ANDROID_EMULATOR'] == '1') return true;
-    final model = (Platform.environment['MODEL'] ?? '').toLowerCase();
+    if (platform_info.platformEnvironment['ANDROID_EMULATOR'] == '1') return true;
+    final model = (platform_info.platformEnvironment['MODEL'] ?? '').toLowerCase();
     if (model.contains('sdk_gphone') || model.contains('emulator')) {
       return true;
     }
-    final hw = (Platform.environment['RO_HARDWARE'] ?? '').toLowerCase();
+    final hw = (platform_info.platformEnvironment['RO_HARDWARE'] ?? '').toLowerCase();
     return hw.contains('generic') || hw.contains('goldfish');
   }
 
@@ -140,7 +140,7 @@ class AppConstants {
         _runtimeBaseUrlOverride!.isNotEmpty) {
       // If a URL saved on Android emulator is reused on iOS simulator,
       // auto-fallback to the iOS simulator host alias.
-      if (Platform.isIOS &&
+      if (platform_info.isIOS &&
           _isIosSimulator &&
           _isAndroidEmulatorOnlyHost(_runtimeBaseUrlOverride!)) {
         return simulatorIosApiBase;
@@ -148,7 +148,7 @@ class AppConstants {
       return _runtimeBaseUrlOverride!;
     }
 
-    if (Platform.isAndroid) {
+    if (platform_info.isAndroid) {
       if (_apiHostFromEnv.isNotEmpty) {
         return 'http://$_apiHostFromEnv:4000/api';
       }
@@ -157,7 +157,7 @@ class AppConstants {
       }
       return 'http://${defaultPhysicalLanHost}:4000/api';
     }
-    if (Platform.isIOS) {
+    if (platform_info.isIOS) {
       if (_apiHostFromEnv.isNotEmpty) {
         return 'http://$_apiHostFromEnv:4000/api';
       }

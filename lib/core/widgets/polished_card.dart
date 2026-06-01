@@ -31,13 +31,24 @@ class PolishedCard extends StatefulWidget {
 
 class _PolishedCardState extends State<PolishedCard> {
   bool _isPressed = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bgColor = widget.color ?? theme.cardColor;
+    final baseBg = widget.color ?? theme.cardColor;
+    final bgColor = _isHovered
+        ? Color.alphaBlend(
+            theme.primaryColor.withValues(alpha: 0.04), baseBg)
+        : baseBg;
 
-    return GestureDetector(
+    return MouseRegion(
+      cursor: widget.onTap != null
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
       onTapDown: widget.onTap != null ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: widget.onTap != null ? (_) {
         setState(() => _isPressed = false);
@@ -71,6 +82,7 @@ class _PolishedCardState extends State<PolishedCard> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

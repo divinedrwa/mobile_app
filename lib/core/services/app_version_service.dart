@@ -1,7 +1,7 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
-import 'package:in_app_update/in_app_update.dart';
+
+import '../utils/platform_info.dart' as platform_info;
+import 'in_app_update_wrapper.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../constants/api_endpoints.dart';
@@ -38,7 +38,7 @@ class AppVersionService {
   /// Fail-open: any error returns [UpdateStatus.upToDate].
   static Future<VersionCheckResult> check() async {
     // 1. Try Play Store native check on Android.
-    if (Platform.isAndroid) {
+    if (platform_info.isAndroid) {
       final playResult = await _checkPlayStore();
       if (playResult != null) return playResult;
     }
@@ -86,9 +86,9 @@ class AppVersionService {
   static Future<VersionCheckResult> _checkBackend() async {
     try {
       final String platform;
-      if (Platform.isAndroid) {
+      if (platform_info.isAndroid) {
         platform = 'ANDROID';
-      } else if (Platform.isIOS) {
+      } else if (platform_info.isIOS) {
         platform = 'IOS';
       } else {
         return VersionCheckResult.upToDate;

@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../../core/utils/platform_info.dart' as platform_info;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -103,7 +103,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
           pushEnabled: true,
         );
         final ok = await _requestPermissionAndSyncPush();
-        if (!ok && Platform.isAndroid) {
+        if (!ok && platform_info.isAndroid) {
           await NotificationPreferenceStorage.setPushNotificationsEnabled(false);
           await _ref.read(authRepositoryProvider).updateNotifyPush(false);
           await _ref.read(authProvider.notifier).refreshProfile();
@@ -125,7 +125,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
       state = state.copyWith(pushEnabled: enabled);
       if (enabled) {
         final ok = await _requestPermissionAndSyncPush();
-        if (!ok && Platform.isAndroid) {
+        if (!ok && platform_info.isAndroid) {
           await NotificationPreferenceStorage.setPushNotificationsEnabled(false);
           await _ref.read(authRepositoryProvider).updateNotifyPush(false);
           await _ref.read(authProvider.notifier).refreshProfile();
@@ -152,7 +152,7 @@ class NotificationSettingsNotifier extends StateNotifier<NotificationSettingsSta
 
   /// Returns true if push sync was allowed (permission granted on Android, or not Android).
   Future<bool> _requestPermissionAndSyncPush() async {
-    if (Platform.isAndroid) {
+    if (platform_info.isAndroid) {
       var st = await Permission.notification.status;
       if (!st.isGranted) {
         st = await Permission.notification.request();

@@ -1,14 +1,13 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
+
+import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -3776,10 +3775,7 @@ class _MaintenancePaymentScreenState
     Uint8List data, {
     required String filename,
   }) async {
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(data);
-    await Share.shareXFiles([XFile(file.path)], text: 'Maintenance report');
+    await sharePdfBytes(data, filename: filename);
   }
 
   // ───────────────────────── Outstanding tab ─────────────────────────

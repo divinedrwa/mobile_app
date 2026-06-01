@@ -35,15 +35,25 @@ class PolishedButton extends StatefulWidget {
 
 class _PolishedButtonState extends State<PolishedButton> {
   bool _isPressed = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final buttonColor = widget.color ?? theme.primaryColor;
+    final baseColor = widget.color ?? theme.primaryColor;
+    final buttonColor = _isHovered
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.1), baseColor)
+        : baseColor;
     final textColor = widget.textColor ?? DesignColors.surface;
     final isEnabled = widget.onPressed != null && !widget.isLoading;
 
-    return GestureDetector(
+    return MouseRegion(
+      cursor: isEnabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
       onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: isEnabled ? (_) {
         setState(() => _isPressed = false);
@@ -110,7 +120,8 @@ class _PolishedButtonState extends State<PolishedButton> {
           begin: 1,
           end: DesignAnimations.scalePressed,
           duration: DesignAnimations.durationInteraction,
-        );
+        ),
+    );
   }
 }
 
@@ -139,6 +150,7 @@ class PolishedOutlinedButton extends StatefulWidget {
 
 class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
   bool _isPressed = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +158,13 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
     final buttonColor = widget.color ?? theme.primaryColor;
     final isEnabled = widget.onPressed != null && !widget.isLoading;
 
-    return GestureDetector(
+    return MouseRegion(
+      cursor: isEnabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
       onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: isEnabled ? (_) {
         setState(() => _isPressed = false);
@@ -162,7 +180,11 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
         child: Container(
           width: widget.isFullWidth ? double.infinity : null,
           decoration: BoxDecoration(
-            color: _isPressed ? buttonColor.withValues(alpha: 0.1) : Colors.transparent,
+            color: _isPressed
+                ? buttonColor.withValues(alpha: 0.1)
+                : _isHovered
+                    ? buttonColor.withValues(alpha: 0.05)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isEnabled ? buttonColor : DesignColors.textTertiary,
@@ -213,6 +235,7 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

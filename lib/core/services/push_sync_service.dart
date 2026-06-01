@@ -51,7 +51,8 @@ class PushSyncService {
       return;
     }
 
-    final platform = (info['deviceType'] == 'IOS') ? 'IOS' : 'ANDROID';
+    final dt = info['deviceType'] ?? 'ANDROID';
+    final platform = dt == 'IOS' ? 'IOS' : dt == 'WEB' ? 'WEB' : 'ANDROID';
 
     try {
       fcmDiag(

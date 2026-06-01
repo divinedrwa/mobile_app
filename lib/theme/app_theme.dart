@@ -244,6 +244,27 @@ class AppTheme {
         color: brand.primary,
         linearTrackColor: surface.border,
       ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.dragged) ||
+              states.contains(WidgetState.scrolledUnder)) {
+            return true;
+          }
+          return null; // system default on mobile
+        }),
+        thickness: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.dragged)) {
+            return 8;
+          }
+          return 4;
+        }),
+        radius: const Radius.circular(4),
+        thumbColor: WidgetStateProperty.all(
+          text.tertiary.withValues(alpha: 0.5),
+        ),
+      ),
     );
   }
 }

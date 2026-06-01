@@ -8,7 +8,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../data/models/daily_help_model.dart';
 import '../../data/providers/daily_help_provider.dart';
-import 'dart:io';
+import '../../../../core/utils/xfile_image_provider.dart';
 
 class AddDailyHelpScreen extends ConsumerStatefulWidget {
   final DailyHelpModel? helper;
@@ -70,7 +70,7 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
                     radius: 50,
                     backgroundColor: DesignColors.primary.withValues(alpha: 0.1),
                     backgroundImage: _selectedImage != null
-                        ? FileImage(File(_selectedImage!.path))
+                        ? xfileImageProvider(_selectedImage!)
                         : null,
                     child: _selectedImage == null
                         ? const Icon(
