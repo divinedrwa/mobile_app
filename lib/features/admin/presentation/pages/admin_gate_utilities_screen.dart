@@ -39,6 +39,16 @@ class _AdminGateUtilitiesScreenState
 
   Future<void> _toggleWater(bool turnOn) async {
     if (_selectedGateId == null || _togglingWater) return;
+
+    final confirmed = await _confirm(
+      title: turnOn ? 'Turn water supply ON?' : 'Turn water supply OFF?',
+      message:
+          'This will send a notification to all residents in the society.',
+      confirmLabel: turnOn ? 'Yes, turn ON' : 'Yes, turn OFF',
+      confirmColor: turnOn ? _kWaterBlue : const Color(0xFFEF4444),
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() => _togglingWater = true);
     try {
       await ref
@@ -58,6 +68,16 @@ class _AdminGateUtilitiesScreenState
 
   Future<void> _logGarbageEntry() async {
     if (_selectedGateId == null || _loggingGarbage) return;
+
+    final confirmed = await _confirm(
+      title: 'Log garbage pickup arrival?',
+      message:
+          'This will notify all residents that the garbage collector is at the gate.',
+      confirmLabel: 'Yes, notify',
+      confirmColor: _kGarbageGreen,
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() => _loggingGarbage = true);
     try {
       await ref
@@ -75,6 +95,15 @@ class _AdminGateUtilitiesScreenState
 
   Future<void> _markGarbageExit(String eventId) async {
     if (_markingExit) return;
+
+    final confirmed = await _confirm(
+      title: 'Log garbage collector departure?',
+      message: 'This marks that the garbage collector has left the gate.',
+      confirmLabel: 'Yes, log exit',
+      confirmColor: const Color(0xFFEF4444),
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() => _markingExit = true);
     try {
       await ref
@@ -98,6 +127,33 @@ class _AdminGateUtilitiesScreenState
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignRadius.md)),
     ));
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required Color confirmColor,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
   }
 
   @override
@@ -276,7 +332,7 @@ class _AdminGateUtilitiesScreenState
                 .cast<Map<String, dynamic>>()
                 .where((s) => s['gateId']?.toString() == _selectedGateId);
             final isOn =
-                gateStatus.isNotEmpty && gateStatus.first['isOn'] == true;
+                gateStatus.isNotEmpty && gateStatus.first['status'] == 'ON';
 
             return _waterCard(isOn);
           },
@@ -380,7 +436,7 @@ class _AdminGateUtilitiesScreenState
                     color: _kWaterBlue,
                     isActive: isOn,
                     isLoading: _togglingWater,
-                    onTap: isOn ? null : () => _toggleWater(true),
+                    onTap: () => _toggleWater(true),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -391,7 +447,7 @@ class _AdminGateUtilitiesScreenState
                     color: const Color(0xFFEF4444),
                     isActive: !isOn,
                     isLoading: _togglingWater,
-                    onTap: !isOn ? null : () => _toggleWater(false),
+                    onTap: () => _toggleWater(false),
                   ),
                 ),
               ],
@@ -621,108 +677,122 @@ class _AdminGateUtilitiesScreenState
             ),
           ),
 
-          // IN / OUT action buttons — both always visible
+          // Single contextual action (like guard flow)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _garbageActionBtn(
-                    label: 'Log Entry',
-                    subtitle: 'IN',
+            child: isInside && eventId != null
+                ? _garbageSingleAction(
+                    label: 'Log departure',
+                    subtitle:
+                        'Collector is inside. Tap when pickup is complete.',
+                    icon: Icons.logout_rounded,
+                    color: DesignColors.error,
+                    isLoading: _markingExit,
+                    onTap: () => _markGarbageExit(eventId),
+                  )
+                : _garbageSingleAction(
+                    label: 'Log arrival',
+                    subtitle:
+                        'Sends an instant notice so residents know pickup is at the gate.',
                     icon: Icons.login_rounded,
                     color: _kGarbageGreen,
-                    isActive: !isInside,
                     isLoading: _loggingGarbage,
-                    onTap: isInside ? null : _logGarbageEntry,
+                    onTap: _logGarbageEntry,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _garbageActionBtn(
-                    label: 'Mark Exit',
-                    subtitle: 'OUT',
-                    icon: Icons.logout_rounded,
-                    color: const Color(0xFFF59E0B),
-                    isActive: isInside,
-                    isLoading: _markingExit,
-                    onTap: isInside && eventId != null
-                        ? () => _markGarbageExit(eventId)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _garbageActionBtn({
+  /// Full-width contextual action button (modeled after guard flow).
+  Widget _garbageSingleAction({
     required String label,
     required String subtitle,
     required IconData icon,
     required Color color,
-    required bool isActive,
     required bool isLoading,
-    required VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
-    final enabled = onTap != null && !isLoading;
-    final showLoading = isLoading && isActive;
-
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isActive ? color : Colors.transparent,
-          borderRadius: BorderRadius.circular(DesignRadius.lg),
-          border: Border.all(
-            color: isActive
-                ? color
-                : (enabled ? DesignColors.borderLight : DesignColors.divider),
-            width: isActive ? 1.5 : 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(DesignRadius.lg),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(DesignRadius.lg),
+            color: color.withValues(alpha: 0.08),
+            border: Border.all(color: color.withValues(alpha: 0.35)),
           ),
-        ),
-        child: Column(
-          children: [
-            if (showLoading)
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: isActive ? Colors.white : color,
-                ),
-              )
-            else
-              Icon(icon,
-                  size: 22,
-                  color: isActive
-                      ? Colors.white
-                      : (enabled ? color : DesignColors.textTertiary)),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: DesignTypography.labelSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isActive
-                    ? Colors.white
-                    : (enabled ? DesignColors.textPrimary : DesignColors.textTertiary),
-              ),
-            ),
-            Text(
-              subtitle,
-              style: DesignTypography.captionSmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: isActive
-                    ? Colors.white70
-                    : (enabled ? color : DesignColors.textTertiary),
-              ),
-            ),
-          ],
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: isLoading
+                ? Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: color,
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.14),
+                          border:
+                              Border.all(color: color.withValues(alpha: 0.25)),
+                        ),
+                        child: Icon(icon, color: color, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              style: DesignTypography.label.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: color,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: DesignTypography.captionSmall.copyWith(
+                                color: DesignColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius:
+                              BorderRadius.circular(DesignRadius.md),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
