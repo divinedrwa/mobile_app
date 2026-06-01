@@ -52,16 +52,6 @@ class AppVersionService {
     await InAppUpdate.performImmediateUpdate();
   }
 
-  /// Start the native Play Store flexible update flow (downloads in background).
-  static Future<void> startFlexibleUpdate() async {
-    await InAppUpdate.startFlexibleUpdate();
-  }
-
-  /// Complete a flexible update (installs the downloaded update).
-  static Future<void> completeFlexibleUpdate() async {
-    await InAppUpdate.completeFlexibleUpdate();
-  }
-
   /// Check Google Play Store for available updates via Play Core API.
   /// Returns null if no update available or Play Store check fails
   /// (e.g. sideloaded APK, Play Store not installed).

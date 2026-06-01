@@ -119,19 +119,10 @@ Future<void> _tryNativeImmediateUpdate(
   }
 }
 
-/// Handle the "Update" button press.
+/// Handle the "Update" button press — always opens the store listing.
+/// Native flexible update is unreliable (download must finish before install),
+/// so we skip it and send the user straight to the store.
 Future<void> _handleUpdate(VersionCheckResult result) async {
-  // If we have Play Store native info, try flexible update.
-  if (result.playStoreUpdateInfo != null) {
-    try {
-      await AppVersionService.startFlexibleUpdate();
-      await AppVersionService.completeFlexibleUpdate();
-      return;
-    } catch (e) {
-      debugPrint('[AppUpdateDialog] Native flexible update failed: $e');
-    }
-  }
-  // Fallback: open store listing.
   await _openStore(result.storeUrl);
 }
 
