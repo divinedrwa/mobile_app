@@ -5,7 +5,6 @@ import '../../../../shared/models/user_model.dart';
 import '../../data/auth_repository.dart' show AuthRepository, RefreshResult;
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
-import '../../../../core/utils/app_restart.dart';
 
 /// Auth state
 class AuthState {
@@ -38,8 +37,6 @@ class AuthState {
 /// Auth state notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
-  // Retained for future provider invalidation needs; restartApp() handles
-  // cleanup for now but individual invalidation may return.
   // ignore: unused_field
   final Ref ref;
   bool _loggingOut = false;
@@ -163,21 +160,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Clears session, storage, Dio — then restarts the entire app.
-  /// The splash screen picks up from persisted preferences (preferred
-  /// society, etc.) and routes to /login or /society-select.
+  /// Clears session, storage, Dio and resets auth state.
+  /// The router's auth-state listener detects `isAuthenticated → false`
+  /// and redirects to /login (or /society-select) automatically.
+  /// No `restartApp()` — that caused a double splash (the router redirect
+  /// navigated to /login, then the full widget-tree rebuild showed the
+  /// splash screen a second time).
   Future<void> logout() async {
     if (_loggingOut) return;
     _loggingOut = true;
     try {
       await _authRepository.logout();
     } catch (_) {
-      // Best-effort — proceed to restart even if cleanup partially fails.
+      // Best-effort — proceed even if cleanup partially fails.
     }
     state = const AuthState();
     _loggingOut = false;
-    // Full app restart — destroys all providers, router, and caches.
-    restartApp();
   }
 
   void clearError() {
