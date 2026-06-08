@@ -34,6 +34,17 @@ class NotFoundException extends AppException {
       : super(statusCode: 404);
 }
 
+/// Rate limit exceeded (HTTP 429)
+/// Thrown when too many requests are made in a short period
+class RateLimitException extends AppException {
+  final int retryAfter; // Seconds to wait before retrying
+
+  RateLimitException({
+    super.message = 'Too many requests. Please try again in a moment.',
+    this.retryAfter = 60,
+  }) : super(statusCode: 429);
+}
+
 class ServerException extends AppException {
   ServerException({
     super.message = 'Server error occurred',

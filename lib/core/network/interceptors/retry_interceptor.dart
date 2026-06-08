@@ -4,9 +4,10 @@ import 'dart:math' show min;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-/// Retries failed requests on transient server errors (502, 503, 504) with
-/// exponential backoff. Only GET requests are retried — mutating methods
-/// (POST, PUT, PATCH, DELETE) are left alone to avoid duplicate side effects.
+/// Retries failed requests on transient server errors (502, 503, 504) and
+/// rate limiting (429) with exponential backoff. Only GET requests are retried
+/// for 5xx errors — mutating methods (POST, PUT, PATCH, DELETE) are left alone
+/// to avoid duplicate side effects. All methods retry once on 429 with proper backoff.
 class RetryInterceptor extends Interceptor {
   RetryInterceptor({this.maxRetries = 2});
 
@@ -19,6 +20,38 @@ class RetryInterceptor extends Interceptor {
     final statusCode = err.response?.statusCode;
     final isGet = err.requestOptions.method.toUpperCase() == 'GET';
 
+    // Handle rate limiting (429) - retry ALL methods ONCE with proper backoff
+    if (statusCode == 429) {
+      final attempt = (err.requestOptions.extra['_retryAttempt'] as int?) ?? 0;
+      if (attempt >= 1) {
+        // Only retry once for rate limiting to avoid prolonged delays
+        return handler.next(err);
+      }
+
+      // Read Retry-After header from server (in seconds)
+      final retryAfterHeader = err.response?.headers.value('retry-after');
+      final retryAfterSeconds = int.tryParse(retryAfterHeader ?? '60') ?? 60;
+      // Cap at 2 minutes for UX reasons
+      final delayMs = min(retryAfterSeconds * 1000, 120000);
+
+      if (kDebugMode) {
+        debugPrint('[RetryInterceptor] 429 Rate Limited on ${err.requestOptions.path} '
+            '— retrying once in ${delayMs}ms');
+      }
+
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
+
+      try {
+        err.requestOptions.extra['_retryAttempt'] = attempt + 1;
+        final dio = Dio()..options.baseUrl = err.requestOptions.baseUrl;
+        final response = await dio.fetch(err.requestOptions);
+        return handler.resolve(response);
+      } on DioException catch (e) {
+        return handler.next(e);
+      }
+    }
+
+    // Handle transient server errors (502, 503, 504) - GET only
     final isTimeout = err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.receiveTimeout;
     if (!isGet || (!isTimeout && (statusCode == null || !_retriableStatuses.contains(statusCode)))) {

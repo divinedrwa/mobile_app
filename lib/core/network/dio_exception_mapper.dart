@@ -9,6 +9,20 @@ AppException mapDioException(DioException e, String fallbackMessage) {
   if (inner is AppException) {
     return inner;
   }
+
+  // Handle rate limiting (HTTP 429)
+  if (e.response?.statusCode == 429) {
+    final retryAfterHeader = e.response?.headers.value('retry-after');
+    final retryAfter = int.tryParse(retryAfterHeader ?? '60') ?? 60;
+    return RateLimitException(
+      message: parseApiErrorMessage(
+        e.response?.data,
+        'Too many requests. Please wait $retryAfter seconds and try again.',
+      ),
+      retryAfter: retryAfter,
+    );
+  }
+
   return ServerException(
     message: parseApiErrorMessage(e.response?.data, fallbackMessage),
     data: e.response?.data is Map ? e.response?.data : null,
