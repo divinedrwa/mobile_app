@@ -127,6 +127,22 @@ class MaintenanceRepository {
     }
   }
 
+  /// Downloads an individual payment receipt PDF for a billing cycle.
+  Future<List<int>> downloadPaymentReceiptPdf({
+    required String cycleId,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        ApiEndpoints.paymentReceiptPdf,
+        queryParameters: {'cycleId': cycleId},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? const [];
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to download payment receipt');
+    }
+  }
+
   Future<List<int>> downloadMaintenanceReportPdf({
     required int month,
     required int year,

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
@@ -80,13 +83,56 @@ class PaymentHistoryScreen extends ConsumerWidget {
   }
 }
 
-class _PaymentHistoryCard extends StatelessWidget {
+class _PaymentHistoryCard extends ConsumerStatefulWidget {
   const _PaymentHistoryCard({required this.record});
 
   final dynamic record;
 
   @override
+  ConsumerState<_PaymentHistoryCard> createState() =>
+      _PaymentHistoryCardState();
+}
+
+class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
+  bool _downloading = false;
+
+  bool get _canDownloadReceipt {
+    final status = widget.record.status.toUpperCase();
+    final hasCycleId =
+        widget.record.cycleId != null && widget.record.cycleId.isNotEmpty;
+    return hasCycleId && (status == 'PAID' || status == 'PARTIAL');
+  }
+
+  Future<void> _downloadReceipt() async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+    try {
+      final repo = ref.read(maintenanceRepositoryProvider);
+      final bytes =
+          await repo.downloadPaymentReceiptPdf(cycleId: widget.record.cycleId);
+      if (!mounted) return;
+      final monthLabel = DateFormat('MMM_yyyy')
+          .format(DateTime(widget.record.year, widget.record.month));
+      await sharePdfBytes(
+        Uint8List.fromList(bytes),
+        filename: 'receipt_$monthLabel.pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userFacingMessage(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final record = widget.record;
     final paidDate = record.paidAt ?? record.dueDate;
     final monthLabel =
         DateFormat('MMM yyyy').format(DateTime(record.year, record.month));
@@ -114,65 +160,101 @@ class _PaymentHistoryCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: context.spacing.s12),
       child: EnterprisePanel(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(context.radius.md),
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.receipt_long_rounded, color: statusColor),
-            ),
-            SizedBox(width: context.spacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Maintenance - $monthLabel',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: context.text.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  SizedBox(height: context.spacing.s4),
-                  Text(
-                    record.paidAt != null
-                        ? DateFormat('dd MMM yyyy').format(paidDate)
-                        : status == 'AUTO_SETTLED'
-                            ? 'Adjusted from previous credit'
-                            : 'Remaining due INR ${record.remainingDue.toStringAsFixed(0)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.text.secondary,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: context.spacing.s12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'INR ${trailingAmount.toStringAsFixed(0)}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: context.text.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius:
+                        BorderRadius.circular(context.radius.md),
+                  ),
+                  alignment: Alignment.center,
+                  child:
+                      Icon(Icons.receipt_long_rounded, color: statusColor),
                 ),
-                SizedBox(height: context.spacing.s4),
-                _BillingStatusChip(
-                  label: statusLabel,
-                  color: statusColor,
-                  backgroundColor: statusColor.withValues(alpha: 0.12),
-                  borderColor: statusColor.withValues(alpha: 0.24),
+                SizedBox(width: context.spacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Maintenance - $monthLabel',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(
+                              color: context.text.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      SizedBox(height: context.spacing.s4),
+                      Text(
+                        record.paidAt != null
+                            ? DateFormat('dd MMM yyyy').format(paidDate)
+                            : status == 'AUTO_SETTLED'
+                                ? 'Adjusted from previous credit'
+                                : 'Remaining due INR ${record.remainingDue.toStringAsFixed(0)}',
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: context.text.secondary,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: context.spacing.s12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'INR ${trailingAmount.toStringAsFixed(0)}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(
+                            color: context.text.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    SizedBox(height: context.spacing.s4),
+                    _BillingStatusChip(
+                      label: statusLabel,
+                      color: statusColor,
+                      backgroundColor: statusColor.withValues(alpha: 0.12),
+                      borderColor: statusColor.withValues(alpha: 0.24),
+                    ),
+                  ],
                 ),
               ],
             ),
+            if (_canDownloadReceipt) ...[
+              SizedBox(height: context.spacing.s12),
+              const Divider(height: 1),
+              SizedBox(height: context.spacing.s8),
+              SizedBox(
+                width: double.infinity,
+                height: 36,
+                child: TextButton.icon(
+                  onPressed: _downloading ? null : _downloadReceipt,
+                  icon: _downloading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_rounded, size: 18),
+                  label: Text(
+                    _downloading ? 'Downloading...' : 'Download Receipt',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

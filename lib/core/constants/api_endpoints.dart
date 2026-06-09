@@ -63,6 +63,9 @@ class ApiEndpoints {
   /// `POST /v1/payments/create-order`
   static const String billingCreateOrder = '/v1/payments/create-order';
 
+  /// Payment receipt PDF (`GET /v1/payments/receipt.pdf?cycleId=`).
+  static const String paymentReceiptPdf = '/v1/payments/receipt.pdf';
+
   /// Razorpay order status poll (`GET`) — reconciles after SDK success.
   static String razorpayStatus(String orderId) => '/v1/payments/razorpay/status/$orderId';
 

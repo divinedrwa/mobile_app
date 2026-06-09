@@ -1,10 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/utils/pdf_share.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
@@ -30,6 +34,35 @@ class CycleDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
+  bool _downloadingReceipt = false;
+
+  Future<void> _downloadReceipt(MaintenanceDueModel cycle) async {
+    if (_downloadingReceipt) return;
+    setState(() => _downloadingReceipt = true);
+    try {
+      final repo = ref.read(maintenanceRepositoryProvider);
+      final bytes =
+          await repo.downloadPaymentReceiptPdf(cycleId: cycle.cycleId);
+      if (!mounted) return;
+      final monthLabel =
+          DateFormat('MMM_yyyy').format(DateTime(cycle.year, cycle.month));
+      await sharePdfBytes(
+        Uint8List.fromList(bytes),
+        filename: 'receipt_$monthLabel.pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userFacingMessage(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingReceipt = false);
+    }
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(pendingMaintenanceProvider);
     ref.invalidate(maintenanceHistoryProvider);
@@ -245,6 +278,40 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         // Per-cycle status badge row to give residents a quick read on
         // partial vs full coverage without re-reading the breakdown.
         _statusFootnote(cycle, isPaid: isPaid, isPartial: isPartial, overdue: overdue),
+        // Download receipt — shown for paid/partial cycles with a billing cycle ID.
+        if ((isPaid || isPartial) && cycle.cycleId.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _downloadingReceipt
+                  ? null
+                  : () => _downloadReceipt(cycle),
+              icon: _downloadingReceipt
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_rounded, size: 18),
+              label: Text(
+                _downloadingReceipt
+                    ? 'Downloading...'
+                    : 'Download Receipt',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: DesignColors.primary,
+                side: const BorderSide(color: DesignColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignRadius.md),
+                ),
+              ),
+            ),
+          ),
+        ],
         // Pay via UPI button — shown only when there's an outstanding balance
         // and the society has UPI configured.
         if (!isPaid && remaining > 0) ...[
