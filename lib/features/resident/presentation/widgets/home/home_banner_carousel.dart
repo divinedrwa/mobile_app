@@ -48,7 +48,7 @@ class _BannerCarouselWidgetState extends State<_BannerCarouselWidget> {
     _pageController = PageController();
     if (widget.banners.length > 1) {
       _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (!mounted) return;
+        if (!mounted || !_pageController.hasClients) return;
         final next = (_currentPage + 1) % widget.banners.length;
         _pageController.animateToPage(
           next,

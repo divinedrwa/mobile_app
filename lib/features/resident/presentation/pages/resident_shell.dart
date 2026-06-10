@@ -56,8 +56,13 @@ class ResidentShell extends ConsumerWidget {
       const ProfileScreen(),
     ];
 
+    // Clamp to valid range — if an admin's role flips mid-session (auth
+    // refresh, logout transition, etc.) the page list shrinks but the
+    // global currentTabProvider may still hold a stale high index.
+    final safeIndex = currentTab.clamp(0, pages.length - 1);
+
     final body = IndexedStack(
-      index: currentTab,
+      index: safeIndex,
       children: pages,
     );
 
@@ -65,7 +70,7 @@ class ResidentShell extends ConsumerWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (currentTab != 0) {
+        if (safeIndex != 0) {
           ref.read(currentTabProvider.notifier).state = 0;
           return;
         }
@@ -79,7 +84,7 @@ class ResidentShell extends ConsumerWidget {
                   _buildNavigationRail(
                     context,
                     ref,
-                    currentTab: currentTab,
+                    currentTab: safeIndex,
                     isAdmin: isAdmin,
                     profileIndex: profileIndex,
                     unreadCount: unreadCount,
@@ -124,7 +129,7 @@ class ResidentShell extends ConsumerWidget {
                         selectedIcon: Icons.home_rounded,
                         label: 'Home',
                         index: 0,
-                        isSelected: currentTab == 0,
+                        isSelected: safeIndex == 0,
                         badgeCount: unreadCount,
                       ),
                       _buildNavItem(
@@ -134,7 +139,7 @@ class ResidentShell extends ConsumerWidget {
                         selectedIcon: Icons.people_rounded,
                         label: 'Community',
                         index: 1,
-                        isSelected: currentTab == 1,
+                        isSelected: safeIndex == 1,
                       ),
                       if (isAdmin)
                         _buildNavItem(
@@ -144,7 +149,7 @@ class ResidentShell extends ConsumerWidget {
                           selectedIcon: Icons.admin_panel_settings_rounded,
                           label: 'Admin',
                           index: 2,
-                          isSelected: currentTab == 2,
+                          isSelected: safeIndex == 2,
                         ),
                       _buildNavItem(
                         context,
@@ -153,7 +158,7 @@ class ResidentShell extends ConsumerWidget {
                         selectedIcon: Icons.person_rounded,
                         label: 'Profile',
                         index: profileIndex,
-                        isSelected: currentTab == profileIndex,
+                        isSelected: safeIndex == profileIndex,
                       ),
                     ],
                   ),

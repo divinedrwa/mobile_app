@@ -236,11 +236,7 @@ class HomeHeader extends StatelessWidget {
                           const SizedBox(height: 8),
                           KeyedSubtree(
                             key: ValueKey<String>(society),
-                            child: GestureDetector(
-                              onTap: () {
-                                // Route TBD — society detail / switch
-                              },
-                              child: Container(
+                            child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 8),
@@ -302,14 +298,8 @@ class HomeHeader extends StatelessWidget {
                                         ],
                                       ),
                                     ),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 18,
-                                      color: context.text.tertiary,
-                                    ),
                                   ],
                                 ),
-                              ),
                             )
                                 .animate()
                                 .fadeIn(

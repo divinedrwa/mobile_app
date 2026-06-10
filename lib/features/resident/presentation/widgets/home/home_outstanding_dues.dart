@@ -8,6 +8,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/maintenance_due_model.dart';
+import 'home_shared.dart';
 
 class HomeOutstandingDues extends StatelessWidget {
   const HomeOutstandingDues({
@@ -128,7 +129,9 @@ class HomeOutstandingDues extends StatelessWidget {
         void openPayments() =>
             context.push('/resident/maintenance/dues');
 
-        return Material(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: kHomeSectionGap),
+          child: Material(
           color: context.surface.defaultSurface,
           borderRadius: DesignRadius.borderLG,
           elevation: 0,
@@ -263,6 +266,7 @@ class HomeOutstandingDues extends StatelessWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );

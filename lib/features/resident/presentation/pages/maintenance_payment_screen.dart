@@ -70,7 +70,9 @@ String? _pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
 
 /// Maintenance Financial Dashboard Screen
 class MaintenancePaymentScreen extends ConsumerStatefulWidget {
-  const MaintenancePaymentScreen({super.key});
+  const MaintenancePaymentScreen({super.key, this.initialTab});
+
+  final int? initialTab;
 
   @override
   ConsumerState<MaintenancePaymentScreen> createState() =>
@@ -339,9 +341,15 @@ class _MaintenancePaymentScreenState
       });
     }
 
+    final initTab = (widget.initialTab != null &&
+            widget.initialTab! >= 0 &&
+            widget.initialTab! < tabs.length)
+        ? widget.initialTab!
+        : 0;
+
     return DefaultTabController(
       length: tabs.length,
-      initialIndex: 0,
+      initialIndex: initTab,
       child: Scaffold(
         backgroundColor: DesignColors.background,
         appBar: AppBar(

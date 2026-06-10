@@ -182,7 +182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ).animateSection(6),
                     const SizedBox(height: kHomeSectionGap),
 
-                    // 7: Maintenance card
+                    // 7: Maintenance card (personal status + navigation)
                     if (!isBillingExcluded) ...[
                       const HomeMaintenanceCard()
                           .animateSection(7),

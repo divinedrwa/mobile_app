@@ -34,7 +34,7 @@ class HomeImportantNotices extends StatelessWidget {
         const SizedBox(height: 6),
         noticesState.when(
           loading: () => ShimmerWrap(
-            child: ShimmerBox(height: 120, borderRadius: DesignRadius.xl),
+            child: ShimmerBox(height: 56, borderRadius: DesignRadius.xl),
           ),
           error: (_, _) => HomeEmptyBlock(
             message: 'Could not load notices',
@@ -108,124 +108,91 @@ class HomeImportantNotices extends StatelessWidget {
     required Color accentColor,
     required bool showUrgentBadge,
   }) {
-    const titleSize = 14.0;
-    const bodySize = 12.5;
-    const bodyLines = 3;
-
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 4,
-            decoration: BoxDecoration(color: accentColor),
-          ),
+          Container(width: 3.5, color: accentColor),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 11),
+              child: Row(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(9),
-                        decoration: BoxDecoration(
-                          color:
-                              accentColor.withValues(alpha: 0.11),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.campaign_outlined,
-                          size: 20,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.campaign_outlined,
+                        size: 17, color: accentColor),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
                           children: [
                             if (showUrgentBadge) ...[
                               Container(
                                 padding:
                                     const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
+                                  horizontal: 6,
+                                  vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFEBEE),
                                   borderRadius:
-                                      BorderRadius.circular(6),
+                                      BorderRadius.circular(4),
                                 ),
                                 child: const Text(
                                   'URGENT',
                                   style: TextStyle(
-                                    fontSize: 9.5,
+                                    fontSize: 8.5,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
+                                    letterSpacing: 0.5,
                                     color: DesignColors.error,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(width: 6),
                             ],
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: titleSize,
-                                fontWeight: FontWeight.w800,
-                                color: DesignColors.textPrimary,
-                                letterSpacing: -0.28,
-                                height: 1.22,
+                            Expanded(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: DesignColors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.schedule_rounded,
-                                  size: 14,
-                                  color: context.text.secondary
-                                      .withValues(alpha: 0.88),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  date,
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.text.secondary
-                                        .withValues(alpha: 0.92),
-                                  ),
-                                ),
-                              ],
                             ),
                           ],
                         ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: DesignColors.textTertiary
-                            .withValues(alpha: 0.75),
-                        size: 22,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    content,
-                    maxLines: bodyLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: bodySize,
-                      fontWeight: FontWeight.w500,
-                      color: context.text.secondary
-                          .withValues(alpha: 0.95),
-                      height: 1.38,
+                        const SizedBox(height: 3),
+                        Text(
+                          date,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: context.text.secondary
+                                .withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: DesignColors.textTertiary
+                        .withValues(alpha: 0.65),
+                    size: 20,
                   ),
                 ],
               ),

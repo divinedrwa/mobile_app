@@ -329,7 +329,11 @@ class AppRouter {
             ),
             GoRoute(
               path: 'maintenance-payment',
-              builder: (context, state) => const MaintenancePaymentScreen(),
+              builder: (context, state) {
+                final tab = int.tryParse(
+                    state.uri.queryParameters['tab'] ?? '');
+                return MaintenancePaymentScreen(initialTab: tab);
+              },
             ),
             GoRoute(
               path: 'amenities',
