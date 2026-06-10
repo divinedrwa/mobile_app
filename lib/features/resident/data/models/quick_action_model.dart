@@ -17,17 +17,16 @@ class QuickAction {
   });
 }
 
-// —— Home grid (2×3). Order is product-defined; no “More” tile for now. ——
-// To restore More later: append [moreQuickAction] here and move shortcuts into
-// [residentQuickActionsOverflow], then open the sheet from the More tile.
+// —— Home grid (2×5). 10 items displayed; “More” tile at position 9. ——
 
 final residentHomeQuickActionsGrid = [
+  // Row 1
   const QuickAction(
     id: 'visitor_history',
-    label: 'Visitor history',
-    icon: Icons.history_outlined,
+    label: 'Visitor entry',
+    icon: Icons.person_add_alt_1_rounded,
     color: Color(0xFF00897B),
-    route: '/resident/visitor-history',
+    route: '/resident/pre-approve-visitor',
   ),
   const QuickAction(
     id: 'complaint',
@@ -44,25 +43,40 @@ final residentHomeQuickActionsGrid = [
     route: '/resident/daily-help',
   ),
   const QuickAction(
+    id: 'amenities',
+    label: 'Amenity booking',
+    icon: Icons.pool,
+    color: Color(0xFF43A047),
+    route: '/resident/amenities',
+  ),
+  const QuickAction(
     id: 'sos',
     label: 'SOS',
     icon: Icons.emergency,
     color: Color(0xFFE53935),
     route: '/resident/sos',
   ),
+  // Row 2
   const QuickAction(
-    id: 'amenities',
-    label: 'Amenities',
-    icon: Icons.pool,
-    color: Color(0xFF43A047),
-    route: '/resident/amenities',
+    id: 'parcels',
+    label: 'Parcel',
+    icon: Icons.inventory_2_outlined,
+    color: Color(0xFF2563EB),
+    route: '/resident/parcels',
   ),
   const QuickAction(
     id: 'amenity_bookings',
-    label: 'Amenity bookings',
+    label: 'Facility booking',
     icon: Icons.event_note_outlined,
     color: Color(0xFF7E57C2),
     route: '/resident/amenity-bookings',
+  ),
+  const QuickAction(
+    id: 'community',
+    label: 'Society notices',
+    icon: Icons.campaign_outlined,
+    color: Color(0xFFFF6D00),
+    route: '',
   ),
   const QuickAction(
     id: 'special_projects',
@@ -71,16 +85,9 @@ final residentHomeQuickActionsGrid = [
     color: Color(0xFF7C3AED),
     route: '/resident/special-projects',
   ),
-  const QuickAction(
-    id: 'parcels',
-    label: 'Parcels',
-    icon: Icons.inventory_2_outlined,
-    color: Color(0xFF2563EB),
-    route: '/resident/parcels',
-  ),
 ];
 
-/// Reserved for a future “More” sheet — not on the home grid until you add [moreQuickAction] back.
+/// Overflow actions shown in the “More” bottom sheet.
 final residentQuickActionsOverflow = [
   const QuickAction(
     id: 'maintenance_expenses',
@@ -88,13 +95,6 @@ final residentQuickActionsOverflow = [
     icon: Icons.bar_chart_rounded,
     color: Color(0xFF1565C0),
     route: '/resident/maintenance-payment',
-  ),
-  const QuickAction(
-    id: 'community',
-    label: 'Community & notices',
-    icon: Icons.campaign_outlined,
-    color: Color(0xFFFF6D00),
-    route: '',
   ),
   const QuickAction(
     id: 'utilities',
