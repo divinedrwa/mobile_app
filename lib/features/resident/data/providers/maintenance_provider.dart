@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/utils/provider_cache.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../models/billing_cycle_current_model.dart';
+import '../models/expense_breakdown_model.dart';
 import '../models/maintenance_due_model.dart';
 import '../../../../shared/utils/resident_capabilities.dart';
 import '../repositories/maintenance_repository.dart';
+import '../utils/payment_mode.dart';
 import 'dashboard_provider.dart';
 
 final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
@@ -18,8 +20,35 @@ void invalidateMaintenancePaymentProviders(WidgetRef ref) {
   ref.invalidate(outstandingDuesProvider);
   ref.invalidate(maintenanceHistoryProvider);
   ref.invalidate(residentBillingCycleProvider);
+  ref.invalidate(residentExpenseBreakdownProvider);
   ref.invalidate(residentDashboardProvider);
 }
+
+/// Per-cycle insight for the cycle-detail screen: the per-home expense split
+/// (same as the hub card) plus the resident's actual payment mode — both from
+/// a single dashboard fetch for the cycle's month.
+class CycleInsight {
+  const CycleInsight({required this.breakdown, this.paymentMode});
+  final ExpenseBreakdown breakdown;
+  final String? paymentMode;
+}
+
+final cycleInsightProvider = FutureProvider.autoDispose
+    .family<CycleInsight, ({int month, int year})>((ref, key) async {
+  ref.watch(authProvider.select((s) => s.user?.id));
+  cacheFor(ref, const Duration(minutes: 2));
+  final user = ref.watch(authProvider.select((s) => s.user));
+  if (!userCanViewResidentBilling(user)) {
+    return CycleInsight(breakdown: ExpenseBreakdown.empty());
+  }
+  final dash = await ref
+      .watch(maintenanceRepositoryProvider)
+      .getFinancialDashboard(month: key.month, year: key.year);
+  return CycleInsight(
+    breakdown: ExpenseBreakdown.fromDashboard(dash, allowFallback: false),
+    paymentMode: paymentModeForVilla(dash, user?.villaId),
+  );
+});
 
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -75,6 +104,77 @@ final residentBillingCycleProvider =
             sid,
             billingCycleId: billingCycleId,
           );
+    });
+
+/// A billing cycle the resident picked for the "Where your money goes" card.
+/// `null` (the default) means "auto" — the current/latest cycle with data.
+class ExpenseCycleSelection {
+  const ExpenseCycleSelection({
+    required this.financialYearId,
+    required this.billingCycleId,
+    required this.month,
+    required this.year,
+  });
+
+  final String financialYearId;
+  final String billingCycleId;
+  final int month;
+  final int year;
+}
+
+/// Holds the resident's chosen cycle for the expense card. Resets to null
+/// (auto) on logout-driven rebuilds since it's autoDispose-adjacent state.
+final selectedExpenseCycleProvider =
+    StateProvider<ExpenseCycleSelection?>((ref) => null);
+
+/// Society expense split + paying-member count for the "Where your money goes"
+/// card, scoped to the selected cycle (or the current/latest cycle by default).
+/// Reads `monthlyExpenseBreakdown` / `yearlyBreakdown` for amounts and
+/// `residentsSummary.totalResidents` for the per-member divisor.
+final residentExpenseBreakdownProvider =
+    FutureProvider.autoDispose<ExpenseBreakdown>((ref) async {
+      ref.watch(authProvider.select((s) => s.user?.id));
+      cacheFor(ref, const Duration(minutes: 2));
+      final user = ref.watch(authProvider.select((s) => s.user));
+      if (!userCanViewResidentBilling(user)) return ExpenseBreakdown.empty();
+
+      final repo = ref.watch(maintenanceRepositoryProvider);
+      final selection = ref.watch(selectedExpenseCycleProvider);
+
+      if (selection != null) {
+        // Explicit cycle: show exactly that cycle's data (no month fallback).
+        final dashboard = await repo.getFinancialDashboard(
+          month: selection.month,
+          year: selection.year,
+          billingCycleId: selection.billingCycleId,
+        );
+        return ExpenseBreakdown.fromDashboard(dashboard, allowFallback: false)
+            .copyWith(billingCycleId: selection.billingCycleId);
+      }
+
+      // Default: current month, falling back to the latest month with data.
+      final now = DateTime.now();
+      final dashboard =
+          await repo.getFinancialDashboard(month: now.month, year: now.year);
+      final initial = ExpenseBreakdown.fromDashboard(dashboard);
+
+      // The member-count divisor (residentsSummary) is for the *requested*
+      // month. The current month often has no billing cycle yet — so its count
+      // is every villa (exclusions not applied) while the expenses we show came
+      // from an earlier month via fallback. Re-fetch that earlier month so the
+      // divisor reflects ITS cycle (which excludes excluded homes) and lines up
+      // with the expenses being displayed.
+      if (initial.hasData &&
+          (initial.month != now.month || initial.year != now.year)) {
+        final aligned = await repo.getFinancialDashboard(
+          month: initial.month,
+          year: initial.year,
+        );
+        final alignedBreakdown =
+            ExpenseBreakdown.fromDashboard(aligned, allowFallback: false);
+        if (alignedBreakdown.hasData) return alignedBreakdown;
+      }
+      return initial;
     });
 
 /// Financial years for billing period selection (admin + resident).

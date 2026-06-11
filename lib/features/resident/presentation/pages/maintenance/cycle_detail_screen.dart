@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +7,14 @@ import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/utils/pdf_share.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
+import '../../../data/models/expense_breakdown_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
+import '../../../data/services/maintenance_invoice_pdf.dart';
+import '../../../data/utils/payment_mode.dart';
 import '../../widgets/maintenance/breakdown_row.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 
@@ -40,16 +42,16 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
     if (_downloadingReceipt) return;
     setState(() => _downloadingReceipt = true);
     try {
-      final repo = ref.read(maintenanceRepositoryProvider);
-      final bytes =
-          await repo.downloadPaymentReceiptPdf(cycleId: cycle.cycleId);
+      final bytes = await buildInvoiceForPayment(
+        repo: ref.read(maintenanceRepositoryProvider),
+        user: ref.read(authProvider).user,
+        m: cycle,
+        generatedAt: DateTime.now(),
+      );
       if (!mounted) return;
       final monthLabel =
           DateFormat('MMM_yyyy').format(DateTime(cycle.year, cycle.month));
-      await sharePdfBytes(
-        Uint8List.fromList(bytes),
-        filename: 'receipt_$monthLabel.pdf',
-      );
+      await sharePdfBytes(bytes, filename: 'receipt_$monthLabel.pdf');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,6 +175,15 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         (cycle.dueDate.isBefore(DateTime.now()) && !isPaid);
     final remaining = isPaid ? 0.0 : cycle.remainingDue;
 
+    // Actual payment mode + per-home expense split for this cycle (one fetch).
+    final insight = ref
+        .watch(cycleInsightProvider((month: cycle.month, year: cycle.year)))
+        .valueOrNull;
+    final paymentMode = prettyPaymentMode(insight?.paymentMode);
+    final paidRowLabel = (cycle.cashPaidAmount > 0 && paymentMode != null)
+        ? 'Paid via $paymentMode'
+        : 'Amount paid';
+
     final kind = isPaid
         ? MaintenanceStatusKind.paid
         : (overdue ? MaintenanceStatusKind.overdue : MaintenanceStatusKind.due);
@@ -235,12 +246,12 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
               ),
               const Divider(height: 1, color: DesignColors.divider),
               BreakdownRow(
-                label: 'Cash paid',
+                label: paidRowLabel,
                 value: inr.format(cycle.cashPaidAmount),
                 valueColor: cycle.cashPaidAmount > 0
                     ? DesignColors.success
                     : DesignColors.textPrimary,
-                icon: Icons.payments_outlined,
+                icon: _paymentModeIcon(insight?.paymentMode),
               ),
               if (cycle.creditApplied > 0) ...[
                 const Divider(height: 1, color: DesignColors.divider),
@@ -274,6 +285,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
             ],
           ),
         ),
+        if (insight != null && insight.breakdown.hasData) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _buildBreakup(insight.breakdown, inr),
+        ],
         const SizedBox(height: AppSpacing.lg),
         // Per-cycle status badge row to give residents a quick read on
         // partial vs full coverage without re-reading the breakdown.
@@ -402,6 +417,100 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         ref.invalidate(maintenanceHistoryProvider);
       }
     });
+  }
+
+  IconData _paymentModeIcon(String? raw) {
+    switch ((raw ?? '').toUpperCase()) {
+      case 'UPI':
+      case 'PHONEPE':
+      case 'ONLINE':
+      case 'RAZORPAY':
+        return Icons.account_balance_wallet_outlined;
+      case 'BANK_TRANSFER':
+        return Icons.account_balance_outlined;
+      case 'CHEQUE':
+        return Icons.description_outlined;
+      default:
+        return Icons.payments_outlined;
+    }
+  }
+
+  /// Compact "where your money goes" breakup for this cycle (per-home share of
+  /// each society expense), mirroring the hub card.
+  Widget _buildBreakup(ExpenseBreakdown b, NumberFormat inr) {
+    final members = b.memberCount;
+    final hasSplit = members > 0;
+    const palette = <Color>[
+      Color(0xFF22C55E),
+      Color(0xFF3B82F6),
+      Color(0xFFF59E0B),
+      Color(0xFF8B5CF6),
+      Color(0xFFEC4899),
+      Color(0xFF14B8A6),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: DesignColors.surface,
+        borderRadius: BorderRadius.circular(DesignRadius.lg),
+        border: Border.all(color: DesignColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Where your money goes',
+            style: DesignTypography.bodyMedium.copyWith(
+              color: DesignColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            hasSplit
+                ? 'Your per-home share of society expenses this cycle (each expense ÷ $members homes).'
+                : 'Society expenses this cycle.',
+            style: DesignTypography.caption
+                .copyWith(color: DesignColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          for (var i = 0; i < b.categories.length; i++) ...[
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                      color: palette[i % palette.length],
+                      shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    b.categories[i].name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DesignTypography.bodySmall
+                        .copyWith(color: DesignColors.textSecondary),
+                  ),
+                ),
+                Text(
+                  inr.format(hasSplit
+                      ? b.categories[i].perMember(members)
+                      : b.categories[i].amount),
+                  style: DesignTypography.bodySmall.copyWith(
+                    color: DesignColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            if (i < b.categories.length - 1)
+              const SizedBox(height: AppSpacing.sm),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _statusFootnote(
