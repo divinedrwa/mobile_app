@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/maintenance_provider.dart';
@@ -223,6 +224,9 @@ class _MaintenancePaymentScreenState
     ref.invalidate(maintenanceHistoryProvider);
     ref.invalidate(billingFinancialYearsProvider);
     ref.invalidate(outstandingDuesProvider);
+    // Year review & Shortfall read these per-calendar-year; invalidate the whole
+    // family so a failed breakdown can recover via pull-to-refresh.
+    ref.invalidate(yearlyBreakdownForYearProvider);
     final fy = ref.read(maintenanceDashboardFilterProvider).financialYearId;
     if (fy != null && fy.isNotEmpty) {
       ref.invalidate(billingCyclesForFinancialYearProvider(fy));
@@ -351,12 +355,12 @@ class _MaintenancePaymentScreenState
       length: tabs.length,
       initialIndex: initTab,
       child: Scaffold(
-        backgroundColor: DesignColors.background,
+        backgroundColor: context.surface.background,
         appBar: AppBar(
           elevation: 0,
           scrolledUnderElevation: 0.5,
-          backgroundColor: DesignColors.surface,
-          surfaceTintColor: DesignColors.surface,
+          backgroundColor: context.surface.defaultSurface,
+          surfaceTintColor: context.surface.defaultSurface,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -370,7 +374,7 @@ class _MaintenancePaymentScreenState
               Text(
                 periodLabel,
                 style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -384,7 +388,7 @@ class _MaintenancePaymentScreenState
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             labelColor: DesignColors.primary,
-            unselectedLabelColor: DesignColors.textSecondary,
+            unselectedLabelColor: context.text.secondary,
             indicatorColor: DesignColors.primary,
             indicatorWeight: 3,
             labelStyle: const TextStyle(
@@ -433,7 +437,7 @@ class _MaintenancePaymentScreenState
                               textAlign: TextAlign.center,
                               style: DesignTypography.bodySmall.copyWith(
                                 height: 1.4,
-                                color: DesignColors.textPrimary,
+                                color: context.text.primary,
                               ),
                             ),
                             const SizedBox(height: 18),
@@ -584,7 +588,7 @@ class _MaintenancePaymentScreenState
                         'Choose a billing month from the dropdown above to view maintenance data for that period.',
                         textAlign: TextAlign.center,
                         style: DesignTypography.bodySmall.copyWith(
-                          color: DesignColors.textSecondary,
+                          color: context.text.secondary,
                           height: 1.4,
                         ),
                       ),
@@ -632,7 +636,7 @@ class _MaintenancePaymentScreenState
                           Text(
                             'No billing cycles in this year',
                             style: DesignTypography.headingM.copyWith(
-                              color: DesignColors.textPrimary,
+                              color: context.text.primary,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -640,7 +644,7 @@ class _MaintenancePaymentScreenState
                             'Payment records will appear once billing cycles are created for the selected financial year.',
                             textAlign: TextAlign.center,
                             style: DesignTypography.bodySmall.copyWith(
-                              color: DesignColors.textSecondary,
+                              color: context.text.secondary,
                               height: 1.4,
                             ),
                           ),
@@ -653,7 +657,6 @@ class _MaintenancePaymentScreenState
                 _buildPaymentHistoryTab(
                     context,
                     paymentHistory,
-                    overviewStrip,
                     filter,
                 ),
 
@@ -697,7 +700,7 @@ class _MaintenancePaymentScreenState
                       children: [
                         if (!hideFilterBar) ...[
                           Material(
-                            color: DesignColors.surface,
+                            color: context.surface.defaultSurface,
                             elevation: 0,
                             child: _buildStickyFilterBar(
                                 ctx2, filter, root,
@@ -707,7 +710,7 @@ class _MaintenancePaymentScreenState
                             height: 1,
                             thickness: 1,
                             color:
-                                DesignColors.borderLight.withValues(alpha: 0.6),
+                                context.surface.border.withValues(alpha: 0.6),
                           ),
                         ],
                         Expanded(child: TabBarView(children: pages)),
@@ -730,19 +733,19 @@ class _MaintenancePaymentScreenState
     return [
       IconButton(
         tooltip: 'Refresh',
-        icon: const Icon(Icons.refresh_rounded, color: DesignColors.textSecondary),
+        icon: Icon(Icons.refresh_rounded, color: context.text.secondary),
         onPressed: _pullRefreshMaintenance,
       ),
       IconButton(
         tooltip: 'Download PDF',
-        icon: const Icon(Icons.picture_as_pdf_outlined, color: DesignColors.textSecondary),
+        icon: Icon(Icons.picture_as_pdf_outlined, color: context.text.secondary),
         onPressed: dashboard == null
             ? null
             : () => _downloadPdfReport(context, dashboard, filter),
       ),
       IconButton(
         tooltip: 'Analytics',
-        icon: const Icon(Icons.insights_outlined, color: DesignColors.textSecondary),
+        icon: Icon(Icons.insights_outlined, color: context.text.secondary),
         onPressed: dashboard == null
             ? null
             : () => _openFinancialOverview(context, dashboard),
@@ -758,12 +761,12 @@ class _MaintenancePaymentScreenState
   }) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: DesignColors.borderLight),
+      borderSide: BorderSide(color: context.surface.border),
     );
     final fyAsync = ref.watch(billingFinancialYearsProvider);
 
     return Material(
-      color: DesignColors.surface,
+      color: context.surface.defaultSurface,
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -820,7 +823,7 @@ class _MaintenancePaymentScreenState
               'Financial year has not been created yet. Records will appear here once your society admin sets up billing.',
               textAlign: TextAlign.center,
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
                 height: 1.4,
               ),
             ),
@@ -834,19 +837,19 @@ class _MaintenancePaymentScreenState
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: DesignColors.surfaceSoft,
+        color: context.surface.elevated,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: DesignColors.borderLight),
+        border: Border.all(color: context.surface.border),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: DesignColors.textSecondary, size: 20),
+          Icon(Icons.info_outline, color: context.text.secondary, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'No records available. Financial year has not been created yet.',
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
               ),
             ),
           ),
@@ -888,16 +891,16 @@ class _MaintenancePaymentScreenState
               ? filter.financialYearId
               : null,
           style: DesignTypography.bodyMedium.copyWith(
-            color: DesignColors.textPrimary,
+            color: context.text.primary,
             fontWeight: FontWeight.w600,
           ),
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: DesignColors.surfaceSoft,
+            fillColor: context.surface.elevated,
             labelText: 'Financial year',
             labelStyle: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
             ),
             border: border,
             enabledBorder: border,
@@ -913,7 +916,7 @@ class _MaintenancePaymentScreenState
               vertical: 10,
             ),
           ),
-          dropdownColor: DesignColors.surface,
+          dropdownColor: context.surface.defaultSurface,
           items: financialYears
               .map(
                 (fy) => DropdownMenuItem(
@@ -941,7 +944,7 @@ class _MaintenancePaymentScreenState
             Text(
               'Choose a financial year to load billing months.',
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
                 fontSize: 11,
               ),
             )
@@ -970,7 +973,7 @@ class _MaintenancePaymentScreenState
                   return Text(
                     'No billing cycles exist for this financial year yet.',
                     style: DesignTypography.bodySmall.copyWith(
-                      color: DesignColors.textSecondary,
+                      color: context.text.secondary,
                       fontSize: 11,
                     ),
                   );
@@ -986,16 +989,16 @@ class _MaintenancePaymentScreenState
                   key: ValueKey('maint-cycle-$selectedId'),
                   initialValue: selectedId,
                   style: DesignTypography.bodyMedium.copyWith(
-                    color: DesignColors.textPrimary,
+                    color: context.text.primary,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     isDense: true,
                     filled: true,
-                    fillColor: DesignColors.surfaceSoft,
+                    fillColor: context.surface.elevated,
                     labelText: 'Billing month (cycle)',
                     labelStyle: DesignTypography.labelSmall.copyWith(
-                      color: DesignColors.textSecondary,
+                      color: context.text.secondary,
                     ),
                     border: border,
                     enabledBorder: border,
@@ -1011,7 +1014,7 @@ class _MaintenancePaymentScreenState
                       vertical: 10,
                     ),
                   ),
-                  dropdownColor: DesignColors.surface,
+                  dropdownColor: context.surface.defaultSurface,
                   items: cycles
                       .map(
                         (c) => DropdownMenuItem(
@@ -1080,9 +1083,9 @@ class _MaintenancePaymentScreenState
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         decoration: BoxDecoration(
-          color: DesignColors.surface,
+          color: context.surface.defaultSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DesignColors.borderLight),
+          border: Border.all(color: context.surface.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -1109,7 +1112,7 @@ class _MaintenancePaymentScreenState
                 Text(
                   'Collection',
                   style: DesignTypography.labelSmall.copyWith(
-                    color: DesignColors.textSecondary,
+                    color: context.text.secondary,
                     fontSize: 11,
                   ),
                 ),
@@ -1121,7 +1124,7 @@ class _MaintenancePaymentScreenState
                       minHeight: 6,
                       value: (collectionRate / 100).clamp(0.0, 1.0),
                       color: rateColor,
-                      backgroundColor: DesignColors.surfaceSoft,
+                      backgroundColor: context.surface.elevated,
                     ),
                   ),
                 ),
@@ -1149,7 +1152,7 @@ class _MaintenancePaymentScreenState
           Text(
             label,
             style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -1174,7 +1177,6 @@ class _MaintenancePaymentScreenState
   Widget _buildPaymentHistoryTab(
     BuildContext context,
     List<Map<String, dynamic>> history,
-    Widget overviewStrip,
     MaintenanceDashboardFilter filter,
   ) {
     // Sort by year desc, month desc
@@ -1378,7 +1380,7 @@ class _MaintenancePaymentScreenState
                   'Cycle-wise breakdown',
                   style: DesignTypography.label.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: DesignColors.textPrimary,
+                    color: context.text.primary,
                   ),
                 ),
                 const Spacer(),
@@ -1420,12 +1422,12 @@ class _MaintenancePaymentScreenState
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: DesignColors.surface,
+                  color: context.surface.defaultSurface,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: DesignColors.borderLight),
+                  border: Border.all(color: context.surface.border),
                   boxShadow: [
                     BoxShadow(
-                      color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                      color: context.text.primary.withValues(alpha: 0.03),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -1497,7 +1499,7 @@ class _MaintenancePaymentScreenState
               ? null
               : Border(
                   bottom: BorderSide(
-                    color: DesignColors.borderLight.withValues(alpha: 0.6),
+                    color: context.surface.border.withValues(alpha: 0.6),
                   ),
                 ),
         ),
@@ -1537,7 +1539,7 @@ class _MaintenancePaymentScreenState
                       Text(
                         'Expected ${inr.format(expected)}',
                         style: DesignTypography.labelSmall.copyWith(
-                          color: DesignColors.textTertiary,
+                          color: context.text.tertiary,
                           fontWeight: FontWeight.w500,
                           fontSize: 10.5,
                         ),
@@ -1671,6 +1673,54 @@ class _MaintenancePaymentScreenState
     );
   }
 
+  /// Error + retry state for the FY-scoped tabs (Year review, Shortfall) when a
+  /// `yearlyBreakdownForYearProvider` fetch fails. Wrapped in a scrollable so
+  /// pull-to-refresh works; Retry re-runs every year breakdown.
+  Widget _yearDataErrorState(Object error) {
+    return _wrapTabWithRefresh(
+      ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 360,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: DesignColors.error),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load cycle data',
+                      style: DesignTypography.headingM
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      userFacingMessage(error, 'Could not load year breakdown.'),
+                      textAlign: TextAlign.center,
+                      style: DesignTypography.bodySmall
+                          .copyWith(color: context.text.secondary),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () =>
+                          ref.invalidate(yearlyBreakdownForYearProvider),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildYearReviewTab(
     BuildContext context,
     MaintenanceDashboardFilter filter,
@@ -1734,6 +1784,7 @@ class _MaintenancePaymentScreenState
         // into a single lookup keyed by "YYYY-MM".
         final breakdownByKey = <String, Map<String, dynamic>>{};
         bool allYearsLoaded = true;
+        Object? yearLoadError;
         for (final yr in neededYears) {
           final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
           yrAsync.whenData((rows) {
@@ -1745,7 +1796,17 @@ class _MaintenancePaymentScreenState
               }
             }
           });
-          if (yrAsync is! AsyncData) allYearsLoaded = false;
+          if (yrAsync is AsyncError) {
+            yearLoadError ??= yrAsync.error;
+          } else if (yrAsync is! AsyncData) {
+            allYearsLoaded = false;
+          }
+        }
+
+        // A failed year breakdown surfaces an error with retry — otherwise the
+        // loading guard below would spin forever (it never sees AsyncData).
+        if (yearLoadError != null) {
+          return _yearDataErrorState(yearLoadError);
         }
 
         // Show loading if year breakdowns haven't arrived yet.
@@ -1776,11 +1837,17 @@ class _MaintenancePaymentScreenState
             paidC = (breakdown['paidCount'] as num?)?.toInt() ?? 0;
             unpaidC = (breakdown['unpaidCount'] as num?)?.toInt() ?? 0;
           } else {
-            mExp = cycleAmount;
-            mColl = (breakdown?['totalCollected'] as num?)?.toDouble() ?? 0;
-            mExpense = (breakdown?['totalExpense'] as num?)?.toDouble() ?? 0;
             paidC = (breakdown?['paidCount'] as num?)?.toInt() ?? 0;
             unpaidC = (breakdown?['unpaidCount'] as num?)?.toInt() ?? 0;
+            // `cycleAmount` is the per-villa charge, not a society-wide total —
+            // scale it by the billed-villa count so Expected and the collection
+            // rate stay on the same scale as Collected. When the count is
+            // unknown, leave Expected at 0 rather than show a per-villa figure
+            // against society-wide collections (which inflates the rate).
+            final villaCount = paidC + unpaidC;
+            mExp = villaCount > 0 ? cycleAmount * villaCount : 0;
+            mColl = (breakdown?['totalCollected'] as num?)?.toDouble() ?? 0;
+            mExpense = (breakdown?['totalExpense'] as num?)?.toDouble() ?? 0;
           }
 
           // Extract expense breakdown by category
@@ -1975,22 +2042,22 @@ class _MaintenancePaymentScreenState
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: DesignColors.surface,
+                      color: context.surface.defaultSurface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: DesignColors.borderLight),
+                      border: Border.all(color: context.surface.border),
                     ),
                     child: Column(
                       children: [
                         Icon(
                           Icons.event_busy_rounded,
                           size: 40,
-                          color: DesignColors.textSecondary.withValues(alpha: 0.4),
+                          color: context.text.secondary.withValues(alpha: 0.4),
                         ),
                         const SizedBox(height: 10),
                         Text(
                           'No billing cycles in this year',
                           style: DesignTypography.bodySmall.copyWith(
-                            color: DesignColors.textSecondary,
+                            color: context.text.secondary,
                           ),
                         ),
                       ],
@@ -2031,12 +2098,12 @@ class _MaintenancePaymentScreenState
                       ),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: DesignColors.surface,
+                          color: context.surface.defaultSurface,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isCurrentMonth
                                 ? DesignColors.primary.withValues(alpha: 0.5)
-                                : DesignColors.borderLight,
+                                : context.surface.border,
                             width: isCurrentMonth ? 1.5 : 1,
                           ),
                         ),
@@ -2078,7 +2145,7 @@ class _MaintenancePaymentScreenState
                                   Text(
                                     '$paidC paid · $unpaidC unpaid',
                                     style: DesignTypography.labelSmall.copyWith(
-                                      color: DesignColors.textSecondary,
+                                      color: context.text.secondary,
                                       fontSize: 10,
                                     ),
                                   ),
@@ -2086,7 +2153,7 @@ class _MaintenancePaymentScreenState
                                   Icon(
                                     Icons.chevron_right_rounded,
                                     size: 16,
-                                    color: DesignColors.textSecondary
+                                    color: context.text.secondary
                                         .withValues(alpha: 0.5),
                                   ),
                                 ],
@@ -2114,7 +2181,7 @@ class _MaintenancePaymentScreenState
                                         minHeight: 5,
                                         value: (mRate / 100).clamp(0.0, 1.0),
                                         color: mRateColor,
-                                        backgroundColor: DesignColors.surfaceSoft,
+                                        backgroundColor: context.surface.elevated,
                                       ),
                                     ),
                                   ),
@@ -2181,7 +2248,7 @@ class _MaintenancePaymentScreenState
           Text(
             label,
             style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -2277,7 +2344,7 @@ class _MaintenancePaymentScreenState
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      backgroundColor: DesignColors.surface,
+      backgroundColor: context.surface.defaultSurface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -2318,7 +2385,7 @@ class _MaintenancePaymentScreenState
                         Text(
                           monthLabel,
                           style: DesignTypography.labelSmall.copyWith(
-                            color: DesignColors.textSecondary,
+                            color: context.text.secondary,
                           ),
                         ),
                       ],
@@ -2352,14 +2419,14 @@ class _MaintenancePaymentScreenState
                         Icon(
                           Icons.receipt_long_rounded,
                           size: 40,
-                          color: DesignColors.textSecondary
+                          color: context.text.secondary
                               .withValues(alpha: 0.3),
                         ),
                         const SizedBox(height: 10),
                         Text(
                           'No expense data for this month',
                           style: DesignTypography.bodySmall.copyWith(
-                            color: DesignColors.textSecondary,
+                            color: context.text.secondary,
                           ),
                         ),
                       ],
@@ -2442,7 +2509,7 @@ class _MaintenancePaymentScreenState
                                     style: DesignTypography.labelSmall.copyWith(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 10,
-                                      color: DesignColors.textSecondary,
+                                      color: context.text.secondary,
                                     ),
                                   ),
                                 ],
@@ -2476,11 +2543,11 @@ class _MaintenancePaymentScreenState
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: DesignColors.surfaceSoft,
+                color: context.surface.elevated,
                 shape: BoxShape.circle,
-                border: Border.all(color: DesignColors.borderLight),
+                border: Border.all(color: context.surface.border),
               ),
-              child: Icon(icon, size: 40, color: DesignColors.textSecondary),
+              child: Icon(icon, size: 40, color: context.text.secondary),
             ),
             const SizedBox(height: 18),
             Text(
@@ -2495,7 +2562,7 @@ class _MaintenancePaymentScreenState
               subtitle,
               textAlign: TextAlign.center,
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
               ),
             ),
           ],
@@ -2561,10 +2628,11 @@ class _MaintenancePaymentScreenState
     });
 
     return _wrapTabWithRefresh(
-      ListView(
-        padding: const EdgeInsets.only(bottom: 32),
+      CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: [
+        slivers: [
+          SliverList(
+            delegate: SliverChildListDelegate([
           overviewStrip,
 
           // ── Your ledger ──
@@ -2573,12 +2641,12 @@ class _MaintenancePaymentScreenState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: DesignColors.surface,
+                color: context.surface.defaultSurface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: DesignColors.borderLight),
+                border: Border.all(color: context.surface.border),
                 boxShadow: [
                   BoxShadow(
-                    color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                    color: context.text.primary.withValues(alpha: 0.03),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -2679,6 +2747,45 @@ class _MaintenancePaymentScreenState
                       ],
                     ),
                   ),
+                  // Pay CTA — hands off to the vetted dues/pay flow (which
+                  // computes the authoritative amount) rather than paying a
+                  // possibly-stale dashboard figure directly.
+                  if (remaining > 0.005)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            context
+                                .push('/resident/maintenance/dues')
+                                .then((_) {
+                              if (!mounted) return;
+                              ref.invalidate(maintenanceDashboardProvider);
+                              ref.invalidate(pendingMaintenanceProvider);
+                              ref.invalidate(outstandingDuesProvider);
+                            });
+                          },
+                          icon: const Icon(Icons.currency_rupee_rounded,
+                              size: 18),
+                          label: Text(
+                            'Pay ${inr.format(remaining)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: DesignColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -2712,12 +2819,12 @@ class _MaintenancePaymentScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: DesignColors.surface,
+                        color: context.surface.defaultSurface,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: DesignColors.borderLight),
+                        border: Border.all(color: context.surface.border),
                         boxShadow: [
                           BoxShadow(
-                            color: DesignColors.textPrimary
+                            color: context.text.primary
                                 .withValues(alpha: 0.03),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
@@ -2762,7 +2869,7 @@ class _MaintenancePaymentScreenState
                                         'Total advance collected',
                                         style: DesignTypography.labelSmall
                                             .copyWith(
-                                          color: DesignColors.textSecondary,
+                                          color: context.text.secondary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -2819,7 +2926,7 @@ class _MaintenancePaymentScreenState
                               decoration: BoxDecoration(
                                 border: Border(
                                   bottom: BorderSide(
-                                    color: DesignColors.borderLight
+                                    color: context.surface.border
                                         .withValues(alpha: 0.5),
                                   ),
                                 ),
@@ -2870,7 +2977,7 @@ class _MaintenancePaymentScreenState
                                           style: DesignTypography.labelSmall
                                               .copyWith(
                                             color:
-                                                DesignColors.textTertiary,
+                                                context.text.tertiary,
                                             fontWeight: FontWeight.w500,
                                             fontSize: 10.5,
                                           ),
@@ -2929,6 +3036,16 @@ class _MaintenancePaymentScreenState
               });
               if (entries.isEmpty) return const SizedBox.shrink();
               entries.sort((a, b) => b.value.compareTo(a.value));
+              // Reconcile the printed total with the rows shown: if the
+              // backend total exceeds the categorized sum, surface the
+              // remainder as "Other" so the column always adds up.
+              final entriesSum =
+                  entries.fold<double>(0, (s, e) => s + e.value);
+              final displayTotal =
+                  totalExpense > entriesSum ? totalExpense : entriesSum;
+              if (displayTotal - entriesSum > 0.5) {
+                entries.add(MapEntry('Other', displayTotal - entriesSum));
+              }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2937,9 +3054,9 @@ class _MaintenancePaymentScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: DesignColors.surface,
+                        color: context.surface.defaultSurface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: DesignColors.borderLight),
+                        border: Border.all(color: context.surface.border),
                       ),
                       child: Column(
                         children: [
@@ -2953,7 +3070,7 @@ class _MaintenancePaymentScreenState
                                     width: 8,
                                     height: 8,
                                     decoration: BoxDecoration(
-                                      color: DesignColors.textSecondary
+                                      color: context.text.secondary
                                           .withValues(alpha: 0.5),
                                       shape: BoxShape.circle,
                                     ),
@@ -2986,7 +3103,7 @@ class _MaintenancePaymentScreenState
                                 height: 1,
                                 indent: 16,
                                 endIndent: 16,
-                                color: DesignColors.borderLight
+                                color: context.surface.border
                                     .withValues(alpha: 0.6),
                               ),
                           ],
@@ -3010,7 +3127,7 @@ class _MaintenancePaymentScreenState
                                 ),
                                 const Spacer(),
                                 Text(
-                                  inr.format(totalExpense),
+                                  inr.format(displayTotal),
                                   style: DesignTypography.bodySmall.copyWith(
                                     fontWeight: FontWeight.w800,
                                     color: const Color(0xFF546E7A),
@@ -3024,7 +3141,8 @@ class _MaintenancePaymentScreenState
                     ),
                   ),
                   // Hide society expenses link from tenants.
-                  if (!(ref.read(authProvider).user?.isTenant ?? false)) ...[
+                  if (!ref.watch(authProvider
+                      .select((s) => s.user?.isTenant ?? false))) ...[
                     const SizedBox(height: 10),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -3038,9 +3156,9 @@ class _MaintenancePaymentScreenState
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: DesignColors.surface,
+                            color: context.surface.defaultSurface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DesignColors.borderLight),
+                            border: Border.all(color: context.surface.border),
                           ),
                           child: Row(
                             children: [
@@ -3081,12 +3199,12 @@ class _MaintenancePaymentScreenState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: DesignColors.surface,
+                color: context.surface.defaultSurface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: DesignColors.borderLight),
+                border: Border.all(color: context.surface.border),
                 boxShadow: [
                   BoxShadow(
-                    color: DesignColors.textPrimary.withValues(alpha: 0.03),
+                    color: context.text.primary.withValues(alpha: 0.03),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -3117,7 +3235,7 @@ class _MaintenancePaymentScreenState
                           'Unpaid',
                           unpaidCount > 0
                               ? DesignColors.error
-                              : DesignColors.textSecondary,
+                              : context.text.secondary,
                         ),
                         if (partialCount > 0)
                           _summaryChip(
@@ -3142,7 +3260,7 @@ class _MaintenancePaymentScreenState
                     _ledgerRow('Pending', inr.format(totalPending),
                         valueColor: totalPending > 0.005
                             ? DesignColors.warning
-                            : DesignColors.textPrimary),
+                            : context.text.primary),
                     _ledgerRow('Expenses', inr.format(totalExpense)),
                     _ledgerRow(
                       'Net position',
@@ -3158,7 +3276,7 @@ class _MaintenancePaymentScreenState
           ),
 
           // ── All residents ──
-          if (sortedResidents.isNotEmpty) ...[
+          if (sortedResidents.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
               child: Row(
@@ -3168,7 +3286,7 @@ class _MaintenancePaymentScreenState
                       'All residents',
                       style: DesignTypography.label.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: DesignColors.textPrimary,
+                        color: context.text.primary,
                       ),
                     ),
                   ),
@@ -3192,10 +3310,16 @@ class _MaintenancePaymentScreenState
                 ],
               ),
             ),
-            ...sortedResidents.map(
-              (r) => _residentPaymentTile(r, inr),
+            ]),
+          ),
+          // Lazily built so large societies don't construct every tile up front.
+          if (sortedResidents.isNotEmpty)
+            SliverList.builder(
+              itemCount: sortedResidents.length,
+              itemBuilder: (ctx, i) =>
+                  _residentPaymentTile(sortedResidents[i], inr),
             ),
-          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
     );
@@ -3203,24 +3327,28 @@ class _MaintenancePaymentScreenState
 
   Widget _sectionHeader(String title, String subtitle) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
       child: Row(
         children: [
-          Text(
-            title,
-            style: DesignTypography.label.copyWith(
-              fontWeight: FontWeight.w800,
-              color: DesignColors.textPrimary,
+          Expanded(
+            child: Text(
+              title,
+              style: DesignTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
+                color: context.text.primary,
+                fontSize: 15,
+                letterSpacing: -0.2,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            subtitle,
-            style: DesignTypography.bodySmall.copyWith(
-              color: DesignColors.textTertiary,
-              fontWeight: FontWeight.w500,
+          if (subtitle.isNotEmpty)
+            Text(
+              subtitle,
+              style: DesignTypography.caption.copyWith(
+                color: context.text.tertiary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -3230,9 +3358,8 @@ class _MaintenancePaymentScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3248,7 +3375,7 @@ class _MaintenancePaymentScreenState
           Text(
             label,
             style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
               fontWeight: FontWeight.w500,
               fontSize: 10.5,
             ),
@@ -3281,23 +3408,18 @@ class _MaintenancePaymentScreenState
     final extra = actualPaid - expectedAmount;
     final hasExtra = extra > 0.005 && isPaid;
     final hasShortfall = actualPaid > 0.005 && !isPaid;
+    // Lead with what's owed when nothing has been paid yet — a bare ₹0 reads as
+    // "no charge" rather than "unpaid".
+    final hasNoPayment = actualPaid <= 0.005;
+    final displayAmount = hasNoPayment ? expectedAmount : actualPaid;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Container(
         decoration: BoxDecoration(
-          color: DesignColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: accent.withValues(alpha: 0.2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: context.surface.defaultSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.surface.border),
         ),
         child: Column(
           children: [
@@ -3333,7 +3455,7 @@ class _MaintenancePaymentScreenState
                         Text(
                           'Unit $unit',
                           style: DesignTypography.labelSmall.copyWith(
-                            color: DesignColors.textSecondary,
+                            color: context.text.secondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -3345,10 +3467,14 @@ class _MaintenancePaymentScreenState
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        inr.format(actualPaid),
+                        inr.format(displayAmount),
                         style: DesignTypography.bodyMedium.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: isPaid ? DesignColors.success : DesignColors.textPrimary,
+                          color: isPaid
+                              ? DesignColors.success
+                              : hasNoPayment
+                                  ? accent
+                                  : context.text.primary,
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -3359,11 +3485,8 @@ class _MaintenancePaymentScreenState
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.1),
+                          color: accent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.2),
-                          ),
                         ),
                         child: Text(
                           statusText,
@@ -3435,8 +3558,8 @@ class _MaintenancePaymentScreenState
               label,
               style: DesignTypography.bodySmall.copyWith(
                 color: subtle
-                    ? DesignColors.textTertiary
-                    : DesignColors.textSecondary,
+                    ? context.text.tertiary
+                    : context.text.secondary,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.1,
               ),
@@ -3448,8 +3571,8 @@ class _MaintenancePaymentScreenState
             style: DesignTypography.bodySmall.copyWith(
               color: valueColor ??
                   (subtle
-                      ? DesignColors.textTertiary
-                      : DesignColors.textPrimary),
+                      ? context.text.tertiary
+                      : context.text.primary),
               fontWeight: FontWeight.w700,
               letterSpacing: -0.2,
             ),
@@ -3502,7 +3625,7 @@ class _MaintenancePaymentScreenState
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      backgroundColor: DesignColors.surface,
+      backgroundColor: context.surface.defaultSurface,
       isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
@@ -3522,7 +3645,7 @@ class _MaintenancePaymentScreenState
               Text(
                 item['subtitle']?.toString() ?? '',
                 style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -3551,7 +3674,7 @@ class _MaintenancePaymentScreenState
                       Text(
                         heroLabel,
                         style: DesignTypography.labelSmall.copyWith(
-                          color: DesignColors.textSecondary,
+                          color: context.text.secondary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -3593,7 +3716,7 @@ class _MaintenancePaymentScreenState
                 inr.format(carryForwardBalance),
                 valueColor: carryForwardBalance < 0
                     ? DesignColors.error
-                    : DesignColors.textPrimary,
+                    : context.text.primary,
               ),
               _detailRow('Method', paymentMode),
               _detailRow(
@@ -3627,7 +3750,7 @@ class _MaintenancePaymentScreenState
             child: Text(
               label,
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -3637,7 +3760,7 @@ class _MaintenancePaymentScreenState
               value,
               style: DesignTypography.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600,
-                color: valueColor ?? DesignColors.textPrimary,
+                color: valueColor ?? context.text.primary,
               ),
             ),
           ),
@@ -3811,7 +3934,7 @@ class _MaintenancePaymentScreenState
                 Text(
                   e.toString(),
                   textAlign: TextAlign.center,
-                  style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+                  style: DesignTypography.bodySmall.copyWith(color: context.text.secondary),
                 ),
                 const SizedBox(height: 16),
                 TextButton.icon(
@@ -3860,7 +3983,7 @@ class _MaintenancePaymentScreenState
                       'Every villa is up to date on maintenance payments.',
                       textAlign: TextAlign.center,
                       style: DesignTypography.bodySmall.copyWith(
-                        color: DesignColors.textSecondary,
+                        color: context.text.secondary,
                         height: 1.4,
                       ),
                     ),
@@ -3992,7 +4115,7 @@ class _MaintenancePaymentScreenState
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Container(
         decoration: BoxDecoration(
-          color: DesignColors.surface,
+          color: context.surface.defaultSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
           boxShadow: [
@@ -4047,7 +4170,7 @@ class _MaintenancePaymentScreenState
                           Text(
                             ownerName.isEmpty ? '' : villaNumber,
                             style: DesignTypography.labelSmall.copyWith(
-                              color: DesignColors.textSecondary,
+                              color: context.text.secondary,
                               fontWeight: FontWeight.w500,
                               fontSize: 10.5,
                             ),
@@ -4087,7 +4210,7 @@ class _MaintenancePaymentScreenState
                     Icon(
                       isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                       size: 20,
-                      color: DesignColors.textSecondary,
+                      color: context.text.secondary,
                     ),
                   ],
                 ),
@@ -4095,7 +4218,7 @@ class _MaintenancePaymentScreenState
             ),
             // Expanded cycle rows
             if (isExpanded) ...[
-              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+              Divider(height: 1, thickness: 1, color: context.surface.border.withValues(alpha: 0.5)),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
                 child: Column(
@@ -4232,6 +4355,7 @@ class _MaintenancePaymentScreenState
         // Fetch yearlyBreakdown for each calendar year
         final breakdownByKey = <String, Map<String, dynamic>>{};
         bool allYearsLoaded = true;
+        Object? yearLoadError;
         for (final yr in neededYears) {
           final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
           yrAsync.whenData((rows) {
@@ -4243,7 +4367,17 @@ class _MaintenancePaymentScreenState
               }
             }
           });
-          if (yrAsync is! AsyncData) allYearsLoaded = false;
+          if (yrAsync is AsyncError) {
+            yearLoadError ??= yrAsync.error;
+          } else if (yrAsync is! AsyncData) {
+            allYearsLoaded = false;
+          }
+        }
+
+        // A failed year breakdown surfaces an error with retry — otherwise the
+        // loading guard below would spin forever (it never sees AsyncData).
+        if (yearLoadError != null) {
+          return _yearDataErrorState(yearLoadError);
         }
 
         if (!allYearsLoaded && neededYears.isNotEmpty) {
@@ -4270,7 +4404,12 @@ class _MaintenancePaymentScreenState
             mColl = (breakdown['totalCollected'] as num?)?.toDouble() ?? 0;
             mExpense = (breakdown['totalExpense'] as num?)?.toDouble() ?? 0;
           } else {
-            mExp = cycleAmount;
+            // `cycleAmount` is the per-villa charge — scale by billed-villa
+            // count so Expected matches the society-wide Collected scale.
+            final paidC = (breakdown?['paidCount'] as num?)?.toInt() ?? 0;
+            final unpaidC = (breakdown?['unpaidCount'] as num?)?.toInt() ?? 0;
+            final villaCount = paidC + unpaidC;
+            mExp = villaCount > 0 ? cycleAmount * villaCount : 0;
             mColl = (breakdown?['totalCollected'] as num?)?.toDouble() ?? 0;
             mExpense = (breakdown?['totalExpense'] as num?)?.toDouble() ?? 0;
           }
@@ -4355,7 +4494,7 @@ class _MaintenancePaymentScreenState
                       Text(
                         'Collections covered expenses in every billing cycle this year.',
                         textAlign: TextAlign.center,
-                        style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary, height: 1.4),
+                        style: DesignTypography.bodySmall.copyWith(color: context.text.secondary, height: 1.4),
                       ),
                     ],
                   ),
@@ -4508,9 +4647,9 @@ class _MaintenancePaymentScreenState
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Container(
         decoration: BoxDecoration(
-          color: DesignColors.surface,
+          color: context.surface.defaultSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DesignColors.borderLight),
+          border: Border.all(color: context.surface.border),
         ),
         child: Column(
           children: [
@@ -4548,7 +4687,7 @@ class _MaintenancePaymentScreenState
                         const SizedBox(width: 4),
                         Icon(
                           isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                          size: 18, color: DesignColors.textSecondary,
+                          size: 18, color: context.text.secondary,
                         ),
                       ],
                     ),
@@ -4566,14 +4705,14 @@ class _MaintenancePaymentScreenState
             ),
             // Expanded expense breakdown
             if (isExpanded && breakdown.isNotEmpty) ...[
-              Divider(height: 1, thickness: 1, color: DesignColors.borderLight.withValues(alpha: 0.5)),
+              Divider(height: 1, thickness: 1, color: context.surface.border.withValues(alpha: 0.5)),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Expense breakdown', style: DesignTypography.labelSmall.copyWith(
-                      color: DesignColors.textSecondary, fontWeight: FontWeight.w700, fontSize: 10,
+                      color: context.text.secondary, fontWeight: FontWeight.w700, fontSize: 10,
                       letterSpacing: 0.3,
                     )),
                     const SizedBox(height: 6),
@@ -4583,10 +4722,10 @@ class _MaintenancePaymentScreenState
                         child: Row(
                           children: [
                             Expanded(child: Text(entry.key, style: DesignTypography.bodySmall.copyWith(
-                              color: DesignColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12,
+                              color: context.text.secondary, fontWeight: FontWeight.w500, fontSize: 12,
                             ))),
                             Text(inr.format(entry.value), style: DesignTypography.bodySmall.copyWith(
-                              color: DesignColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 12,
+                              color: context.text.primary, fontWeight: FontWeight.w600, fontSize: 12,
                             )),
                           ],
                         ),
@@ -4701,7 +4840,7 @@ class _CollectionExpenseOverviewScreenState
                   label,
                   style: DesignTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: DesignColors.textPrimary,
+                    color: context.text.primary,
                   ),
                 ),
               ),
@@ -4720,7 +4859,7 @@ class _CollectionExpenseOverviewScreenState
               minHeight: 10,
               value: pct,
               color: color,
-              backgroundColor: DesignColors.surfaceSoft,
+              backgroundColor: context.surface.elevated,
             ),
           ),
         ],
@@ -4730,9 +4869,9 @@ class _CollectionExpenseOverviewScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DesignColors.surface,
+        color: context.surface.defaultSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: DesignColors.borderLight),
+        border: Border.all(color: context.surface.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4747,7 +4886,7 @@ class _CollectionExpenseOverviewScreenState
           Text(
             'Green shows inflow; neutral shows society spending.',
             style: DesignTypography.bodySmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -4761,11 +4900,11 @@ class _CollectionExpenseOverviewScreenState
           bar(
             'Monthly expenses',
             expPct,
-            DesignColors.textSecondary,
+            context.text.secondary,
             inr.format(expense),
           ),
           const SizedBox(height: 16),
-          Divider(color: DesignColors.borderLight.withValues(alpha: 0.8)),
+          Divider(color: context.surface.border.withValues(alpha: 0.8)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -4967,9 +5106,9 @@ class _CollectionExpenseOverviewScreenState
       return Container(
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
         decoration: BoxDecoration(
-          color: DesignColors.surface,
+          color: context.surface.defaultSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DesignColors.borderLight),
+          border: Border.all(color: context.surface.border),
         ),
         child: Column(
           children: [
@@ -4988,7 +5127,7 @@ class _CollectionExpenseOverviewScreenState
                 Text(
                   'Collection',
                   style: DesignTypography.labelSmall.copyWith(
-                    color: DesignColors.textSecondary,
+                    color: context.text.secondary,
                     fontSize: 11,
                   ),
                 ),
@@ -5000,7 +5139,7 @@ class _CollectionExpenseOverviewScreenState
                       minHeight: 6,
                       value: (rate / 100).clamp(0.0, 1.0),
                       color: rateColor,
-                      backgroundColor: DesignColors.surfaceSoft,
+                      backgroundColor: context.surface.elevated,
                     ),
                   ),
                 ),
@@ -5021,12 +5160,12 @@ class _CollectionExpenseOverviewScreenState
     }
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0.5,
-        backgroundColor: DesignColors.surface,
-        surfaceTintColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: context.surface.defaultSurface,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -5041,7 +5180,7 @@ class _CollectionExpenseOverviewScreenState
                   ? fyLabel!
                   : periodLabel,
               style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.textSecondary,
+                color: context.text.secondary,
               ),
             ),
           ],
@@ -5056,13 +5195,13 @@ class _CollectionExpenseOverviewScreenState
                 if (s.contains(WidgetState.selected)) {
                   return DesignColors.primary.withValues(alpha: 0.14);
                 }
-                return DesignColors.surfaceSoft;
+                return context.surface.elevated;
               }),
               foregroundColor: WidgetStateProperty.resolveWith((s) {
                 if (s.contains(WidgetState.selected)) {
                   return DesignColors.primary;
                 }
-                return DesignColors.textSecondary;
+                return context.text.secondary;
               }),
             ),
             segments: const [
@@ -5134,9 +5273,9 @@ class _CollectionExpenseOverviewScreenState
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: DesignColors.surface,
+                  color: context.surface.defaultSurface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: DesignColors.borderLight),
+                  border: Border.all(color: context.surface.border),
                 ),
                 child: Row(
                   children: [
@@ -5152,7 +5291,7 @@ class _CollectionExpenseOverviewScreenState
                       inr.format(e.value),
                       style: DesignTypography.bodyMedium.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: DesignColors.textSecondary,
+                        color: context.text.secondary,
                       ),
                     ),
                   ],
@@ -5172,7 +5311,7 @@ class _CollectionExpenseOverviewScreenState
           Text(
             '${yearlyBreakdown.length} cycle${yearlyBreakdown.length == 1 ? '' : 's'} in ${fyLabel ?? 'selected year'}',
             style: DesignTypography.bodySmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -5180,14 +5319,14 @@ class _CollectionExpenseOverviewScreenState
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: DesignColors.surface,
+                color: context.surface.defaultSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: DesignColors.borderLight),
+                border: Border.all(color: context.surface.border),
               ),
               child: Text(
                 'No billing cycles created for this year yet.',
                 style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                 ),
               ),
             )
@@ -5220,12 +5359,12 @@ class _CollectionExpenseOverviewScreenState
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: DesignColors.surface,
+                    color: context.surface.defaultSurface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isCurrentPeriod
                           ? DesignColors.primary.withValues(alpha: 0.5)
-                          : DesignColors.borderLight,
+                          : context.surface.border,
                       width: isCurrentPeriod ? 1.5 : 1,
                     ),
                   ),
@@ -5315,7 +5454,7 @@ class _CollectionExpenseOverviewScreenState
                                   minHeight: 5,
                                   value: (mRate / 100).clamp(0.0, 1.0),
                                   color: mRateColor,
-                                  backgroundColor: DesignColors.surfaceSoft,
+                                  backgroundColor: context.surface.elevated,
                                 ),
                               ),
                             ),
@@ -5332,7 +5471,7 @@ class _CollectionExpenseOverviewScreenState
                             Text(
                               '$paidC paid · $unpaidC unpaid',
                               style: DesignTypography.labelSmall.copyWith(
-                                color: DesignColors.textSecondary,
+                                color: context.text.secondary,
                                 fontSize: 10,
                               ),
                             ),
@@ -5357,7 +5496,7 @@ class _CollectionExpenseOverviewScreenState
           Text(
             label,
             style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -5392,7 +5531,7 @@ class _CollectionExpenseOverviewScreenState
           Text(
             label,
             style: DesignTypography.labelSmall.copyWith(
-              color: DesignColors.textSecondary,
+              color: context.text.secondary,
               fontSize: 10,
             ),
           ),
