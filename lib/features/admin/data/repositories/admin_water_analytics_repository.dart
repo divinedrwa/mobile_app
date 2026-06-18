@@ -12,7 +12,17 @@ class AdminWaterAnalyticsRepository {
         ApiEndpoints.waterSupplyAnalyticsOverview,
         queryParameters: {'days': days},
       );
-      return res.data ?? {};
+      final data = res.data ?? {};
+      // Backend nests the figures under `summary` (and uses `avgDurationMinutes`,
+      // with the gate count in `gateStats`); expose the flat keys the screen reads.
+      final summary = (data['summary'] as Map?) ?? const {};
+      final gateStats = (data['gateStats'] as List?) ?? const [];
+      return {
+        ...Map<String, dynamic>.from(data),
+        'totalEvents': summary['totalEvents'] ?? 0,
+        'averageDurationMinutes': summary['avgDurationMinutes'] ?? 0,
+        'totalGates': gateStats.length,
+      };
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load water supply overview');
     }

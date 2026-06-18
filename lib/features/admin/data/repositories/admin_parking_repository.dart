@@ -11,7 +11,16 @@ class AdminParkingRepository {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.parkingOverview,
       );
-      return res.data ?? {};
+      final data = res.data ?? {};
+      // Backend nests slot counts under `summary`; expose the flat keys the
+      // screen reads (totalSlots / occupiedSlots / availableSlots).
+      final summary = (data['summary'] as Map?) ?? const {};
+      return {
+        ...Map<String, dynamic>.from(data),
+        'totalSlots': summary['totalSlots'] ?? 0,
+        'occupiedSlots': summary['occupiedSlots'] ?? 0,
+        'availableSlots': summary['availableSlots'] ?? 0,
+      };
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load parking overview');
     }

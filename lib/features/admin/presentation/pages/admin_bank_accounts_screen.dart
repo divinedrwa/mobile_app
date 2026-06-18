@@ -111,7 +111,7 @@ class _AdminBankAccountsScreenState
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: accounts.map((a) {
-        final accountName = a['accountName']?.toString() ?? '';
+        final accountName = a['accountHolderName']?.toString() ?? '';
         final bankName = a['bankName']?.toString() ?? '';
         final accountNumber = a['accountNumber']?.toString() ?? '';
         final ifsc = a['ifscCode']?.toString() ?? '';
@@ -178,7 +178,7 @@ class _AdminBankAccountsScreenState
     final isEdit = existing != null;
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(
-        text: existing?['accountName']?.toString() ?? '');
+        text: existing?['accountHolderName']?.toString() ?? '');
     final bankCtrl = TextEditingController(
         text: existing?['bankName']?.toString() ?? '');
     final numberCtrl = TextEditingController(
@@ -223,12 +223,18 @@ class _AdminBankAccountsScreenState
                   Text(isEdit ? 'Edit Account' : 'Add Account',
                       style: DesignTypography.headingM),
                   const SizedBox(height: 16),
-                  _field('Account Name *', nameCtrl, required: true),
+                  _field('Account Holder Name *', nameCtrl, required: true),
                   _field('Bank Name *', bankCtrl, required: true),
-                  _field('Account Number *', numberCtrl,
-                      keyboardType: TextInputType.number, required: true),
-                  _field('IFSC Code', ifscCtrl),
-                  _field('Account Type', typeCtrl),
+                  _field(
+                    isEdit ? 'Account Number' : 'Account Number *',
+                    numberCtrl,
+                    keyboardType: TextInputType.number,
+                    required: !isEdit,
+                    // The account number can't be changed after creation.
+                    enabled: !isEdit,
+                  ),
+                  _field('IFSC Code *', ifscCtrl, required: true),
+                  _field('Account Type *', typeCtrl, required: true),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -285,12 +291,13 @@ class _AdminBankAccountsScreenState
   }
 
   Widget _field(String label, TextEditingController ctrl,
-      {TextInputType? keyboardType, bool required = false}) {
+      {TextInputType? keyboardType, bool required = false, bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(
@@ -309,11 +316,11 @@ class _AdminBankAccountsScreenState
       String ifsc, String type) async {
     try {
       await ref.read(adminBankAccountRepositoryProvider).createBankAccount(
-            accountName: name.trim(),
+            accountHolderName: name.trim(),
             bankName: bank.trim(),
             accountNumber: number.trim(),
-            ifscCode: ifsc.trim().isNotEmpty ? ifsc.trim() : null,
-            accountType: type.trim().isNotEmpty ? type.trim() : null,
+            ifscCode: ifsc.trim(),
+            accountType: type.trim(),
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -335,11 +342,10 @@ class _AdminBankAccountsScreenState
     try {
       await ref.read(adminBankAccountRepositoryProvider).updateBankAccount(
             id,
-            accountName: name.trim().isNotEmpty ? name.trim() : null,
+            accountHolderName: name.trim().isNotEmpty ? name.trim() : null,
             bankName: bank.trim().isNotEmpty ? bank.trim() : null,
-            accountNumber: number.trim().isNotEmpty ? number.trim() : null,
-            ifscCode: ifsc.trim(),
-            accountType: type.trim(),
+            ifscCode: ifsc.trim().isNotEmpty ? ifsc.trim() : null,
+            accountType: type.trim().isNotEmpty ? type.trim() : null,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

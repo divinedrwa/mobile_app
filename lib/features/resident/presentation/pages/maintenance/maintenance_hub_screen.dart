@@ -3,17 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../../core/utils/pdf_share.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
-import '../../../data/services/maintenance_invoice_pdf.dart';
+import 'invoice_download_helper.dart';
 import '../../widgets/maintenance/late_fee_reminder_card.dart';
 import '../../widgets/maintenance/maintenance_hero_card.dart';
 import '../../widgets/maintenance/maintenance_hub_skeleton.dart';
@@ -73,29 +71,16 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
   Future<void> _downloadReceipt(MaintenanceDueModel m) async {
     if (_downloadingCycleId != null) return;
-    setState(() => _downloadingCycleId = m.cycleId);
-    try {
-      final bytes = await buildInvoiceForPayment(
-        repo: ref.read(maintenanceRepositoryProvider),
-        user: ref.read(authProvider).user,
-        m: m,
-        generatedAt: DateTime.now(),
-      );
-      if (!mounted) return;
-      final monthLabel =
-          DateFormat('MMM_yyyy').format(DateTime(m.year, m.month));
-      await sharePdfBytes(bytes, filename: 'receipt_$monthLabel.pdf');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userFacingMessage(e)),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _downloadingCycleId = null);
-    }
+    await downloadOrViewInvoice(
+      context: context,
+      ref: ref,
+      m: m,
+      setBusy: (busy) {
+        if (mounted) {
+          setState(() => _downloadingCycleId = busy ? m.cycleId : null);
+        }
+      },
+    );
   }
 
   // ---- refresh ----

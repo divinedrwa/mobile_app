@@ -19,3 +19,17 @@ Future<void> sharePdfBytes(Uint8List data, {required String filename}) async {
   anchor.remove();
   web.URL.revokeObjectURL(url);
 }
+
+// Web has no persistent file cache; callers always (re)generate and download.
+Future<String?> cachedPdfPath(String filename) async => null;
+
+Future<String> savePdfToCache(Uint8List data, String filename) async {
+  await sharePdfBytes(data, filename: filename);
+  return '';
+}
+
+Future<void> openSavedPdf(String path) async {}
+
+Future<void> shareSavedPdf(String path,
+    {String text = 'Maintenance invoice'}) async {}
+

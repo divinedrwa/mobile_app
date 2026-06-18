@@ -12,7 +12,17 @@ class AdminComplaintAnalyticsRepository {
         ApiEndpoints.complaintAnalyticsSummary,
         queryParameters: {'days': days},
       );
-      return res.data ?? {};
+      final data = res.data ?? {};
+      // Backend nests stats under `summary` and uses `resolvedCount` /
+      // `avgResolutionTime`; expose the flat keys/names the screen reads.
+      final s = (data['summary'] as Map?) ?? const {};
+      return {
+        ...Map<String, dynamic>.from(data),
+        'totalComplaints': s['totalComplaints'] ?? 0,
+        'resolvedComplaints': s['resolvedCount'] ?? 0,
+        'resolutionRate': s['resolutionRate'] ?? 0,
+        'averageResolutionDays': s['avgResolutionTime'] ?? 0,
+      };
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load complaint summary');
     }

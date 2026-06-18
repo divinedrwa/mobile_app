@@ -11,7 +11,26 @@ class AdminGateAnalyticsRepository {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.gateAnalyticsOverview,
       );
-      return res.data ?? {};
+      final data = res.data ?? {};
+      // Backend returns { gates: [ { isActive, todayVisitors, assignedGuard } ] }.
+      // Derive the flat overview stats the screen renders.
+      final gates =
+          (data['gates'] as List?)?.whereType<Map>().toList() ?? const [];
+      int toInt(dynamic v) =>
+          v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+      final todayVisitors =
+          gates.fold<int>(0, (sum, g) => sum + toInt(g['todayVisitors']));
+      final guardsOnDuty = gates.where((g) {
+        final guard = g['assignedGuard'];
+        return guard is Map && guard['isActive'] == true;
+      }).length;
+      return {
+        'totalGates': gates.length,
+        'activeGates': gates.where((g) => g['isActive'] == true).length,
+        'todayVisitors': todayVisitors,
+        'guardsOnDuty': guardsOnDuty,
+        'gates': gates,
+      };
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load gate analytics');
     }

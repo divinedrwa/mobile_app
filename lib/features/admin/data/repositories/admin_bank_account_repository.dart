@@ -16,11 +16,15 @@ class AdminBankAccountRepository {
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
-      if (data is Map && data['bankAccounts'] is List) {
-        return (data['bankAccounts'] as List)
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+      if (data is Map) {
+        // Backend wraps the list under `accounts` (older clients used `bankAccounts`).
+        final list = data['accounts'] ?? data['bankAccounts'];
+        if (list is List) {
+          return list
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
       }
       return [];
     } on DioException catch (e) {
@@ -28,23 +32,23 @@ class AdminBankAccountRepository {
     }
   }
 
+  // Backend (createBankAccountSchema) requires all of these fields.
   Future<Map<String, dynamic>> createBankAccount({
-    required String accountName,
+    required String accountHolderName,
     required String bankName,
     required String accountNumber,
-    String? ifscCode,
-    String? accountType,
+    required String ifscCode,
+    required String accountType,
   }) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         ApiEndpoints.adminBankAccounts,
         data: {
-          'accountName': accountName,
+          'accountHolderName': accountHolderName,
           'bankName': bankName,
           'accountNumber': accountNumber,
-          if (ifscCode != null && ifscCode.isNotEmpty) 'ifscCode': ifscCode,
-          if (accountType != null && accountType.isNotEmpty)
-            'accountType': accountType,
+          'ifscCode': ifscCode,
+          'accountType': accountType,
         },
       );
       return res.data ?? {};
@@ -53,11 +57,11 @@ class AdminBankAccountRepository {
     }
   }
 
+  // Note: the backend update schema does not allow changing the account number.
   Future<Map<String, dynamic>> updateBankAccount(
     String id, {
-    String? accountName,
+    String? accountHolderName,
     String? bankName,
-    String? accountNumber,
     String? ifscCode,
     String? accountType,
   }) async {
@@ -65,9 +69,8 @@ class AdminBankAccountRepository {
       final res = await _dio.patch<Map<String, dynamic>>(
         ApiEndpoints.adminBankAccountById(id),
         data: {
-          if (accountName != null) 'accountName': accountName,
+          if (accountHolderName != null) 'accountHolderName': accountHolderName,
           if (bankName != null) 'bankName': bankName,
-          if (accountNumber != null) 'accountNumber': accountNumber,
           if (ifscCode != null) 'ifscCode': ifscCode,
           if (accountType != null) 'accountType': accountType,
         },

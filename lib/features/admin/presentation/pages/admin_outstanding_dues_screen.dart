@@ -203,7 +203,7 @@ class _VillaOutstandingTileState extends State<_VillaOutstandingTile> {
     final ownerName = v['ownerName']?.toString() ?? 'Unknown';
     final totalOutstanding =
         (v['totalOutstanding'] as num?)?.toDouble() ?? 0;
-    final cycles = ((v['cycles'] as List?) ?? const [])
+    final cycles = ((v['pendingCycles'] ?? v['cycles']) as List? ?? const [])
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
@@ -339,8 +339,8 @@ class _VillaOutstandingTileState extends State<_VillaOutstandingTile> {
   }
 
   Widget _cycleLine(Map<String, dynamic> cycle, NumberFormat inr) {
-    final month = (cycle['periodMonth'] as num?)?.toInt();
-    final year = (cycle['periodYear'] as num?)?.toInt();
+    final month = ((cycle['month'] ?? cycle['periodMonth']) as num?)?.toInt();
+    final year = ((cycle['year'] ?? cycle['periodYear']) as num?)?.toInt();
     final label = month != null && year != null
         ? DateFormat('MMM y').format(DateTime(year, month))
         : cycle['label']?.toString() ?? '—';

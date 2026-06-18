@@ -1,15 +1,10 @@
-import 'dart:typed_data';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 
-import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
@@ -436,10 +431,7 @@ class _MaintenancePaymentScreenState
               ),
             ],
           ),
-          actions: _buildAppBarActions(
-            dashboardState.valueOrNull,
-            filter,
-          ),
+          actions: _buildAppBarActions(),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -652,22 +644,12 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  List<Widget> _buildAppBarActions(
-    Map<String, dynamic>? dashboard,
-    MaintenanceDashboardFilter filter,
-  ) {
+  List<Widget> _buildAppBarActions() {
     return [
       IconButton(
         tooltip: 'Refresh',
         icon: Icon(Icons.refresh_rounded, color: context.text.secondary),
         onPressed: _pullRefreshMaintenance,
-      ),
-      IconButton(
-        tooltip: 'Download report (PDF)',
-        icon: Icon(Icons.ios_share_rounded, color: context.text.secondary),
-        onPressed: dashboard == null
-            ? null
-            : () => _downloadPdfReport(context, dashboard, filter),
       ),
     ];
   }
@@ -3389,146 +3371,6 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Future<void> _downloadPdfReport(
-    BuildContext context,
-    Map<String, dynamic> dashboard,
-    MaintenanceDashboardFilter filter,
-  ) async {
-    try {
-      final bytes = await ref
-          .read(maintenanceRepositoryProvider)
-          .downloadMaintenanceReportPdf(
-            month: filter.month,
-            year: filter.year,
-          );
-      if (bytes.isEmpty) throw Exception('Empty report received');
-      final suffix =
-          filter.maintenanceCollectionCycleId != null &&
-              filter.maintenanceCollectionCycleId!.isNotEmpty
-          ? '_${filter.maintenanceCollectionCycleId!.length >= 8 ? filter.maintenanceCollectionCycleId!.substring(0, 8) : filter.maintenanceCollectionCycleId}'
-          : '';
-      await _sharePdfBytes(
-        Uint8List.fromList(bytes),
-        filename:
-            'maintenance_report_${filter.year}_${filter.month.toString().padLeft(2, '0')}$suffix.pdf',
-      );
-      return;
-    } catch (_) {
-      // Fallback to local PDF generation if backend export is unavailable.
-    }
-
-    final pdf = pw.Document();
-    final summary = Map<String, dynamic>.from(
-      (dashboard['summary'] ?? dashboard['userSummary'] ?? const {}) as Map,
-    );
-    final pending =
-        ((dashboard['globalPendingDues'] ??
-                    dashboard['pendingDues'] ??
-                    const [])
-                as List)
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Text(
-            'Maintenance Financial Report (${filter.month}/${filter.year})',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 12),
-          pw.Text(
-            'Generated on: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
-          ),
-          pw.SizedBox(height: 16),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey),
-            children: [
-              _pdfRow(
-                'Total Paid',
-                '₹${(summary['totalPaid'] ?? summary['collected'] ?? 0)}',
-              ),
-              _pdfRow(
-                'Total Pending',
-                '₹${(summary['totalPending'] ?? summary['pendingAmount'] ?? 0)}',
-              ),
-              _pdfRow(
-                'Collection Rate',
-                '${summary['collectionRate'] ?? '-'}%',
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 18),
-          pw.Text(
-            'Pending Dues',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey300),
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                children: [
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(6),
-                    child: pw.Text('Unit'),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(6),
-                    child: pw.Text('Month/Year'),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(6),
-                    child: pw.Text('Amount'),
-                  ),
-                ],
-              ),
-              ...pending
-                  .take(50)
-                  .map(
-                    (e) => pw.TableRow(
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('${e['villaNumber'] ?? '-'}'),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            '${e['month'] ?? '-'} / ${e['year'] ?? '-'}',
-                          ),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(
-                            '₹${((e['amount'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-            ],
-          ),
-        ],
-      ),
-    );
-    await _sharePdfBytes(
-      Uint8List.fromList(await pdf.save()),
-      filename:
-          'maintenance_report_${filter.year}_${filter.month.toString().padLeft(2, '0')}.pdf',
-    );
-  }
-
-  Future<void> _sharePdfBytes(
-    Uint8List data, {
-    required String filename,
-  }) async {
-    await sharePdfBytes(data, filename: filename);
-  }
-
   // ───────────────────────── Outstanding tab ─────────────────────────
 
   Widget _buildOutstandingTab(BuildContext context) {
@@ -4428,13 +4270,4 @@ class _MaintenancePaymentScreenState
     );
   }
 
-}
-
-pw.TableRow _pdfRow(String key, String value) {
-  return pw.TableRow(
-    children: [
-      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(key)),
-      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(value)),
-    ],
-  );
 }

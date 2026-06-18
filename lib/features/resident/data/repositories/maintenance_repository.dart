@@ -232,7 +232,7 @@ class MaintenanceRepository {
     }
   }
 
-  /// Society financial years (`GET /v1/financial-years`) — same source as admin billing UI.
+  /// Society Financial years (`GET /v1/financial-years`) — same source as admin billing UI.
   Future<List<Map<String, dynamic>>> getBillingFinancialYears() async {
     try {
       final response = await _dio.get(ApiEndpoints.billingFinancialYears);

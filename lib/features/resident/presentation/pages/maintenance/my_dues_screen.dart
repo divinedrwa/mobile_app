@@ -10,6 +10,7 @@ import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
+import 'invoice_download_helper.dart';
 
 /// Dedicated screen for the resident's outstanding bills.
 ///
@@ -31,6 +32,8 @@ class MyDuesScreen extends ConsumerStatefulWidget {
 
 class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     with WidgetsBindingObserver {
+  String? _downloadingCycleId;
+
   @override
   void initState() {
     super.initState();
@@ -259,6 +262,10 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
               cycleId: items[i].cycleId,
               remark: _singleCycleRemark(items[i]),
             ),
+            downloading: _downloadingCycleId == items[i].cycleId,
+            onDownload: items[i].cycleId.isNotEmpty
+                ? () => _downloadInvoice(items[i])
+                : null,
           ).animate(delay: Duration(milliseconds: 60 * i)).fadeIn(duration: 220.ms).slideX(
                 begin: 0.04,
                 end: 0,
@@ -457,6 +464,20 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     if (m.cycleId.isEmpty) return;
     context.push('/resident/maintenance/cycle/${m.cycleId}');
   }
+
+  Future<void> _downloadInvoice(MaintenanceDueModel m) async {
+    if (_downloadingCycleId != null) return;
+    await downloadOrViewInvoice(
+      context: context,
+      ref: ref,
+      m: m,
+      setBusy: (busy) {
+        if (mounted) {
+          setState(() => _downloadingCycleId = busy ? m.cycleId : null);
+        }
+      },
+    );
+  }
 }
 
 /// Single bill card — visually richer than the hub's list tile so this
@@ -469,6 +490,8 @@ class _DueCard extends StatelessWidget {
     required this.onTap,
     this.showPay = false,
     this.onPay,
+    this.downloading = false,
+    this.onDownload,
   });
 
   final MaintenanceDueModel item;
@@ -476,6 +499,8 @@ class _DueCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool showPay;
   final VoidCallback? onPay;
+  final bool downloading;
+  final VoidCallback? onDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +627,23 @@ class _DueCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (!showPay)
+                if (onDownload != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: IconButton(
+                      tooltip: 'Download invoice',
+                      onPressed: downloading ? null : onDownload,
+                      icon: downloading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download_rounded,
+                              size: 22, color: DesignColors.primary),
+                    ),
+                  )
+                else if (!showPay)
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
                     child: Icon(

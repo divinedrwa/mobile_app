@@ -3,18 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../../core/utils/pdf_share.dart';
-import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/models/expense_breakdown_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
-import '../../../data/services/maintenance_invoice_pdf.dart';
 import '../../../data/utils/payment_mode.dart';
+import 'invoice_download_helper.dart';
 import '../../widgets/maintenance/breakdown_row.dart';
 import '../../widgets/maintenance/maintenance_status_card.dart';
 
@@ -40,29 +37,14 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
 
   Future<void> _downloadReceipt(MaintenanceDueModel cycle) async {
     if (_downloadingReceipt) return;
-    setState(() => _downloadingReceipt = true);
-    try {
-      final bytes = await buildInvoiceForPayment(
-        repo: ref.read(maintenanceRepositoryProvider),
-        user: ref.read(authProvider).user,
-        m: cycle,
-        generatedAt: DateTime.now(),
-      );
-      if (!mounted) return;
-      final monthLabel =
-          DateFormat('MMM_yyyy').format(DateTime(cycle.year, cycle.month));
-      await sharePdfBytes(bytes, filename: 'receipt_$monthLabel.pdf');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userFacingMessage(e)),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _downloadingReceipt = false);
-    }
+    await downloadOrViewInvoice(
+      context: context,
+      ref: ref,
+      m: cycle,
+      setBusy: (busy) {
+        if (mounted) setState(() => _downloadingReceipt = busy);
+      },
+    );
   }
 
   Future<void> _refresh() async {
@@ -293,8 +275,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         // Per-cycle status badge row to give residents a quick read on
         // partial vs full coverage without re-reading the breakdown.
         _statusFootnote(cycle, isPaid: isPaid, isPartial: isPartial, overdue: overdue),
-        // Download receipt — shown for paid/partial cycles with a billing cycle ID.
-        if ((isPaid || isPartial) && cycle.cycleId.isNotEmpty) ...[
+        // Download invoice/receipt — available for any cycle (paid, pending or
+        // overdue) that has a billing cycle ID. Paid cycles read as a receipt,
+        // unpaid ones as an invoice with the amount due.
+        if (cycle.cycleId.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: double.infinity,
@@ -312,7 +296,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
               label: Text(
                 _downloadingReceipt
                     ? 'Downloading...'
-                    : 'Download Receipt',
+                    : (isPaid ? 'Download Receipt' : 'Download Invoice'),
                 style: const TextStyle(
                     fontWeight: FontWeight.w600, fontSize: 15),
               ),

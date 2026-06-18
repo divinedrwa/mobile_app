@@ -205,7 +205,12 @@ class GuardVisitorRow {
   bool get awaitingGuardAdmission =>
       status.trim().toUpperCase() == 'APPROVED';
 
-  bool get entryDenied => status.trim().toUpperCase() == 'REJECTED';
+  // Aggregate VisitorStatus uses DENIED for a resident-rejected visitor
+  // (per-villa approvalStatus is REJECTED). Accept both to be safe.
+  bool get entryDenied {
+    final s = status.trim().toUpperCase();
+    return s == 'DENIED' || s == 'REJECTED';
+  }
 
   /// Same inclusion rule as backend `GET /guards/pending-visitors`, plus legacy rows
   /// (empty status) still on-site. Used to align Active tab with home live feed.
