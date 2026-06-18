@@ -354,8 +354,8 @@ class HomeMaintenanceCard extends ConsumerWidget {
       child: InkWell(
         onTap: () {
           DesignHaptics.selection();
-          // Outstanding tab is index 3
-          context.push('/resident/maintenance-payment?tab=3');
+          // Outstanding tab is index 2 (after the My-payments tab was removed)
+          context.push('/resident/maintenance-payment?tab=2');
         },
         child: Padding(
           padding:

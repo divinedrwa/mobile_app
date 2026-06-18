@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -85,6 +87,18 @@ class _MaintenancePaymentScreenState
   bool _appliedInitialQueryFilter = false;
   final Set<String> _expandedOutstandingVillas = {};
   final Set<int> _expandedShortfallMonths = {};
+
+  // ── Overview "All residents" search + status filter ──
+  final TextEditingController _residentSearchCtrl = TextEditingController();
+  String _residentQuery = '';
+  String _residentStatusFilter = 'ALL'; // ALL | PAID | PARTIAL | UNPAID | OVERDUE
+  bool _advanceExpanded = false; // "Advance payments" collapsed by default
+
+  @override
+  void dispose() {
+    _residentSearchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -302,11 +316,53 @@ class _MaintenancePaymentScreenState
     );
   }
 
+  /// Shimmer placeholder shown while the dashboard loads / a new period is
+  /// fetched — far less jarring than a full-screen spinner.
+  Widget _buildDashboardSkeleton() {
+    Widget box(double h, {double? w, double r = 12}) => Container(
+          height: h,
+          width: w,
+          decoration: BoxDecoration(
+            color: context.surface.elevated,
+            borderRadius: BorderRadius.circular(r),
+          ),
+        );
+    return Shimmer.fromColors(
+      baseColor: context.surface.elevated,
+      highlightColor: context.surface.defaultSurface,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          // Filter row (FY pill + month chips)
+          Row(
+            children: [
+              box(32, w: 92, r: 16),
+              const SizedBox(width: 8),
+              box(32, w: 60, r: 16),
+              const SizedBox(width: 8),
+              box(32, w: 60, r: 16),
+            ],
+          ),
+          const SizedBox(height: 18),
+          box(150, w: double.infinity, r: 18), // collections hero
+          const SizedBox(height: 16),
+          box(190, w: double.infinity, r: 16), // where-money chart
+          const SizedBox(height: 16),
+          for (var i = 0; i < 3; i++) ...[
+            box(66, w: double.infinity, r: 14), // resident rows
+            const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(maintenanceDashboardProvider);
     final filter = ref.watch(maintenanceDashboardFilterProvider);
-    final tabs = const ['Overview', 'My payments', 'Year review', 'Outstanding', 'Shortfall'];
+    final tabs = const ['Overview', 'Year review', 'Outstanding', 'Shortfall'];
     final periodLabel =
         '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
 
@@ -403,7 +459,7 @@ class _MaintenancePaymentScreenState
           ),
         ),
         body: dashboardState.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => _buildDashboardSkeleton(),
           error: (error, _) => LayoutBuilder(
             builder: (context, constraints) {
               final h =
@@ -460,78 +516,6 @@ class _MaintenancePaymentScreenState
             final userSummary = Map<String, dynamic>.from(
               (root['userSummary'] ?? root['summary'] ?? const {}) as Map,
             );
-            // Collect FY billing cycle keys (e.g. "2025-04") to filter
-            // paymentHistory to only the selected financial year.
-            final fyCycleKeys = <String>{};
-            if (filter.financialYearId != null &&
-                filter.financialYearId!.isNotEmpty) {
-              final cyclesData = ref
-                  .read(billingCyclesForFinancialYearProvider(
-                      filter.financialYearId!))
-                  .valueOrNull;
-              if (cyclesData != null) {
-                final raw = cyclesData['cycles'];
-                if (raw is List) {
-                  for (final c in raw) {
-                    if (c is Map) {
-                      final key = c['cycleKey']?.toString() ?? '';
-                      if (key.isNotEmpty) fyCycleKeys.add(key);
-                    }
-                  }
-                }
-              }
-            }
-
-            final paymentHistory = ((root['paymentHistory'] ?? const []) as List)
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .where((e) {
-                  // If we have FY cycle keys, only include entries
-                  // whose month/year match one of the FY's cycles.
-                  if (fyCycleKeys.isEmpty) return true;
-                  final m = (e['month'] as num?)?.toInt() ?? 0;
-                  final y = (e['year'] as num?)?.toInt() ?? 0;
-                  final key = '$y-${m.toString().padLeft(2, '0')}';
-                  return fyCycleKeys.contains(key);
-                })
-                .map((e) {
-                  final paymentDate = DateTime.tryParse(
-                    e['paymentDate']?.toString() ?? '',
-                  );
-                  final status = (e['status']?.toString() ?? 'PAID')
-                      .toUpperCase();
-                  final month = (e['month'] as num?)?.toInt() ?? 0;
-                  final year = (e['year'] as num?)?.toInt() ?? 0;
-                  final amount = (e['amount'] as num?)?.toDouble() ?? 0;
-                  final expected =
-                      (e['expectedAmount'] as num?)?.toDouble() ?? amount;
-                  final creditApplied =
-                      (e['creditApplied'] as num?)?.toDouble() ?? 0;
-                  final remainingDue =
-                      (e['remainingDue'] as num?)?.toDouble() ?? 0;
-                  final subtitle = switch (status) {
-                    'AUTO_SETTLED' =>
-                      'Adjusted from previous credit${creditApplied > 0 ? ' · ₹${creditApplied.toStringAsFixed(0)} used' : ''}',
-                    'PARTIAL' =>
-                      'Paid ₹${amount.toStringAsFixed(0)} of ₹${expected.toStringAsFixed(0)}',
-                    'OVERDUE' || 'PENDING' =>
-                      '₹${remainingDue.toStringAsFixed(0)} still due',
-                    _ =>
-                      paymentDate == null
-                          ? 'Payment date unavailable'
-                          : 'Paid on ${DateFormat('dd MMM yyyy').format(paymentDate.toLocal())}',
-                  };
-                  return {
-                    ...e,
-                    'label': (month >= 1 && month <= 12)
-                        ? '${DateFormat('MMM').format(DateTime(year, month))} $year'
-                        : '$year',
-                    'subtitle': subtitle,
-                    'amount': amount,
-                    'status': status,
-                  };
-                })
-                .toList();
             final residents = ((root['residents'] ?? const []) as List)
                 .whereType<Map>()
                 .map((e) => Map<String, dynamic>.from(e))
@@ -543,13 +527,6 @@ class _MaintenancePaymentScreenState
             final expenses = Map<String, dynamic>.from(
               (root['monthlyExpenseBreakdown'] ?? const {}) as Map,
             );
-            final overviewStrip = _buildTopOverviewStrip(
-              periodLabel: periodLabel,
-              residentsSummary: residentsSummary,
-              userSummary: userSummary,
-              expenses: expenses,
-            );
-
             // When FY mode is active but no billing cycle is selected,
             // show a prompt instead of default/empty data.
             final hasFyWithoutCycle = filter.financialYearId != null &&
@@ -608,56 +585,7 @@ class _MaintenancePaymentScreenState
                   residentsSummary,
                   expenses,
                   residents,
-                  overviewStrip,
                   periodLabel,
-                ),
-
-              if (hasFyWithoutCycle)
-                _wrapTabWithRefresh(
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: DesignColors.primary.withValues(alpha: 0.07),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.event_busy_rounded,
-                              size: 48,
-                              color: DesignColors.primary.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No billing cycles in this year',
-                            style: DesignTypography.headingM.copyWith(
-                              color: context.text.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Payment records will appear once billing cycles are created for the selected financial year.',
-                            textAlign: TextAlign.center,
-                            style: DesignTypography.bodySmall.copyWith(
-                              color: context.text.secondary,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                _buildPaymentHistoryTab(
-                    context,
-                    paymentHistory,
-                    filter,
                 ),
 
               // Year review tab
@@ -694,25 +622,23 @@ class _MaintenancePaymentScreenState
                   animation: tabCtrl,
                   builder: (ctx2, _) {
                     final tabIdx = tabCtrl.index;
-                    final hideFilterBar = tabIdx == 3;
+                    // Outstanding tab (now index 2) doesn't use the FY filter bar.
+                    final hideFilterBar = tabIdx == 2;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (!hideFilterBar) ...[
+                        if (!hideFilterBar)
+                          // Pinned above the scroll; elevation makes content
+                          // read as scrolling beneath a sticky header.
                           Material(
                             color: context.surface.defaultSurface,
-                            elevation: 0,
+                            elevation: 3,
+                            shadowColor:
+                                context.text.primary.withValues(alpha: 0.18),
                             child: _buildStickyFilterBar(
                                 ctx2, filter, root,
                                 hidesCycleDropdown: tabIdx >= 1),
                           ),
-                          Divider(
-                            height: 1,
-                            thickness: 1,
-                            color:
-                                context.surface.border.withValues(alpha: 0.6),
-                          ),
-                        ],
                         Expanded(child: TabBarView(children: pages)),
                       ],
                     );
@@ -737,18 +663,11 @@ class _MaintenancePaymentScreenState
         onPressed: _pullRefreshMaintenance,
       ),
       IconButton(
-        tooltip: 'Download PDF',
-        icon: Icon(Icons.picture_as_pdf_outlined, color: context.text.secondary),
+        tooltip: 'Download report (PDF)',
+        icon: Icon(Icons.ios_share_rounded, color: context.text.secondary),
         onPressed: dashboard == null
             ? null
             : () => _downloadPdfReport(context, dashboard, filter),
-      ),
-      IconButton(
-        tooltip: 'Analytics',
-        icon: Icon(Icons.insights_outlined, color: context.text.secondary),
-        onPressed: dashboard == null
-            ? null
-            : () => _openFinancialOverview(context, dashboard),
       ),
     ];
   }
@@ -869,16 +788,6 @@ class _MaintenancePaymentScreenState
         ? ref.watch(billingCyclesForFinancialYearProvider(fyId))
         : null;
 
-    String cycleMenuLabel(Map<String, dynamic> c) {
-      final key = c['cycleKey']?.toString() ?? '';
-      final my = _monthYearFromCycleKey(key);
-      final period = my != null
-          ? DateFormat('MMMM yyyy').format(DateTime(my.year, my.month))
-          : key;
-      final st = c['status']?.toString() ?? '';
-      return st.isEmpty ? period : '$period · $st';
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -985,66 +894,7 @@ class _MaintenancePaymentScreenState
                             )
                         ? filter.billingCycleId
                         : null;
-                return DropdownButtonFormField<String>(
-                  key: ValueKey('maint-cycle-$selectedId'),
-                  initialValue: selectedId,
-                  style: DesignTypography.bodyMedium.copyWith(
-                    color: context.text.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: true,
-                    fillColor: context.surface.elevated,
-                    labelText: 'Billing month (cycle)',
-                    labelStyle: DesignTypography.labelSmall.copyWith(
-                      color: context.text.secondary,
-                    ),
-                    border: border,
-                    enabledBorder: border,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: DesignColors.primary,
-                        width: 1.5,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                  dropdownColor: context.surface.defaultSurface,
-                  items: cycles
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c['id']?.toString(),
-                          child: Text(cycleMenuLabel(c)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (id) {
-                    if (id == null) return;
-                    final c = cycles.firstWhere(
-                      (x) => x['id']?.toString() == id,
-                    );
-                    final key = c['cycleKey']?.toString() ?? '';
-                    final my = _monthYearFromCycleKey(key);
-                    if (my == null) return;
-                    final cur = ref.read(maintenanceDashboardFilterProvider);
-                    ref.read(maintenanceDashboardFilterProvider.notifier).state =
-                        cur.copyWith(
-                      billingCycleId: id,
-                      month: my.month,
-                      year: my.year,
-                      clearBillingCycleId: false,
-                      clearFinancialYearId: false,
-                      financialYearId: fyId,
-                      clearCollectionCycleId: true,
-                    );
-                    ref.invalidate(maintenanceDashboardProvider);
-                  },
-                );
+                return _cycleChipStrip(cycles, fyId, selectedId);
               },
             ),
         ],
@@ -1052,625 +902,100 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _buildTopOverviewStrip({
-    required String periodLabel,
-    required Map<String, dynamic> residentsSummary,
-    required Map<String, dynamic> userSummary,
-    required Map<String, dynamic> expenses,
-  }) {
-    final expected =
-        (residentsSummary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
-    final collected =
-        (residentsSummary['totalCollected'] as num?)?.toDouble() ?? 0;
-    final pending =
-        (residentsSummary['totalPending'] as num?)?.toDouble() ?? 0;
-    final totalExpense = (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
-    final collectionRate = expected > 0 ? (collected / expected * 100) : 0.0;
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    final rateColor = collectionRate >= 80
-        ? DesignColors.success
-        : collectionRate >= 50
-            ? DesignColors.warning
-            : DesignColors.error;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-        decoration: BoxDecoration(
-          color: context.surface.defaultSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.surface.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // 4-stat inline row
-            Row(
-              children: [
-                _compactStat('Expected', inr.format(expected), DesignColors.primary),
-                _compactStat('Collected', inr.format(collected), DesignColors.success),
-                _compactStat('Pending', inr.format(pending), DesignColors.error),
-                _compactStat('Expenses', inr.format(totalExpense), const Color(0xFF546E7A)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Compact collection progress bar
-            Row(
-              children: [
-                Text(
-                  'Collection',
-                  style: DesignTypography.labelSmall.copyWith(
-                    color: context.text.secondary,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: (collectionRate / 100).clamp(0.0, 1.0),
-                      color: rateColor,
-                      backgroundColor: context.surface.elevated,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${collectionRate.toStringAsFixed(0)}%',
-                  style: DesignTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    color: rateColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _compactStat(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: context.text.secondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
-              fontSize: 13,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentHistoryTab(
-    BuildContext context,
-    List<Map<String, dynamic>> history,
-    MaintenanceDashboardFilter filter,
+  /// Horizontal, tappable month chips for the financial year's billing cycles
+  /// — replaces the old cycle dropdown for faster, more scannable switching.
+  Widget _cycleChipStrip(
+    List<Map<String, dynamic>> cycles,
+    String? fyId,
+    String? selectedId,
   ) {
-    // Sort by year desc, month desc
-    final sorted = [...history]..sort((a, b) {
-      final ya = (a['year'] as num?)?.toInt() ?? 0;
-      final yb = (b['year'] as num?)?.toInt() ?? 0;
-      if (ya != yb) return yb.compareTo(ya);
-      final ma = (a['month'] as num?)?.toInt() ?? 0;
-      final mb = (b['month'] as num?)?.toInt() ?? 0;
-      return mb.compareTo(ma);
-    });
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    // Compute yearly totals
-    double totalPaid = 0;
-    double totalExpected = 0;
-    double totalAdvance = 0;
-    double totalPending = 0;
-    int paidCycles = 0;
-    int pendingCycles = 0;
-    for (final item in sorted) {
-      // Use paidAmount (total applied = cash + credit + online) as primary.
-      // Fallback chain: paidAmount → cashPaidAmount → amount.
-      // cashPaidAmount alone is 0 for auto-settled/credit cycles.
-      final paidAmt = (item['paidAmount'] as num?)?.toDouble() ?? 0;
-      final cashAmt = (item['cashPaidAmount'] as num?)?.toDouble() ?? 0;
-      final paid = paidAmt > 0
-          ? paidAmt
-          : (cashAmt > 0
-              ? cashAmt
-              : ((item['amount'] as num?)?.toDouble() ?? 0));
-      final expected = (item['expectedAmount'] as num?)?.toDouble() ?? paid;
-      final remaining = (item['remainingDue'] as num?)?.toDouble() ?? 0;
-      final status = (item['status']?.toString() ?? '').toUpperCase();
-      totalPaid += paid;
-      totalExpected += expected;
-      if (paid > expected + 0.005) totalAdvance += (paid - expected);
-      totalPending += remaining;
-      if (status == 'PAID' || status == 'AUTO_SETTLED') {
-        paidCycles++;
-      } else {
-        pendingCycles++;
-      }
-    }
-
-    final completionRate =
-        sorted.isEmpty ? 0.0 : paidCycles / sorted.length;
-
-    return _wrapTabWithRefresh(
-      ListView(
-        padding: const EdgeInsets.only(bottom: 32),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          // ── Year summary hero ──
-          if (sorted.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF1E293B),
-                      Color(0xFF334155),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1E293B).withValues(alpha: 0.18),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Your annual summary',
-                                  style: DesignTypography.labelSmall.copyWith(
-                                    color: Colors.white60,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  inr.format(totalPaid),
-                                  style: DesignTypography.headingL.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'total paid',
-                                  style: DesignTypography.labelSmall.copyWith(
-                                    color: Colors.white54,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: pendingCycles > 0
-                                  ? DesignColors.warning.withValues(alpha: 0.2)
-                                  : DesignColors.success.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '$paidCycles / ${sorted.length} paid',
-                              style: DesignTypography.labelSmall.copyWith(
-                                color: pendingCycles > 0
-                                    ? DesignColors.warning
-                                    : DesignColors.success,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Progress bar
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: completionRate,
-                              minHeight: 5,
-                              backgroundColor: Colors.white12,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                completionRate >= 1.0
-                                    ? DesignColors.success
-                                    : DesignColors.warning,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Stats row
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                      child: Row(
-                        children: [
-                          _darkMiniStat(
-                              'Expected', inr.format(totalExpected)),
-                          const SizedBox(width: 16),
-                          _darkMiniStat(
-                            'Pending',
-                            inr.format(totalPending),
-                            color: totalPending > 0.005
-                                ? DesignColors.warning
-                                : null,
-                          ),
-                          if (totalAdvance > 0.005) ...[
-                            const SizedBox(width: 16),
-                            _darkMiniStat(
-                              'Advance',
-                              '+${inr.format(totalAdvance)}',
-                              color: DesignColors.success,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // ── Cycle-wise breakdown header ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-            child: Row(
-              children: [
-                Text(
-                  'Cycle-wise breakdown',
-                  style: DesignTypography.label.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: context.text.primary,
-                  ),
-                ),
-                const Spacer(),
-                if (sorted.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: DesignColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${sorted.length} ${sorted.length == 1 ? 'cycle' : 'cycles'}',
-                      style: DesignTypography.labelSmall.copyWith(
-                        color: DesignColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          if (sorted.isEmpty)
-            SizedBox(
-              height: 240,
-              child: Center(
-                child: _emptyState(
-                  icon: Icons.payments_outlined,
-                  title: 'No payments on file',
-                  subtitle:
-                      'Select a financial year to see your payment history.',
-                ),
-              ),
-            )
-          else
-            // Timeline-style cycle list
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.surface.defaultSurface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: context.surface.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: context.text.primary.withValues(alpha: 0.03),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < sorted.length; i++)
-                      _paymentCycleRow(sorted[i], inr, i == sorted.length - 1),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _paymentCycleRow(
-    Map<String, dynamic> item,
-    NumberFormat inr,
-    bool isLast,
-  ) {
-    final month = (item['month'] as num?)?.toInt() ?? 0;
-    final year = (item['year'] as num?)?.toInt() ?? 0;
-    // Use paidAmount (total applied = cash + credit) as primary display.
-    // cashPaidAmount alone is 0 for auto-settled/credit cycles.
-    final paidAmt = (item['paidAmount'] as num?)?.toDouble() ?? 0;
-    final cashPaidRaw = (item['cashPaidAmount'] as num?)?.toDouble() ?? 0;
-    final cashPaid = paidAmt > 0
-        ? paidAmt
-        : (cashPaidRaw > 0
-            ? cashPaidRaw
-            : ((item['amount'] as num?)?.toDouble() ?? 0));
-    final expected =
-        (item['expectedAmount'] as num?)?.toDouble() ?? cashPaid;
-    final creditApplied =
-        (item['creditApplied'] as num?)?.toDouble() ?? 0;
-    final remaining = (item['remainingDue'] as num?)?.toDouble() ?? 0;
-    final status =
-        (item['status']?.toString() ?? 'PAID').toUpperCase();
-    final advance =
-        cashPaid > expected + 0.005 ? cashPaid - expected : 0.0;
-
-    final accent = switch (status) {
-      'AUTO_SETTLED' => DesignColors.primary,
-      'PARTIAL' => DesignColors.warning,
-      'OVERDUE' => DesignColors.error,
-      'PENDING' => DesignColors.warning,
-      _ => DesignColors.success,
-    };
-    final statusLabel = switch (status) {
-      'AUTO_SETTLED' => 'Credit',
-      'PARTIAL' => 'Partial',
-      'OVERDUE' => 'Overdue',
-      'PENDING' => 'Due',
-      _ => 'Paid',
-    };
-    final periodLabel = (month >= 1 && month <= 12)
-        ? DateFormat('MMM yyyy').format(DateTime(year, month))
-        : '$year';
-
-    return InkWell(
-      onTap: () => _showPaymentHistoryDetails(context, item),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : Border(
-                  bottom: BorderSide(
-                    color: context.surface.border.withValues(alpha: 0.6),
-                  ),
-                ),
-        ),
+    return SizedBox(
+      height: 36,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            // Status dot
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Period + expected
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    periodLabel,
-                    style: DesignTypography.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Text(
-                        'Expected ${inr.format(expected)}',
-                        style: DesignTypography.labelSmall.copyWith(
-                          color: context.text.tertiary,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                      if (advance > 0.005) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color:
-                                DesignColors.success.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '+${inr.format(advance)}',
-                            style: DesignTypography.labelSmall.copyWith(
-                              color: DesignColors.success,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (remaining > 0.005 && advance <= 0.005) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color:
-                                DesignColors.warning.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'Due ${inr.format(remaining)}',
-                            style: DesignTypography.labelSmall.copyWith(
-                              color: DesignColors.warning,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (creditApplied > 0.005) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color:
-                                DesignColors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'Credit ${inr.format(creditApplied)}',
-                            style: DesignTypography.labelSmall.copyWith(
-                              color: DesignColors.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Amount + status badge
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  inr.format(cashPaid),
-                  style: DesignTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: accent,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: DesignTypography.labelSmall.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            for (final c in cycles) ...[
+              _cycleChip(c, fyId, selectedId),
+              const SizedBox(width: 8),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _darkMiniStat(String label, String value, {Color? color}) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: Colors.white38,
-              fontWeight: FontWeight.w500,
-              fontSize: 10.5,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color ?? Colors.white70,
-            ),
-          ),
-        ],
+  Widget _cycleChip(
+    Map<String, dynamic> c,
+    String? fyId,
+    String? selectedId,
+  ) {
+    final id = c['id']?.toString();
+    final key = c['cycleKey']?.toString() ?? '';
+    final my = _monthYearFromCycleKey(key);
+    final label = my != null
+        ? DateFormat("MMM ''yy").format(DateTime(my.year, my.month))
+        : key;
+    final selected = id != null && id == selectedId;
+    final isOpen = (c['status']?.toString() ?? '').toUpperCase() == 'OPEN';
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      labelStyle: DesignTypography.labelSmall.copyWith(
+        fontWeight: FontWeight.w700,
+        color: selected ? Colors.white : context.text.secondary,
       ),
+      backgroundColor: context.surface.elevated,
+      selectedColor: DesignColors.primary,
+      side: BorderSide(
+        color: selected ? DesignColors.primary : context.surface.border,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      avatar: (isOpen && !selected)
+          ? Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: DesignColors.success,
+                shape: BoxShape.circle,
+              ),
+            )
+          : null,
+      onSelected: (_) {
+        if (id == null || my == null) return;
+        _selectCycle(id, fyId, my.month, my.year);
+      },
     );
+  }
+
+  void _selectCycle(String id, String? fyId, int month, int year) {
+    final cur = ref.read(maintenanceDashboardFilterProvider);
+    ref.read(maintenanceDashboardFilterProvider.notifier).state = cur.copyWith(
+      billingCycleId: id,
+      month: month,
+      year: year,
+      clearBillingCycleId: false,
+      clearFinancialYearId: false,
+      financialYearId: fyId,
+      clearCollectionCycleId: true,
+    );
+    ref.invalidate(maintenanceDashboardProvider);
+  }
+
+  /// Hand off to the vetted dues/pay flow (which computes the authoritative
+  /// amount) and refresh balances on return.
+  void _goToDues() {
+    context.push('/resident/maintenance/dues').then((_) {
+      if (!mounted) return;
+      ref.invalidate(maintenanceDashboardProvider);
+      ref.invalidate(pendingMaintenanceProvider);
+      ref.invalidate(outstandingDuesProvider);
+    });
   }
 
   /// Error + retry state for the FY-scoped tabs (Year review, Shortfall) when a
@@ -1903,46 +1228,30 @@ class _MaintenancePaymentScreenState
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF1E293B), Color(0xFF334155)],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
+                    color: context.surface.defaultSurface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: context.surface.border),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1E293B).withValues(alpha: 0.15),
+                        color: context.text.primary.withValues(alpha: 0.03),
                         blurRadius: 16,
-                        offset: const Offset(0, 6),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.analytics_outlined,
-                                color: Colors.white70,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
                             Text(
                               'Year review',
                               style: DesignTypography.labelSmall.copyWith(
-                                color: Colors.white60,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
+                                color: context.text.secondary,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
                               ),
                             ),
                             const Spacer(),
@@ -1950,13 +1259,14 @@ class _MaintenancePaymentScreenState
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: DesignColors.primary
+                                    .withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 '${cycleRows.length} cycle${cycleRows.length == 1 ? '' : 's'}',
                                 style: DesignTypography.labelSmall.copyWith(
-                                  color: Colors.white70,
+                                  color: DesignColors.primary,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 11,
                                 ),
@@ -1964,57 +1274,73 @@ class _MaintenancePaymentScreenState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            _yearReviewStat(
-                                'Expected', inr.format(totalExpected), Colors.white),
-                            _yearReviewStat('Collected', inr.format(totalCollected),
-                                const Color(0xFF4ADE80)),
-                          ],
-                        ),
                         const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            _yearReviewStat('Pending', inr.format(totalPending),
-                                const Color(0xFFFBBF24)),
-                            _yearReviewStat('Expenses', inr.format(totalExpense),
-                                const Color(0xFF94A3B8)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Collection rate',
-                              style: DesignTypography.labelSmall.copyWith(
-                                color: Colors.white54,
-                                fontSize: 11,
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _collectionRing(collectionRate, rateColor),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Collected',
+                                    style: DesignTypography.labelSmall.copyWith(
+                                      color: context.text.secondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    inr.format(totalCollected),
+                                    style: DesignTypography.headingL.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: context.text.primary,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  _targetChip(totalExpected, inr),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  minHeight: 6,
-                                  value: (collectionRate / 100).clamp(0.0, 1.0),
-                                  color: rateColor,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.12),
+                              const SizedBox(width: 16),
+                              VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: context.surface.border,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _collectionStatRow(
+                                      icon: Icons.schedule_rounded,
+                                      color: DesignColors.warning,
+                                      label: 'Pending',
+                                      value: inr.format(totalPending),
+                                      valueColor: totalPending > 0.005
+                                          ? DesignColors.warning
+                                          : context.text.primary,
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      color: context.surface.border
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                    _collectionStatRow(
+                                      icon: Icons.south_rounded,
+                                      color: const Color(0xFF3B82F6),
+                                      label: 'Expenses',
+                                      value: inr.format(totalExpense),
+                                      valueColor: context.text.primary,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${collectionRate.toStringAsFixed(0)}%',
-                              style: DesignTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                                color: rateColor,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -2072,6 +1398,9 @@ class _MaintenancePaymentScreenState
                   final mColl = (row['totalCollected'] as num?)?.toDouble() ?? 0;
                   final mPending = (mExp - mColl).clamp(0.0, double.infinity);
                   final mExpense = (row['totalExpense'] as num?)?.toDouble() ?? 0;
+                  final mNet = mColl - mExpense;
+                  final mNetColor =
+                      mNet >= 0 ? DesignColors.success : DesignColors.error;
                   final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
                   final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
                   final mRate = mExp > 0 ? (mColl / mExp * 100) : 0.0;
@@ -2196,6 +1525,47 @@ class _MaintenancePaymentScreenState
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 10),
+                              // Net for this cycle = collected − expenses.
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: mNetColor.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      mNet >= 0
+                                          ? Icons.trending_up_rounded
+                                          : Icons.trending_down_rounded,
+                                      size: 14,
+                                      color: mNetColor,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Net (collected − expenses)',
+                                      style:
+                                          DesignTypography.labelSmall.copyWith(
+                                        color: context.text.secondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${mNet >= 0 ? '+' : ''}${inr.format(mNet)}',
+                                      style:
+                                          DesignTypography.labelSmall.copyWith(
+                                        color: mNetColor,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -2210,35 +1580,6 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _yearReviewStat(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: Colors.white54,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
-              fontSize: 15,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _cycleReviewStat(String label, String value, Color color) {
     return Expanded(
@@ -2322,6 +1663,67 @@ class _MaintenancePaymentScreenState
     Color(0xFFF97316),
     Color(0xFFEC4899),
   ];
+
+  /// Palette color for an expense category (stable per name, falls back to the
+  /// rotating palette; the synthetic "Other" bucket is neutral grey).
+  Color _expenseColor(String category, int index) {
+    if (category == 'Other') return context.text.tertiary;
+    return _categoryColors[category] ??
+        _fallbackColors[index % _fallbackColors.length];
+  }
+
+  /// Donut of the expense breakdown ("where your money goes") with the period
+  /// total in the centre — same data as the category list beneath it.
+  Widget _expenseDonut(
+    List<MapEntry<String, double>> entries,
+    double total,
+    NumberFormat inr,
+  ) {
+    if (entries.isEmpty || total <= 0) return const SizedBox.shrink();
+    return SizedBox(
+      width: 112,
+      height: 112,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 34,
+              sections: [
+                for (var i = 0; i < entries.length; i++)
+                  PieChartSectionData(
+                    value: entries[i].value,
+                    color: _expenseColor(entries[i].key, i),
+                    radius: 13,
+                    showTitle: false,
+                  ),
+              ],
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Total',
+                style: DesignTypography.labelSmall.copyWith(
+                  color: context.text.tertiary,
+                  fontSize: 10,
+                ),
+              ),
+              Text(
+                inr.format(total),
+                style: DesignTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: context.text.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showExpenseBreakdownSheet(
     BuildContext context, {
@@ -2578,7 +1980,6 @@ class _MaintenancePaymentScreenState
     Map<String, dynamic> residentsSummary,
     Map<String, dynamic> expenses,
     List<Map<String, dynamic>> residents,
-    Widget overviewStrip,
     String periodLabel,
   ) {
     final inr = NumberFormat.currency(
@@ -2589,13 +1990,9 @@ class _MaintenancePaymentScreenState
     double dn(String key) =>
         (userSummary[key] as num?)?.toDouble() ?? 0;
 
-    final expected = dn('expectedAmount');
-    final cashPaid = dn('cashPaidAmount');
-    final creditApplied = dn('creditApplied');
-    final paidApplied = dn('paidAmount');
+    // Only the current personal balance is surfaced here now — the full ledger
+    // lives on the My payments tab + the dues screen (see slim strip below).
     final remaining = dn('remainingDue');
-    final carry = dn('carryForwardBalance');
-    final previous = dn('previousDue');
 
     // Society-level summary numbers
     final totalResidents =
@@ -2627,168 +2024,127 @@ class _MaintenancePaymentScreenState
       return ab.compareTo(aa);
     });
 
+    // Apply the All-residents search + status filter for the list below.
+    final q = _residentQuery.trim().toLowerCase();
+    final visibleResidents = sortedResidents.where((r) {
+      final st = (r['status']?.toString() ?? 'UNPAID').toUpperCase();
+      final matchStatus = _residentStatusFilter == 'ALL' ||
+          (_residentStatusFilter == 'UNPAID' &&
+              (st == 'UNPAID' || st == 'PENDING')) ||
+          st == _residentStatusFilter;
+      if (!matchStatus) return false;
+      if (q.isEmpty) return true;
+      final name =
+          '${r['name'] ?? r['ownerName'] ?? ''}'.toLowerCase();
+      final unit =
+          '${r['flatNumber'] ?? r['villaNumber'] ?? ''}'.toLowerCase();
+      return name.contains(q) || unit.contains(q);
+    }).toList();
+
+    // Pin the logged-in user's own villa to the top of the list.
+    final myVilla = ref
+        .watch(authProvider.select((s) => s.user?.villaNumber))
+        ?.trim()
+        .toLowerCase();
+    if (myVilla != null && myVilla.isNotEmpty) {
+      final meIdx = visibleResidents.indexWhere((r) =>
+          '${r['villaNumber'] ?? r['flatNumber'] ?? ''}'
+              .trim()
+              .toLowerCase() ==
+          myVilla);
+      if (meIdx > 0) {
+        visibleResidents.insert(0, visibleResidents.removeAt(meIdx));
+      }
+    }
+
     return _wrapTabWithRefresh(
       CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverList(
             delegate: SliverChildListDelegate([
-          overviewStrip,
-
-          // ── Your ledger ──
-          _sectionHeader('Your ledger', periodLabel),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.surface.defaultSurface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: context.surface.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: context.text.primary.withValues(alpha: 0.03),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Hero amount
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                    decoration: BoxDecoration(
-                      color: remaining > 0.005
-                          ? DesignColors.warning.withValues(alpha: 0.06)
-                          : DesignColors.success.withValues(alpha: 0.06),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(18),
-                      ),
-                    ),
+          // ── Your dues (compact) ──
+          // Full personal ledger lives on the My payments tab + dues screen;
+          // here we surface only the actionable balance, and only when owed.
+          if (remaining > 0.005)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Material(
+                color: DesignColors.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _goToDues,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
                     child: Row(
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              remaining > 0.005 ? 'Due this period' : 'All settled',
-                              style: DesignTypography.labelSmall.copyWith(
-                                color: remaining > 0.005
-                                    ? DesignColors.warning
-                                    : DesignColors.success,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              inr.format(remaining > 0.005 ? remaining : paidApplied),
-                              style: DesignTypography.headingL.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: remaining > 0.005
-                                    ? DesignColors.warning
-                                    : DesignColors.success,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: remaining > 0.005
-                                ? DesignColors.warning.withValues(alpha: 0.12)
-                                : DesignColors.success.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            remaining > 0.005 ? 'Pending' : 'Paid',
-                            style: DesignTypography.labelSmall.copyWith(
-                              color: remaining > 0.005
-                                  ? DesignColors.warning
-                                  : DesignColors.success,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: DesignColors.warning,
+                            shape: BoxShape.circle,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-                    child: Column(
-                      children: [
-                        _ledgerRow('Expected', inr.format(expected)),
-                        _ledgerRow('Cash paid', inr.format(cashPaid),
-                            valueColor: cashPaid > 0.005
-                                ? DesignColors.success
-                                : null),
-                        if (creditApplied > 0.005)
-                          _ledgerRow('Credit applied', inr.format(creditApplied),
-                              valueColor: DesignColors.success),
-                        _ledgerRow('Total applied', inr.format(paidApplied),
-                            valueColor: DesignColors.success),
-                        if (remaining > 0.005)
-                          _ledgerRow('Remaining', inr.format(remaining),
-                              valueColor: DesignColors.warning),
-                        if (previous.abs() > 0.005 || carry.abs() > 0.005) ...[
-                          const Divider(height: 20),
-                          if (previous.abs() > 0.005)
-                            _ledgerRow('Prior balance', inr.format(previous),
-                                subtle: true),
-                          if (carry.abs() > 0.005)
-                            _ledgerRow('Carry-forward', inr.format(carry),
-                                subtle: true),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Pay CTA — hands off to the vetted dues/pay flow (which
-                  // computes the authoritative amount) rather than paying a
-                  // possibly-stale dashboard figure directly.
-                  if (remaining > 0.005)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            context
-                                .push('/resident/maintenance/dues')
-                                .then((_) {
-                              if (!mounted) return;
-                              ref.invalidate(maintenanceDashboardProvider);
-                              ref.invalidate(pendingMaintenanceProvider);
-                              ref.invalidate(outstandingDuesProvider);
-                            });
-                          },
-                          icon: const Icon(Icons.currency_rupee_rounded,
-                              size: 18),
-                          label: Text(
-                            'Pay ${inr.format(remaining)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your dues',
+                                style: DesignTypography.labelSmall.copyWith(
+                                  color: context.text.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                inr.format(remaining),
+                                style: DesignTypography.headingM.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: DesignColors.warning,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        FilledButton(
+                          onPressed: _goToDues,
                           style: FilledButton.styleFrom(
                             backgroundColor: DesignColors.primary,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
+                          child: const Text('Pay',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
-                      ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
+
+          // ── Collections (society summary) ──
+          _collectionsHeroCard(
+            periodLabel: periodLabel,
+            totalExpected: totalExpected,
+            totalCollected: totalCollected,
+            totalPending: totalPending,
+            totalExpense: totalExpense,
+            net: net,
+            paidCount: paidCount,
+            partialCount: partialCount,
+            unpaidCount: unpaidCount,
+            overdueCount: overdueCount,
+            inr: inr,
           ),
 
           // ── Advance payments ──
@@ -2813,9 +2169,15 @@ class _MaintenancePaymentScreenState
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionHeader(
-                      'Advance payments', '${advanceResidents.length} members'),
-                  Padding(
+                  _collapsibleSectionHeader(
+                    'Advance payments',
+                    '${advanceResidents.length} members',
+                    expanded: _advanceExpanded,
+                    onTap: () => setState(
+                        () => _advanceExpanded = !_advanceExpanded),
+                  ),
+                  if (_advanceExpanded)
+                    Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
                       decoration: BoxDecoration(
@@ -3046,10 +2408,16 @@ class _MaintenancePaymentScreenState
               if (displayTotal - entriesSum > 0.5) {
                 entries.add(MapEntry('Other', displayTotal - entriesSum));
               }
+              // Per-home share — what each home effectively funds this period.
+              final perHome =
+                  totalResidents > 0 ? displayTotal / totalResidents : 0.0;
+              final expenseSubtitle = perHome > 0
+                  ? '≈ ${inr.format(perHome)}/home'
+                  : periodLabel;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionHeader('Expense by category', periodLabel),
+                  _sectionHeader('Where your money goes', expenseSubtitle),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
@@ -3058,85 +2426,83 @@ class _MaintenancePaymentScreenState
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: context.surface.border),
                       ),
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < entries.length; i++) ...[
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              child: Row(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            // Donut (centre shows the total) + a compact
+                            // top-5 legend; full breakdown via the link below.
+                            _expenseDonut(entries, displayTotal, inr),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: context.text.secondary
-                                          .withValues(alpha: 0.5),
-                                      shape: BoxShape.circle,
+                                  for (int i = 0;
+                                      i < entries.length && i < 5;
+                                      i++)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 9),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 9,
+                                            height: 9,
+                                            decoration: BoxDecoration(
+                                              color: _expenseColor(
+                                                  entries[i].key, i),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              entries[i].key.replaceAll('_', ' '),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: DesignTypography.labelSmall
+                                                  .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: context.text.secondary,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            inr.format(entries[i].value),
+                                            style: DesignTypography.labelSmall
+                                                .copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: context.text.primary,
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${(entries[i].value / displayTotal * 100).toStringAsFixed(0)}%',
+                                            style: DesignTypography.labelSmall
+                                                .copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: context.text.tertiary,
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      entries[i]
-                                          .key
-                                          .replaceAll('_', ' '),
-                                      style: DesignTypography.bodySmall
-                                          .copyWith(
+                                  if (entries.length > 5)
+                                    Text(
+                                      '+${entries.length - 5} more',
+                                      style: DesignTypography.labelSmall.copyWith(
+                                        color: context.text.tertiary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
-                                  Text(
-                                    inr.format(entries[i].value),
-                                    style: DesignTypography.bodySmall
-                                        .copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF546E7A),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ),
-                            if (i < entries.length - 1)
-                              Divider(
-                                height: 1,
-                                indent: 16,
-                                endIndent: 16,
-                                color: context.surface.border
-                                    .withValues(alpha: 0.6),
-                              ),
                           ],
-                          // Total row
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF546E7A)
-                                  .withValues(alpha: 0.05),
-                              borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(16)),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Total expenses',
-                                  style: DesignTypography.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  inr.format(displayTotal),
-                                  style: DesignTypography.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF546E7A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -3193,90 +2559,8 @@ class _MaintenancePaymentScreenState
             },
           ),
 
-          // ── Society summary ──
-          _sectionHeader('Society summary', periodLabel),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.surface.defaultSurface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: context.surface.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: context.text.primary.withValues(alpha: 0.03),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Resident status chips
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _summaryChip(
-                          '$totalResidents',
-                          'Residents',
-                          DesignColors.primary,
-                        ),
-                        _summaryChip(
-                          '$paidCount',
-                          'Paid',
-                          DesignColors.success,
-                        ),
-                        _summaryChip(
-                          '$unpaidCount',
-                          'Unpaid',
-                          unpaidCount > 0
-                              ? DesignColors.error
-                              : context.text.secondary,
-                        ),
-                        if (partialCount > 0)
-                          _summaryChip(
-                            '$partialCount',
-                            'Partial',
-                            DesignColors.warning,
-                          ),
-                        if (overdueCount > 0)
-                          _summaryChip(
-                            '$overdueCount',
-                            'Overdue',
-                            DesignColors.error,
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1),
-                    const SizedBox(height: 14),
-                    _ledgerRow('Expected', inr.format(totalExpected)),
-                    _ledgerRow('Collected', inr.format(totalCollected),
-                        valueColor: DesignColors.success),
-                    _ledgerRow('Pending', inr.format(totalPending),
-                        valueColor: totalPending > 0.005
-                            ? DesignColors.warning
-                            : context.text.primary),
-                    _ledgerRow('Expenses', inr.format(totalExpense)),
-                    _ledgerRow(
-                      'Net position',
-                      '${net >= 0 ? '+' : ''}${inr.format(net)}',
-                      valueColor: net >= 0
-                          ? DesignColors.success
-                          : DesignColors.error,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
           // ── All residents ──
-          if (sortedResidents.isNotEmpty)
+          if (sortedResidents.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
               child: Row(
@@ -3310,17 +2594,71 @@ class _MaintenancePaymentScreenState
                 ],
               ),
             ),
+            _residentsFilterBar(),
+          ],
             ]),
           ),
           // Lazily built so large societies don't construct every tile up front.
-          if (sortedResidents.isNotEmpty)
+          if (visibleResidents.isNotEmpty)
             SliverList.builder(
-              itemCount: sortedResidents.length,
-              itemBuilder: (ctx, i) =>
-                  _residentPaymentTile(sortedResidents[i], inr),
-            ),
+              itemCount: visibleResidents.length,
+              itemBuilder: (ctx, i) {
+                final r = visibleResidents[i];
+                final unit = '${r['villaNumber'] ?? r['flatNumber'] ?? ''}'
+                    .trim()
+                    .toLowerCase();
+                final isMe =
+                    myVilla != null && myVilla.isNotEmpty && unit == myVilla;
+                return _residentPaymentTile(r, inr, isMe: isMe);
+              },
+            )
+          else if (sortedResidents.isNotEmpty)
+            SliverToBoxAdapter(child: _residentsNoMatch()),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
+    );
+  }
+
+  Widget _collapsibleSectionHeader(
+    String title,
+    String subtitle, {
+    required bool expanded,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: DesignTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: context.text.primary,
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            if (subtitle.isNotEmpty)
+              Text(
+                subtitle,
+                style: DesignTypography.caption.copyWith(
+                  color: context.text.tertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            const SizedBox(width: 4),
+            Icon(
+              expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              size: 20,
+              color: context.text.secondary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3354,30 +2692,210 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _summaryChip(String value, String label, Color color) {
+  // ───────────────────── Collections hero card ─────────────────────
+
+  Widget _collectionsHeroCard({
+    required String periodLabel,
+    required double totalExpected,
+    required double totalCollected,
+    required double totalPending,
+    required double totalExpense,
+    required double net,
+    required int paidCount,
+    required int partialCount,
+    required int unpaidCount,
+    required int overdueCount,
+    required NumberFormat inr,
+  }) {
+    final rate =
+        totalExpected > 0 ? (totalCollected / totalExpected * 100) : 0.0;
+    final rateColor = rate >= 80
+        ? DesignColors.success
+        : rate >= 50
+            ? DesignColors.warning
+            : DesignColors.error;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Collections', periodLabel),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: context.surface.defaultSurface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: context.surface.border),
+              boxShadow: [
+                BoxShadow(
+                  color: context.text.primary.withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Status filter chips, top-right — tap to filter residents.
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _statusCountPill('PAID', '$paidCount', 'Paid',
+                              DesignColors.success),
+                          if (partialCount > 0)
+                            _statusCountPill('PARTIAL', '$partialCount',
+                                'Partial', DesignColors.warning),
+                          _statusCountPill('UNPAID', '$unpaidCount', 'Unpaid',
+                              DesignColors.error),
+                          if (overdueCount > 0)
+                            _statusCountPill('OVERDUE', '$overdueCount',
+                                'Overdue', DesignColors.error),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Left — ring + collected / expected
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _collectionRing(rate, rateColor),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'Collected',
+                                  style: DesignTypography.labelSmall.copyWith(
+                                    color: context.text.secondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  inr.format(totalCollected),
+                                  style: DesignTypography.headingL.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: context.text.primary,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                _targetChip(totalExpected, inr),
+                              ],
+                            ),
+                            const SizedBox(width: 16),
+                            VerticalDivider(
+                              width: 1,
+                              thickness: 1,
+                              color: context.surface.border,
+                            ),
+                            const SizedBox(width: 16),
+                            // Right — icon stat rows
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _collectionStatRow(
+                                    icon: Icons.schedule_rounded,
+                                    color: DesignColors.warning,
+                                    label: 'Pending',
+                                    value: inr.format(totalPending),
+                                    valueColor: totalPending > 0.005
+                                        ? DesignColors.warning
+                                        : context.text.primary,
+                                    onTap: () => setState(() =>
+                                        _residentStatusFilter = 'UNPAID'),
+                                  ),
+                                  Divider(
+                                    height: 1,
+                                    color: context.surface.border
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                  _collectionStatRow(
+                                    icon: Icons.south_rounded,
+                                    color: const Color(0xFF3B82F6),
+                                    label: 'Expenses',
+                                    value: inr.format(totalExpense),
+                                    valueColor: context.text.primary,
+                                    onTap: _openExpenses,
+                                  ),
+                                  Divider(
+                                    height: 1,
+                                    color: context.surface.border
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                  _collectionStatRow(
+                                    icon: net >= 0
+                                        ? Icons.trending_up_rounded
+                                        : Icons.trending_down_rounded,
+                                    color: net >= 0
+                                        ? DesignColors.success
+                                        : DesignColors.error,
+                                    label: 'Net',
+                                    value:
+                                        '${net >= 0 ? '+' : ''}${inr.format(net)}',
+                                    valueColor: net >= 0
+                                        ? DesignColors.success
+                                        : DesignColors.error,
+                                    onTap: _openExpenses,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _collectionsBanner(net, inr),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// One row in the Collections card's right column: tinted icon + label +
+  /// coloured value + chevron (the chevron only shows when tappable).
+  /// Small tinted "Target ₹X" chip — surfaces the expected-collection figure
+  /// next to a collected amount so it doesn't disappear under the hero number.
+  Widget _targetChip(double expected, NumberFormat inr) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        color: context.surface.elevated,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(Icons.adjust_rounded, size: 13, color: context.text.secondary),
+          const SizedBox(width: 5),
           Text(
-            value,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
+            'Target ',
             style: DesignTypography.labelSmall.copyWith(
               color: context.text.secondary,
               fontWeight: FontWeight.w500,
-              fontSize: 10.5,
+            ),
+          ),
+          Text(
+            inr.format(expected),
+            style: DesignTypography.labelSmall.copyWith(
+              color: context.text.primary,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
             ),
           ),
         ],
@@ -3385,7 +2903,306 @@ class _MaintenancePaymentScreenState
     );
   }
 
-  Widget _residentPaymentTile(Map<String, dynamic> r, NumberFormat inr) {
+  Widget _collectionStatRow({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+    required Color valueColor,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DesignTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: context.text.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: DesignTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: valueColor,
+                ),
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 2),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: context.text.tertiary),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Contextual footer banner — celebrates a surplus or flags a shortfall.
+  Widget _collectionsBanner(double net, NumberFormat inr) {
+    final ahead = net >= -0.005;
+    final color = ahead ? DesignColors.success : DesignColors.warning;
+    return Container(
+      width: double.infinity,
+      color: color.withValues(alpha: 0.10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              ahead ? Icons.bar_chart_rounded : Icons.warning_amber_rounded,
+              size: 17,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              ahead
+                  ? "Great job! You're ahead by ${inr.format(net)}"
+                  : 'Shortfall of ${inr.format(net.abs())} this period',
+              style: DesignTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openExpenses() {
+    final f = ref.read(maintenanceDashboardFilterProvider);
+    context.push('/resident/expenses?month=${f.month}&year=${f.year}');
+  }
+
+  Widget _collectionRing(double rate, Color color) {
+    final pct = (rate / 100).clamp(0.0, 1.0);
+    const d = 92.0;
+    return SizedBox(
+      width: d,
+      height: d,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: d,
+            height: d,
+            child: CircularProgressIndicator(
+              value: 1,
+              strokeWidth: 9,
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(context.surface.elevated),
+            ),
+          ),
+          SizedBox(
+            width: d,
+            height: d,
+            child: CircularProgressIndicator(
+              value: pct,
+              strokeWidth: 9,
+              strokeCap: StrokeCap.round,
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${rate.toStringAsFixed(0)}%',
+                style: DesignTypography.headingL.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  fontSize: 24,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Text(
+                'Collected',
+                style: DesignTypography.labelSmall.copyWith(
+                  color: context.text.tertiary,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusCountPill(
+    String filterValue,
+    String count,
+    String label,
+    Color color,
+  ) {
+    final active = _residentStatusFilter == filterValue;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(() {
+        _residentStatusFilter = active ? 'ALL' : filterValue;
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? color : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? color : color.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active ? Colors.white : color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              count,
+              style: DesignTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.w800,
+                color: active ? Colors.white : color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: DesignTypography.labelSmall.copyWith(
+                color: active ? Colors.white70 : context.text.secondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 10.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────── Residents search + filter ─────────────────────
+
+  Widget _residentsFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: TextField(
+        controller: _residentSearchCtrl,
+        onChanged: (v) => setState(() => _residentQuery = v),
+        textInputAction: TextInputAction.search,
+        style: DesignTypography.bodySmall.copyWith(color: context.text.primary),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: context.surface.elevated,
+          hintText: 'Search resident or unit',
+          hintStyle: DesignTypography.bodySmall.copyWith(
+            color: context.text.tertiary,
+          ),
+          prefixIcon: Icon(Icons.search_rounded,
+              size: 20, color: context.text.tertiary),
+          suffixIcon: _residentQuery.isEmpty
+              ? null
+              : IconButton(
+                  icon: Icon(Icons.close_rounded,
+                      size: 18, color: context.text.tertiary),
+                  onPressed: () {
+                    _residentSearchCtrl.clear();
+                    setState(() => _residentQuery = '');
+                  },
+                ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: context.surface.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: context.surface.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: DesignColors.primary, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _residentsNoMatch() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.search_off_rounded,
+                size: 40, color: context.text.tertiary),
+            const SizedBox(height: 10),
+            Text(
+              'No residents match',
+              style: DesignTypography.bodySmall.copyWith(
+                color: context.text.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () {
+                _residentSearchCtrl.clear();
+                setState(() {
+                  _residentQuery = '';
+                  _residentStatusFilter = 'ALL';
+                });
+              },
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _residentPaymentTile(Map<String, dynamic> r, NumberFormat inr,
+      {bool isMe = false}) {
     final rawStatus = (r['status']?.toString() ?? 'UNPAID').toUpperCase();
     final isPaid = rawStatus == 'PAID';
     final expectedAmount = (r['amount'] as num?)?.toDouble() ?? 0;
@@ -3407,11 +3224,20 @@ class _MaintenancePaymentScreenState
     };
     final extra = actualPaid - expectedAmount;
     final hasExtra = extra > 0.005 && isPaid;
-    final hasShortfall = actualPaid > 0.005 && !isPaid;
     // Lead with what's owed when nothing has been paid yet — a bare ₹0 reads as
     // "no charge" rather than "unpaid".
     final hasNoPayment = actualPaid <= 0.005;
     final displayAmount = hasNoPayment ? expectedAmount : actualPaid;
+    final progress = expectedAmount > 0
+        ? (actualPaid / expectedAmount).clamp(0.0, 1.0)
+        : (isPaid ? 1.0 : 0.0);
+    final caption = hasExtra
+        ? 'Paid ${inr.format(actualPaid)} · Extra +${inr.format(extra)}'
+        : isPaid
+            ? 'Paid in full'
+            : actualPaid > 0.005
+                ? 'Paid ${inr.format(actualPaid)} of ${inr.format(expectedAmount)} · Due ${inr.format(expectedAmount - actualPaid)}'
+                : 'Due ${inr.format(expectedAmount)}';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -3419,44 +3245,92 @@ class _MaintenancePaymentScreenState
         decoration: BoxDecoration(
           color: context.surface.defaultSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.surface.border),
+          border: Border.all(
+            color: isMe
+                ? DesignColors.primary.withValues(alpha: 0.5)
+                : context.surface.border,
+            width: isMe ? 1.5 : 1,
+          ),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
               child: Row(
                 children: [
-                  // Left accent bar
+                  // Unit avatar, tinted by status
                   Container(
-                    width: 3,
-                    height: 40,
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: BorderRadius.circular(3),
+                      color: accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      unit,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: DesignTypography.labelSmall.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   // Name + unit
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: DesignTypography.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.1,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: DesignTypography.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ),
+                            if (isMe) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: DesignColors.primary
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'You',
+                                  style: DesignTypography.labelSmall.copyWith(
+                                    color: DesignColors.primary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 9.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Unit $unit',
+                          caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: DesignTypography.labelSmall.copyWith(
-                            color: context.text.secondary,
+                            color: context.text.tertiary,
                             fontWeight: FontWeight.w500,
+                            fontSize: 10.5,
                           ),
                         ),
                       ],
@@ -3502,269 +3376,15 @@ class _MaintenancePaymentScreenState
                 ],
               ),
             ),
-            // Breakdown row — when paid extra or has partial payment
-            if (hasExtra || hasShortfall)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(30, 0, 14, 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: hasExtra
-                        ? DesignColors.success.withValues(alpha: 0.05)
-                        : DesignColors.warning.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: hasExtra
-                          ? DesignColors.success.withValues(alpha: 0.12)
-                          : DesignColors.warning.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  child: Text(
-                    hasExtra
-                        ? 'Expected ${inr.format(expectedAmount)} · Paid ${inr.format(actualPaid)} · Extra +${inr.format(extra)}'
-                        : 'Expected ${inr.format(expectedAmount)} · Paid ${inr.format(actualPaid)} · Due ${inr.format(expectedAmount - actualPaid)}',
-                    style: DesignTypography.labelSmall.copyWith(
-                      color: hasExtra
-                          ? DesignColors.success
-                          : DesignColors.warning,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ),
-              ),
+            // Thin paid-vs-expected bar flush to the card's bottom edge.
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: context.surface.elevated,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _ledgerRow(
-    String label,
-    String value, {
-    Color? valueColor,
-    bool subtle = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 11),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: DesignTypography.bodySmall.copyWith(
-                color: subtle
-                    ? context.text.tertiary
-                    : context.text.secondary,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            value,
-            style: DesignTypography.bodySmall.copyWith(
-              color: valueColor ??
-                  (subtle
-                      ? context.text.tertiary
-                      : context.text.primary),
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openFinancialOverview(
-    BuildContext context,
-    Map<String, dynamic> dashboard,
-  ) {
-    final fyId =
-        ref.read(maintenanceDashboardFilterProvider).financialYearId;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CollectionExpenseOverviewScreen(
-          dashboard: dashboard,
-          financialYearId: fyId,
-        ),
-      ),
-    );
-  }
-
-  void _showPaymentHistoryDetails(
-    BuildContext context,
-    Map<String, dynamic> item,
-  ) {
-    final amount = (item['amount'] as num?)?.toDouble() ?? 0;
-    final paidAmount = (item['paidAmount'] as num?)?.toDouble() ?? amount;
-    final creditApplied = (item['creditApplied'] as num?)?.toDouble() ?? 0;
-    final expectedAmount =
-        (item['expectedAmount'] as num?)?.toDouble() ?? paidAmount;
-    final pendingAmount = (item['remainingDue'] as num?)?.toDouble() ?? 0;
-    final carryForwardBalance =
-        (item['carryForwardBalance'] as num?)?.toDouble() ?? 0;
-    final paymentMode = item['paymentMode']?.toString() ?? '—';
-    final notes = item['notes']?.toString();
-    final paymentDate = DateTime.tryParse(
-      item['paymentDate']?.toString() ?? '',
-    );
-    final status = (item['status']?.toString() ?? 'PAID').toUpperCase();
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: context.surface.defaultSurface,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              Text(
-                item['label']?.toString() ?? 'Payment details',
-                style: DesignTypography.headingM.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                item['subtitle']?.toString() ?? '',
-                style: DesignTypography.bodySmall.copyWith(
-                  color: context.text.secondary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Builder(builder: (_) {
-                final isSettled = status == 'PAID' || status == 'AUTO_SETTLED';
-                final heroAmount = paidAmount > 0 ? paidAmount : expectedAmount;
-                final heroLabel = isSettled ? 'Amount settled' : 'Expected amount';
-                final heroColor = isSettled
-                    ? DesignColors.success
-                    : (status == 'OVERDUE'
-                        ? DesignColors.error
-                        : DesignColors.warning);
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: heroColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: heroColor.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        heroLabel,
-                        style: DesignTypography.labelSmall.copyWith(
-                          color: context.text.secondary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        inr.format(heroAmount),
-                        style: DesignTypography.headingL.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: heroColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              const SizedBox(height: 16),
-              _detailRow(
-                'Status',
-                status.replaceAll('_', ' '),
-                valueColor: status == 'OVERDUE'
-                    ? DesignColors.error
-                    : status == 'PARTIAL' || status == 'PENDING'
-                    ? DesignColors.warning
-                    : DesignColors.success,
-              ),
-              _detailRow(
-                'Payment date',
-                paymentDate == null
-                    ? '—'
-                    : DateFormat('dd MMM yyyy').format(paymentDate.toLocal()),
-              ),
-              _detailRow('Expected amount', inr.format(expectedAmount)),
-              _detailRow('Cash received', inr.format(amount)),
-              _detailRow('Applied to cycle', inr.format(paidAmount)),
-              if (creditApplied > 0.005)
-                _detailRow('Credit used', inr.format(creditApplied)),
-              _detailRow('Pending amount', inr.format(pendingAmount)),
-              _detailRow(
-                'Carry forward',
-                inr.format(carryForwardBalance),
-                valueColor: carryForwardBalance < 0
-                    ? DesignColors.error
-                    : context.text.primary,
-              ),
-              _detailRow('Method', paymentMode),
-              _detailRow(
-                'Notes',
-                (notes == null || notes.isEmpty) ? '—' : notes,
-                multiline: true,
-              ),
-            ],
-          ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(
-    String label,
-    String value, {
-    Color? valueColor,
-    bool multiline = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: multiline
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 128,
-            child: Text(
-              label,
-              style: DesignTypography.bodySmall.copyWith(
-                color: context.text.secondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: DesignTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? context.text.primary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -4023,36 +3643,59 @@ class _MaintenancePaymentScreenState
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              DesignColors.error.withValues(alpha: 0.08),
-              DesignColors.error.withValues(alpha: 0.03),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
+          color: context.surface.defaultSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.surface.border),
+          boxShadow: [
+            BoxShadow(
+              color: context.text.primary.withValues(alpha: 0.03),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Total Outstanding',
-              style: DesignTypography.bodySmall.copyWith(
-                color: DesignColors.error.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              inr.format(totalOutstanding),
-              style: DesignTypography.headingL.copyWith(
-                color: DesignColors.error,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: DesignColors.error.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_rounded,
+                      size: 20, color: DesignColors.error),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total outstanding',
+                        style: DesignTypography.labelSmall.copyWith(
+                          color: context.text.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        inr.format(totalOutstanding),
+                        style: DesignTypography.headingL.copyWith(
+                          color: DesignColors.error,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Row(
@@ -4525,102 +4168,128 @@ class _MaintenancePaymentScreenState
     required int totalCycles,
     required NumberFormat inr,
   }) {
+    final hasDeficit = deficitCount > 0;
+    final heroColor = hasDeficit ? DesignColors.warning : DesignColors.success;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1E293B), Color(0xFF334155)],
-          ),
-          borderRadius: BorderRadius.circular(20),
+          color: context.surface.defaultSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.surface.border),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E293B).withValues(alpha: 0.15),
+              color: context.text.primary.withValues(alpha: 0.03),
               blurRadius: 16,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Admin shortfall',
-                      style: DesignTypography.labelSmall.copyWith(
-                        color: Colors.white60, fontWeight: FontWeight.w600, letterSpacing: 0.5,
-                      ),
+                  Text(
+                    'Shortfall',
+                    style: DesignTypography.labelSmall.copyWith(
+                      color: context.text.secondary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
+                  const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: DesignColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '$totalCycles cycle${totalCycles == 1 ? '' : 's'}',
                       style: DesignTypography.labelSmall.copyWith(
-                        color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 11,
+                        color: DesignColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              // Hero shortfall amount
+              const SizedBox(height: 12),
               Text(
-                deficitCount > 0 ? inr.format(totalShortfall) : inr.format(0),
+                hasDeficit ? inr.format(totalShortfall) : inr.format(0),
                 style: DesignTypography.headingL.copyWith(
-                  color: deficitCount > 0 ? const Color(0xFFFB923C) : const Color(0xFF4ADE80),
+                  color: heroColor,
                   fontWeight: FontWeight.w900,
                   fontSize: 28,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
-                deficitCount > 0
-                    ? 'Extra amount paid by admin across $deficitCount deficit month${deficitCount == 1 ? '' : 's'}'
-                    : 'No shortfall — collections covered all expenses',
+                hasDeficit
+                    ? 'Extra paid by admin across $deficitCount deficit month${deficitCount == 1 ? '' : 's'}'
+                    : 'Collections covered all expenses',
                 style: DesignTypography.labelSmall.copyWith(
-                  color: Colors.white54, fontWeight: FontWeight.w500, fontSize: 11,
+                  color: context.text.tertiary,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _yearReviewStat('Expected', inr.format(totalExpected), const Color(0xFF94A3B8)),
-                  _yearReviewStat('Collected', inr.format(totalCollected), const Color(0xFF4ADE80)),
-                  _yearReviewStat('Expenses', inr.format(totalExpense), const Color(0xFFF87171)),
-                ],
+              const SizedBox(height: 12),
+              Divider(
+                height: 1,
+                color: context.surface.border.withValues(alpha: 0.6),
               ),
-              if (deficitCount > 0) ...[
+              const SizedBox(height: 2),
+              _collectionStatRow(
+                icon: Icons.adjust_rounded,
+                color: DesignColors.primary,
+                label: 'Expected',
+                value: inr.format(totalExpected),
+                valueColor: context.text.primary,
+              ),
+              Divider(
+                height: 1,
+                color: context.surface.border.withValues(alpha: 0.6),
+              ),
+              _collectionStatRow(
+                icon: Icons.check_circle_outline_rounded,
+                color: DesignColors.success,
+                label: 'Collected',
+                value: inr.format(totalCollected),
+                valueColor: DesignColors.success,
+              ),
+              Divider(
+                height: 1,
+                color: context.surface.border.withValues(alpha: 0.6),
+              ),
+              _collectionStatRow(
+                icon: Icons.south_rounded,
+                color: const Color(0xFF3B82F6),
+                label: 'Expenses',
+                value: inr.format(totalExpense),
+                valueColor: context.text.primary,
+              ),
+              if (hasDeficit) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFB923C).withValues(alpha: 0.15),
+                    color: DesignColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Shortfall = sum of (expenses − collected) for each month where expenses exceeded collections'
+                    'Shortfall = sum of (expenses − collected) for months where expenses exceeded collections'
                     '${deficitCount > 1 ? ' · Avg ${inr.format(totalShortfall / deficitCount)}/mo' : ''}',
                     style: DesignTypography.labelSmall.copyWith(
-                      color: const Color(0xFFFBBF24), fontWeight: FontWeight.w600, fontSize: 11,
+                      color: DesignColors.warning,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -4768,786 +4437,4 @@ pw.TableRow _pdfRow(String key, String value) {
       pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(value)),
     ],
   );
-}
-
-enum _OverviewMode { monthly, yearly }
-
-class CollectionExpenseOverviewScreen extends ConsumerStatefulWidget {
-  const CollectionExpenseOverviewScreen({
-    super.key,
-    required this.dashboard,
-    this.financialYearId,
-  });
-
-  final Map<String, dynamic> dashboard;
-  final String? financialYearId;
-
-  @override
-  ConsumerState<CollectionExpenseOverviewScreen> createState() =>
-      _CollectionExpenseOverviewScreenState();
-}
-
-class _CollectionExpenseOverviewScreenState
-    extends ConsumerState<CollectionExpenseOverviewScreen> {
-  _OverviewMode _mode = _OverviewMode.monthly;
-
-  Iterable<MapEntry<String, double>> _categoryEntries(
-    Map<String, dynamic> expenses,
-  ) {
-    final raw = expenses['categoryBreakdown'];
-    if (raw is! Map) return const Iterable<MapEntry<String, double>>.empty();
-    final out = <MapEntry<String, double>>[];
-    raw.forEach((k, v) {
-      final key = k.toString();
-      final val = (v is num)
-          ? v.toDouble()
-          : double.tryParse(v.toString()) ?? 0;
-      if (val > 0) out.add(MapEntry(key, val));
-    });
-    out.sort((a, b) => b.value.compareTo(a.value));
-    return out;
-  }
-
-
-  Widget _comparisonBlock({
-    required double collected,
-    required double expense,
-    required double net,
-  }) {
-    final base = (collected + expense) <= 0 ? 1.0 : (collected + expense);
-    final collPct = (collected / base).clamp(0.0, 1.0);
-    final expPct = (expense / base).clamp(0.0, 1.0);
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    Widget bar(String label, double pct, Color color, String amount) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: DesignTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: context.text.primary,
-                  ),
-                ),
-              ),
-              Text(
-                amount,
-                style: DesignTypography.labelSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              minHeight: 10,
-              value: pct,
-              color: color,
-              backgroundColor: context.surface.elevated,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.surface.defaultSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.surface.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Collection vs expense',
-            style: DesignTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Green shows inflow; neutral shows society spending.',
-            style: DesignTypography.bodySmall.copyWith(
-              color: context.text.secondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          bar(
-            'Maintenance collected',
-            collPct,
-            DesignColors.success,
-            inr.format(collected),
-          ),
-          const SizedBox(height: 14),
-          bar(
-            'Monthly expenses',
-            expPct,
-            context.text.secondary,
-            inr.format(expense),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: context.surface.border.withValues(alpha: 0.8)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                'Net position',
-                style: DesignTypography.label.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                inr.format(net),
-                style: DesignTypography.headingM.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: net >= 0 ? DesignColors.success : DesignColors.error,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filter = Map<String, dynamic>.from(
-      (widget.dashboard['filter'] ?? const {}) as Map,
-    );
-    final month = (filter['month'] as num?)?.toInt() ?? DateTime.now().month;
-    final year = (filter['year'] as num?)?.toInt() ?? DateTime.now().year;
-    final periodLabel =
-        '${DateFormat('MMMM').format(DateTime(2000, month))} $year';
-
-    final residentsSummary = Map<String, dynamic>.from(
-      (widget.dashboard['residentsSummary'] ?? const {}) as Map,
-    );
-    final expenses = Map<String, dynamic>.from(
-      (widget.dashboard['monthlyExpenseBreakdown'] ?? const {}) as Map,
-    );
-    // Only months where a billing cycle actually exists (calendar-year fallback).
-    final dashboardYearlyBreakdown =
-        ((widget.dashboard['yearlyBreakdown'] ?? const []) as List)
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .where((row) {
-              final exp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
-              final paid = (row['paidCount'] as num?)?.toInt() ?? 0;
-              final unpaid = (row['unpaidCount'] as num?)?.toInt() ?? 0;
-              return exp > 0 || (paid + unpaid) > 0;
-            })
-            .toList();
-
-    final expected =
-        (residentsSummary['totalExpectedCollection'] as num?)?.toDouble() ?? 0;
-    final collected =
-        (residentsSummary['totalCollected'] as num?)?.toDouble() ?? 0;
-    final pending = (residentsSummary['totalPending'] as num?)?.toDouble() ?? 0;
-    final totalExpense = (expenses['totalExpenses'] as num?)?.toDouble() ?? 0;
-    final net = collected - totalExpense;
-    final collectionRate = expected > 0 ? (collected / expected * 100) : 0.0;
-
-    // ----- FY-aware yearly breakdown -----
-    final fyId = widget.financialYearId;
-    final hasFyId = fyId != null && fyId.isNotEmpty;
-    List<Map<String, dynamic>> yearlyBreakdown = dashboardYearlyBreakdown;
-    bool fyLoading = false;
-    String? fyLabel;
-
-    if (hasFyId && _mode == _OverviewMode.yearly) {
-      // Look up FY label.
-      final fysAsync = ref.watch(billingFinancialYearsProvider);
-      fysAsync.whenData((fys) {
-        for (final fy in fys) {
-          if (fy['id']?.toString() == fyId) {
-            fyLabel = fy['label']?.toString();
-            break;
-          }
-        }
-      });
-
-      // Get cycles for this FY.
-      final cyclesAsync =
-          ref.watch(billingCyclesForFinancialYearProvider(fyId));
-      cyclesAsync.when(
-        loading: () {
-          fyLoading = true;
-        },
-        error: (_, __) {},
-        data: (body) {
-          final rawCycles = body['cycles'];
-          final cycles = rawCycles is List
-              ? rawCycles
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList()
-              : <Map<String, dynamic>>[];
-
-          // Determine which calendar years the FY spans.
-          final neededYears = <int>{};
-          final fyCycleKeys = <String>{};
-          for (final c in cycles) {
-            final ck = c['cycleKey']?.toString() ?? '';
-            fyCycleKeys.add(ck);
-            final my = _monthYearFromCycleKey(ck);
-            if (my != null) neededYears.add(my.year);
-          }
-
-          // Fetch yearlyBreakdown for each calendar year and merge.
-          final breakdownByKey = <String, Map<String, dynamic>>{};
-          bool allYearsLoaded = true;
-          for (final yr in neededYears) {
-            final yrAsync = ref.watch(yearlyBreakdownForYearProvider(yr));
-            yrAsync.whenData((rows) {
-              for (final row in rows) {
-                final m = (row['month'] as num?)?.toInt() ?? 0;
-                final y = (row['year'] as num?)?.toInt() ?? 0;
-                if (m > 0 && y > 0) {
-                  breakdownByKey['$y-${m.toString().padLeft(2, '0')}'] = row;
-                }
-              }
-            });
-            if (yrAsync is! AsyncData) allYearsLoaded = false;
-          }
-
-          if (!allYearsLoaded && neededYears.isNotEmpty) {
-            fyLoading = true;
-          } else {
-            // Build FY-filtered breakdown rows.
-            final fyRows = <Map<String, dynamic>>[];
-            for (final ck in fyCycleKeys) {
-              final row = breakdownByKey[ck];
-              if (row != null) {
-                fyRows.add(row);
-              } else {
-                // Create stub from cycle data.
-                final my = _monthYearFromCycleKey(ck);
-                if (my != null) {
-                  fyRows.add({
-                    'month': my.month,
-                    'year': my.year,
-                    'totalExpected': 0,
-                    'totalCollected': 0,
-                    'totalExpense': 0,
-                    'paidCount': 0,
-                    'unpaidCount': 0,
-                  });
-                }
-              }
-            }
-            // Filter to non-empty rows.
-            yearlyBreakdown = fyRows.where((row) {
-              final exp = (row['totalExpected'] as num?)?.toDouble() ?? 0;
-              final paid = (row['paidCount'] as num?)?.toInt() ?? 0;
-              final unpaid = (row['unpaidCount'] as num?)?.toInt() ?? 0;
-              return exp > 0 || (paid + unpaid) > 0;
-            }).toList();
-          }
-        },
-      );
-    }
-
-    final yearlyExpected = yearlyBreakdown.fold<double>(
-      0,
-      (sum, row) => sum + ((row['totalExpected'] as num?)?.toDouble() ?? 0),
-    );
-    final yearlyCollected = yearlyBreakdown.fold<double>(
-      0,
-      (sum, row) => sum + ((row['totalCollected'] as num?)?.toDouble() ?? 0),
-    );
-    final yearlyExpense = yearlyBreakdown.fold<double>(
-      0,
-      (sum, row) => sum + ((row['totalExpense'] as num?)?.toDouble() ?? 0),
-    );
-    final yearlyPending = yearlyExpected - yearlyCollected;
-    final yearlyNet = yearlyCollected - yearlyExpense;
-    final yearlyCollRate =
-        yearlyExpected > 0 ? (yearlyCollected / yearlyExpected * 100) : 0.0;
-
-    final categories = _categoryEntries(expenses).take(8).toList();
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-
-    Widget compactStats({
-      required double exp,
-      required double coll,
-      required double pend,
-      required double expn,
-      required double rate,
-    }) {
-      final rateColor = rate >= 80
-          ? DesignColors.success
-          : rate >= 50
-              ? DesignColors.warning
-              : DesignColors.error;
-      return Container(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-        decoration: BoxDecoration(
-          color: context.surface.defaultSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.surface.border),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _inlineStat('Expected', inr.format(exp), DesignColors.primary),
-                _inlineStat('Collected', inr.format(coll), DesignColors.success),
-                _inlineStat('Pending', inr.format(pend), DesignColors.error),
-                _inlineStat(
-                    'Expenses', inr.format(expn), const Color(0xFF546E7A)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text(
-                  'Collection',
-                  style: DesignTypography.labelSmall.copyWith(
-                    color: context.text.secondary,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: (rate / 100).clamp(0.0, 1.0),
-                      color: rateColor,
-                      backgroundColor: context.surface.elevated,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${rate.toStringAsFixed(0)}%',
-                  style: DesignTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    color: rateColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: context.surface.background,
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0.5,
-        backgroundColor: context.surface.defaultSurface,
-        surfaceTintColor: context.surface.defaultSurface,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Collection & expenses',
-              style: DesignTypography.headingM.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            Text(
-              _mode == _OverviewMode.yearly && fyLabel != null
-                  ? fyLabel!
-                  : periodLabel,
-              style: DesignTypography.bodySmall.copyWith(
-                color: context.text.secondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SegmentedButton<_OverviewMode>(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith((s) {
-                if (s.contains(WidgetState.selected)) {
-                  return DesignColors.primary.withValues(alpha: 0.14);
-                }
-                return context.surface.elevated;
-              }),
-              foregroundColor: WidgetStateProperty.resolveWith((s) {
-                if (s.contains(WidgetState.selected)) {
-                  return DesignColors.primary;
-                }
-                return context.text.secondary;
-              }),
-            ),
-            segments: const [
-              ButtonSegment(
-                value: _OverviewMode.monthly,
-                label: Text('This period'),
-              ),
-              ButtonSegment(
-                value: _OverviewMode.yearly,
-                label: Text('Year roll-up'),
-              ),
-            ],
-            selected: {_mode},
-            onSelectionChanged: (selected) {
-              setState(() => _mode = selected.first);
-            },
-          ),
-          const SizedBox(height: 14),
-          if (_mode == _OverviewMode.monthly) ...[
-            compactStats(
-              exp: expected,
-              coll: collected,
-              pend: pending,
-              expn: totalExpense,
-              rate: collectionRate,
-            ),
-            const SizedBox(height: 14),
-            _comparisonBlock(
-              collected: collected,
-              expense: totalExpense,
-              net: net,
-            ),
-          ] else if (fyLoading) ...[
-            const Padding(
-              padding: EdgeInsets.all(48),
-              child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          ] else ...[
-            compactStats(
-              exp: yearlyExpected,
-              coll: yearlyCollected,
-              pend: yearlyPending > 0 ? yearlyPending : 0,
-              expn: yearlyExpense,
-              rate: yearlyCollRate,
-            ),
-            const SizedBox(height: 14),
-            _comparisonBlock(
-              collected: yearlyCollected,
-              expense: yearlyExpense,
-              net: yearlyNet,
-            ),
-          ],
-          if (_mode == _OverviewMode.monthly && categories.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Text(
-              'Expense by category',
-              style: DesignTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...categories.map((e) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: context.surface.defaultSurface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: context.surface.border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        e.key.replaceAll('_', ' '),
-                        style: DesignTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      inr.format(e.value),
-                      style: DesignTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: context.text.secondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-          // Billing cycle breakdown
-          const SizedBox(height: 18),
-          Text(
-            'Billing cycles',
-            style: DesignTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${yearlyBreakdown.length} cycle${yearlyBreakdown.length == 1 ? '' : 's'} in ${fyLabel ?? 'selected year'}',
-            style: DesignTypography.bodySmall.copyWith(
-              color: context.text.secondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (yearlyBreakdown.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: context.surface.defaultSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.surface.border),
-              ),
-              child: Text(
-                'No billing cycles created for this year yet.',
-                style: DesignTypography.bodySmall.copyWith(
-                  color: context.text.secondary,
-                ),
-              ),
-            )
-          else
-            ...yearlyBreakdown.map((row) {
-              final m = (row['month'] as num?)?.toInt() ?? 1;
-              final rowYear = (row['year'] as num?)?.toInt() ?? year;
-              final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
-              final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
-              final mExp =
-                  (row['totalExpected'] as num?)?.toDouble() ?? 0;
-              final mColl =
-                  (row['totalCollected'] as num?)?.toDouble() ?? 0;
-              final mExpense =
-                  (row['totalExpense'] as num?)?.toDouble() ?? 0;
-              final mPending = mExp - mColl;
-              final monthNet = mColl - mExpense;
-              final netColor = monthNet >= 0
-                  ? DesignColors.success
-                  : DesignColors.error;
-              final mRate = mExp > 0 ? (mColl / mExp * 100) : 0.0;
-              final mRateColor = mRate >= 80
-                  ? DesignColors.success
-                  : mRate >= 50
-                      ? DesignColors.warning
-                      : DesignColors.error;
-              final isCurrentPeriod =
-                  m == month && rowYear == year;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: context.surface.defaultSurface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isCurrentPeriod
-                          ? DesignColors.primary.withValues(alpha: 0.5)
-                          : context.surface.border,
-                      width: isCurrentPeriod ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              hasFyId
-                                  ? DateFormat('MMMM yyyy')
-                                      .format(DateTime(rowYear, m))
-                                  : DateFormat('MMMM')
-                                      .format(DateTime(rowYear, m)),
-                              style: DesignTypography.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            if (isCurrentPeriod) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: DesignColors.primary
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Current',
-                                  style:
-                                      DesignTypography.labelSmall.copyWith(
-                                    color: DesignColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: netColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                'Net ${inr.format(monthNet)}',
-                                style: DesignTypography.labelSmall.copyWith(
-                                  color: netColor,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Compact 4-value row
-                        Row(
-                          children: [
-                            _miniFoot('Expected', mExp, DesignColors.primary),
-                            const SizedBox(width: 8),
-                            _miniFoot('Collected', mColl, DesignColors.success),
-                            const SizedBox(width: 8),
-                            _miniFoot(
-                                'Pending',
-                                mPending > 0 ? mPending : 0,
-                                DesignColors.error),
-                            const SizedBox(width: 8),
-                            _miniFoot('Expense', mExpense,
-                                const Color(0xFF546E7A)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        // Collection progress + counts
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  minHeight: 5,
-                                  value: (mRate / 100).clamp(0.0, 1.0),
-                                  color: mRateColor,
-                                  backgroundColor: context.surface.elevated,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${mRate.toStringAsFixed(0)}%',
-                              style: DesignTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 10,
-                                color: mRateColor,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '$paidC paid · $unpaidC unpaid',
-                              style: DesignTypography.labelSmall.copyWith(
-                                color: context.text.secondary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _inlineStat(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: context.text.secondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
-              fontSize: 13,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _miniFoot(String label, double value, Color c) {
-    final inr = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: DesignTypography.labelSmall.copyWith(
-              color: context.text.secondary,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            inr.format(value),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DesignTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: c,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

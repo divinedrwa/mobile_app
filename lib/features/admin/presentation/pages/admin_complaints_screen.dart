@@ -383,13 +383,23 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
                     owner.contains(_searchQuery);
               }).toList();
 
-        if (searchedComplaints.isEmpty) {
+        // Apply the selected status chip. The backend `GET /complaints`
+        // ignores `?status`, so the filter is enforced client-side here.
+        final statusFilter = ref.watch(adminComplaintStatusFilterProvider);
+        final visibleComplaints = statusFilter == null
+            ? searchedComplaints
+            : searchedComplaints
+                .where((c) =>
+                    (c['status']?.toString() ?? 'OPEN') == statusFilter)
+                .toList();
+
+        if (visibleComplaints.isEmpty) {
           return Padding(
             padding: const EdgeInsets.only(top: 80),
             child: EmptyStateWidget(
               icon: Icons.search_off,
               title: 'No matches',
-              subtitle: 'No complaints match your search.',
+              subtitle: 'No complaints match the current filter.',
               iconColor: DesignColors.textTertiary,
             ),
           );
@@ -397,7 +407,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
 
         // Group complaints by status.
         final grouped = <String, List<Map<String, dynamic>>>{};
-        for (final c in searchedComplaints) {
+        for (final c in visibleComplaints) {
           final status = c['status']?.toString() ?? 'OPEN';
           (grouped[status] ??= []).add(c);
         }

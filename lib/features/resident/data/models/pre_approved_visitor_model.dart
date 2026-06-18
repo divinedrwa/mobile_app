@@ -167,6 +167,8 @@ class PreApprovedVisitorModel {
       'purpose': ?combinedPurpose,
       // Zod `z.string().datetime()` requires `Z` or `±hh:mm` offset — local ISO fails.
       'validUntil': validUntilLocal.toUtc().toIso8601String(),
+      // Honour the "Frequent visitor" toggle (was previously dropped).
+      'isRecurring': isFrequent,
     };
   }
 

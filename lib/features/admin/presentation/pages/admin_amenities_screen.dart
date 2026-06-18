@@ -201,6 +201,18 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
         TextEditingController(text: existing?['capacity']?.toString() ?? '');
     final priceCtrl = TextEditingController(
         text: existing?['pricePerHour']?.toString() ?? '');
+    var selectedType = existing?['type']?.toString() ?? 'OTHER';
+    const amenityTypes = [
+      'CLUBHOUSE',
+      'GYM',
+      'SWIMMING_POOL',
+      'SPORTS_COURT',
+      'BANQUET_HALL',
+      'GUEST_ROOM',
+      'PLAYGROUND',
+      'PARKING',
+      'OTHER',
+    ];
 
     showModalBottomSheet<void>(
       context: context,
@@ -243,6 +255,34 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                       keyboardType: TextInputType.number),
                   _field('Price per Hour', priceCtrl,
                       keyboardType: TextInputType.number),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: StatefulBuilder(
+                      builder: (context, setLocal) =>
+                          DropdownButtonFormField<String>(
+                        initialValue: selectedType,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Type *',
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(DesignRadius.md),
+                          ),
+                          isDense: true,
+                        ),
+                        items: [
+                          for (final t in amenityTypes)
+                            DropdownMenuItem(
+                              value: t,
+                              child: Text(t.replaceAll('_', ' ')),
+                            ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) setLocal(() => selectedType = v);
+                        },
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -254,12 +294,13 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                           _handleUpdate(
                               existing['id']?.toString() ?? '',
                               nameCtrl.text,
+                              selectedType,
                               descCtrl.text,
                               capCtrl.text,
                               priceCtrl.text);
                         } else {
-                          _handleCreate(nameCtrl.text, descCtrl.text,
-                              capCtrl.text, priceCtrl.text);
+                          _handleCreate(nameCtrl.text, selectedType,
+                              descCtrl.text, capCtrl.text, priceCtrl.text);
                         }
                       },
                       style: FilledButton.styleFrom(
@@ -298,11 +339,12 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
     );
   }
 
-  Future<void> _handleCreate(
-      String name, String desc, String cap, String price) async {
+  Future<void> _handleCreate(String name, String type, String desc,
+      String cap, String price) async {
     try {
       await ref.read(adminAmenityRepositoryProvider).createAmenity(
             name: name.trim(),
+            type: type,
             description: desc.trim().isNotEmpty ? desc.trim() : null,
             capacity: int.tryParse(cap),
             pricePerHour: double.tryParse(price),
@@ -322,12 +364,13 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
     }
   }
 
-  Future<void> _handleUpdate(
-      String id, String name, String desc, String cap, String price) async {
+  Future<void> _handleUpdate(String id, String name, String type, String desc,
+      String cap, String price) async {
     try {
       await ref.read(adminAmenityRepositoryProvider).updateAmenity(
             id,
             name: name.trim().isNotEmpty ? name.trim() : null,
+            type: type,
             description: desc.trim(),
             capacity: int.tryParse(cap),
             pricePerHour: double.tryParse(price),

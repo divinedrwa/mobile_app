@@ -31,8 +31,8 @@ class AdminComplaintAnalyticsRepository {
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
-      if (data is Map && data['categories'] is List) {
-        return (data['categories'] as List)
+      if (data is Map && data['categoryStats'] is List) {
+        return (data['categoryStats'] as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
@@ -56,8 +56,8 @@ class AdminComplaintAnalyticsRepository {
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
-      if (data is Map && data['complaints'] is List) {
-        return (data['complaints'] as List)
+      if (data is Map && data['pendingComplaints'] is List) {
+        return (data['pendingComplaints'] as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
@@ -81,8 +81,8 @@ class AdminComplaintAnalyticsRepository {
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
-      if (data is Map && data['trend'] is List) {
-        return (data['trend'] as List)
+      if (data is Map && data['trendData'] is List) {
+        return (data['trendData'] as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();

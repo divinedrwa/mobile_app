@@ -25,7 +25,10 @@ class AmenitiesScreen extends ConsumerStatefulWidget {
 }
 
 class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
+  bool _booking = false; // guards against double-submit
+
   Future<void> _pickAndBook(AmenityModel amenity) async {
+    if (_booking) return;
     final now = DateTime.now();
     final firstDate = DateTime(now.year, now.month, now.day);
     final lastDate = firstDate.add(const Duration(days: 60));
@@ -78,12 +81,16 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
       return;
     }
 
-    final error = await ref.read(amenityBookingActionProvider.notifier).createBooking(
+    setState(() => _booking = true);
+    final error = await ref
+        .read(amenityBookingActionProvider.notifier)
+        .createBooking(
           amenityId: amenity.id,
           startTime: startDateTime,
           endTime: endDateTime,
         );
 
+    if (mounted) setState(() => _booking = false);
     if (!mounted) return;
     if (error == null) {
       ref.invalidate(amenitiesProvider);
@@ -187,6 +194,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
                       amenity: amenities[index],
                       icon: _amenityIcon(amenities[index].type),
                       color: _amenityColor(context, amenities[index].type),
+                      busy: _booking,
                       onBook: () => _pickAndBook(amenities[index]),
                     ).animate().fadeIn(
                           duration: 300.ms,
@@ -235,12 +243,14 @@ class _AmenityCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onBook,
+    this.busy = false,
   });
 
   final AmenityModel amenity;
   final IconData icon;
   final Color color;
   final VoidCallback onBook;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -325,7 +335,7 @@ class _AmenityCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 FilledButton(
-                  onPressed: onBook,
+                  onPressed: busy ? null : onBook,
                   child: const Text('Book now'),
                 ),
               ],

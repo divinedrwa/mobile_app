@@ -449,8 +449,10 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
       await ref.read(adminPollRepositoryProvider).createPoll(
             title: _titleCtrl.text.trim(),
             description: _descCtrl.text.trim(),
-            startDate: _startDate.toIso8601String(),
-            endDate: _endDate.toIso8601String(),
+            // Backend requires an ISO-8601 UTC datetime (with `Z`); a local
+            // `toIso8601String()` has no offset and is rejected (400).
+            startDate: _startDate.toUtc().toIso8601String(),
+            endDate: _endDate.toUtc().toIso8601String(),
             options: options,
           );
 

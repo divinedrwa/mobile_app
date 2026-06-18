@@ -171,6 +171,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
 
     try {
       int totalNotified = 0;
+      int failed = 0;
 
       final data = ref.read(adminMaintenanceDashboardProvider).valueOrNull;
       final residents =
@@ -180,7 +181,6 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
         final result = await repo.sendDuesReminders(
           month: filter.month,
           year: filter.year,
-          maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
         );
         totalNotified = (result['sent'] as num?)?.toInt() ??
             (result['notified'] as num?)?.toInt() ??
@@ -191,6 +191,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
             final result = await repo.sendVillaReminder(villaId: villaId);
             totalNotified += (result['sent'] as num?)?.toInt() ?? 0;
           } catch (e) {
+            failed++;
             debugPrint('Failed to send reminder for villa $villaId: $e');
           }
         }
@@ -201,11 +202,14 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: DesignColors.primary,
+          backgroundColor:
+              failed > 0 ? DesignColors.warning : DesignColors.primary,
           content: Text(
-            totalNotified > 0
-                ? 'Reminded $totalNotified resident${totalNotified == 1 ? "" : "s"}'
-                : 'No residents to remind for this period',
+            failed > 0
+                ? 'Reminded $totalNotified · $failed failed — please retry'
+                : totalNotified > 0
+                    ? 'Reminded $totalNotified resident${totalNotified == 1 ? "" : "s"}'
+                    : 'No residents to remind for this period',
           ),
           behavior: SnackBarBehavior.floating,
         ),

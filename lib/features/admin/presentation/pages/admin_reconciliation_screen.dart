@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -95,8 +96,12 @@ class _AdminReconciliationScreenState
 
   Widget _buildBody(Map<String, dynamic> summary) {
     final alertsAsync = ref.watch(adminReconciliationAlertsProvider);
+    // Backend nests this under `financialHealth.status` — reading the old
+    // top-level `healthStatus` always fell through to "HEALTHY".
+    final health =
+        (summary['financialHealth'] as Map?) ?? const <String, dynamic>{};
     final healthStatus =
-        summary['healthStatus']?.toString().toUpperCase() ?? 'HEALTHY';
+        health['status']?.toString().toUpperCase() ?? 'HEALTHY';
 
     final healthColor = _healthColor(healthStatus);
 
@@ -182,10 +187,22 @@ class _AdminReconciliationScreenState
   Widget _alertCard(Map<String, dynamic> alert) {
     final severity =
         alert['severity']?.toString().toUpperCase() ?? 'INFO';
-    final message = alert['message']?.toString() ?? '';
-    final status = alert['status']?.toString().toUpperCase() ?? '';
     final id = alert['id']?.toString() ?? '';
-    final isResolved = status == 'RESOLVED';
+    // Resolved state is `resolvedAt != null` (there is no `status` field), and
+    // there is no `message` field — build one from the real alert numbers.
+    final isResolved = alert['resolvedAt'] != null;
+    double money(dynamic v) =>
+        v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
+    final inr = NumberFormat.currency(
+        locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final cycle = (alert['cycle'] as Map?) ?? const {};
+    final cycleTitle =
+        (cycle['title']?.toString().trim().isNotEmpty ?? false)
+            ? cycle['title'].toString()
+            : 'Billing cycle';
+    final diff = money(alert['difference']);
+    final message =
+        '$cycleTitle · Villas ${inr.format(money(alert['villaSum']))} vs cash ${inr.format(money(alert['societyCash']))} · diff ${diff >= 0 ? '+' : ''}${inr.format(diff)}';
 
     final sevColor = _severityColor(severity);
 
@@ -312,7 +329,8 @@ class _AdminReconciliationScreenState
                   controller: notesCtrl,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'Notes (optional)',
+                    labelText: 'Resolution notes',
+                    hintText: 'Required — what was reconciled or corrected',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(DesignRadius.md),
                     ),
@@ -322,15 +340,25 @@ class _AdminReconciliationScreenState
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _handleResolve(id, notesCtrl.text.trim());
+                  // Notes are required server-side — keep Resolve disabled
+                  // until something is entered (avoids a confusing 400).
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: notesCtrl,
+                    builder: (_, value, __) {
+                      final canResolve = value.text.trim().isNotEmpty;
+                      return FilledButton(
+                        onPressed: canResolve
+                            ? () {
+                                Navigator.pop(ctx);
+                                _handleResolve(id, notesCtrl.text.trim());
+                              }
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DesignColors.primary,
+                        ),
+                        child: const Text('Resolve'),
+                      );
                     },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: DesignColors.primary,
-                    ),
-                    child: const Text('Resolve'),
                   ),
                 ),
               ],

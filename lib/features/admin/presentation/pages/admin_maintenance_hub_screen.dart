@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -686,12 +685,12 @@ class _AdminMaintenanceHubScreenState
     final repo = ref.read(adminMaintenanceRepositoryProvider);
     try {
       int totalSent = 0;
+      int failed = 0;
 
       if (isBulk) {
         final result = await repo.sendDuesReminders(
           month: filter.month,
           year: filter.year,
-          maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
         );
         totalSent = (result['sent'] as num?)?.toInt() ??
             (result['notified'] as num?)?.toInt() ??
@@ -702,6 +701,7 @@ class _AdminMaintenanceHubScreenState
             final result = await repo.sendVillaReminder(villaId: villaId);
             totalSent += (result['sent'] as num?)?.toInt() ?? 0;
           } catch (e) {
+            failed++;
             debugPrint('Failed to send reminder for villa $villaId: $e');
           }
         }
@@ -710,11 +710,14 @@ class _AdminMaintenanceHubScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: DesignColors.primary,
+          backgroundColor:
+              failed > 0 ? DesignColors.warning : DesignColors.primary,
           content: Text(
-            totalSent > 0
-                ? 'Reminded $totalSent resident${totalSent == 1 ? "" : "s"}'
-                : 'No residents to remind for this period',
+            failed > 0
+                ? 'Reminded $totalSent · $failed failed — please retry'
+                : totalSent > 0
+                    ? 'Reminded $totalSent resident${totalSent == 1 ? "" : "s"}'
+                    : 'No residents to remind for this period',
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1551,8 +1554,6 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
             remarks: _remarksCtl.text.trim().isEmpty
                 ? null
                 : _remarksCtl.text.trim(),
-            maintenanceCollectionCycleId:
-                filter.maintenanceCollectionCycleId,
             idempotencyKey: idempotencyKey,
           );
       requestResidentDataRefresh();

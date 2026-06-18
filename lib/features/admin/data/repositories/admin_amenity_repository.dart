@@ -30,6 +30,7 @@ class AdminAmenityRepository {
 
   Future<Map<String, dynamic>> createAmenity({
     required String name,
+    required String type,
     String? description,
     int? capacity,
     double? pricePerHour,
@@ -40,6 +41,7 @@ class AdminAmenityRepository {
         ApiEndpoints.adminAmenities,
         data: {
           'name': name,
+          'type': type, // required by the backend (AmenityType enum)
           if (description != null && description.isNotEmpty)
             'description': description,
           if (capacity != null) 'capacity': capacity,
@@ -56,6 +58,7 @@ class AdminAmenityRepository {
   Future<Map<String, dynamic>> updateAmenity(
     String id, {
     String? name,
+    String? type,
     String? description,
     int? capacity,
     double? pricePerHour,
@@ -66,6 +69,7 @@ class AdminAmenityRepository {
         ApiEndpoints.adminAmenityById(id),
         data: {
           if (name != null) 'name': name,
+          if (type != null) 'type': type,
           if (description != null) 'description': description,
           if (capacity != null) 'capacity': capacity,
           if (pricePerHour != null) 'pricePerHour': pricePerHour,

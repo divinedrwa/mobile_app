@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/document_model.dart';
 import '../models/notice_model.dart';
@@ -42,17 +42,10 @@ class PollVoteNotifier extends StateNotifier<AsyncValue<void>> {
       return null;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      if (e is DioException) {
-        final data = e.response?.data;
-        if (data is Map && data['message'] is String) {
-          return (data['message'] as String).trim().isEmpty
-              ? 'Failed to submit vote'
-              : data['message'] as String;
-        }
-        final msg = e.message?.trim();
-        if (msg != null && msg.isNotEmpty) return msg;
-      }
-      return 'Failed to submit vote';
+      // The repo maps Dio errors to AppException, so surface the mapper's
+      // user-facing message (e.g. the backend's "Already voted") instead of
+      // a generic fallback.
+      return userFacingMessage(e, 'Failed to submit vote');
     }
   }
 }

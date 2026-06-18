@@ -71,17 +71,14 @@ class AdminMaintenanceRepository {
   Future<Map<String, dynamic>> sendDuesReminders({
     required int month,
     required int year,
-    String? maintenanceCollectionCycleId,
   }) async {
     try {
+      // Backend derives the cycle from month/year — no cycle id needed.
       final res = await _dio.post(
         '/maintenance-management/send-dues-reminders',
         data: {
           'month': month,
           'year': year,
-          if (maintenanceCollectionCycleId != null &&
-              maintenanceCollectionCycleId.isNotEmpty)
-            'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
         },
       );
       final body = res.data;
@@ -115,11 +112,12 @@ class AdminMaintenanceRepository {
     required double amount,
     String paymentMode = 'CASH',
     String? remarks,
-    String? maintenanceCollectionCycleId,
     String? bankAccountId,
     String? idempotencyKey,
   }) async {
     try {
+      // Payment is keyed by villa/month/year; the cycle id is derived
+      // server-side and isn't part of this endpoint's contract.
       final res = await _dio.post(
         '/maintenance/payments',
         data: {
@@ -130,9 +128,6 @@ class AdminMaintenanceRepository {
           'paymentMode': paymentMode,
           'paymentDate': DateTime.now().toUtc().toIso8601String(),
           if (remarks != null && remarks.isNotEmpty) 'remarks': remarks,
-          if (maintenanceCollectionCycleId != null &&
-              maintenanceCollectionCycleId.isNotEmpty)
-            'maintenanceCollectionCycleId': maintenanceCollectionCycleId,
           if (bankAccountId != null && bankAccountId.isNotEmpty)
             'bankAccountId': bankAccountId,
           if (idempotencyKey != null && idempotencyKey.isNotEmpty)

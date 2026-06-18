@@ -1051,7 +1051,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             iconColor: const Color(0xFFDC2626),
             title: 'Outstanding dues',
             subtitle: 'All pending payments across villas',
-            onTap: () => ctx.push('/resident/maintenance-payment'),
+            onTap: () => ctx.push('/resident/admin-outstanding-dues'),
             trailingBadge:
                 villasCount != null && villasCount > 0 ? villasCount : null,
           ),
@@ -1465,7 +1465,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           borderRadius: BorderRadius.circular(_kRadiusMd),
           onTap: () {
             HapticFeedback.lightImpact();
-            ctx.go(a.route);
+            // push (not go) so back returns to the dashboard.
+            ctx.push(a.route);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
