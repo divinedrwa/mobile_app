@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../../../core/utils/amount_in_words.dart';
 import '../../../../shared/models/user_model.dart';
 import '../models/expense_breakdown_model.dart';
 import '../models/maintenance_due_model.dart';
@@ -43,13 +44,19 @@ Future<Uint8List> buildInvoiceForPayment({
   String? letterheadUrl,
   String? signatureUrl,
   String? stampUrl,
+  String? societyAddress,
 }) async {
   ExpenseBreakdown? breakdown;
   String? paymentMode;
+  String? transactionId;
+  String? receiptNumber;
   try {
     final dash = await repo.getFinancialDashboard(month: m.month, year: m.year);
     breakdown = ExpenseBreakdown.fromDashboard(dash, allowFallback: false);
-    paymentMode = prettyPaymentMode(paymentModeForVilla(dash, user?.villaId));
+    final details = paymentDetailsForVilla(dash, user?.villaId);
+    paymentMode = prettyPaymentMode(details?.paymentMode);
+    transactionId = details?.transactionId;
+    receiptNumber = details?.receiptNumber;
   } catch (_) {
     breakdown = null;
   }
@@ -76,15 +83,17 @@ Future<Uint8List> buildInvoiceForPayment({
 
   return buildMaintenanceInvoicePdf(
     societyName: user?.societyName ?? 'Your Society',
+    societyAddress: societyAddress,
     residentName: user?.name ?? '',
     villaLabel: villaLabel,
     month: m.month,
     year: m.year,
-    receiptNo: m.cycleKey,
+    receiptNo: receiptNumber?.isNotEmpty == true ? receiptNumber! : m.cycleKey,
     billedAmount: billedAmount,
     paidAt: m.paidAt,
     status: m.status,
     paymentMode: paymentMode,
+    transactionId: transactionId,
     breakdown: breakdown,
     generatedAt: generatedAt,
     previousBalance: m.previousDue,
@@ -135,6 +144,7 @@ Future<Uint8List?> _fetchImageBytes(String? url) async {
 /// behind the content.
 Future<Uint8List> buildMaintenanceInvoicePdf({
   required String societyName,
+  String? societyAddress,
   required String residentName,
   required String villaLabel,
   required int month,
@@ -146,6 +156,7 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   required ExpenseBreakdown? breakdown,
   required DateTime generatedAt,
   String? paymentMode,
+  String? transactionId,
   double previousBalance = 0,
   double paymentsReceived = 0,
   double adjustments = 0,
@@ -204,7 +215,13 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   final isPartial = !isPaid &&
       (statusUpper == 'PARTIAL' ||
           ((paymentsReceived + adjustments) > 0 && amountDue > 0));
-  final invoiceNo = 'INV-${receiptNo.isNotEmpty ? receiptNo : '$year-$month'}';
+  final fyLabel = financialYearLabel(month, year);
+  final documentTitle = isPaid ? 'PAYMENT RECEIPT' : 'MAINTENANCE INVOICE';
+  final cycleKeyPattern = RegExp(r'^\d{4}-\d{2}$');
+  final invoiceNo = receiptNo.trim().isNotEmpty &&
+          !cycleKeyPattern.hasMatch(receiptNo.trim())
+      ? receiptNo.trim()
+      : 'INV-${receiptNo.trim().isNotEmpty ? receiptNo.trim() : '$year-${month.toString().padLeft(2, '0')}'}';
   final periodStart = DateTime(year, month, 1);
   final periodEnd = DateTime(year, month + 1, 0);
   final billingPeriod = (month >= 1 && month <= 12)
@@ -272,8 +289,8 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   }
 
   final trimmedUpi = upiId?.trim() ?? '';
-  final hasUpi = trimmedUpi.isNotEmpty;
-  final upi = hasUpi ? trimmedUpi : '[society-upi-id@bank]';
+  final hasUpi = trimmedUpi.isNotEmpty && !trimmedUpi.startsWith('[');
+  final upi = trimmedUpi;
   // Build a scannable UPI deep link when a real VPA is configured. The amount
   // due (for unpaid invoices) is pre-filled so any UPI app opens ready to pay.
   String? upiUri;
@@ -304,27 +321,62 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
             ),
   );
 
-  final showPay =
-      !isPaid && amountDue > 0 && (qrImage != null || upiUri != null || hasUpi);
+  final showPay = !isPaid &&
+      amountDue > 0 &&
+      hasUpi &&
+      (qrImage != null || upiUri != null);
+
+  final amountWords = amountInWordsIndian(billedTotal);
+  final generatedStamp = DateFormat('d MMM yyyy, HH:mm').format(generatedAt.toLocal());
 
   final doc = pw.Document();
   doc.addPage(
     pw.MultiPage(
       pageTheme: pageTheme,
       build: (ctx) => [
-        _titleBar(isPaid, isPartial),
+        _titleBar(documentTitle, isPaid, isPartial),
         pw.SizedBox(height: 12),
-        _partiesBlock(residentName, villaLabel, societyName, invoiceNo,
-            billingPeriod, dFmt, paidAt, generatedAt, periodEnd, isPaid,
-            isPaid ? paymentMode : null),
+        _partiesBlock(
+          name: residentName,
+          unit: villaLabel,
+          society: societyName,
+          societyAddress: societyAddress,
+          invoiceNo: invoiceNo,
+          billingPeriod: billingPeriod,
+          financialYear: fyLabel,
+          dFmt: dFmt,
+          paidAt: paidAt,
+          generatedAt: generatedAt,
+          dueDate: periodEnd,
+          isPaid: isPaid,
+          paymentMode: isPaid ? paymentMode : null,
+          transactionId: isPaid ? transactionId : null,
+        ),
         pw.SizedBox(height: 16),
-        _breakupTable(rows, billedTotal, money),
+        _breakupTable(rows, billedTotal, money, amountWords),
         pw.SizedBox(height: 16),
-        _totalsAndPay(billedTotal, previousBalance, paymentsReceived,
-            adjustments, isPaid ? amountPaidTotal : amountDue, isPaid, money,
-            upi, upiUri, qrImage, showPay),
+        _totalsAndPay(
+          billedTotal,
+          previousBalance,
+          paymentsReceived,
+          adjustments,
+          isPaid ? amountPaidTotal : amountDue,
+          isPaid,
+          money,
+          upi,
+          upiUri,
+          qrImage,
+          showPay,
+        ),
         pw.SizedBox(height: 20),
-        _signOff(societyName, signatureImage, stampImage),
+        _signOff(
+          societyName: societyName,
+          signatureImage: signatureImage,
+          stampImage: stampImage,
+          financialYear: fyLabel,
+          generatedStamp: generatedStamp,
+          invoiceNo: invoiceNo,
+        ),
       ],
     ),
   );
@@ -365,9 +417,8 @@ pw.Widget _statusPill(bool isPaid, bool isPartial) {
   );
 }
 
-/// Document title + status, with a thin accent rule. The society name/logo
-/// already comes from the letterhead, so nothing is repeated here.
-pw.Widget _titleBar(bool isPaid, bool isPartial) {
+/// Document title + status, with a thin accent rule.
+pw.Widget _titleBar(String documentTitle, bool isPaid, bool isPartial) {
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     children: [
@@ -375,7 +426,7 @@ pw.Widget _titleBar(bool isPaid, bool isPartial) {
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
           pw.Expanded(
-            child: pw.Text('MAINTENANCE INVOICE',
+            child: pw.Text(documentTitle,
                 style: pw.TextStyle(
                     fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
@@ -392,19 +443,22 @@ pw.Widget _titleBar(bool isPaid, bool isPartial) {
 }
 
 /// Two columns: who it's billed to (left) and the invoice meta (right).
-pw.Widget _partiesBlock(
-  String name,
-  String unit,
-  String society,
-  String invoiceNo,
-  String billingPeriod,
-  DateFormat dFmt,
-  DateTime? paidAt,
-  DateTime generatedAt,
-  DateTime dueDate,
-  bool isPaid,
+pw.Widget _partiesBlock({
+  required String name,
+  required String unit,
+  required String society,
+  String? societyAddress,
+  required String invoiceNo,
+  required String billingPeriod,
+  required String financialYear,
+  required DateFormat dFmt,
+  required DateTime? paidAt,
+  required DateTime generatedAt,
+  required DateTime dueDate,
+  required bool isPaid,
   String? paymentMode,
-) {
+  String? transactionId,
+}) {
   pw.Widget kv(String k, String v) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 2),
         child: pw.Row(
@@ -444,6 +498,13 @@ pw.Widget _partiesBlock(
                   style: const pw.TextStyle(fontSize: 9.5, color: _ink)),
             pw.Text(society,
                 style: const pw.TextStyle(fontSize: 9, color: _muted)),
+            if ((societyAddress ?? '').trim().isNotEmpty) ...[
+              pw.SizedBox(height: 2),
+              pw.Text(
+                societyAddress!.trim(),
+                style: const pw.TextStyle(fontSize: 8.5, color: _muted),
+              ),
+            ],
           ],
         ),
       ),
@@ -453,12 +514,17 @@ pw.Widget _partiesBlock(
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.stretch,
           children: [
-            kv('Invoice No.', invoiceNo),
+            kv('Document No.', invoiceNo),
+            if (financialYear.isNotEmpty) kv('Financial Year', financialYear),
             kv('Billing Period', billingPeriod),
             kv('Invoice Date', dFmt.format(paidAt ?? generatedAt)),
             kv('Due Date', dFmt.format(dueDate)),
             if (isPaid && paymentMode != null && paymentMode.isNotEmpty)
               kv('Paid Via', paymentMode),
+            if (isPaid &&
+                transactionId != null &&
+                transactionId.trim().isNotEmpty)
+              kv('Transaction Ref.', transactionId.trim()),
           ],
         ),
       ),
@@ -466,9 +532,13 @@ pw.Widget _partiesBlock(
   );
 }
 
-/// Clean line-item table: Particulars | Amount, with a thin ruled header and
-/// a bold total. No fills, dots or description column.
-pw.Widget _breakupTable(List<_Row> rows, double total, NumberFormat money) {
+/// Clean line-item table with amount in words below the total.
+pw.Widget _breakupTable(
+  List<_Row> rows,
+  double total,
+  NumberFormat money,
+  String amountWords,
+) {
   String amt(double v) => money.format(v).replaceAll('₹', '').trim();
 
   pw.Widget line(String particulars, String amount,
@@ -528,6 +598,11 @@ pw.Widget _breakupTable(List<_Row> rows, double total, NumberFormat money) {
         padding: const pw.EdgeInsets.symmetric(vertical: 2),
         child: line('Total Amount', money.format(total),
             bold: true, color: _navy, size: 11),
+      ),
+      pw.SizedBox(height: 6),
+      pw.Text(
+        'Amount in words: $amountWords',
+        style: const pw.TextStyle(fontSize: 8.5, color: _muted),
       ),
     ],
   );
@@ -684,54 +759,85 @@ pw.Widget _payBox(String upi, String? upiUri, pw.MemoryImage? qrImage) {
 }
 
 /// Footer note (left) + authorised signature & stamp (right).
-pw.Widget _signOff(
-  String society,
+pw.Widget _signOff({
+  required String societyName,
   pw.MemoryImage? signatureImage,
   pw.MemoryImage? stampImage,
-) {
-  return pw.Row(
-    crossAxisAlignment: pw.CrossAxisAlignment.end,
+  required String financialYear,
+  required String generatedStamp,
+  required String invoiceNo,
+}) {
+  return pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     children: [
-      pw.Expanded(
-        flex: 6,
-        child: pw.Text(
-          'This is a computer-generated invoice. For any discrepancy, '
-          'please contact the management office.',
-          style: const pw.TextStyle(fontSize: 8, color: _muted),
-        ),
-      ),
-      pw.SizedBox(width: 16),
-      if (stampImage != null) ...[
-        pw.SizedBox(
-            width: 56,
-            height: 56,
-            child: pw.Image(stampImage, fit: pw.BoxFit.contain)),
-        pw.SizedBox(width: 10),
-      ],
-      pw.SizedBox(
-        width: 150,
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.center,
-          children: [
-            if (signatureImage != null)
-              pw.Container(
-                height: 32,
-                alignment: pw.Alignment.center,
-                child: pw.Image(signatureImage, fit: pw.BoxFit.contain),
-              )
-            else
-              pw.SizedBox(height: 28),
-            pw.Container(height: 0.7, color: _line),
-            pw.SizedBox(height: 3),
-            pw.Text('Authorised Signatory',
-                style: pw.TextStyle(
-                    fontSize: 8.5,
-                    color: _ink,
-                    fontWeight: pw.FontWeight.bold)),
-            pw.Text('For $society',
-                style: const pw.TextStyle(fontSize: 8, color: _muted)),
+      pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: [
+          pw.Expanded(
+            flex: 6,
+            child: pw.Text(
+              'This is a computer-generated document. For any discrepancy, '
+              'please contact the management office.',
+              style: const pw.TextStyle(fontSize: 8, color: _muted),
+            ),
+          ),
+          pw.SizedBox(width: 16),
+          if (stampImage != null) ...[
+            pw.SizedBox(
+                width: 56,
+                height: 56,
+                child: pw.Image(stampImage, fit: pw.BoxFit.contain)),
+            pw.SizedBox(width: 10),
           ],
-        ),
+          pw.SizedBox(
+            width: 150,
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                if (signatureImage != null)
+                  pw.Container(
+                    height: 32,
+                    alignment: pw.Alignment.center,
+                    child: pw.Image(signatureImage, fit: pw.BoxFit.contain),
+                  )
+                else
+                  pw.SizedBox(height: 28),
+                pw.Container(height: 0.7, color: _line),
+                pw.SizedBox(height: 3),
+                pw.Text('Authorised Signatory',
+                    style: pw.TextStyle(
+                        fontSize: 8.5,
+                        color: _ink,
+                        fontWeight: pw.FontWeight.bold)),
+                pw.Text('For $societyName',
+                    style: const pw.TextStyle(fontSize: 8, color: _muted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      pw.SizedBox(height: 10),
+      pw.Container(height: 0.5, color: _line),
+      pw.SizedBox(height: 6),
+      pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          if (financialYear.isNotEmpty)
+            pw.Text(
+              financialYear,
+              style: const pw.TextStyle(fontSize: 7.5, color: _muted),
+            )
+          else
+            pw.SizedBox(),
+          pw.Text(
+            'Generated $generatedStamp',
+            style: const pw.TextStyle(fontSize: 7.5, color: _muted),
+          ),
+          pw.Text(
+            invoiceNo,
+            style: const pw.TextStyle(fontSize: 7.5, color: _muted),
+          ),
+        ],
       ),
     ],
   );

@@ -45,6 +45,7 @@ Future<void> downloadOrViewInvoice({
         letterheadUrl: cfg?['letterheadUrl']?.toString(),
         signatureUrl: cfg?['signatureUrl']?.toString(),
         stampUrl: cfg?['stampUrl']?.toString(),
+        societyAddress: cfg?['societyAddress']?.toString(),
       );
       savedPath = await savePdfToCache(bytes, filename);
     } catch (e) {

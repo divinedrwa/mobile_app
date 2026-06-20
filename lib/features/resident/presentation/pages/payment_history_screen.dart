@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,11 +6,12 @@ import 'package:intl/intl.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../data/models/maintenance_due_model.dart';
 import '../../data/providers/maintenance_provider.dart';
+import 'maintenance/invoice_download_helper.dart';
 import '../widgets/list_skeleton.dart';
 
 class PaymentHistoryScreen extends ConsumerWidget {
@@ -86,7 +85,7 @@ class PaymentHistoryScreen extends ConsumerWidget {
 class _PaymentHistoryCard extends ConsumerStatefulWidget {
   const _PaymentHistoryCard({required this.record});
 
-  final dynamic record;
+  final MaintenanceDueModel record;
 
   @override
   ConsumerState<_PaymentHistoryCard> createState() =>
@@ -96,38 +95,25 @@ class _PaymentHistoryCard extends ConsumerStatefulWidget {
 class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
   bool _downloading = false;
 
-  bool get _canDownloadReceipt {
+  bool get _canDownloadInvoice => widget.record.cycleId.isNotEmpty;
+
+  bool get _isPaid {
     final status = widget.record.status.toUpperCase();
-    final hasCycleId =
-        widget.record.cycleId != null && widget.record.cycleId.isNotEmpty;
-    return hasCycleId && (status == 'PAID' || status == 'PARTIAL');
+    return status == 'PAID' ||
+        status == 'AUTO_SETTLED' ||
+        (status == 'PARTIAL' && widget.record.remainingDue <= 0);
   }
 
-  Future<void> _downloadReceipt() async {
+  Future<void> _downloadInvoice() async {
     if (_downloading) return;
-    setState(() => _downloading = true);
-    try {
-      final repo = ref.read(maintenanceRepositoryProvider);
-      final bytes =
-          await repo.downloadPaymentReceiptPdf(cycleId: widget.record.cycleId);
-      if (!mounted) return;
-      final monthLabel = DateFormat('MMM_yyyy')
-          .format(DateTime(widget.record.year, widget.record.month));
-      await sharePdfBytes(
-        Uint8List.fromList(bytes),
-        filename: 'receipt_$monthLabel.pdf',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userFacingMessage(e)),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _downloading = false);
-    }
+    await downloadOrViewInvoice(
+      context: context,
+      ref: ref,
+      m: widget.record,
+      setBusy: (busy) {
+        if (mounted) setState(() => _downloading = busy);
+      },
+    );
   }
 
   @override
@@ -232,7 +218,7 @@ class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
                 ),
               ],
             ),
-            if (_canDownloadReceipt) ...[
+            if (_canDownloadInvoice) ...[
               SizedBox(height: context.spacing.s12),
               const Divider(height: 1),
               SizedBox(height: context.spacing.s8),
@@ -240,7 +226,7 @@ class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
                 width: double.infinity,
                 height: 36,
                 child: TextButton.icon(
-                  onPressed: _downloading ? null : _downloadReceipt,
+                  onPressed: _downloading ? null : _downloadInvoice,
                   icon: _downloading
                       ? const SizedBox(
                           width: 16,
@@ -249,7 +235,9 @@ class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
                         )
                       : const Icon(Icons.download_rounded, size: 18),
                   label: Text(
-                    _downloading ? 'Downloading...' : 'Download Receipt',
+                    _downloading
+                        ? 'Downloading...'
+                        : (_isPaid ? 'Download Receipt' : 'Download Invoice'),
                     style: const TextStyle(fontSize: 13),
                   ),
                 ),
