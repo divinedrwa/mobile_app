@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/notification_model.dart';
@@ -52,44 +53,13 @@ class _NotificationsCenterScreenState
   bool _navigateFromInlineData(NotificationModel n) {
     final data = n.data;
     if (data == null) return false;
-
-    final pushType = data['type']?.toString();
-    if (pushType == 'VISITOR_APPROVAL_REQUEST') {
-      final vid = data['visitorId']?.toString() ?? '';
-      if (!mounted) return true;
-      if (vid.isEmpty) {
-        context.push('/resident/visitor-requests');
-      } else {
-        context.push('/resident/visitor-requests/$vid');
-      }
-      return true;
-    }
-    if (pushType == 'VISITOR_GATE_NOTIFY') {
-      if (!mounted) return true;
-      context.push('/resident/visitor-requests');
-      return true;
-    }
-    if (pushType == 'VISITOR_APPROVAL_RESOLVED') {
-      if (!mounted) return true;
-      context.go('/guard/entries');
-      return true;
-    }
-    if (pushType == 'VISITOR_PRE_APPROVED_CREATED') {
-      if (!mounted) return true;
-      final pid = data['preApprovedId']?.toString() ?? '';
-      if (pid.isEmpty) {
-        context.push('/guard/pre-approved');
-      } else {
-        context.push(
-          Uri(
-            path: '/guard/pre-approved',
-            queryParameters: {'focus': pid},
-          ).toString(),
-        );
-      }
-      return true;
-    }
-    return false;
+    final normalized = <String, String>{
+      for (final e in data.entries) e.key: e.value?.toString() ?? '',
+    };
+    return NotificationService().applyNavigationFromPushData(
+      normalized,
+      openDetails: true,
+    );
   }
 
   @override
@@ -640,9 +610,8 @@ class _NotificationsCenterScreenState
   }
 
   bool _navigateFromInlineDataPreview(NotificationModel n) {
-    final t = n.data?['type']?.toString();
-    return t == 'VISITOR_APPROVAL_REQUEST' ||
-        t == 'VISITOR_APPROVAL_RESOLVED';
+    final t = n.data?['type']?.toString() ?? '';
+    return NotificationService.applyNavigationFromPushDataPreview(t);
   }
 
   Widget _buildEmptyState(ColorScheme scheme, bool isDark) {

@@ -643,17 +643,18 @@ class NotificationService {
   static bool _isValidPushId(String id) => _safeIdPattern.hasMatch(id);
 
   /// Called when user taps a push (background/terminated) or we retry pending routes.
-  void applyNavigationFromPushData(
+  /// Returns true when a route was matched (navigation attempted).
+  bool applyNavigationFromPushData(
     Map<String, String> data, {
     required bool openDetails,
   }) {
     final type = data['type'] ?? '';
 
-    void go() {
+    bool go() {
       final ctx = appRootNavigatorKey.currentContext;
       if (ctx == null) {
         fcmDiag('NAV', 'go(): navigator context still null → route skipped');
-        return;
+        return false;
       }
       final router = GoRouter.of(ctx);
       try {
@@ -664,15 +665,15 @@ class NotificationService {
           } else {
             router.push('/resident/visitor-requests');
           }
-          return;
+          return true;
         }
         if (type == 'VISITOR_GATE_NOTIFY' && openDetails) {
           router.push('/resident/visitor-requests');
-          return;
+          return true;
         }
         if (type == 'VISITOR_APPROVAL_RESOLVED') {
           router.go('/guard/entries');
-          return;
+          return true;
         }
         if (type == 'VISITOR_PRE_APPROVED_CREATED') {
           final id = data['preApprovedId'] ?? '';
@@ -686,42 +687,67 @@ class NotificationService {
           } else {
             router.push('/guard/pre-approved');
           }
-          return;
+          return true;
         }
         if (type == 'SOS_CREATED' ||
             type == 'SOS_ESCALATION' ||
             type == 'SOS_ESCALATION_ADMIN') {
           router.go('/guard/dashboard');
-          return;
+          return true;
         }
-        if (type == 'SOS_UPDATE') {
+        if (type == 'SOS_UPDATE' || type == 'SOS_CANCELLED') {
           router.go('/resident/sos/active');
-          return;
+          return true;
         }
-        if (type == 'VISITOR_PRE_APPROVED_ARRIVED') {
+        if (type == 'VISITOR_PRE_APPROVED_ARRIVED' ||
+            type == 'VISITOR_VILLA_RESPONSE') {
           router.push('/resident/visitor-requests');
-          return;
+          return true;
         }
-        if (type == 'complaint_status') {
+        if (type == 'complaint_status' ||
+            type == 'COMPLAINT_SLA_BREACH' ||
+            type == 'COMPLAINT_AUTO_CLOSED') {
           router.push('/resident/my-complaints');
-          return;
+          return true;
         }
         if (type == 'notice') {
           router.go('/resident');
-          return;
+          return true;
         }
         if (type == 'BILLING_CYCLE_CREATED' ||
             type == 'MAINTENANCE_REMINDER' ||
             type == 'MAINTENANCE_PAYMENT_RECORDED' ||
             type == 'MAINTENANCE_PAYMENT_REVERSED' ||
-            type == 'MAINTENANCE_LEDGER_UPDATED') {
+            type == 'MAINTENANCE_LEDGER_UPDATED' ||
+            type == 'billing_payment_failed' ||
+            type == 'billing_payment_success') {
           requestResidentDataRefresh();
           router.push('/resident/maintenance');
-          return;
+          return true;
         }
         if (type == 'PARCEL_RECEIVED') {
           router.go('/resident');
-          return;
+          return true;
+        }
+        if (type == 'amenity_booking_status') {
+          router.push('/resident/amenity-bookings');
+          return true;
+        }
+        if (type == 'WATER_SUPPLY_REQUEST') {
+          router.push('/resident/admin-gate-utilities');
+          return true;
+        }
+        if (type == 'WATER_SUPPLY_REQUEST_RESOLVED') {
+          router.push('/resident/utilities');
+          return true;
+        }
+        if (type == 'UPI_PAYMENT_SUBMITTED') {
+          router.push('/resident/admin-upi-verifications');
+          return true;
+        }
+        if (type == 'UPI_PAYMENT_VERIFIED' || type == 'UPI_PAYMENT_REJECTED') {
+          router.push('/resident/maintenance');
+          return true;
         }
         if (type == 'SPECIAL_PROJECT_CREATED' ||
             type == 'SPECIAL_PROJECT_PAYMENT_RECORDED') {
@@ -731,15 +757,17 @@ class NotificationService {
           } else {
             router.push('/resident/special-projects');
           }
-          return;
+          return true;
         }
         fcmDiag(
           'NAV_SKIP',
           'no matching route type="$type" openDetails=$openDetails '
               'visitorId=${data['visitorId']}',
         );
+        return false;
       } catch (e, st) {
         fcmDiag('NAV_ERR', 'go() failed type="$type"', e, st);
+        return false;
       }
     }
 
@@ -751,13 +779,57 @@ class NotificationService {
             'visitorId=${data['visitorId']}',
       );
       _pendingPushData = Map<String, String>.from(data);
-      return;
+      return false;
     }
 
     SchedulerBinding.instance.addPostFrameCallback((_) {
       fcmDiag('NAV', 'post-frame navigate type=$type openDetails=$openDetails');
       go();
     });
+    return _isKnownPushNavigationType(type);
+  }
+
+  static bool _isKnownPushNavigationType(String type) {
+    if (type.isEmpty) return false;
+    const known = {
+      'VISITOR_APPROVAL_REQUEST',
+      'VISITOR_GATE_NOTIFY',
+      'VISITOR_APPROVAL_RESOLVED',
+      'VISITOR_PRE_APPROVED_CREATED',
+      'VISITOR_PRE_APPROVED_ARRIVED',
+      'VISITOR_VILLA_RESPONSE',
+      'SOS_CREATED',
+      'SOS_ESCALATION',
+      'SOS_ESCALATION_ADMIN',
+      'SOS_UPDATE',
+      'SOS_CANCELLED',
+      'complaint_status',
+      'COMPLAINT_SLA_BREACH',
+      'COMPLAINT_AUTO_CLOSED',
+      'notice',
+      'BILLING_CYCLE_CREATED',
+      'MAINTENANCE_REMINDER',
+      'MAINTENANCE_PAYMENT_RECORDED',
+      'MAINTENANCE_PAYMENT_REVERSED',
+      'MAINTENANCE_LEDGER_UPDATED',
+      'billing_payment_failed',
+      'billing_payment_success',
+      'PARCEL_RECEIVED',
+      'amenity_booking_status',
+      'WATER_SUPPLY_REQUEST',
+      'WATER_SUPPLY_REQUEST_RESOLVED',
+      'UPI_PAYMENT_SUBMITTED',
+      'UPI_PAYMENT_VERIFIED',
+      'UPI_PAYMENT_REJECTED',
+      'SPECIAL_PROJECT_CREATED',
+      'SPECIAL_PROJECT_PAYMENT_RECORDED',
+    };
+    return known.contains(type) || type.startsWith('VISITOR_');
+  }
+
+  /// Whether inbox rows should show a navigation affordance for this push type.
+  static bool applyNavigationFromPushDataPreview(String type) {
+    return _isKnownPushNavigationType(type);
   }
 
   /// Invalidate cached providers when a push indicates server data changed.
@@ -774,6 +846,14 @@ class NotificationService {
       'billing_window_open',
       'billing_due_reminder',
       'BILLING_GRACE_REMINDER',
+      'UPI_PAYMENT_SUBMITTED',
+      'UPI_PAYMENT_VERIFIED',
+      'UPI_PAYMENT_REJECTED',
+      'WATER_SUPPLY_REQUEST',
+      'WATER_SUPPLY_REQUEST_RESOLVED',
+      'COMPLAINT_SLA_BREACH',
+      'COMPLAINT_AUTO_CLOSED',
+      'SOS_CANCELLED',
     };
     const residentContentTypes = {
       'PARCEL_RECEIVED',
