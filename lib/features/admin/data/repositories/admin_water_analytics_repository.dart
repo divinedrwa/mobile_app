@@ -20,8 +20,12 @@ class AdminWaterAnalyticsRepository {
       return {
         ...Map<String, dynamic>.from(data),
         'totalEvents': summary['totalEvents'] ?? 0,
+        'onEvents': summary['onEvents'] ?? 0,
+        'offEvents': summary['offEvents'] ?? 0,
+        'completedCycles': summary['completedCycles'] ?? 0,
         'averageDurationMinutes': summary['avgDurationMinutes'] ?? 0,
         'totalGates': gateStats.length,
+        'gateStats': gateStats,
       };
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load water supply overview');
@@ -41,6 +45,12 @@ class AdminWaterAnalyticsRepository {
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
+      if (data is Map && data['usageData'] is List) {
+        return (data['usageData'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
       if (data is Map && data['dailyUsage'] is List) {
         return (data['dailyUsage'] as List)
             .whereType<Map>()
@@ -53,33 +63,56 @@ class AdminWaterAnalyticsRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getHourlyPattern({int days = 7}) async {
+  Future<List<Map<String, dynamic>>> getHourlyPattern({int days = 30}) async {
     try {
       final res = await _dio.get(
         ApiEndpoints.waterSupplyAnalyticsHourlyPattern,
         queryParameters: {'days': days},
       );
       final data = res.data;
-      if (data is List) {
-        return data
+      List<Map<String, dynamic>> pattern = [];
+      if (data is Map && data['pattern'] is List) {
+        pattern = (data['pattern'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } else if (data is Map && data['hourlyPattern'] is List) {
+        pattern = (data['hourlyPattern'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } else if (data is List) {
+        pattern = data
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
       }
-      if (data is Map && data['hourlyPattern'] is List) {
-        return (data['hourlyPattern'] as List)
+      // Prefer peak hours when present; otherwise top hours by activity.
+      if (data is Map && data['peakHours'] is List) {
+        final peaks = (data['peakHours'] as List)
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
+        if (peaks.isNotEmpty) return peaks;
       }
-      return [];
+      pattern.sort(
+        (a, b) => _toInt(b['totalEvents']).compareTo(_toInt(a['totalEvents'])),
+      );
+      return pattern.take(8).toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load hourly pattern');
     }
   }
 
+  static int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
+  }
+
   Future<List<Map<String, dynamic>>> getGatePerformance(
-      {int days = 7}) async {
+      {int days = 30}) async {
     try {
       final res = await _dio.get(
         ApiEndpoints.waterSupplyAnalyticsGatePerformance,

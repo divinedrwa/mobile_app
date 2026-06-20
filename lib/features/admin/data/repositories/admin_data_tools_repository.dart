@@ -44,11 +44,14 @@ class AdminDataToolsRepository {
   /// Export villas as CSV (returns raw bytes).
   Future<Uint8List> exportVillasCsv() async {
     try {
-      final res = await _dio.get<ResponseBody>(
+      final res = await _dio.get<dynamic>(
         ApiEndpoints.exportVillasCsv,
         options: Options(responseType: ResponseType.bytes),
       );
-      return Uint8List.fromList(res.data as List<int>);
+      final data = res.data;
+      if (data is Uint8List) return data;
+      if (data is List<int>) return Uint8List.fromList(data);
+      throw StateError('Unexpected export response');
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to export villas CSV');
     }
@@ -57,11 +60,14 @@ class AdminDataToolsRepository {
   /// Export residents as CSV (returns raw bytes).
   Future<Uint8List> exportResidentsCsv() async {
     try {
-      final res = await _dio.get<ResponseBody>(
+      final res = await _dio.get<dynamic>(
         ApiEndpoints.exportResidentsCsv,
         options: Options(responseType: ResponseType.bytes),
       );
-      return Uint8List.fromList(res.data as List<int>);
+      final data = res.data;
+      if (data is Uint8List) return data;
+      if (data is List<int>) return Uint8List.fromList(data);
+      throw StateError('Unexpected export response');
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to export residents CSV');
     }

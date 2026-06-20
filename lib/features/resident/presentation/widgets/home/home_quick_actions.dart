@@ -184,7 +184,7 @@ class HomeQuickActions extends ConsumerWidget {
         context.push('/resident/maintenance-payment');
         return;
       case 'community':
-        ref.read(currentTabProvider.notifier).state = 1;
+        openCommunityTab(ref);
         return;
       case 'sos':
         Navigator.of(context).push(

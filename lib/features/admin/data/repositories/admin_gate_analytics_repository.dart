@@ -36,7 +36,7 @@ class AdminGateAnalyticsRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getVisitorStatistics({int days = 7}) async {
+  Future<Map<String, dynamic>> getVisitorStatistics({int days = 30}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.gateAnalyticsVisitorStats,
@@ -48,7 +48,7 @@ class AdminGateAnalyticsRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getPeakHours({int days = 7}) async {
+  Future<Map<String, dynamic>> getPeakHours({int days = 30}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.gateAnalyticsPeakHours,

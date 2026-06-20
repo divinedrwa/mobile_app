@@ -23,6 +23,16 @@
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
+# --- Google Play Core (in_app_update / app-update) --------------------------
+# Play Core is NOT under gms.* — R8 strips it without explicit keeps, which
+# crashes release builds the first time checkForUpdate() runs after install.
+-keep class com.google.android.play.core.** { *; }
+-keep interface com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# --- in_app_update plugin ---------------------------------------------------
+-keep class de.ffuf.in_app_update.** { *; }
+
 # --- Kotlin / Coroutines metadata -------------------------------------------
 -keep class kotlin.Metadata { *; }
 -keep class kotlinx.coroutines.** { *; }

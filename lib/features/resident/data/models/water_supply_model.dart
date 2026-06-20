@@ -20,7 +20,8 @@ class WaterSupplyStatus {
   factory WaterSupplyStatus.fromJson(Map<String, dynamic> json) {
     return WaterSupplyStatus(
       gateId: json['gateId']?.toString() ?? '',
-      gateName: (json['gateName'] as String?) ?? '',
+      gateName: (json['gateName'] as String?) ??
+          (json['gate'] is String ? json['gate'] as String : ''),
       location: (json['location'] as String?) ?? '',
       status: (json['status'] as String?) ?? 'OFF',
       lastChanged: json['lastChanged'] is String

@@ -33,15 +33,16 @@ class AdminResidentManagementRepository {
   /// Process move-out for a resident.
   Future<Map<String, dynamic>> moveOut({
     required String residentId,
-    required String villaId,
     String? reason,
+    DateTime? moveOutDate,
   }) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         ApiEndpoints.residentManagementMoveOut,
         data: {
-          'residentId': residentId,
-          'villaId': villaId,
+          'userId': residentId,
+          'moveOutDate':
+              (moveOutDate ?? DateTime.now()).toUtc().toIso8601String(),
           if (reason != null && reason.isNotEmpty) 'reason': reason,
         },
       );

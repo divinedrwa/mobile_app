@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/theme/design_tokens.dart';
-import '../../data/models/society_banner_type.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
+import '../../data/models/society_banner_type.dart';
 import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_ui.dart';
+import '../widgets/community/event_banner_detail_sheet.dart';
 import '../widgets/premium_society_banner_card.dart';
 
 int _bannerTypeRank(SocietyBannerType t) {
@@ -13,7 +15,6 @@ int _bannerTypeRank(SocietyBannerType t) {
   return i >= 0 ? i : 999;
 }
 
-/// Order items for Events tab: type (emergency → … → offer), then priority.
 void _sortBannersForEventsTab(List<Map<String, dynamic>> items) {
   items.sort((a, b) {
     final ra = _bannerTypeRank(a['bannerType'] as SocietyBannerType);
@@ -28,7 +29,6 @@ void _sortBannersForEventsTab(List<Map<String, dynamic>> items) {
 List<Widget> _buildBannersGroupedByType(
   BuildContext context,
   List<Map<String, dynamic>> items,
-  Widget Function(BuildContext, Map<String, dynamic>) cardBuilder,
 ) {
   _sortBannersForEventsTab(items);
   final out = <Widget>[];
@@ -53,11 +53,11 @@ List<Widget> _buildBannersGroupedByType(
               const SizedBox(width: 8),
               Text(
                 t.displayLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                 ),
               ),
             ],
@@ -68,14 +68,16 @@ List<Widget> _buildBannersGroupedByType(
     out.add(
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: cardBuilder(context, e),
+        child: GestureDetector(
+          onTap: () => showEventBannerDetailSheet(context, e),
+          child: PremiumSocietyBannerCard(event: e),
+        ),
       ),
     );
   }
   return out;
 }
 
-/// Modern Professional Events List Screen
 class EventsListScreen extends ConsumerWidget {
   const EventsListScreen({super.key});
 
@@ -83,124 +85,63 @@ class EventsListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsState = ref.watch(eventsProvider);
 
-    return Container(
-      color: DesignColors.background,
-      child: eventsState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 56,
-                color: DesignColors.error,
-              ),
-              const SizedBox(height: 12),
-              Text(userFacingMessage(error), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(eventsProvider),
-                child: const Text('Retry'),
+    return CommunityListBody<List<Map<String, dynamic>>>(
+      asyncValue: eventsState,
+      onRetry: () => ref.invalidate(eventsProvider),
+      emptyIcon: Icons.event_outlined,
+      emptyTitle: 'No upcoming events',
+      emptySubtitle:
+          'Stay tuned — community events and activities will show up here.',
+      errorTitle: 'Could not load events',
+      shimmerHeight: 120,
+      dataBuilder: (rawEvents) {
+        final events = rawEvents.map(_toEventUiData).toList();
+        final upcomingEvents =
+            events.where((e) => e['isUpcoming'] as bool).toList();
+        final pastEvents =
+            events.where((e) => !(e['isUpcoming'] as bool)).toList();
+
+        if (events.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 48),
+              EmptyStateWidget(
+                icon: Icons.event_outlined,
+                title: 'No upcoming events',
+                subtitle:
+                    'Stay tuned — community events and activities will show up here.',
               ),
             ],
-          ),
-        ),
-        data: (rawEvents) {
-          final events = rawEvents.map(_toEventUiData).toList();
-          final upcomingEvents = events
-              .where((e) => e['isUpcoming'] as bool)
-              .toList();
-          final pastEvents = events
-              .where((e) => !(e['isUpcoming'] as bool))
-              .toList();
-
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(eventsProvider),
-            child: events.isEmpty
-                ? _buildEmptyState()
-                : ListView(
-                    padding: const EdgeInsets.all(DesignSpacing.lg),
-                    children: [
-                      if (upcomingEvents.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'Live now',
-                          'Announcements, festivals, offers & society updates',
-                          Colors.blue,
-                        ),
-                        const SizedBox(height: 12),
-                        ..._buildBannersGroupedByType(
-                          context,
-                          upcomingEvents,
-                          (_, e) => PremiumSocietyBannerCard(event: e),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (pastEvents.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'Ended',
-                          'Past campaigns',
-                          DesignColors.textSecondary,
-                        ),
-                        const SizedBox(height: 12),
-                        ..._buildBannersGroupedByType(
-                          context,
-                          pastEvents,
-                          (_, e) => PremiumSocietyBannerCard(event: e),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                    ],
-                  ),
           );
-        },
-      ),
-    );
-  }
+        }
 
-  Widget _buildSectionHeader(String title, String subtitle, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 24,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(eventsProvider),
+          child: ListView(
+            padding: EdgeInsets.all(context.spacing.s16),
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: DesignColors.textPrimary,
+              if (upcomingEvents.isNotEmpty) ...[
+                const EnterpriseSectionHeader(
+                  title: 'Live now',
+                  subtitle: 'Announcements, festivals, offers & society updates',
                 ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: DesignColors.textSecondary,
+                const SizedBox(height: 12),
+                ..._buildBannersGroupedByType(context, upcomingEvents),
+                const SizedBox(height: 8),
+              ],
+              if (pastEvents.isNotEmpty) ...[
+                const EnterpriseSectionHeader(
+                  title: 'Ended',
+                  subtitle: 'Past campaigns',
                 ),
-              ),
+                const SizedBox(height: 12),
+                ..._buildBannersGroupedByType(context, pastEvents),
+              ],
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return const EmptyStateWidget(
-      icon: Icons.event_outlined,
-      title: 'No upcoming events',
-      subtitle: 'Stay tuned \u2014 community events and activities will show up here.',
+        );
+      },
     );
   }
 
@@ -216,7 +157,6 @@ class EventsListScreen extends ConsumerWidget {
     }
 
     final now = DateTime.now();
-    // Past only when an end date exists and has passed. Otherwise treat as upcoming/open.
     final isPastByEnd = endDate != null && !endDate.isAfter(now);
     final isUpcoming = !isPastByEnd;
 

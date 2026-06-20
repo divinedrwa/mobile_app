@@ -1,6 +1,11 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -157,7 +162,7 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
           ? await repo.importVillasCsv(file.bytes!, file.name)
           : await repo.importResidentsCsv(file.bytes!, file.name);
       if (mounted) {
-        final count = res['imported'] ?? res['count'] ?? '';
+        final count = res['created'] ?? res['imported'] ?? res['count'] ?? '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -181,17 +186,18 @@ class _AdminDataToolsScreenState extends ConsumerState<AdminDataToolsScreen> {
     setState(() => _exporting = true);
     try {
       final repo = ref.read(adminDataToolsRepositoryProvider);
-      if (type == 'villas') {
-        await repo.exportVillasCsv();
-      } else {
-        await repo.exportResidentsCsv();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('${_capitalize(type)} CSV exported successfully')),
-        );
-      }
+      final Uint8List bytes = type == 'villas'
+          ? await repo.exportVillasCsv()
+          : await repo.exportResidentsCsv();
+      final filename =
+          '${type}_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/$filename';
+      await File(path).writeAsBytes(bytes);
+      await Share.shareXFiles(
+        [XFile(path)],
+        text: '${_capitalize(type)} export',
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

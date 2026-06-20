@@ -31,13 +31,11 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
   Future<void> _refresh() async {
     ref.invalidate(adminResidentOverviewProvider);
-    ref.invalidate(adminResidentStatsProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final overviewAsync = ref.watch(adminResidentOverviewProvider);
-    final statsAsync = ref.watch(adminResidentStatsProvider);
 
     return Scaffold(
       backgroundColor: DesignColors.background,
@@ -67,7 +65,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           children: [
-            _buildStatsHero(statsAsync),
+            _buildStatsHero(overviewAsync),
             const SizedBox(height: 12),
             AdminSearchField(
               controller: _searchCtl,
@@ -84,13 +82,14 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
   // ── Stats hero ──
 
-  Widget _buildStatsHero(AsyncValue<Map<String, dynamic>> statsAsync) {
-    return statsAsync.when(
+  Widget _buildStatsHero(AsyncValue<Map<String, dynamic>> overviewAsync) {
+    return overviewAsync.when(
       loading: () => ShimmerWrap(
         child: ShimmerBox(height: 120, borderRadius: DesignRadius.xl),
       ),
       error: (_, __) => const SizedBox.shrink(),
-      data: (stats) {
+      data: (overview) {
+        final stats = (overview['statistics'] as Map?) ?? const {};
         final total = _toInt(stats['totalResidents']);
         final active = _toInt(stats['activeResidents']);
         final owners = _toInt(stats['owners']);
@@ -299,15 +298,15 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
   Widget _residentCard(Map<String, dynamic> r) {
     final name = r['name']?.toString() ?? r['username']?.toString() ?? '';
-    final role = r['role']?.toString() ?? '';
+    final role = r['type']?.toString() ?? r['role']?.toString() ?? '';
     final villa = r['villa'] as Map<String, dynamic>?;
     final villaNumber = villa?['villaNumber']?.toString() ?? '';
     final phone = r['phone']?.toString() ?? '';
     final isActive = r['isActive'] == true;
 
-    final roleColor = role == 'OWNER'
-        ? const Color(0xFF7C3AED)
-        : const Color(0xFF0EA5E9);
+    final roleColor = role.toUpperCase().contains('TENANT')
+        ? const Color(0xFF0EA5E9)
+        : const Color(0xFF7C3AED);
 
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 8),
@@ -402,12 +401,11 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
     final name = r['name']?.toString() ?? r['username']?.toString() ?? '';
     final email = r['email']?.toString() ?? '';
     final phone = r['phone']?.toString() ?? '';
-    final role = r['role']?.toString() ?? '';
+    final role = r['type']?.toString() ?? r['role']?.toString() ?? '';
     final isActive = r['isActive'] == true;
     final villa = r['villa'] as Map<String, dynamic>?;
     final villaNumber = villa?['villaNumber']?.toString() ?? '';
     final id = r['id']?.toString() ?? '';
-    final villaId = villa?['id']?.toString() ?? '';
 
     showModalBottomSheet<void>(
       context: context,
@@ -470,11 +468,11 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
               if (phone.isNotEmpty)
                 _detailRow(Icons.phone_outlined, 'Phone', phone),
               const SizedBox(height: 16),
-              if (isActive && villaId.isNotEmpty)
+              if (isActive)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _handleMoveOut(id, villaId),
+                    onPressed: () => _handleMoveOut(id),
                     icon: const Icon(Icons.logout, size: 16),
                     label: const Text('Move Out'),
                     style: OutlinedButton.styleFrom(
@@ -502,7 +500,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
     );
   }
 
-  Future<void> _handleMoveOut(String residentId, String villaId) async {
+  Future<void> _handleMoveOut(String residentId) async {
     Navigator.of(context).pop();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -530,7 +528,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
     try {
       await ref
           .read(adminResidentManagementRepositoryProvider)
-          .moveOut(residentId: residentId, villaId: villaId);
+          .moveOut(residentId: residentId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Resident moved out successfully')),

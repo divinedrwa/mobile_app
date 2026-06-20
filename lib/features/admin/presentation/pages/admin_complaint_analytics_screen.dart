@@ -249,14 +249,17 @@ class _AdminComplaintAnalyticsScreenState
     }
 
     final maxCount = categories.fold<int>(
-        0, (m, c) => _toInt(c['count']) > m ? _toInt(c['count']) : m);
+        0,
+        (m, c) => _toInt(c['totalCount'] ?? c['count']) > m
+            ? _toInt(c['totalCount'] ?? c['count'])
+            : m);
 
     return EnterprisePanel(
       padding: const EdgeInsets.all(14),
       child: Column(
         children: categories.map((c) {
           final name = c['category']?.toString() ?? c['name']?.toString() ?? '';
-          final count = _toInt(c['count']);
+          final count = _toInt(c['totalCount'] ?? c['count']);
           final fraction = maxCount > 0 ? count / maxCount : 0.0;
 
           return Padding(
@@ -312,14 +315,17 @@ class _AdminComplaintAnalyticsScreenState
     }
 
     final maxCount = trend.fold<int>(
-        0, (m, t) => _toInt(t['count']) > m ? _toInt(t['count']) : m);
+        0,
+        (m, t) => _toInt(t['totalComplaints'] ?? t['count']) > m
+            ? _toInt(t['totalComplaints'] ?? t['count'])
+            : m);
 
     return EnterprisePanel(
       padding: const EdgeInsets.all(14),
       child: Column(
         children: trend.map((t) {
           final month = t['month']?.toString() ?? '';
-          final count = _toInt(t['count']);
+          final count = _toInt(t['totalComplaints'] ?? t['count']);
           final fraction = maxCount > 0 ? count / maxCount : 0.0;
 
           return Padding(

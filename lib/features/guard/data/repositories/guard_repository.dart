@@ -425,14 +425,19 @@ class GuardRepository {
     required String status,
   }) async {
     try {
-      if (status == 'IN_PROGRESS') {
-        await _dio.patch(ApiEndpoints.sosAlertStart(alertId));
-        return;
+      switch (status) {
+        case 'ACKNOWLEDGED':
+          await _dio.patch(ApiEndpoints.adminSosAcknowledge(alertId));
+          return;
+        case 'IN_PROGRESS':
+          await _dio.patch(ApiEndpoints.sosAlertStart(alertId));
+          return;
+        case 'RESOLVED':
+          await _dio.patch(ApiEndpoints.adminSosResolve(alertId));
+          return;
+        default:
+          throw StateError('Unsupported SOS status: $status');
       }
-      await _dio.post(
-        ApiEndpoints.guardSosResponse,
-        data: {'alertId': alertId, 'status': status},
-      );
     } on DioException catch (e) {
       throw mapDioException(e, 'Could not update SOS');
     }

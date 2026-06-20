@@ -148,12 +148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (hasImportantNotices) ...[
                       HomeImportantNotices(
                         noticesState: noticesState,
-                        onViewAll: () => ref
-                            .read(currentTabProvider.notifier)
-                            .state = 1,
-                        onNoticesTap: () => ref
-                            .read(currentTabProvider.notifier)
-                            .state = 1,
+                        onViewAll: () => openCommunityTab(ref, subTab: 0),
                         onRetry: () =>
                             ref.invalidate(noticesProvider),
                       ).animateSection(3),

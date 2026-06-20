@@ -82,7 +82,7 @@ class MaintenanceRepository {
   }) async {
     try {
       final response = await _dio.post(
-        ApiEndpoints.maintenancePayments,
+        ApiEndpoints.maintenanceMarkPaid,
         data: {
           'villaId': villaId,
           'month': month,

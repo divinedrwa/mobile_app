@@ -1,135 +1,149 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/theme/design_tokens.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../data/models/document_model.dart';
-import '../../../../core/widgets/empty_state_widget.dart';
-import '../../data/providers/content_provider.dart';
 
-/// Provider for selected document category filter
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../theme/context_extensions.dart';
+import '../../data/models/document_model.dart';
+import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_ui.dart';
+import 'document_preview_screen.dart';
+
 final documentCategoryFilterProvider = StateProvider<DocumentCategory?>(
   (ref) => null,
 );
 
-/// Modern Professional Documents List Screen
+final documentSearchQueryProvider = StateProvider<String>((ref) => '');
+
 class DocumentsListScreen extends ConsumerWidget {
   const DocumentsListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCategory = ref.watch(documentCategoryFilterProvider);
+    final searchQuery = ref.watch(documentSearchQueryProvider);
     final documentsState = ref.watch(documentsProvider);
 
-    return Container(
-      color: const Color(0xFFF8F9FB),
+    final filterLabels = [
+      'All',
+      ...DocumentCategory.values.map(humanizeDocumentCategory),
+    ];
+    final selectedIndex = selectedCategory == null
+        ? 0
+        : DocumentCategory.values.indexOf(selectedCategory) + 1;
+
+    return ColoredBox(
+      color: context.surface.background,
       child: Column(
         children: [
-          // Modern Filter Chips
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFF0F3F6))),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip(
-                    context,
-                    ref,
-                    label: 'All',
-                    category: null,
-                    isSelected: selectedCategory == null,
-                  ),
-                  const SizedBox(width: 8),
-                  ...DocumentCategory.values.map(
-                    (category) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _buildFilterChip(
-                        context,
-                        ref,
-                        label: category.value,
-                        category: category,
-                        isSelected: selectedCategory == category,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          CommunitySearchField(
+            hint: 'Search documents…',
+            query: searchQuery,
+            onChanged: (v) =>
+                ref.read(documentSearchQueryProvider.notifier).state = v,
           ),
-
-          // Documents List
+          CommunityFilterChipRow(
+            labels: filterLabels,
+            selectedIndex: selectedIndex,
+            onSelected: (i) {
+              ref.read(documentCategoryFilterProvider.notifier).state =
+                  i == 0 ? null : DocumentCategory.values[i - 1];
+            },
+          ),
           Expanded(
-            child: documentsState.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 56,
-                      color: DesignColors.error,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(userFacingMessage(error), textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(documentsProvider),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-              data: (documents) {
-                final filteredDocuments = selectedCategory == null
+            child: CommunityListBody<List<DocumentModel>>(
+              asyncValue: documentsState,
+              onRetry: () => ref.invalidate(documentsProvider),
+              emptyIcon: Icons.folder_open_outlined,
+              emptyTitle: 'No documents shared yet',
+              emptySubtitle:
+                  'Your admin will upload society documents here when available.',
+              errorTitle: 'Could not load documents',
+              dataBuilder: (documents) {
+                var filtered = selectedCategory == null
                     ? documents
                     : documents
-                          .where((d) => d.category == selectedCategory)
-                          .toList();
-                final Map<DocumentCategory, List<DocumentModel>> groupedDocs =
-                    {};
-                for (final doc in filteredDocuments) {
-                  groupedDocs.putIfAbsent(doc.category, () => []).add(doc);
+                        .where((d) => d.category == selectedCategory)
+                        .toList();
+
+                if (searchQuery.trim().isNotEmpty) {
+                  filtered = filtered
+                      .where(
+                        (d) => communityMatchesQuery(
+                          searchQuery,
+                          [
+                            d.title,
+                            humanizeDocumentCategory(d.category),
+                            d.fileType,
+                          ],
+                        ),
+                      )
+                      .toList();
+                }
+
+                if (filtered.isEmpty) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 48),
+                      EmptyStateWidget(
+                        icon: Icons.folder_open_outlined,
+                        title: 'No documents match',
+                        subtitle: 'Try a different search or filter.',
+                      ),
+                    ],
+                  );
+                }
+
+                final grouped = <DocumentCategory, List<DocumentModel>>{};
+                for (final doc in filtered) {
+                  grouped.putIfAbsent(doc.category, () => []).add(doc);
                 }
 
                 return RefreshIndicator(
                   onRefresh: () async => ref.invalidate(documentsProvider),
-                  child: filteredDocuments.isEmpty
-                      ? _buildEmptyState()
-                      : ListView(
-                          padding: const EdgeInsets.all(DesignSpacing.lg),
+                  child: ListView(
+                    padding: EdgeInsets.all(context.spacing.s16),
+                    children: [
+                      ...grouped.entries.map((entry) {
+                        final count = entry.value.length;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ...groupedDocs.entries.map((entry) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            _categoryHeader(context, entry.key, count),
+                            SizedBox(height: context.spacing.s12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: context.surface.defaultSurface,
+                                borderRadius: DesignRadius.borderXL,
+                                border: Border.all(color: context.surface.border),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(
                                 children: [
-                                  _buildCategoryHeader(entry.key),
-                                  const SizedBox(height: 12),
-                                  ...entry.value.map(
-                                    (doc) => Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 12,
+                                  for (int i = 0; i < entry.value.length; i++) ...[
+                                    if (i > 0)
+                                      Divider(
+                                        height: 1,
+                                        color: context.surface.border
+                                            .withValues(alpha: 0.7),
+                                        indent: 16,
+                                        endIndent: 16,
                                       ),
-                                      child: _buildModernDocumentCard(
-                                        context,
-                                        doc,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
+                                    _documentRow(context, entry.value[i]),
+                                  ],
                                 ],
-                              );
-                            }),
-                            const SizedBox(height: 8),
+                              ),
+                            ),
+                            SizedBox(height: context.spacing.s16),
                           ],
-                        ),
+                        );
+                      }),
+                    ],
+                  ),
                 );
               },
             ),
@@ -139,240 +153,193 @@ class DocumentsListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterChip(
+  Widget _categoryHeader(
     BuildContext context,
-    WidgetRef ref, {
-    required String label,
-    required DocumentCategory? category,
-    required bool isSelected,
-  }) {
-    return FilterChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: isSelected ? Colors.white : DesignColors.textSecondary,
-        ),
-      ),
-      selected: isSelected,
-      onSelected: (_) {
-        ref.read(documentCategoryFilterProvider.notifier).state = category;
-      },
-      backgroundColor: DesignColors.surfaceSoft,
-      selectedColor: DesignColors.primary,
-      checkmarkColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: DesignRadius.borderXL,
-        side: BorderSide(
-          color: isSelected ? DesignColors.primary : Colors.grey[300]!,
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    );
-  }
-
-  Widget _buildCategoryHeader(DocumentCategory category) {
-    final categoryInfo = _getCategoryInfo(category);
-
+    DocumentCategory category,
+    int count,
+  ) {
+    final info = _categoryInfo(category);
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(DesignSpacing.sm),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (categoryInfo['color'] as Color).withValues(alpha: 0.1),
+            color: (info['color'] as Color).withValues(alpha: 0.12),
             borderRadius: DesignRadius.borderMD,
           ),
           child: Icon(
-            categoryInfo['icon'],
-            size: 20,
-            color: categoryInfo['color'],
+            info['icon'] as IconData,
+            size: 18,
+            color: info['color'] as Color,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Text(
-          category.value,
-          style: const TextStyle(
+          humanizeDocumentCategory(category),
+          style: TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: DesignColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            color: context.text.primary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: context.surface.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.surface.border),
+          ),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: context.text.secondary,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildModernDocumentCard(
-    BuildContext context,
-    DocumentModel document,
-  ) {
-    final fileInfo = _getFileTypeInfo(document.fileType);
+  Widget _documentRow(BuildContext context, DocumentModel document) {
+    final fileInfo = _fileTypeInfo(document.fileType);
 
-    return InkWell(
-      onTap: () {
-        _openDocument(context, document.fileUrl);
-      },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(DesignSpacing.lg),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: DesignColors.borderLight, width: 1),
-        ),
-        child: Row(
-          children: [
-            // File Type Icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: (fileInfo['color'] as Color).withValues(alpha: 0.1),
-                borderRadius: DesignRadius.borderLG,
-              ),
-              child: Icon(fileInfo['icon'], size: 24, color: fileInfo['color']),
-            ),
-
-            const SizedBox(width: 14),
-
-            // Document Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    document.title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: DesignColors.textPrimary,
-                      height: 1.3,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text(
-                        document.fileType.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: fileInfo['color'],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatFileSize(document.fileSize),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: DesignColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          _getRelativeDate(document.uploadedAt),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: DesignColors.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Download Button
-            Container(
-              decoration: BoxDecoration(
-                color: DesignColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: IconButton(
-                tooltip: 'Download',
-                onPressed: () {
-                  _openDocument(context, document.fileUrl);
-                },
-                icon: const Icon(
-                  Icons.download_rounded,
-                  color: DesignColors.primary,
-                  size: 22,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openDocument(context, document),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: (fileInfo['color'] as Color).withValues(alpha: 0.12),
+                  borderRadius: DesignRadius.borderLG,
                 ),
-                padding: const EdgeInsets.all(DesignSpacing.sm),
-                constraints: const BoxConstraints(),
+                child: Icon(
+                  fileInfo['icon'] as IconData,
+                  size: 22,
+                  color: fileInfo['color'] as Color,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      document.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: context.text.primary,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${document.fileType.toUpperCase()} · ${_formatFileSize(document.fileSize)} · ${_relativeDate(document.uploadedAt)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.text.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Open externally',
+                onPressed: () => _launchExternal(context, document.fileUrl),
+                icon: Icon(
+                  Icons.open_in_new_rounded,
+                  color: context.brand.primary,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ).animate().fadeIn(delay: 50.ms).slideX(begin: -0.1, end: 0);
-  }
-
-  Widget _buildEmptyState() {
-    return const EmptyStateWidget(
-      icon: Icons.folder_open_outlined,
-      title: 'No documents shared yet',
-      subtitle: 'Your admin will upload society documents here when available.',
     );
   }
 
-  Map<String, dynamic> _getCategoryInfo(DocumentCategory category) {
-    switch (category) {
-      case DocumentCategory.general:
-        return {'icon': Icons.folder, 'color': Colors.grey};
-      case DocumentCategory.bylaws:
-        return {'icon': Icons.gavel, 'color': Colors.blue};
-      case DocumentCategory.minutes:
-        return {'icon': Icons.event_note, 'color': Colors.orange};
-      case DocumentCategory.financial:
-        return {'icon': Icons.account_balance, 'color': Colors.green};
-      case DocumentCategory.policy:
-        return {'icon': Icons.policy, 'color': Colors.purple};
-      case DocumentCategory.form:
-        return {'icon': Icons.description, 'color': Colors.teal};
+  Future<void> _openDocument(BuildContext context, DocumentModel document) async {
+    final url = document.fileUrl;
+    if (url.isEmpty) {
+      _showError(context, 'Document URL is not available');
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DocumentPreviewScreen(
+          title: document.title,
+          url: url,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchExternal(BuildContext context, String fileUrl) async {
+    if (fileUrl.isEmpty) {
+      _showError(context, 'Document URL is not available');
+      return;
+    }
+    final uri = Uri.parse(fileUrl);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      _showError(context, 'Could not open document');
     }
   }
 
-  Map<String, dynamic> _getFileTypeInfo(String fileType) {
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: context.state.denied.solid,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Map<String, dynamic> _categoryInfo(DocumentCategory category) {
+    switch (category) {
+      case DocumentCategory.general:
+        return {'icon': Icons.folder_outlined, 'color': const Color(0xFF607D8B)};
+      case DocumentCategory.bylaws:
+        return {'icon': Icons.gavel_outlined, 'color': const Color(0xFF1565C0)};
+      case DocumentCategory.minutes:
+        return {'icon': Icons.event_note_outlined, 'color': const Color(0xFFE65100)};
+      case DocumentCategory.financial:
+        return {'icon': Icons.account_balance_outlined, 'color': const Color(0xFF2E7D32)};
+      case DocumentCategory.policy:
+        return {'icon': Icons.policy_outlined, 'color': const Color(0xFF6A1B9A)};
+      case DocumentCategory.form:
+        return {'icon': Icons.description_outlined, 'color': const Color(0xFF00838F)};
+    }
+  }
+
+  Map<String, dynamic> _fileTypeInfo(String fileType) {
     final type = fileType.toLowerCase();
     if (type == 'pdf') {
-      return {'icon': Icons.picture_as_pdf, 'color': Colors.red};
-    } else if (type == 'doc' || type == 'docx') {
-      return {'icon': Icons.description, 'color': Colors.blue};
-    } else if (type == 'xls' || type == 'xlsx') {
-      return {'icon': Icons.table_chart, 'color': Colors.green};
-    } else if (type == 'jpg' || type == 'jpeg' || type == 'png') {
-      return {'icon': Icons.image, 'color': Colors.purple};
-    } else {
-      return {'icon': Icons.insert_drive_file, 'color': Colors.grey};
+      return {'icon': Icons.picture_as_pdf, 'color': const Color(0xFFC62828)};
     }
+    if (type == 'doc' || type == 'docx') {
+      return {'icon': Icons.description, 'color': const Color(0xFF1565C0)};
+    }
+    if (type == 'xls' || type == 'xlsx') {
+      return {'icon': Icons.table_chart, 'color': const Color(0xFF2E7D32)};
+    }
+    if (type == 'jpg' || type == 'jpeg' || type == 'png') {
+      return {'icon': Icons.image_outlined, 'color': const Color(0xFF6A1B9A)};
+    }
+    return {'icon': Icons.insert_drive_file_outlined, 'color': const Color(0xFF78909C)};
   }
 
   String _formatFileSize(double bytes) {
@@ -381,44 +348,12 @@ class DocumentsListScreen extends ConsumerWidget {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  String _getRelativeDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()}w ago';
-    } else {
-      return DateFormat('MMM d').format(date);
-    }
-  }
-
-  Future<void> _openDocument(BuildContext context, String? fileUrl) async {
-    if (fileUrl == null || fileUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Document URL is not available'),
-          backgroundColor: DesignColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-    final uri = Uri.parse(fileUrl);
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open document'),
-          backgroundColor: DesignColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+  String _relativeDate(DateTime date) {
+    final difference = DateTime.now().difference(date);
+    if (difference.inDays == 0) return 'Today';
+    if (difference.inDays == 1) return 'Yesterday';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    if (difference.inDays < 30) return '${(difference.inDays / 7).floor()}w ago';
+    return DateFormat('MMM d').format(date);
   }
 }

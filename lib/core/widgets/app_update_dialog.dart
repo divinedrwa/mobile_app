@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/app_version_service.dart';
+import '../services/in_app_update_wrapper.dart';
 import '../utils/play_store_launch.dart';
 
 const _dismissedVersionKey = 'dismissed_update_version';
@@ -86,37 +87,59 @@ Future<bool> wasSoftUpdateDismissed(String version) async {
 }
 
 /// Try native Play Store immediate update; fall back to store listing on failure.
+///
+/// Play may terminate this process to install. That is expected — it is not a
+/// crash. Play Store listing updates do not auto-open the app when finished;
+/// the user taps Open or the launcher icon.
 Future<void> _tryNativeImmediateUpdate(
   BuildContext context,
   VersionCheckResult result,
 ) async {
   try {
-    await AppVersionService.performImmediateUpdate();
+    final updateResult = await AppVersionService.performImmediateUpdate();
+    switch (updateResult) {
+      case AppUpdateResult.success:
+        // Play installs in the background or restarts the process.
+        return;
+      case AppUpdateResult.userDeniedUpdate:
+      case AppUpdateResult.inAppUpdateFailed:
+        debugPrint(
+          '[AppUpdateDialog] Immediate update ended: $updateResult',
+        );
+        if (!context.mounted) return;
+        await _showPlayStoreFallbackDialog(context, result);
+    }
   } catch (e) {
     debugPrint('[AppUpdateDialog] Native immediate update failed: $e');
-    // Fall back to showing dialog with store link.
     if (context.mounted) {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => PopScope(
-          canPop: false,
-          child: AlertDialog(
-            title: const Text('Update Required'),
-            content: const Text(
-              'A required update is available. Please update from the Play Store to continue.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => _openStore(result.storeUrl),
-                child: const Text('Open Play Store'),
-              ),
-            ],
-          ),
-        ),
-      );
+      await _showPlayStoreFallbackDialog(context, result);
     }
   }
+}
+
+Future<void> _showPlayStoreFallbackDialog(
+  BuildContext context,
+  VersionCheckResult result,
+) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('Update Required'),
+        content: const Text(
+          'A required update is available. Please update from the Play Store to continue.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => _openStore(result.storeUrl),
+            child: const Text('Open Play Store'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Handle the "Update" button press — always opens the store listing.

@@ -152,7 +152,7 @@ class _AdminGateAnalyticsScreenState
         const SizedBox(height: 16),
 
         // Visitor statistics
-        EnterpriseSectionHeader(title: 'Visitor Statistics (7 days)'),
+        EnterpriseSectionHeader(title: 'Visitor Statistics (30 days)'),
         const SizedBox(height: 8),
         visitorStatsAsync.when(
           loading: () =>
@@ -214,24 +214,70 @@ class _AdminGateAnalyticsScreenState
 
   Widget _visitorStatsCard(Map<String, dynamic> stats) {
     final total = _toInt(stats['totalVisitors']);
-    final preApproved = _toInt(stats['preApproved']);
-    final walkIn = _toInt(stats['walkIn']);
-    final denied = _toInt(stats['denied']);
+    final breakdown = stats['typeBreakdown'];
+    final entries = <MapEntry<String, int>>[];
+    if (breakdown is Map) {
+      breakdown.forEach((key, value) {
+        entries.add(MapEntry(key.toString(), _toInt(value)));
+      });
+    }
+    entries.sort((a, b) => b.value.compareTo(a.value));
+    final topTypes = entries.take(3).toList();
 
     return EnterprisePanel(
       padding: const EdgeInsets.all(14),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _statChip('Total', total, const Color(0xFF0891B2)),
-          const SizedBox(width: 12),
-          _statChip('Pre-approved', preApproved, const Color(0xFF10B981)),
-          const SizedBox(width: 12),
-          _statChip('Walk-in', walkIn, const Color(0xFFF59E0B)),
-          const SizedBox(width: 12),
-          _statChip('Denied', denied, const Color(0xFFEF4444)),
+          Row(
+            children: [
+              _statChip('Total', total, const Color(0xFF0891B2)),
+              if (topTypes.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                _statChip(
+                  _formatVisitorType(topTypes.first.key),
+                  topTypes.first.value,
+                  const Color(0xFF10B981),
+                ),
+              ],
+              if (topTypes.length > 1) ...[
+                const SizedBox(width: 12),
+                _statChip(
+                  _formatVisitorType(topTypes[1].key),
+                  topTypes[1].value,
+                  const Color(0xFFF59E0B),
+                ),
+              ],
+              if (topTypes.length > 2) ...[
+                const SizedBox(width: 12),
+                _statChip(
+                  _formatVisitorType(topTypes[2].key),
+                  topTypes[2].value,
+                  const Color(0xFF8B5CF6),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  static String _formatVisitorType(String type) {
+    switch (type.toUpperCase()) {
+      case 'GUEST':
+        return 'Guest';
+      case 'DELIVERY':
+        return 'Delivery';
+      case 'SERVICE_PROVIDER':
+        return 'Service';
+      case 'VENDOR':
+        return 'Vendor';
+      case 'CONTRACTOR':
+        return 'Contractor';
+      default:
+        return type.replaceAll('_', ' ');
+    }
   }
 
   Widget _statChip(String label, int value, Color color) {
@@ -282,16 +328,19 @@ class _AdminGateAnalyticsScreenState
     }
 
     final maxCount = hours.fold<int>(
-        0, (m, h) => _toInt(h['count']) > m ? _toInt(h['count']) : m);
+        0,
+        (m, h) => _toInt(h['count'] ?? h['totalEvents']) > m
+            ? _toInt(h['count'] ?? h['totalEvents'])
+            : m);
 
     return EnterprisePanel(
       padding: const EdgeInsets.all(14),
       child: Column(
         children: hours.take(8).map((h) {
-          final hour = _toInt(h['hour']);
-          final count = _toInt(h['count']);
+          final label = h['label']?.toString() ??
+              '${_toInt(h['hour']).toString().padLeft(2, '0')}:00';
+          final count = _toInt(h['count'] ?? h['totalEvents']);
           final fraction = maxCount > 0 ? count / maxCount : 0.0;
-          final label = '${hour.toString().padLeft(2, '0')}:00';
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -340,7 +389,11 @@ class _AdminGateAnalyticsScreenState
   }
 
   Widget _dailyTrendCard(Map<String, dynamic> trend) {
-    final days = (trend['dailyTrend'] as List?)
+    final days = (trend['trendData'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList() ??
+        (trend['dailyTrend'] as List?)
             ?.whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
             .toList() ??
@@ -358,16 +411,18 @@ class _AdminGateAnalyticsScreenState
     }
 
     final maxCount = days.fold<int>(
-        0, (m, d) => _toInt(d['count']) > m ? _toInt(d['count']) : m);
+        0, (m, d) => _toInt(d['total'] ?? d['count']) > m ? _toInt(d['total'] ?? d['count']) : m);
 
     return EnterprisePanel(
       padding: const EdgeInsets.all(14),
       child: Column(
         children: days.map((d) {
           final date = d['date']?.toString() ?? '';
-          final count = _toInt(d['count']);
+          final count = _toInt(d['total'] ?? d['count']);
           final fraction = maxCount > 0 ? count / maxCount : 0.0;
-          final shortDate = date.length >= 10 ? date.substring(5, 10) : date;
+          final shortDate = d['displayDate']?.toString().isNotEmpty == true
+              ? d['displayDate'].toString()
+              : (date.length >= 10 ? date.substring(5, 10) : date);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),

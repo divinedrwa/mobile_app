@@ -37,7 +37,7 @@ class HomeGateVisitorRequests extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         gateAsync.when(
-          loading: () => ShimmerWrap(
+          loading: () => const ShimmerWrap(
             child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg),
           ),
           error: (_, _) => Material(
@@ -52,28 +52,35 @@ class HomeGateVisitorRequests extends ConsumerWidget {
                     horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: DesignRadius.borderLG,
-                  border:
-                      Border.all(color: const Color(0xFFFFCDD2)),
+                  border: Border.all(
+                    color: DesignColors.error.withValues(alpha: 0.35),
+                  ),
                   boxShadow: DesignElevation.sm,
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    Icon(Icons.wifi_off_rounded,
-                        color: Colors.red.shade700, size: 22),
-                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.wifi_off_rounded,
+                      color: DesignColors.error,
+                      size: 22,
+                    ),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Could not load gate requests. Tap to retry.',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.red.shade900,
+                          color: DesignColors.error,
                           height: 1.25,
                         ),
                       ),
                     ),
-                    Icon(Icons.refresh_rounded,
-                        color: Colors.red.shade700, size: 22),
+                    Icon(
+                      Icons.refresh_rounded,
+                      color: DesignColors.error,
+                      size: 22,
+                    ),
                   ],
                 ),
               ),

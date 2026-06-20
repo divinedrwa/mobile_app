@@ -7,7 +7,7 @@ class AdminIncidentRepository {
   Dio get _dio => DioClient.dio;
 
   Future<Map<String, dynamic>> getIncidents({
-    int limit = 50,
+    int limit = 200,
     int offset = 0,
   }) async {
     try {
@@ -18,6 +18,17 @@ class AdminIncidentRepository {
       return res.data ?? {};
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load incidents');
+    }
+  }
+
+  Future<void> resolveIncident(String id) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.incidentResolve(id),
+        data: {'resolvedAt': DateTime.now().toUtc().toIso8601String()},
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to resolve incident');
     }
   }
 }

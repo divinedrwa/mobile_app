@@ -41,6 +41,7 @@ class ApiEndpoints {
   static const String maintenanceDashboardReportPdf = '/residents/maintenance-dashboard/report-pdf';
   static const String maintenancePending = '/residents/maintenance-pending';
   static const String maintenancePayments = '/maintenance/payments';
+  static const String maintenanceMarkPaid = '/maintenance-management/mark-paid';
   static const String sendDuesReminders = '/maintenance-management/send-dues-reminders';
   static const String applyCredit = '/maintenance-management/apply-credit';
   static const String outstandingDues = '/residents/outstanding-dues';
@@ -110,6 +111,7 @@ class ApiEndpoints {
   
   // Resident - Parcels
   static const String myParcels = '/residents/my-parcels';
+  static const String parcelsPending = '/residents/parcels-pending';
   static String parcelById(String id) => '/residents/my-parcels/$id';
   static String parcelCollect(String id) => '/residents/parcels/$id/collected';
   
@@ -214,6 +216,10 @@ class ApiEndpoints {
   static const String waterSupplyStatus = '/water-supply/status';
   static const String waterSupplyEvents = '/water-supply/events';
   static const String waterSupplyHistory = '/water-supply/history';
+  static const String waterSupplyRequestsPending =
+      '/water-supply/requests/pending';
+  static String waterSupplyRequestResolve(String id) =>
+      '/water-supply/requests/$id/resolve';
 
   // Admin — Garbage Collection
   static const String garbageCollectionActive = '/garbage-collection/active';
@@ -383,6 +389,7 @@ class ApiEndpoints {
 
   // ── Admin / Guard: Incidents ────────────────────────────────────────
   static const String incidents = '/incidents';
+  static String incidentResolve(String id) => '/incidents/$id/resolve';
 
   // ── Special Projects ──────────────────────────────────────────────
   // Resident

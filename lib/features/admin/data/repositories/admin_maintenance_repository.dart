@@ -116,10 +116,9 @@ class AdminMaintenanceRepository {
     String? idempotencyKey,
   }) async {
     try {
-      // Payment is keyed by villa/month/year; the cycle id is derived
-      // server-side and isn't part of this endpoint's contract.
+      // Same endpoint as web admin — snapshot ledger + outstanding dues stay in sync.
       final res = await _dio.post(
-        '/maintenance/payments',
+        ApiEndpoints.maintenanceMarkPaid,
         data: {
           'villaId': villaId,
           'month': month,

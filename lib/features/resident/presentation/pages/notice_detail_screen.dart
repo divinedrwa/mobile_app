@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/notice_model.dart';
+import '../widgets/community/community_ui.dart';
 
 /// Modern Professional Notice Detail Screen
 class NoticeDetailScreen extends ConsumerWidget {
@@ -38,13 +41,16 @@ class NoticeDetailScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Share',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notice shared!'),
-                  backgroundColor: DesignColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              final buffer = StringBuffer()
+                ..writeln(notice.title)
+                ..writeln()
+                ..writeln(notice.content);
+              if (notice.attachmentUrl != null) {
+                buffer
+                  ..writeln()
+                  ..writeln('Attachment: ${notice.attachmentUrl}');
+              }
+              Share.share(buffer.toString(), subject: notice.title);
             },
             icon: Icon(Icons.share, color: context.text.primary),
           ),
@@ -75,7 +81,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                     Icons.fiber_new_rounded,
                   ),
                 _buildBadge(
-                  notice.category.value.toUpperCase(),
+                  humanizeNoticeCategory(notice.category).toUpperCase(),
                   DesignColors.primary,
                   DesignColors.primary.withValues(alpha: 0.1),
                   Icons.label_rounded,
@@ -158,51 +164,58 @@ class NoticeDetailScreen extends ConsumerWidget {
             // Attachment
             if (notice.attachmentUrl != null) ...[
               const SizedBox(height: 32),
-              EnterprisePanel(
-                tone: EnterpriseTone.info,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(DesignSpacing.md),
-                      decoration: BoxDecoration(
-                        color: DesignColors.primary.withValues(alpha: 0.1),
-                        borderRadius: DesignRadius.borderLG,
-                      ),
-                      child: const Icon(
-                        Icons.attach_file,
-                        color: DesignColors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Attachment',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: context.text.primary,
-                            ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _openAttachment(context, notice.attachmentUrl!),
+                  borderRadius: DesignRadius.borderXL,
+                  child: EnterprisePanel(
+                    tone: EnterpriseTone.info,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(DesignSpacing.md),
+                          decoration: BoxDecoration(
+                            color: DesignColors.primary.withValues(alpha: 0.1),
+                            borderRadius: DesignRadius.borderLG,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tap to view or download',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: context.text.secondary,
-                            ),
+                          child: const Icon(
+                            Icons.attach_file,
+                            color: DesignColors.primary,
+                            size: 24,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Attachment',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.text.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap to view or download',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.text.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: context.text.tertiary,
+                        ),
+                      ],
                     ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: context.text.tertiary,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -212,6 +225,28 @@ class NoticeDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openAttachment(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid attachment URL'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open attachment'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _buildBadge(String label, Color textColor, Color bgColor, IconData icon) {

@@ -54,10 +54,19 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     );
   }
 
-  await StorageService.init();
-  AppConstants.setRuntimeBaseUrlOverride(
-    StorageService.getString(AppConstants.keyApiBaseUrl),
-  );
+  try {
+    await StorageService.init();
+    AppConstants.setRuntimeBaseUrlOverride(
+      StorageService.getString(AppConstants.keyApiBaseUrl),
+    );
+  } catch (e, st) {
+    // After a Play Store APK replace, encrypted prefs can briefly fail on
+    // some OEM builds — log and continue so the user can open the app and
+    // sign in again instead of a silent native crash before runApp.
+    debugPrint('⚠️  StorageService.init failed (continuing with defaults): $e');
+    debugPrint('$st');
+    AppConstants.setRuntimeBaseUrlOverride(null);
+  }
 
   if (platform_info.isAndroid) {
     try {

@@ -26,13 +26,10 @@ class ParcelRepository {
     }
   }
 
-  /// Get pending parcels only
+  /// Get pending parcels (awaiting resident collection — status RECEIVED).
   Future<List<ParcelModel>> getPendingParcels() async {
     try {
-      final response = await _dio.get(
-        ApiEndpoints.myParcels,
-        queryParameters: {'status': 'PENDING'},
-      );
+      final response = await _dio.get(ApiEndpoints.parcelsPending);
 
       final parcelsList = response.data is List
           ? response.data as List
@@ -40,7 +37,6 @@ class ParcelRepository {
 
       return parcelsList
           .map((json) => ParcelModel.fromJson(json))
-          .where((parcel) => parcel.status == ParcelStatus.pending)
           .toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to fetch pending parcels');

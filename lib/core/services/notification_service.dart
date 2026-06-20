@@ -16,6 +16,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../features/guard/data/guard_data_refresh.dart';
 import '../../features/resident/data/resident_data_refresh.dart';
+import '../constants/app_constants.dart';
 import '../logging/fcm_log.dart';
 import '../routing/app_navigator_keys.dart';
 import '../utils/notification_preference_storage.dart';
@@ -642,6 +643,11 @@ class NotificationService {
   static final _safeIdPattern = RegExp(r'^[a-zA-Z0-9_-]{10,50}$');
   static bool _isValidPushId(String id) => _safeIdPattern.hasMatch(id);
 
+  static bool _isGuardSession() {
+    final role = StorageService.getUserRole();
+    return UserRole.fromString(role ?? '') == UserRole.guard;
+  }
+
   /// Called when user taps a push (background/terminated) or we retry pending routes.
   /// Returns true when a route was matched (navigation attempted).
   bool applyNavigationFromPushData(
@@ -672,7 +678,11 @@ class NotificationService {
           return true;
         }
         if (type == 'VISITOR_APPROVAL_RESOLVED') {
-          router.go('/guard/entries');
+          if (_isGuardSession()) {
+            router.go('/guard/entries');
+          } else {
+            router.push('/resident/visitor-requests');
+          }
           return true;
         }
         if (type == 'VISITOR_PRE_APPROVED_CREATED') {
@@ -699,9 +709,16 @@ class NotificationService {
           router.go('/resident/sos/active');
           return true;
         }
-        if (type == 'VISITOR_PRE_APPROVED_ARRIVED' ||
-            type == 'VISITOR_VILLA_RESPONSE') {
+        if (type == 'VISITOR_PRE_APPROVED_ARRIVED') {
           router.push('/resident/visitor-requests');
+          return true;
+        }
+        if (type == 'VISITOR_VILLA_RESPONSE') {
+          if (_isGuardSession()) {
+            router.go('/guard/entries');
+          } else {
+            router.push('/resident/visitor-requests');
+          }
           return true;
         }
         if (type == 'complaint_status' ||

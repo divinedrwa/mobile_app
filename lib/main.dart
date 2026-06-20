@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'bootstrap/app_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
+import 'core/services/app_update_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
 import 'core/utils/app_restart.dart';
 import 'theme/theme.dart' as gp_theme;
@@ -31,6 +32,8 @@ import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/app_version_service.dart';
+import 'core/services/in_app_update_wrapper.dart';
+import 'core/utils/platform_info.dart' as platform_info;
 import 'core/widgets/app_update_dialog.dart';
 import 'core/widgets/offline_banner.dart';
 
@@ -91,7 +94,9 @@ void main() async {
   }
 
   final pushBinding = PushLifecycleBinding();
+  final appUpdateBinding = AppUpdateLifecycleBinding();
   WidgetsBinding.instance.addObserver(pushBinding);
+  WidgetsBinding.instance.addObserver(appUpdateBinding);
 
   void startApp() {
     runApp(
@@ -160,6 +165,12 @@ class _DivineAppState extends ConsumerState<DivineApp> {
   }
 
   Future<void> _checkAppVersion() async {
+    // Resume a stalled Play immediate update before prompting again.
+    if (platform_info.isAndroid) {
+      final resumed = await AppVersionService.resumeInterruptedImmediateUpdate();
+      if (resumed == AppUpdateResult.success || !mounted) return;
+    }
+
     final result = await AppVersionService.check();
     if (!mounted) return;
     switch (result.status) {
@@ -206,6 +217,10 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       ref.invalidate(guardResidentsDirectoryProvider);
       ref.invalidate(guardMyPatrolsProvider);
       ref.invalidate(guardMyShiftsProvider);
+      ref.invalidate(guardActiveVisitorsTabProvider);
+      ref.invalidate(guardPendingVisitorsProvider);
+      ref.invalidate(guardDashboardProvider);
+      ref.invalidate(guardPreApprovedEntriesProvider);
     };
   }
 

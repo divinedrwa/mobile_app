@@ -127,8 +127,10 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                           itemCount: filtered.length,
-                          itemBuilder: (_, i) =>
-                              _IncidentCard(incident: filtered[i]),
+                          itemBuilder: (_, i) => _IncidentCard(
+                            incident: filtered[i],
+                            onResolved: _refresh,
+                          ),
                         ),
                 ),
               ],
@@ -159,13 +161,63 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
   }
 }
 
-class _IncidentCard extends StatelessWidget {
-  const _IncidentCard({required this.incident});
+class _IncidentCard extends ConsumerWidget {
+  const _IncidentCard({
+    required this.incident,
+    required this.onResolved,
+  });
 
   final Map<String, dynamic> incident;
+  final Future<void> Function() onResolved;
+
+  Future<void> _resolve(BuildContext context, WidgetRef ref) async {
+    final id = incident['id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as resolved?'),
+        content: const Text(
+          'This incident will be marked resolved for your records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Resolve'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref.read(adminIncidentRepositoryProvider).resolveIncident(id);
+      ref.invalidate(adminIncidentsProvider);
+      await onResolved();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incident marked as resolved')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFacingMessage(e)),
+            backgroundColor: DesignColors.error,
+          ),
+        );
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final title = incident['title']?.toString() ?? 'Untitled';
     final description = incident['description']?.toString() ?? '';
     final severity =
@@ -313,6 +365,18 @@ class _IncidentCard extends StatelessWidget {
                         Icons.check_circle_outline,
                         size: 16,
                         color: Color(0xFF16A34A),
+                      ),
+                    ] else ...[
+                      const SizedBox(width: 6),
+                      TextButton(
+                        onPressed: () => _resolve(context, ref),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: const Text('Resolve'),
                       ),
                     ],
                   ],

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../../core/network/dio_exception_mapper.dart';
+
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_ui.dart';
 
-/// Modern Professional Polls List Screen
 class PollsListScreen extends ConsumerStatefulWidget {
   const PollsListScreen({super.key});
 
@@ -22,118 +24,69 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
   Widget build(BuildContext context) {
     final pollsState = ref.watch(pollsProvider);
 
-    return Container(
-      color: const Color(0xFFF8F9FB),
-      child: pollsState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 56,
-                color: DesignColors.error,
-              ),
-              const SizedBox(height: 12),
-              Text(userFacingMessage(error), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(pollsProvider),
-                child: const Text('Retry'),
+    return CommunityListBody<List<Map<String, dynamic>>>(
+      asyncValue: pollsState,
+      onRetry: () => ref.invalidate(pollsProvider),
+      emptyIcon: Icons.how_to_vote_outlined,
+      emptyTitle: 'No active polls right now',
+      emptySubtitle: 'When your society creates a poll, you can vote on it here.',
+      errorTitle: 'Could not load polls',
+      shimmerHeight: 160,
+      dataBuilder: (rawPolls) {
+        final polls = rawPolls.map(_toPollUiData).toList();
+        final activePolls = polls.where((p) => p['isActive'] as bool).toList();
+        final closedPolls = polls.where((p) => !(p['isActive'] as bool)).toList();
+
+        if (activePolls.isEmpty && closedPolls.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 48),
+              EmptyStateWidget(
+                icon: Icons.how_to_vote_outlined,
+                title: 'No active polls right now',
+                subtitle: 'When your society creates a poll, you can vote on it here.',
               ),
             ],
-          ),
-        ),
-        data: (rawPolls) {
-          final polls = rawPolls.map(_toPollUiData).toList();
-          final activePolls = polls
-              .where((p) => p['isActive'] as bool)
-              .toList();
-          final closedPolls = polls
-              .where((p) => !(p['isActive'] as bool))
-              .toList();
-
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(pollsProvider),
-            child: activePolls.isEmpty && closedPolls.isEmpty
-                ? _buildEmptyState()
-                : ListView(
-                    padding: const EdgeInsets.all(DesignSpacing.lg),
-                    children: [
-                      if (activePolls.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'Active Polls',
-                          'Cast your vote',
-                          Colors.green,
-                        ),
-                        const SizedBox(height: 12),
-                        ...activePolls.map(
-                          (poll) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildModernPollCard(context, poll),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (closedPolls.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'Closed Polls',
-                          'View results',
-                          DesignColors.textSecondary,
-                        ),
-                        const SizedBox(height: 12),
-                        ...closedPolls.map(
-                          (poll) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildModernPollCard(context, poll),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                    ],
-                  ),
           );
-        },
-      ),
-    );
-  }
+        }
 
-  Widget _buildSectionHeader(String title, String subtitle, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 24,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(pollsProvider),
+          child: ListView(
+            padding: EdgeInsets.all(context.spacing.s16),
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: DesignColors.textPrimary,
+              if (activePolls.isNotEmpty) ...[
+                const EnterpriseSectionHeader(
+                  title: 'Active polls',
+                  subtitle: 'Cast your vote',
                 ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: DesignColors.textSecondary,
+                SizedBox(height: context.spacing.s12),
+                ...activePolls.map(
+                  (poll) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacing.s12),
+                    child: _buildModernPollCard(context, poll),
+                  ),
                 ),
-              ),
+                SizedBox(height: context.spacing.s8),
+              ],
+              if (closedPolls.isNotEmpty) ...[
+                const EnterpriseSectionHeader(
+                  title: 'Closed polls',
+                  subtitle: 'View results',
+                ),
+                SizedBox(height: context.spacing.s12),
+                ...closedPolls.map(
+                  (poll) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacing.s12),
+                    child: _buildModernPollCard(context, poll),
+                  ),
+                ),
+              ],
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -143,17 +96,19 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
     final myOptionId = poll['myOptionId'] as String?;
     final options = (poll['options'] as List).cast<Map<String, dynamic>>();
     final pendingPick = _selectedVotes[poll['id']];
-    final effectivePick =
-        hasVoted ? myOptionId : pendingPick;
+    final effectivePick = hasVoted ? myOptionId : pendingPick;
 
     return Container(
       padding: const EdgeInsets.all(DesignSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surface.defaultSurface,
         borderRadius: DesignRadius.borderXL,
-        border: isActive
-            ? Border.all(color: Colors.green.shade200, width: 1.5)
-            : null,
+        border: Border.all(
+          color: isActive
+              ? context.state.approved.solid.withValues(alpha: 0.35)
+              : context.surface.border,
+          width: isActive ? 1.5 : 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -165,148 +120,69 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
-              if (isActive)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: DesignRadius.borderXL,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: Colors.green.shade700,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: DesignRadius.borderXL,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.done_all,
-                        size: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'CLOSED',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _statusBadge(
+                context,
+                isActive ? 'ACTIVE' : 'CLOSED',
+                isActive ? context.state.approved.solid : context.text.tertiary,
+                isActive ? Icons.check_circle : Icons.done_all,
+              ),
               if (isActive && hasVoted) ...[
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: DesignRadius.borderXL,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.how_to_vote, size: 15, color: Colors.orange.shade800),
-                      const SizedBox(width: 4),
-                      Text(
-                        'YOU VOTED',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.orange.shade900,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
+                _statusBadge(
+                  context,
+                  'YOU VOTED',
+                  const Color(0xFFE65100),
+                  Icons.how_to_vote,
                 ),
               ],
               const Spacer(),
-              const Icon(
-                Icons.people_outline,
-                size: 18,
-                color: DesignColors.textSecondary,
-              ),
+              Icon(Icons.people_outline, size: 18, color: context.text.secondary),
               const SizedBox(width: 4),
               Text(
                 '${poll['votes']} votes',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: DesignColors.textSecondary,
+                  color: context.text.secondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Question
           Text(
             poll['question'] as String,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: DesignColors.textPrimary,
+              color: context.text.primary,
               height: 1.4,
             ),
           ),
-
           const SizedBox(height: 14),
-
           if (isActive && hasVoted) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: DesignColors.primary.withValues(alpha: 0.08),
+                color: context.brand.primary.withValues(alpha: 0.08),
                 borderRadius: DesignRadius.borderLG,
-                border: Border.all(color: DesignColors.primary.withValues(alpha: 0.25)),
+                border: Border.all(
+                  color: context.brand.primary.withValues(alpha: 0.25),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.lock_outline_rounded, size: 18, color: DesignColors.primary),
-                  SizedBox(width: 10),
+                  Icon(Icons.lock_outline_rounded, size: 18, color: context.brand.primary),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Your flat already voted. Your choice is highlighted below.',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: DesignColors.textPrimary,
+                        color: context.text.primary,
                         height: 1.3,
                       ),
                     ),
@@ -316,38 +192,30 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
             ),
             const SizedBox(height: 16),
           ],
-
-          // Options
           ...options.asMap().entries.map((entry) {
             final index = entry.key;
             final option = entry.value;
             final oid = option['id'] as String;
-            final isSelected =
-                effectivePick != null && effectivePick == oid;
+            final isSelected = effectivePick != null && effectivePick == oid;
             final percentage = option['percentage'] as int;
             final showResults = !isActive;
 
             return Padding(
-              padding: EdgeInsets.only(
-                bottom: index < options.length - 1 ? 12 : 0,
-              ),
+              padding: EdgeInsets.only(bottom: index < options.length - 1 ? 12 : 0),
               child: _buildPollOption(
+                context,
                 option['text'] as String,
                 percentage,
                 isSelected,
                 showResults,
                 () {
                   if (isActive && !hasVoted) {
-                    setState(() {
-                      _selectedVotes[poll['id']] = oid;
-                    });
+                    setState(() => _selectedVotes[poll['id']] = oid);
                   }
                 },
               ),
             );
           }),
-
-          // Vote Button
           if (isActive && !hasVoted) ...[
             const SizedBox(height: 14),
             SizedBox(
@@ -367,25 +235,21 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              errorMsg ??
-                                  'Vote submitted successfully!',
+                              errorMsg ?? 'Vote submitted successfully!',
                             ),
-                            backgroundColor: errorMsg != null
-                                ? Colors.red
-                                : Colors.green,
+                            backgroundColor:
+                                errorMsg != null ? context.state.denied.solid : context.state.approved.solid,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                         if (errorMsg == null) {
-                          setState(() {
-                            _selectedVotes.remove(poll['id'] as String);
-                          });
+                          setState(() => _selectedVotes.remove(poll['id'] as String));
                           ref.invalidate(pollsProvider);
                         }
                       }
                     : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: DesignColors.primary,
+                  backgroundColor: context.brand.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: DesignRadius.borderLG,
@@ -398,30 +262,63 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
               ),
             ),
           ],
-
-          // End Date
           if (poll['endDate'] != null) ...[
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.schedule, size: 16, color: Colors.grey[500]),
+                Icon(Icons.schedule, size: 16, color: context.text.tertiary),
                 const SizedBox(width: 6),
                 Text(
                   'Ends ${poll['endDate']}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: DesignColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 13, color: context.text.secondary),
                 ),
               ],
             ),
           ],
         ],
       ),
-    ).animate().fadeIn(delay: DesignAnimations.durationFast, duration: DesignAnimations.durationEntrance).slideY(begin: DesignAnimations.slideNormal, end: 0);
+    )
+        .animate()
+        .fadeIn(
+          delay: DesignAnimations.durationFast,
+          duration: DesignAnimations.durationEntrance,
+        )
+        .slideY(begin: DesignAnimations.slideNormal, end: 0);
+  }
+
+  Widget _statusBadge(
+    BuildContext context,
+    String label,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: DesignRadius.borderXL,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPollOption(
+    BuildContext context,
     String text,
     int percentage,
     bool isSelected,
@@ -436,28 +333,27 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
         decoration: BoxDecoration(
           color: showResults
               ? (isSelected
-                    ? DesignColors.primary.withValues(alpha: 0.1)
-                    : DesignColors.background)
-              : DesignColors.background,
+                  ? context.brand.primary.withValues(alpha: 0.1)
+                  : context.surface.background)
+              : context.surface.background,
           borderRadius: DesignRadius.borderLG,
           border: Border.all(
             color: isSelected
-                ? DesignColors.primary
-                : (showResults ? Colors.grey[300]! : DesignColors.borderLight),
+                ? context.brand.primary
+                : context.surface.border,
             width: isSelected ? 2 : 1,
           ),
         ),
         child: Stack(
           children: [
-            // Progress bar background
             if (showResults)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        DesignColors.primary.withValues(alpha: 0.15),
-                        DesignColors.primary.withValues(alpha: 0.05),
+                        context.brand.primary.withValues(alpha: 0.15),
+                        context.brand.primary.withValues(alpha: 0.05),
                       ],
                       stops: [percentage / 100, percentage / 100],
                       begin: Alignment.centerLeft,
@@ -467,8 +363,6 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                   ),
                 ),
               ),
-
-            // Content
             Row(
               children: [
                 if (!showResults)
@@ -479,13 +373,11 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isSelected
-                            ? DesignColors.primary
-                            : Colors.grey[400]!,
+                            ? context.brand.primary
+                            : context.text.tertiary,
                         width: 2,
                       ),
-                      color: isSelected
-                          ? DesignColors.primary
-                          : Colors.transparent,
+                      color: isSelected ? context.brand.primary : Colors.transparent,
                     ),
                     child: isSelected
                         ? const Icon(Icons.check, size: 14, color: Colors.white)
@@ -497,23 +389,16 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                     text,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                      color: DesignColors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: context.text.primary,
                     ),
                   ),
                 ),
                 if (showResults)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? DesignColors.primary
-                          : Colors.grey[300],
+                      color: isSelected ? context.brand.primary : context.surface.border,
                       borderRadius: DesignRadius.borderLG,
                     ),
                     child: Text(
@@ -521,9 +406,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? Colors.white
-                            : DesignColors.textSecondary,
+                        color: isSelected ? Colors.white : context.text.secondary,
                       ),
                     ),
                   ),
@@ -532,14 +415,6 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return const EmptyStateWidget(
-      icon: Icons.how_to_vote_outlined,
-      title: 'No active polls right now',
-      subtitle: 'When your society creates a poll, you can vote on it here.',
     );
   }
 
@@ -565,7 +440,8 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
             ? myVoteRaw.toString()
             : null;
     final hasVotedServer = poll['hasVoted'] == true;
-    final hasVoted = hasVotedServer || (myOptionId != null && myOptionId.isNotEmpty);
+    final hasVoted =
+        hasVotedServer || (myOptionId != null && myOptionId.isNotEmpty);
 
     return {
       'id': poll['id']?.toString() ?? '',

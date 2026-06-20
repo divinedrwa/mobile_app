@@ -12,8 +12,9 @@ import '../../../../theme/context_extensions.dart';
 import '../../data/models/visitor_model.dart';
 import '../../data/providers/visitor_history_provider.dart';
 import '../widgets/list_skeleton.dart';
+import '../widgets/visitor_management_ui.dart';
 
-/// Visitor history — compact, readable cards; status labels and times derived from API fields.
+/// Visitor history — compact cards with scrollable period tabs and clear status chips.
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
   const VisitorHistoryScreen({super.key});
 
@@ -47,52 +48,6 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
         _scrollController.position.maxScrollExtent - 200) {
       ref.read(paginatedVisitorHistoryProvider.notifier).loadMore();
     }
-  }
-
-  static String _normalizeStatusKey(String raw) {
-    return raw.trim().toUpperCase().replaceAll('-', '_');
-  }
-
-  static Color _statusAccent(String raw) {
-    switch (_normalizeStatusKey(raw)) {
-      case 'APPROVED':
-        return DesignColors.success;
-      case 'CHECKED_IN':
-        return DesignColors.primary;
-      case 'CHECKED_OUT':
-        return DesignColors.textSecondary;
-      case 'REJECTED':
-        return DesignColors.error;
-      case 'PENDING':
-      case 'PENDING_APPROVAL':
-        return DesignColors.warning;
-      default:
-        return DesignColors.textSecondary;
-    }
-  }
-
-  static String _statusLabel(String raw) {
-    final key = _normalizeStatusKey(raw);
-    const map = <String, String>{
-      'CHECKED_IN': 'Checked in',
-      'CHECKED_OUT': 'Checked out',
-      'PENDING': 'Pending',
-      'PENDING_APPROVAL': 'Awaiting approval',
-      'APPROVED': 'Approved',
-      'REJECTED': 'Rejected',
-    };
-    if (map.containsKey(key)) return map[key]!;
-    return raw
-        .replaceAll('_', ' ')
-        .replaceAll('-', ' ')
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .map(
-          (p) =>
-              '${p[0].toUpperCase()}${p.length > 1 ? p.substring(1).toLowerCase() : ''}',
-        )
-        .join(' ');
   }
 
   static String _titleCaseName(String name) {
@@ -129,6 +84,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
         backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
@@ -141,66 +97,26 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
         title: Text(
           'Visitor history',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
             color: context.text.primary,
             letterSpacing: -0.3,
           ),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(104),
+          preferredSize: const Size.fromHeight(96),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: TextField(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                child: VisitorMgmtCompactSearch(
+                  hintText: 'Search name or phone',
                   onChanged: (value) => setState(() => _searchQuery = value),
-                  style: TextStyle(fontSize: 15, color: context.text.primary),
-                  decoration: InputDecoration(
-                    hintText: 'Search name or phone',
-                    hintStyle: TextStyle(
-                      color: context.text.tertiary,
-                      fontSize: 15,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      size: 22,
-                      color: context.text.tertiary,
-                    ),
-                    isDense: true,
-                    filled: true,
-                    fillColor: context.surface.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: context.surface.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: context.surface.border),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                  ),
                 ),
               ),
-              TabBar(
+              VisitorMgmtTabBar(
                 controller: _tabController,
-                labelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-                labelColor: DesignColors.primary,
-                unselectedLabelColor: DesignColors.textTertiary,
-                indicatorSize: TabBarIndicatorSize.label,
-                indicatorColor: DesignColors.primary,
-                indicatorWeight: 2.5,
                 tabs: const [
                   Tab(text: 'All'),
                   Tab(text: 'Today'),
@@ -227,7 +143,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
           message: pState.error!,
           tone: EnterpriseTone.danger,
           actionLabel: 'Retry',
-          onAction: () => ref.read(paginatedVisitorHistoryProvider.notifier).refresh(),
+          onAction: () =>
+              ref.read(paginatedVisitorHistoryProvider.notifier).refresh(),
         ),
       );
     }
@@ -239,9 +156,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       filteredVisitors = visitors
-          .where((v) =>
-              v.name.toLowerCase().contains(q) ||
-              v.phone.toLowerCase().contains(q))
+          .where(
+            (v) =>
+                v.name.toLowerCase().contains(q) ||
+                v.phone.toLowerCase().contains(q),
+          )
           .toList();
     }
 
@@ -250,13 +169,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final weekAgo = today.subtract(const Duration(days: 7));
 
     final todayVisitors = filteredVisitors.where((v) {
-      final visitDate = DateTime(v.visitDate.year, v.visitDate.month, v.visitDate.day);
+      final visitDate =
+          DateTime(v.visitDate.year, v.visitDate.month, v.visitDate.day);
       return visitDate.isAtSameMomentAs(today);
     }).toList();
 
-    final weekVisitors = filteredVisitors
-        .where((v) => v.visitDate.isAfter(weekAgo))
-        .toList();
+    final weekVisitors =
+        filteredVisitors.where((v) => v.visitDate.isAfter(weekAgo)).toList();
 
     return TabBarView(
       controller: _tabController,
@@ -272,7 +191,10 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     );
   }
 
-  Widget _buildVisitorsList(List<VisitorModel> visitors, {bool showLoadMore = false}) {
+  Widget _buildVisitorsList(
+    List<VisitorModel> visitors, {
+    bool showLoadMore = false,
+  }) {
     final pState = ref.watch(paginatedVisitorHistoryProvider);
     final groupedVisitors = <String, List<VisitorModel>>{};
     for (final visitor in visitors) {
@@ -286,6 +208,10 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
 
     final hasFooter = showLoadMore && (pState.hasMore || pState.isLoadingMore);
 
+    if (sortedDates.isEmpty) {
+      return _buildNoResultsState('No matching visitors');
+    }
+
     return RefreshIndicator(
       color: DesignColors.primary,
       onRefresh: () async {
@@ -293,11 +219,10 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
       },
       child: ListView.builder(
         controller: showLoadMore ? _scrollController : null,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         itemCount: sortedDates.length + (hasFooter ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= sortedDates.length) {
-            // Load more footer
             if (pState.isLoadingMore) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -308,7 +233,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Center(
                 child: TextButton(
-                  onPressed: () => ref.read(paginatedVisitorHistoryProvider.notifier).loadMore(),
+                  onPressed: () =>
+                      ref.read(paginatedVisitorHistoryProvider.notifier).loadMore(),
                   child: const Text('Load more'),
                 ),
               ),
@@ -320,26 +246,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
           final date = DateTime.parse(dateKey);
 
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8, top: index == 0 ? 0 : 14),
-                child: Text(
-                  _formatDateHeader(date),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: DesignColors.textSecondary,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
+              VisitorMgmtSectionHeader(title: _formatDateHeader(date)),
               ...dateVisitors.asMap().entries.map((entry) {
-                final visitorIndex = entry.key;
-                final visitor = entry.value;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildVisitorCard(visitor, visitorIndex),
+                  child: _buildVisitorCard(entry.value, entry.key),
                 );
               }),
             ],
@@ -350,168 +263,118 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
   }
 
   Widget _buildVisitorCard(VisitorModel visitor, int index) {
-    final accent = _statusAccent(visitor.status);
-    final statusText = _statusLabel(visitor.status);
     final name = _titleCaseName(visitor.name);
     final timeStr = _displayTime(visitor);
-    final hasCheckout = visitor.checkOutTime != null;
     final purpose = visitor.purpose?.trim();
     final hasPurpose = purpose != null && purpose.isNotEmpty;
     final vehicle = visitor.vehicleNumber?.trim();
     final hasVehicle = vehicle != null && vehicle.isNotEmpty;
+    final hasCheckout = visitor.checkOutTime != null;
 
     return Material(
       color: context.surface.defaultSurface,
       elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: 0.06),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: context.surface.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                VisitorMgmtAvatar(name: name),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: context.text.primary,
+                          height: 1.2,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        visitor.phone,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.text.secondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                VisitorMgmtStatusChip(statusRaw: visitor.status),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                VisitorMgmtMetaChip(
+                  icon: Icons.calendar_today_outlined,
+                  label: DateFormat('EEE, MMM d, y').format(
+                    visitor.visitDate.toLocal(),
+                  ),
+                ),
+                VisitorMgmtMetaChip(
+                  icon: Icons.schedule_outlined,
+                  label: timeStr,
+                ),
+                if (hasVehicle)
+                  VisitorMgmtMetaChip(
+                    icon: Icons.directions_car_outlined,
+                    label: vehicle,
+                  ),
+                if (hasPurpose)
+                  VisitorMgmtMetaChip(
+                    icon: Icons.notes_rounded,
+                    label: purpose,
+                    maxWidth: 280,
+                  ),
+              ],
+            ),
+            if (hasCheckout) ...[
+              const SizedBox(height: 8),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: context.brand.primary.withValues(alpha: 0.12),
-                    child: Text(
-                      name.isNotEmpty
-                          ? name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: DesignColors.primary,
-                      ),
-                    ),
+                  Icon(
+                    Icons.logout_rounded,
+                    size: 14,
+                    color: context.text.tertiary,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: context.text.primary,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          visitor.phone,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.text.secondary,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: accent,
-                        letterSpacing: 0.2,
-                      ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Checked out · ${DateFormat('h:mm a').format(visitor.checkOutTime!.toLocal())}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.text.tertiary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: DesignColors.divider),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  _metaItem(
-                    Icons.calendar_today_outlined,
-                    DateFormat('EEE, MMM d, y').format(
-                      visitor.visitDate.toLocal(),
-                    ),
-                  ),
-                  _metaItem(Icons.schedule_outlined, timeStr),
-                  if (hasVehicle)
-                    _metaItem(Icons.directions_car_outlined, vehicle),
-                ],
-              ),
-              if (hasPurpose) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Purpose',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: context.text.tertiary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  purpose,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.text.secondary,
-                    height: 1.35,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (hasCheckout) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Checked out · ${DateFormat('h:mm a').format(visitor.checkOutTime!.toLocal())}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.text.tertiary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
+      ),
     ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms);
-  }
-
-  Widget _metaItem(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: context.text.tertiary),
-        const SizedBox(width: 5),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: context.text.secondary,
-          ),
-        ),
-      ],
-    );
   }
 
   String _formatDateHeader(DateTime date) {
@@ -535,25 +398,26 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
   }
 
   Widget _buildNoResultsState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 56,
-            color: DesignColors.textTertiary.withValues(alpha: 0.6),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
+        Icon(
+          Icons.search_off_rounded,
+          size: 52,
+          color: DesignColors.textTertiary.withValues(alpha: 0.65),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: DesignColors.textSecondary,
           ),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 15,
-              color: DesignColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

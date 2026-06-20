@@ -6,18 +6,18 @@ import '../../../../core/network/dio_exception_mapper.dart';
 class AdminComplaintRepository {
   Dio get _dio => DioClient.dio;
 
-  /// Fetch all society complaints with optional status filter.
+  /// Fetch society complaints with optional status filter.
   Future<Map<String, dynamic>> getAdminComplaints({
-    int page = 1,
-    int pageSize = 50,
+    int limit = 200,
+    int offset = 0,
     String? status,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.adminComplaints,
         queryParameters: {
-          'page': page,
-          'pageSize': pageSize,
+          'limit': limit,
+          'offset': offset,
           if (status != null) 'status': status,
         },
       );

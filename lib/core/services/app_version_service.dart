@@ -47,9 +47,31 @@ class AppVersionService {
     return _checkBackend();
   }
 
-  /// Start the native Play Store immediate update flow (blocks until complete).
-  static Future<void> performImmediateUpdate() async {
-    await InAppUpdate.performImmediateUpdate();
+  /// Start the native Play Store immediate update flow.
+  ///
+  /// On success Play may kill this process to install; the app is not
+  /// auto-relaunched when the user updates from the Play Store listing
+  /// (only the in-app immediate flow may restart in some cases).
+  static Future<AppUpdateResult> performImmediateUpdate() async {
+    return InAppUpdate.performImmediateUpdate();
+  }
+
+  /// Resume an immediate update that was interrupted (e.g. process killed
+  /// mid-install). Safe to call on every cold start / resume.
+  static Future<AppUpdateResult?> resumeInterruptedImmediateUpdate() async {
+    if (!platform_info.isAndroid) return null;
+    try {
+      final info = await InAppUpdate.checkForUpdate();
+      final inProgress = info.updateAvailability ==
+          UpdateAvailability.developerTriggeredUpdateInProgress;
+      if (!inProgress || !info.immediateUpdateAllowed) return null;
+      return await InAppUpdate.performImmediateUpdate();
+    } catch (e) {
+      debugPrint(
+        '[AppVersionService] Resume interrupted update failed (ignored): $e',
+      );
+      return null;
+    }
   }
 
   /// Check Google Play Store for available updates via Play Core API.
@@ -59,8 +81,15 @@ class AppVersionService {
     try {
       final info = await InAppUpdate.checkForUpdate();
 
-      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+      final updatePending = info.updateAvailability ==
+              UpdateAvailability.updateAvailable ||
+          info.updateAvailability ==
+              UpdateAvailability.developerTriggeredUpdateInProgress;
+
+      if (updatePending) {
         // Immediate update = force (critical), flexible = soft prompt.
+        // developerTriggeredUpdateInProgress = prior in-app immediate update
+        // was interrupted; resume it instead of leaving the app stuck.
         if (info.immediateUpdateAllowed) {
           return VersionCheckResult(
             status: UpdateStatus.forceUpdate,

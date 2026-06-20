@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../providers/visitor_provider.dart';
+import '../widgets/visitor_management_ui.dart';
 
 /// Poll / inbox: gate visitors waiting on your flat's approval.
 class VisitorApprovalRequestsScreen extends ConsumerStatefulWidget {
@@ -23,6 +26,36 @@ class _VisitorApprovalRequestsScreenState
     extends ConsumerState<VisitorApprovalRequestsScreen> {
   String _filter = 'pending';
   bool _acting = false;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPoll();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _syncPoll() {
+    if (_filter == 'pending') {
+      _poll ??= Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!mounted) return;
+        ref.invalidate(visitorApprovalRequestsProvider('pending'));
+      });
+    } else {
+      _poll?.cancel();
+      _poll = null;
+    }
+  }
+
+  void _setFilter(String filter) {
+    setState(() => _filter = filter);
+    _syncPoll();
+  }
 
   Future<void> _applyDecision({
     required String visitorId,
@@ -100,28 +133,28 @@ class _VisitorApprovalRequestsScreenState
                       label: 'Pending',
                       selected: _filter == 'pending',
                       accent: DesignColors.primary,
-                      onTap: () => setState(() => _filter = 'pending'),
+                      onTap: () => _setFilter('pending'),
                     ),
                     const SizedBox(width: 8),
                     _FilterChipPill(
                       label: 'Approved',
                       selected: _filter == 'approved',
                       accent: DesignColors.success,
-                      onTap: () => setState(() => _filter = 'approved'),
+                      onTap: () => _setFilter('approved'),
                     ),
                     const SizedBox(width: 8),
                     _FilterChipPill(
                       label: 'Rejected',
                       selected: _filter == 'rejected',
                       accent: DesignColors.error,
-                      onTap: () => setState(() => _filter = 'rejected'),
+                      onTap: () => _setFilter('rejected'),
                     ),
                     const SizedBox(width: 8),
                     _FilterChipPill(
                       label: 'All',
                       selected: _filter == 'all',
                       accent: DesignColors.textSecondary,
-                      onTap: () => setState(() => _filter = 'all'),
+                      onTap: () => _setFilter('all'),
                     ),
                   ],
                 ),
@@ -326,12 +359,6 @@ class _RequestCard extends StatelessWidget {
   final void Function(String id) onApprove;
   final void Function(String id) onReject;
 
-  static String _initial(String name) {
-    final t = name.trim();
-    if (t.isEmpty) return '?';
-    return t.substring(0, 1).toUpperCase();
-  }
-
   static DateTime? _parseTime(dynamic v) {
     if (v == null) return null;
     if (v is String) return DateTime.tryParse(v);
@@ -346,6 +373,7 @@ class _RequestCard extends StatelessWidget {
       case 'DELIVERY':
         return 'Delivery';
       case 'SERVICE':
+      case 'SERVICE_PROVIDER':
         return 'Service';
       case 'VENDOR':
         return 'Vendor';
@@ -353,71 +381,6 @@ class _RequestCard extends StatelessWidget {
         return raw.replaceAll('_', ' ').trim().isEmpty
             ? 'Visitor'
             : raw[0].toUpperCase() + raw.substring(1).toLowerCase();
-    }
-  }
-
-  static _StatusUi _statusUi(String? status) {
-    final s = (status ?? '').trim().toUpperCase();
-    switch (s) {
-      case 'PENDING_APPROVAL':
-      case 'PENDING':
-        return const _StatusUi(
-          label: 'Pending approval',
-          background: Color(0xFFFFF7ED),
-          foreground: Color(0xFFC2410C),
-          border: Color(0xFFFDBA74),
-          icon: Icons.pending_actions_rounded,
-        );
-      case 'APPROVED':
-        return const _StatusUi(
-          label: 'Approved',
-          background: Color(0xFFF0FDF4),
-          foreground: Color(0xFF15803D),
-          border: Color(0xFF86EFAC),
-          icon: Icons.verified_rounded,
-        );
-      case 'CHECKED_IN':
-        return const _StatusUi(
-          label: 'On premises',
-          background: Color(0xFFEFF6FF),
-          foreground: Color(0xFF1D4ED8),
-          border: Color(0xFF93C5FD),
-          icon: Icons.home_work_rounded,
-        );
-      case 'REJECTED':
-        return const _StatusUi(
-          label: 'Declined',
-          background: Color(0xFFFEF2F2),
-          foreground: Color(0xFFB91C1C),
-          border: Color(0xFFFECACA),
-          icon: Icons.cancel_rounded,
-        );
-      case 'CHECKED_OUT':
-        return const _StatusUi(
-          label: 'Checked out',
-          background: Color(0xFFF1F5F9),
-          foreground: Color(0xFF475569),
-          border: Color(0xFFCBD5E1),
-          icon: Icons.logout_rounded,
-        );
-      default:
-        if (s.isEmpty) {
-          return const _StatusUi(
-            label: 'Unknown',
-            background: Color(0xFFF1F5F9),
-            foreground: Color(0xFF64748B),
-            border: Color(0xFFCBD5E1),
-            icon: Icons.help_outline_rounded,
-          );
-        }
-        final pretty = s.replaceAll('_', ' ').toLowerCase();
-        return _StatusUi(
-          label: pretty.isEmpty ? 'Unknown' : '${pretty[0].toUpperCase()}${pretty.substring(1)}',
-          background: DesignColors.surfaceSoft,
-          foreground: DesignColors.textSecondary,
-          border: DesignColors.borderLight,
-          icon: Icons.info_outline_rounded,
-        );
     }
   }
 
@@ -453,8 +416,9 @@ class _RequestCard extends StatelessWidget {
         ? DateFormat('EEE, MMM d · h:mm a').format(arrived.toLocal())
         : null;
 
-    final statusUi = _statusUi(status);
-    final isPendingApproval = (status ?? '').trim().toUpperCase() == 'PENDING_APPROVAL';
+    final statusRaw = status ?? '';
+    final isPendingApproval =
+        statusRaw.trim().toUpperCase() == 'PENDING_APPROVAL';
     final typeLabel = _typeLabel(visitorType);
     final typeIcon = _typeIcon(visitorType);
 
@@ -462,7 +426,7 @@ class _RequestCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: Material(
         color: DesignColors.surface,
-        elevation: 1,
+        elevation: 0,
         shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
@@ -472,269 +436,115 @@ class _RequestCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: id.isEmpty ? null : () => onTap(id),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-            child: Row(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: DesignColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _initial(displayName),
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: DesignColors.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    VisitorMgmtAvatar(name: displayName),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              displayName,
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: DesignColors.textPrimary,
+                              height: 1.2,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (phone.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              phone,
                               style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: DesignColors.textPrimary,
-                                height: 1.2,
-                                letterSpacing: -0.25,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: DesignColors.textSecondary,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            color: DesignColors.textTertiary,
-                            size: 22,
-                          ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _MetaChip(
-                            icon: typeIcon,
-                            label: typeLabel,
-                          ),
-                          if (gate.isNotEmpty)
-                            _MetaChip(
-                              icon: Icons.door_front_door_outlined,
-                              label: gate,
-                            ),
-                        ],
+                    ),
+                    const SizedBox(width: 6),
+                    VisitorMgmtStatusChip(statusRaw: statusRaw),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: DesignColors.textTertiary,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    VisitorMgmtMetaChip(icon: typeIcon, label: typeLabel),
+                    if (gate.isNotEmpty)
+                      VisitorMgmtMetaChip(
+                        icon: Icons.door_front_door_outlined,
+                        label: gate,
                       ),
-                      if (arrivedStr != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 15,
-                              color: DesignColors.textTertiary,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Arrived · $arrivedStr',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: DesignColors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      if (phone.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.phone_outlined,
-                              size: 15,
-                              color: DesignColors.textTertiary,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                phone,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: DesignColors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      if (purpose.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          purpose,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: DesignColors.textSecondary,
-                            height: 1.35,
-                            fontWeight: FontWeight.w500,
+                    if (arrivedStr != null)
+                      VisitorMgmtMetaChip(
+                        icon: Icons.schedule_rounded,
+                        label: 'Arrived · $arrivedStr',
+                        maxWidth: 260,
+                      ),
+                    if (purpose.isNotEmpty)
+                      VisitorMgmtMetaChip(
+                        icon: Icons.notes_rounded,
+                        label: purpose,
+                        maxWidth: 280,
+                      ),
+                  ],
+                ),
+                if (isPendingApproval && id.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: actionBusy ? null : () => onApprove(id),
+                          icon: const Icon(Icons.check_rounded, size: 18),
+                          label: const Text('Approve'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: DesignColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                      const SizedBox(height: 10),
-                      _StatusBadge(ui: statusUi),
-                      if (isPendingApproval && id.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: actionBusy ? null : () => onApprove(id),
-                                icon: const Icon(Icons.check_rounded, size: 18),
-                                label: const Text('Approve'),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: DesignColors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: actionBusy ? null : () => onReject(id),
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                label: const Text('Reject'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: DesignColors.textPrimary,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
-                              ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: actionBusy ? null : () => onReject(id),
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          label: const Text('Reject'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: DesignColors.textPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusUi {
-  const _StatusUi({
-    required this.label,
-    required this.background,
-    required this.foreground,
-    required this.border,
-    required this.icon,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-  final Color border;
-  final IconData icon;
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.ui});
-
-  final _StatusUi ui;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: ui.background,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: ui.border, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(ui.icon, size: 16, color: ui.foreground),
-          const SizedBox(width: 6),
-          Text(
-            ui.label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: ui.foreground,
-              letterSpacing: -0.1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: DesignColors.surfaceSoft,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DesignColors.borderLight),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: DesignColors.textSecondary),
-          const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 180),
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: DesignColors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -26,10 +26,12 @@ class _AdminGateUtilitiesScreenState
   bool _togglingWater = false;
   bool _loggingGarbage = false;
   bool _markingExit = false;
+  String? _resolvingWaterRequestId;
 
   Future<void> _refresh() async {
     ref.invalidate(adminGatesProvider);
     ref.invalidate(adminWaterSupplyStatusProvider);
+    ref.invalidate(adminPendingWaterRequestsProvider);
     if (_selectedGateId != null) {
       ref.invalidate(adminGarbageActiveProvider(_selectedGateId!));
       ref.invalidate(adminWaterSupplyEventsProvider(_selectedGateId));
@@ -156,6 +158,40 @@ class _AdminGateUtilitiesScreenState
     return result == true;
   }
 
+  Future<void> _resolveWaterRequest(
+    String id, {
+    required String status,
+  }) async {
+    if (_resolvingWaterRequestId != null) return;
+
+    final label = status == 'FULFILLED' ? 'fulfill' : 'reject';
+    final confirmed = await _confirm(
+      title: status == 'FULFILLED' ? 'Fulfill request?' : 'Reject request?',
+      message: status == 'FULFILLED'
+          ? 'The resident will be notified that their water request was fulfilled.'
+          : 'The resident will be notified that their water request was declined.',
+      confirmLabel: status == 'FULFILLED' ? 'Fulfill' : 'Reject',
+      confirmColor:
+          status == 'FULFILLED' ? _kWaterBlue : const Color(0xFFEF4444),
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _resolvingWaterRequestId = id);
+    try {
+      await ref
+          .read(adminGateUtilitiesRepositoryProvider)
+          .resolveWaterRequest(id, status: status);
+      ref.invalidate(adminPendingWaterRequestsProvider);
+      if (mounted) {
+        _showSnack('Water request ${label}ed', false);
+      }
+    } catch (e) {
+      if (mounted) _showSnack(userFacingMessage(e), true);
+    } finally {
+      if (mounted) setState(() => _resolvingWaterRequestId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final gatesAsync = ref.watch(adminGatesProvider);
@@ -247,6 +283,8 @@ class _AdminGateUtilitiesScreenState
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       children: [
+        _buildPendingWaterRequestsSection(),
+        const SizedBox(height: 24),
         // Gate selector chips
         _buildGateChips(gates),
         const SizedBox(height: 24),
@@ -306,6 +344,137 @@ class _AdminGateUtilitiesScreenState
           );
         },
       ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PENDING WATER REQUESTS
+  // ══════════════════════════════════════════════════════════════════════
+
+  Widget _buildPendingWaterRequestsSection() {
+    final requestsAsync = ref.watch(adminPendingWaterRequestsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(
+          'Pending water requests',
+          Icons.pending_actions_rounded,
+          _kWaterBlue,
+        ),
+        const SizedBox(height: 14),
+        requestsAsync.when(
+          loading: () => _shimmerCard(90),
+          error: (_, __) => _errorCard('Failed to load pending requests'),
+          data: (requests) {
+            if (requests.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                decoration: BoxDecoration(
+                  color: DesignColors.surface,
+                  borderRadius: BorderRadius.circular(DesignRadius.xl),
+                  border: Border.all(color: DesignColors.borderLight),
+                ),
+                child: Text(
+                  'No pending resident requests.',
+                  style: DesignTypography.bodySmall
+                      .copyWith(color: DesignColors.textSecondary),
+                ),
+              );
+            }
+
+            return Column(
+              children: requests.map((req) {
+                final id = req['id']?.toString() ?? '';
+                final user = req['user'] is Map ? req['user'] as Map : {};
+                final gate = req['gate'] is Map ? req['gate'] as Map : {};
+                final userName = user['name']?.toString() ?? 'Resident';
+                final gateName = gate['name']?.toString() ?? 'Gate';
+                final requestType =
+                    (req['requestType'] ?? '').toString().toUpperCase();
+                final turnLabel =
+                    requestType == 'TURN_ON' ? 'ON' : 'OFF';
+                final isResolving = _resolvingWaterRequestId == id;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: DesignColors.surface,
+                    borderRadius: BorderRadius.circular(DesignRadius.xl),
+                    border: Border.all(color: DesignColors.borderLight),
+                    boxShadow: DesignElevation.sm,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$userName — Turn water $turnLabel',
+                        style: DesignTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        gateName,
+                        style: DesignTypography.bodySmall
+                            .copyWith(color: DesignColors.textSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isResolving
+                                  ? null
+                                  : () => _resolveWaterRequest(
+                                        id,
+                                        status: 'REJECTED',
+                                      ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFEF4444),
+                                side: const BorderSide(
+                                  color: Color(0xFFEF4444),
+                                ),
+                              ),
+                              child: isResolving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Reject'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: isResolving
+                                  ? null
+                                  : () => _resolveWaterRequest(
+                                        id,
+                                        status: 'FULFILLED',
+                                      ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _kWaterBlue,
+                              ),
+                              child: const Text('Fulfill'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../providers/visitor_provider.dart';
+import '../widgets/visitor_management_ui.dart';
 
 class VisitorApprovalDetailScreen extends ConsumerStatefulWidget {
   const VisitorApprovalDetailScreen({super.key, required this.visitorId});
@@ -139,9 +140,8 @@ class _VisitorApprovalDetailScreenState
             if (flat != null && flat.isNotEmpty) flat,
           ].join(' · ');
 
-          final mySt = _statusPillForMyDecision(myDecision);
-          final ovSt =
-              _statusPillForAggregate(agg.trim().isEmpty ? null : agg);
+          final mySt = VisitorMgmtStatus.styleForVillaDecision(myDecision);
+          final ovSt = VisitorMgmtStatus.style(agg.trim().isEmpty ? '' : agg);
 
           return Column(
             children: [
@@ -264,7 +264,9 @@ class _VisitorApprovalDetailScreenState
                               Expanded(
                                 child: _StatusChip(
                                   title: 'Your response',
-                                  subtitle: _myDecisionLabel(myDecision),
+                                  subtitle: VisitorMgmtStatus.labelForVillaDecision(
+                                    myDecision,
+                                  ),
                                   foreground: mySt.foreground,
                                   container: mySt.background,
                                   borderColor: mySt.border,
@@ -275,7 +277,7 @@ class _VisitorApprovalDetailScreenState
                               Expanded(
                                 child: _StatusChip(
                                   title: 'Overall',
-                                  subtitle: _overallStatusLabel(agg),
+                                  subtitle: VisitorMgmtStatus.label(agg),
                                   foreground: ovSt.foreground,
                                   container: ovSt.background,
                                   borderColor: ovSt.border,
@@ -901,103 +903,6 @@ class _AlreadyRespondedNotice extends StatelessWidget {
   }
 }
 
-class _DetailStatusPillStyle {
-  const _DetailStatusPillStyle({
-    required this.foreground,
-    required this.background,
-    required this.border,
-    required this.icon,
-  });
-
-  final Color foreground;
-  final Color background;
-  final Color border;
-  final IconData icon;
-}
-
-_DetailStatusPillStyle _statusPillForMyDecision(String d) {
-  switch (d.trim().toUpperCase()) {
-    case 'APPROVED':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFF15803D),
-        background: Color(0xFFF0FDF4),
-        border: Color(0xFF86EFAC),
-        icon: Icons.verified_rounded,
-      );
-    case 'REJECTED':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFFB91C1C),
-        background: Color(0xFFFEF2F2),
-        border: Color(0xFFFECACA),
-        icon: Icons.cancel_rounded,
-      );
-    default:
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFFC2410C),
-        background: Color(0xFFFFF7ED),
-        border: Color(0xFFFDBA74),
-        icon: Icons.hourglass_top_rounded,
-      );
-  }
-}
-
-_DetailStatusPillStyle _statusPillForAggregate(String? raw) {
-  final s = (raw ?? '').trim().toUpperCase();
-  switch (s) {
-    case 'PENDING_APPROVAL':
-    case 'PENDING':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFFC2410C),
-        background: Color(0xFFFFF7ED),
-        border: Color(0xFFFDBA74),
-        icon: Icons.pending_actions_rounded,
-      );
-    case 'APPROVED':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFF15803D),
-        background: Color(0xFFF0FDF4),
-        border: Color(0xFF86EFAC),
-        icon: Icons.verified_rounded,
-      );
-    case 'CHECKED_IN':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFF1D4ED8),
-        background: Color(0xFFEFF6FF),
-        border: Color(0xFF93C5FD),
-        icon: Icons.home_work_rounded,
-      );
-    case 'REJECTED':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFFB91C1C),
-        background: Color(0xFFFEF2F2),
-        border: Color(0xFFFECACA),
-        icon: Icons.cancel_rounded,
-      );
-    case 'CHECKED_OUT':
-      return const _DetailStatusPillStyle(
-        foreground: Color(0xFF475569),
-        background: Color(0xFFF1F5F9),
-        border: Color(0xFFCBD5E1),
-        icon: Icons.logout_rounded,
-      );
-    default:
-      if (s.isEmpty) {
-        return const _DetailStatusPillStyle(
-          foreground: Color(0xFF64748B),
-          background: Color(0xFFF1F5F9),
-          border: Color(0xFFCBD5E1),
-          icon: Icons.help_outline_rounded,
-        );
-      }
-      return const _DetailStatusPillStyle(
-        foreground: DesignColors.textSecondary,
-        background: DesignColors.surfaceSoft,
-        border: DesignColors.borderLight,
-        icon: Icons.info_outline_rounded,
-      );
-  }
-}
-
 String _initials(String name) {
   final parts =
       name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
@@ -1026,42 +931,6 @@ String _visitorTypeLabel(String? raw) {
     default:
       if (raw == null || raw.isEmpty) return 'Visitor';
       return raw.replaceAll('_', ' ');
-  }
-}
-
-String _myDecisionLabel(String d) {
-  switch (d.trim().toUpperCase()) {
-    case 'PENDING':
-      return 'Awaiting your answer';
-    case 'APPROVED':
-      return 'You approved';
-    case 'REJECTED':
-      return 'You declined';
-    default:
-      return d.replaceAll('_', ' ');
-  }
-}
-
-String _overallStatusLabel(String s) {
-  final u = s.trim().toUpperCase();
-  switch (u) {
-    case 'PENDING_APPROVAL':
-    case 'PENDING':
-      return 'Pending approval';
-    case 'APPROVED':
-      return 'Approved';
-    case 'CHECKED_IN':
-      return 'On premises';
-    case 'REJECTED':
-      return 'Declined';
-    case 'CHECKED_OUT':
-      return 'Checked out';
-    case '':
-      return 'Unknown';
-    default:
-      final pretty = s.replaceAll('_', ' ').trim().toLowerCase();
-      if (pretty.isEmpty) return 'Unknown';
-      return '${pretty[0].toUpperCase()}${pretty.substring(1)}';
   }
 }
 

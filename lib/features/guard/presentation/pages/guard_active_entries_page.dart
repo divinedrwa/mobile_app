@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -35,6 +37,7 @@ class GuardActiveEntriesPage extends ConsumerStatefulWidget {
 class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  Timer? _poll;
   final _visitorsScroll = ScrollController();
   final _preApprovedScroll = ScrollController();
   final _deliveriesScroll = ScrollController();
@@ -46,6 +49,13 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
     _tab = TabController(length: 4, vsync: this);
     // Keep body (IndexedStack) in sync — TabController notifies listeners on index changes.
     _tab.addListener(_onTabCtl);
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      ref.invalidate(guardActiveVisitorsTabProvider);
+      ref.invalidate(guardPendingVisitorsProvider);
+      ref.invalidate(guardDashboardProvider);
+      ref.invalidate(guardPreApprovedEntriesProvider);
+    });
   }
 
   void _onTabCtl() {
@@ -55,6 +65,7 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
 
   @override
   void dispose() {
+    _poll?.cancel();
     _tab.removeListener(_onTabCtl);
     _tab.dispose();
     _visitorsScroll.dispose();

@@ -53,6 +53,38 @@ class AdminGateUtilitiesRepository {
     }
   }
 
+  /// Pending resident water supply requests for the society.
+  Future<List<Map<String, dynamic>>> getPendingWaterRequests() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.waterSupplyRequestsPending,
+      );
+      final list = res.data?['requests'] as List? ?? [];
+      return list.cast<Map<String, dynamic>>();
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load pending water requests');
+    }
+  }
+
+  /// Fulfill or reject a resident water supply request.
+  Future<void> resolveWaterRequest(
+    String id, {
+    required String status,
+    String? note,
+  }) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.waterSupplyRequestResolve(id),
+        data: {
+          'status': status,
+          if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to resolve water request');
+    }
+  }
+
   /// Get recent water supply events.
   Future<List<Map<String, dynamic>>> getWaterSupplyEvents({
     String? gateId,

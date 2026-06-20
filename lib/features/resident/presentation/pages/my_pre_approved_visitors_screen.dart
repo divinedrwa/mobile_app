@@ -12,6 +12,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 import '../providers/visitor_provider.dart';
+import '../widgets/visitor_management_ui.dart';
 
 /// Lists pre-approved visitors for the logged-in resident's flat (newest first).
 class MyPreApprovedVisitorsScreen extends ConsumerStatefulWidget {
@@ -245,20 +246,8 @@ class _MyPreApprovedVisitorsScreenState
               preferredSize: const Size.fromHeight(48),
               child: Material(
                 color: DesignColors.surface,
-                child: TabBar(
+                child: VisitorMgmtTabBar(
                   controller: _tab,
-                  labelColor: DesignColors.primary,
-                  unselectedLabelColor: DesignColors.textSecondary,
-                  indicatorColor: DesignColors.primary,
-                  indicatorWeight: 3,
-                  labelStyle: DesignTypography.label.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                  unselectedLabelStyle: DesignTypography.label.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
                   tabs: [
                     Tab(text: 'Active · $active'),
                     Tab(text: 'Expired · $expired'),

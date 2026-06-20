@@ -12,7 +12,6 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../resident/data/models/maintenance_due_model.dart';
 import '../../../resident/data/models/notification_model.dart';
 import '../../../resident/data/providers/dashboard_provider.dart';
-import '../../../resident/data/providers/maintenance_provider.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../../resident/presentation/pages/notifications_center_screen.dart';
 import '../../../resident/presentation/widgets/home/home_society_finances.dart';
@@ -62,7 +61,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Future<void> _handleRefresh() async {
     ref.invalidate(adminDashboardProvider);
     ref.invalidate(residentDashboardProvider);
-    ref.invalidate(outstandingDuesProvider);
+    ref.invalidate(adminOutstandingDuesProvider);
     ref.invalidate(notificationProvider);
     ref.invalidate(adminUpiStatsProvider);
   }
@@ -458,7 +457,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // ═══════════════════════════════════════════════════════════════════
 
   Widget _buildAdminMaintenanceCard(BuildContext ctx) {
-    final outstandingAsync = ref.watch(outstandingDuesProvider);
+    final outstandingAsync = ref.watch(adminOutstandingDuesProvider);
     final villasCount = outstandingAsync.whenOrNull(
       data: (d) => (d['villasWithDuesCount'] as num?)?.toInt() ?? 0,
     );

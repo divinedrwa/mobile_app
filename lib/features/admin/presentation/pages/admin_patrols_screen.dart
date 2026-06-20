@@ -126,8 +126,10 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                           itemCount: filtered.length,
-                          itemBuilder: (_, i) =>
-                              _PatrolCard(patrol: filtered[i]),
+                          itemBuilder: (_, i) => _PatrolCard(
+                            patrol: filtered[i],
+                            onStatusUpdated: _refresh,
+                          ),
                         ),
                 ),
               ],
@@ -175,13 +177,95 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
   }
 }
 
-class _PatrolCard extends StatelessWidget {
-  const _PatrolCard({required this.patrol});
+class _PatrolCard extends ConsumerWidget {
+  const _PatrolCard({
+    required this.patrol,
+    required this.onStatusUpdated,
+  });
 
   final Map<String, dynamic> patrol;
+  final Future<void> Function() onStatusUpdated;
+
+  bool get _canUpdateStatus {
+    final status = (patrol['status'] ?? '').toString().toUpperCase();
+    return status == 'SCHEDULED' || status == 'IN_PROGRESS';
+  }
+
+  Future<void> _showStatusSheet(BuildContext context, WidgetRef ref) async {
+    final id = patrol['id']?.toString();
+    if (id == null || id.isEmpty || !_canUpdateStatus) return;
+
+    final status = (patrol['status'] ?? '').toString().toUpperCase();
+    final options = <String, String>{};
+    if (status == 'SCHEDULED') {
+      options['IN_PROGRESS'] = 'Mark in progress';
+      options['COMPLETED'] = 'Mark completed';
+      options['MISSED'] = 'Mark missed';
+    } else if (status == 'IN_PROGRESS') {
+      options['COMPLETED'] = 'Mark completed';
+      options['MISSED'] = 'Mark missed';
+    }
+    if (options.isEmpty) return;
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Text(
+                'Update patrol status',
+                style: DesignTypography.headingM.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ...options.entries.map(
+              (e) => ListTile(
+                title: Text(e.value),
+                onTap: () => Navigator.of(ctx).pop(e.key),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+
+    try {
+      await ref
+          .read(adminPatrolRepositoryProvider)
+          .updatePatrolStatus(id, status: selected);
+      ref.invalidate(adminPatrolsProvider);
+      await onStatusUpdated();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Patrol marked as ${_statusLabel(selected)}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFacingMessage(e)),
+            backgroundColor: DesignColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final status = (patrol['status'] ?? '').toString().toUpperCase();
     final checkpoint = patrol['checkpointName']?.toString() ?? '';
     final location = patrol['checkpointLocation']?.toString() ?? '';
@@ -306,6 +390,20 @@ class _PatrolCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (_canUpdateStatus) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => _showStatusSheet(context, ref),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Update'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

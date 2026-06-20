@@ -274,6 +274,14 @@ final adminWaterSupplyStatusProvider =
       .getWaterSupplyStatus();
 });
 
+/// Pending resident water supply requests (society-wide).
+final adminPendingWaterRequestsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref
+      .watch(adminGateUtilitiesRepositoryProvider)
+      .getPendingWaterRequests();
+});
+
 /// Water supply events, optionally filtered by gate.
 final adminWaterSupplyEventsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String?>((ref, gateId) async {
@@ -552,28 +560,37 @@ final adminWaterAnalyticsRepositoryProvider =
     Provider<AdminWaterAnalyticsRepository>(
         (ref) => AdminWaterAnalyticsRepository());
 
+final adminWaterAnalyticsDaysProvider =
+    StateProvider.autoDispose<int>((ref) => 30);
+
 final adminWaterAnalyticsOverviewProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(adminWaterAnalyticsRepositoryProvider).getOverview();
+  final days = ref.watch(adminWaterAnalyticsDaysProvider);
+  return ref
+      .watch(adminWaterAnalyticsRepositoryProvider)
+      .getOverview(days: days);
 });
 
 final adminWaterAnalyticsDailyProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return ref.watch(adminWaterAnalyticsRepositoryProvider).getDailyUsage();
+  final days = ref.watch(adminWaterAnalyticsDaysProvider);
+  return ref
+      .watch(adminWaterAnalyticsRepositoryProvider)
+      .getDailyUsage(days: days);
 });
 
 final adminWaterAnalyticsHourlyProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref
       .watch(adminWaterAnalyticsRepositoryProvider)
-      .getHourlyPattern();
+      .getHourlyPattern(days: 30);
 });
 
 final adminWaterAnalyticsGateProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref
       .watch(adminWaterAnalyticsRepositoryProvider)
-      .getGatePerformance();
+      .getGatePerformance(days: 30);
 });
 
 // ── UPI Payment Verifications ───────────────────────────────────────

@@ -46,7 +46,8 @@ class AdminDashboardRepository {
           : <String, dynamic>{};
 
       final totalExpected = _toDouble(summary['totalExpected']);
-      final totalCollected = _toDouble(summary['totalCollected']);
+      final totalCollected =
+          _toDouble(summary['collected'] ?? summary['totalCollected']);
       final collectionRate = totalExpected > 0
           ? (totalCollected / totalExpected * 100)
           : 0.0;
