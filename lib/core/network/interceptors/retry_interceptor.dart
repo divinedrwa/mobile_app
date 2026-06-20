@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 
 /// Retries failed requests on transient server errors (502, 503, 504) and
 /// rate limiting (429) with exponential backoff. Only GET requests are retried
-/// for 5xx errors — mutating methods (POST, PUT, PATCH, DELETE) are left alone
-/// to avoid duplicate side effects. All methods retry once on 429 with proper backoff.
+/// for 5xx and 429 errors — mutating methods are left alone to avoid duplicate
+/// side effects (payments, check-ins, etc.).
 class RetryInterceptor extends Interceptor {
   RetryInterceptor({this.maxRetries = 2});
 
@@ -20,8 +20,12 @@ class RetryInterceptor extends Interceptor {
     final statusCode = err.response?.statusCode;
     final isGet = err.requestOptions.method.toUpperCase() == 'GET';
 
-    // Handle rate limiting (429) - retry ALL methods ONCE with proper backoff
+    // Handle rate limiting (429) — GET only; never auto-retry POST/PATCH/DELETE
     if (statusCode == 429) {
+      if (!isGet) {
+        return handler.next(err);
+      }
+
       final attempt = (err.requestOptions.extra['_retryAttempt'] as int?) ?? 0;
       if (attempt >= 1) {
         // Only retry once for rate limiting to avoid prolonged delays
