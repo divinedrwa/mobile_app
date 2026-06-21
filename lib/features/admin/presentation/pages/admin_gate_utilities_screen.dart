@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -686,7 +687,7 @@ class _AdminGateUtilitiesScreenState
         ref.watch(adminWaterSupplyEventsProvider(_selectedGateId));
 
     return eventsAsync.when(
-      loading: () => const SizedBox.shrink(),
+      loading: () => const TimelineSkeleton(),
       error: (_, __) => const SizedBox.shrink(),
       data: (events) {
         if (events.isEmpty) return const SizedBox.shrink();
@@ -972,7 +973,7 @@ class _AdminGateUtilitiesScreenState
         ref.watch(adminGarbageEventsProvider(_selectedGateId));
 
     return eventsAsync.when(
-      loading: () => const SizedBox.shrink(),
+      loading: () => const TimelineSkeleton(),
       error: (_, __) => const SizedBox.shrink(),
       data: (events) {
         if (events.isEmpty) return const SizedBox.shrink();

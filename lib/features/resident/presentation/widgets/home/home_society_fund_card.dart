@@ -645,7 +645,12 @@ class HomeSocietyFundCard extends StatelessWidget {
           ),
         );
       },
-      orElse: () => const SizedBox.shrink(),
+      orElse: () => const Padding(
+        padding: EdgeInsets.only(top: 6),
+        child: ShimmerWrap(
+          child: ShimmerBox(height: 14, borderRadius: 6, width: 180),
+        ),
+      ),
     );
   }
 }

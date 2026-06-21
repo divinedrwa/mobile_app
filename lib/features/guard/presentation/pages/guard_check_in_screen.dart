@@ -10,6 +10,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../data/guard_visitor_type.dart';
 import '../../data/models/guard_models.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_check_in_notifier.dart';
 import '../providers/guard_providers.dart';
@@ -234,7 +235,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                     delegate: SliverChildListDelegate([
                       _IntroBanner(isDark: isDark),
                       shiftsAsync.when(
-                        loading: () => const SizedBox.shrink(),
+                        loading: () => const Padding(
+                          padding: EdgeInsets.only(top: GuardTokens.g2),
+                          child: BannerSkeleton(height: 44),
+                        ),
                         error: (_, _) => const SizedBox.shrink(),
                         data: (rows) => _hasActiveShift(rows)
                             ? const SizedBox.shrink()

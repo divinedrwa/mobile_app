@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/widgets/animated_counter.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
@@ -393,7 +394,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget _buildUpiPendingAlert(BuildContext ctx) {
     final statsAsync = ref.watch(adminUpiStatsProvider);
     return statsAsync.when(
-      loading: () => const SizedBox.shrink(),
+      loading: () => const Padding(
+        padding: EdgeInsets.only(top: 12),
+        child: BannerSkeleton(height: 56),
+      ),
       error: (_, __) => const SizedBox.shrink(),
       data: (stats) {
         final pending = stats['pending'] as int? ?? 0;
@@ -1027,8 +1031,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           clipBehavior: Clip.antiAlias,
           child: notificationsState.when(
             loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
+              padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              child: PickerSkeleton(itemCount: 3),
             ),
             error: (_, __) => _emptyActivityBlock(
               ctx,

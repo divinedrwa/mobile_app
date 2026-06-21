@@ -12,6 +12,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 import '../providers/visitor_provider.dart';
+import '../widgets/list_skeleton.dart';
 import '../widgets/visitor_management_ui.dart';
 
 /// Lists pre-approved visitors for the logged-in resident's flat (newest first).
@@ -260,28 +261,7 @@ class _MyPreApprovedVisitorsScreenState
         ),
       ),
       body: async.when(
-        loading: () => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: scheme.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Loading your list…',
-                style: DesignTypography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
+        loading: () => const ListSkeleton(itemHeight: 100),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(DesignSpacing.xl),

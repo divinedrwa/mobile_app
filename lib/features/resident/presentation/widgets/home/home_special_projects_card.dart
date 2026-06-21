@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/special_project_provider.dart';
 import 'home_shared.dart';
@@ -18,7 +19,17 @@ class HomeSpecialProjectsCard extends ConsumerWidget {
     final projectsAsync = ref.watch(residentSpecialProjectsProvider);
 
     return projectsAsync.when(
-      loading: () => const SizedBox.shrink(),
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          HomeSectionHeader(
+            title: 'Special projects',
+            onViewAll: () => context.push('/resident/special-projects'),
+          ),
+          const SizedBox(height: kHomeSectionGap / 2),
+          const CardCarouselSkeleton(),
+        ],
+      ),
       error: (_, __) => const SizedBox.shrink(),
       data: (projects) {
         final active =

@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
+import '../widgets/list_skeleton.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
@@ -97,7 +99,6 @@ class _VisitorApprovalRequestsScreenState
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(visitorApprovalRequestsProvider(_filter));
-    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: context.surface.background,
@@ -163,28 +164,7 @@ class _VisitorApprovalRequestsScreenState
           ),
           Expanded(
             child: async.when(
-              loading: () => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: scheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading requests…',
-                      style: DesignTypography.bodySmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              loading: () => const ListSkeleton(itemHeight: 100),
               error: (e, _) => Padding(
                 padding: EdgeInsets.all(context.spacing.s16),
                 child: EnterpriseInfoBanner(

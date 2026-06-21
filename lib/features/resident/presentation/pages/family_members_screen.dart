@@ -9,6 +9,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/family_member_model.dart';
 import '../../data/providers/family_member_provider.dart';
+import '../widgets/list_skeleton.dart';
 import 'add_family_member_screen.dart';
 
 /// Family Members Screen
@@ -24,7 +25,7 @@ class FamilyMembersScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () => ref.read(familyMemberProvider.notifier).fetchFamilyMembers(),
         child: membersState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(),
         error: (error, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [Padding(

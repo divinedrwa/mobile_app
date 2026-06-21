@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/widgets/animated_counter.dart';
 import '../../data/models/resident_dashboard_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -34,14 +35,18 @@ class ResidentOverviewScreen extends ConsumerWidget {
     );
     final isBillingExcluded = userExcluded || billingExcludedFromCycle;
     final dash = ref.watch(residentDashboardProvider);
-    const fallback = ResidentDashboardStats(
-      pendingMaintenance: 0,
-      activeComplaints: 0,
-      pendingParcels: 0,
-      upcomingBookings: 0,
-    );
-    final s = dash.maybeWhen(data: (d) => d.stats, orElse: () => fallback);
-    final total = _attentionTotal(s, excludeMaintenance: isBillingExcluded);
+    final stats = dash.valueOrNull?.stats;
+    final isInitialLoad = dash.isLoading && stats == null;
+    final s = stats ??
+        const ResidentDashboardStats(
+          pendingMaintenance: 0,
+          activeComplaints: 0,
+          pendingParcels: 0,
+          upcomingBookings: 0,
+        );
+    final total = stats != null
+        ? _attentionTotal(s, excludeMaintenance: isBillingExcluded)
+        : 0;
 
     return Scaffold(
       backgroundColor: _kPageBg,
@@ -123,6 +128,9 @@ class ResidentOverviewScreen extends ConsumerWidget {
                       const SizedBox(height: 14),
                     ],
                     
+                    if (isInitialLoad) ...[
+                      const StatsRowSkeleton(),
+                    ] else ...[
                     // Hero summary card with animation
                     _EnhancedHeroSummaryCard(
                       stats: s,
@@ -202,6 +210,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                       .slideX(begin: -0.1, end: 0),
                     
                     const SizedBox(height: 16),
+                    ],
                   ],
                 ),
               ),
@@ -210,7 +219,9 @@ class ResidentOverviewScreen extends ConsumerWidget {
             // Metric tiles with staggered animation
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-              sliver: SliverList(
+              sliver: isInitialLoad
+                  ? const SliverToBoxAdapter(child: StatsRowSkeleton())
+                  : SliverList(
                 delegate: SliverChildListDelegate([
                   if (!isBillingExcluded) ...[
                     _EnhancedMetricTile(

@@ -9,6 +9,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/vehicle_model.dart';
 import '../../data/providers/vehicle_provider.dart';
+import '../widgets/list_skeleton.dart';
 import 'add_vehicle_screen.dart';
 
 /// Vehicles Screen
@@ -24,7 +25,7 @@ class VehiclesScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () => ref.read(vehicleProvider.notifier).fetchVehicles(),
         child: vehiclesState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(),
         error: (error, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [

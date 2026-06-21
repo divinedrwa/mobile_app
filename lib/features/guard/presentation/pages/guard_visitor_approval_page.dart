@@ -10,6 +10,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../../../core/utils/phone_launch.dart';
 import '../../data/models/guard_models.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../providers/guard_visitor_approval_notifier.dart';
@@ -259,7 +260,12 @@ class _GuardVisitorApprovalPageState
             physics: const AlwaysScrollableScrollPhysics(),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: [
-              dashAsync.maybeWhen(
+              dashAsync.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.only(bottom: GuardTokens.g2),
+                        child: BannerSkeleton(height: 52),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                       data: (d) {
                         if (d.gateName != null) {
                           return const SizedBox.shrink();
@@ -291,7 +297,6 @@ class _GuardVisitorApprovalPageState
                           ),
                         );
                       },
-                      orElse: () => const SizedBox.shrink(),
                     ),
                     _buildRequestCard(context),
                     _buildPreApprovedStrip(context),

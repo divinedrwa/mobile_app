@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/expense_attachment_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/providers/expense_provider.dart';
@@ -39,7 +40,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
         ),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),

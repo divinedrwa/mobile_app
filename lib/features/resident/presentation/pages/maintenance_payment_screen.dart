@@ -9,6 +9,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
+import '../widgets/list_skeleton.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/maintenance_provider.dart';
 
@@ -3378,7 +3380,7 @@ class _MaintenancePaymentScreenState
     final inr = NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 0);
 
     return outstanding.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const ListSkeleton(itemHeight: 100),
       error: (e, _) => _wrapTabWithRefresh(
         Center(
           child: Padding(

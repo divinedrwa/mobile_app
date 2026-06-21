@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../providers/visitor_provider.dart';
 import '../widgets/visitor_management_ui.dart';
 
@@ -25,7 +26,6 @@ class _VisitorApprovalDetailScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
     final async = ref.watch(visitorApprovalDetailProvider(widget.visitorId));
 
     return Scaffold(
@@ -42,28 +42,7 @@ class _VisitorApprovalDetailScreenState
         centerTitle: true,
       ),
       body: async.when(
-        loading: () => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Loading details…',
-                style: DesignTypography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
+        loading: () => const DetailSkeleton(heroHeight: 200),
         error: (e, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(DesignSpacing.xl),

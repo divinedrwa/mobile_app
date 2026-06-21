@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../resident/data/models/upi_payment_model.dart';
@@ -173,7 +174,10 @@ class _AdminUpiVerificationsScreenState
           children: [
             // Stats strip
             statsAsync.when(
-              loading: () => const SizedBox.shrink(),
+              loading: () => const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: ChipRowSkeleton(),
+              ),
               error: (_, __) => const SizedBox.shrink(),
               data: (stats) {
                 final pending = stats['pending'] ?? 0;

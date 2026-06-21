@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/models/guard_models.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
@@ -236,7 +237,10 @@ class _GuardPreApprovedArrivalScreenState
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             shiftsAsync.when(
-                              loading: () => const SizedBox.shrink(),
+                              loading: () => const Padding(
+                                padding: EdgeInsets.only(top: GuardTokens.g2),
+                                child: BannerSkeleton(height: 44),
+                              ),
                               error: (_, _) => const SizedBox.shrink(),
                               data: (rows) => _hasActiveShift(rows)
                                   ? const SizedBox.shrink()

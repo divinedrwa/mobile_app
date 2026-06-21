@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../providers/sos_provider.dart';
 
@@ -168,7 +169,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
         foregroundColor: Colors.white,
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(heroHeight: 140),
         error: (e, _) => Center(child: Text(userFacingMessage(e))),
         data: (alert) {
           if (alert == null || alert.status.isTerminal) {

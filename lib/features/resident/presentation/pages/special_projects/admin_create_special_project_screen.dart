@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../admin/data/providers/admin_providers.dart';
 import '../../../data/providers/special_project_provider.dart';
 import '../../../data/repositories/special_project_repository.dart';
@@ -141,7 +142,7 @@ class _AdminCreateSpecialProjectScreenState
                 .copyWith(color: DesignColors.textPrimary)),
       ),
       body: villasAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(heroHeight: 0),
         error: (e, _) => const Center(child: Text('Failed to load villas. Please try again.')),
         data: (villas) => _buildForm(villas),
       ),

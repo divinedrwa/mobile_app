@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../../shared/utils/resident_capabilities.dart';
@@ -33,18 +34,9 @@ class ProfileScreen extends ConsumerWidget {
 
     // Only block the screen during login/sign-in when there is no user yet.
     if (isLoading && user == null) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: DesignColors.background,
-        body: Center(
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ),
+        body: DetailSkeleton(heroHeight: 120),
       );
     }
 

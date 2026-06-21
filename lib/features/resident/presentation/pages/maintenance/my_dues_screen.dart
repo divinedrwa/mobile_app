@@ -11,6 +11,7 @@ import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
 import 'invoice_download_helper.dart';
+import '../../widgets/list_skeleton.dart';
 
 /// Dedicated screen for the resident's outstanding bills.
 ///
@@ -144,7 +145,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
         color: DesignColors.primary,
         onRefresh: _refresh,
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const ListSkeleton(itemHeight: 120),
           error: (_, _) => _errorView(),
           data: (items) => items.isEmpty ? _emptyState() : _content(items),
         ),

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/amenity_booking_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
+import '../widgets/list_skeleton.dart';
 
 /// Modern Professional Amenity Booking History Screen
 class AmenityBookingHistoryScreen extends ConsumerStatefulWidget {
@@ -155,7 +156,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

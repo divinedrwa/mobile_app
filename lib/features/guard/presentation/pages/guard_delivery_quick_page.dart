@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/guard_models.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
@@ -221,8 +222,8 @@ class _GuardDeliveryQuickPageState
                     const SizedBox(height: GuardTokens.g2),
                     residentsAsync.when(
                       loading: () => const Padding(
-                        padding: EdgeInsets.all(GuardTokens.g3),
-                        child: Center(child: CircularProgressIndicator()),
+                        padding: EdgeInsets.symmetric(vertical: GuardTokens.g2),
+                        child: PickerSkeleton(),
                       ),
                       error: (e, _) => Container(
                         padding: const EdgeInsets.all(GuardTokens.g2),

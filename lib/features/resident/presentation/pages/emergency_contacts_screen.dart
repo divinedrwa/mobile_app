@@ -11,6 +11,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/emergency_contact_model.dart';
 import '../../data/providers/emergency_contact_provider.dart';
+import '../widgets/list_skeleton.dart';
 import 'add_emergency_contact_screen.dart';
 
 /// Emergency Contacts Screen
@@ -32,7 +33,7 @@ class EmergencyContactsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () => ref.read(emergencyContactProvider.notifier).fetchContacts(),
         child: contactsState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(),
         error: (error, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [Padding(

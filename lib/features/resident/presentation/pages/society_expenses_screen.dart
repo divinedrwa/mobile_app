@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
+import '../widgets/list_skeleton.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/providers/expense_provider.dart';
@@ -147,16 +149,7 @@ class _SocietyExpensesScreenState
           children: [
             // Category filter chips
             categoriesAsync.when(
-              loading: () => const SizedBox(
-                height: 40,
-                child: Center(
-                  child: SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              ),
+              loading: () => const ChipRowSkeleton(height: 40),
               error: (_, __) => const SizedBox.shrink(),
               data: (categories) {
                 if (categories.isEmpty) return const SizedBox.shrink();
@@ -231,10 +224,7 @@ class _SocietyExpensesScreenState
 
             // Expenses list
             expensesAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.only(top: 80),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              loading: () => const ListSkeleton(itemHeight: 96),
               error: (e, _) => Padding(
                 padding: const EdgeInsets.only(top: 80),
                 child: Center(

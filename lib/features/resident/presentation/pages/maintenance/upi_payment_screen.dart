@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../data/models/upi_payment_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
@@ -174,7 +175,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
         ),
       ),
       body: configAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

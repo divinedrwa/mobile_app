@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 
@@ -62,7 +63,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
         ),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const DetailSkeleton(heroHeight: 120),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

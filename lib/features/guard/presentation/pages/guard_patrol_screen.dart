@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -338,7 +339,15 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
             ),
             // Recent history section (collapsed)
             historyAsync.when(
-              loading: () => const SizedBox.shrink(),
+              loading: () => const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  GuardTokens.padScreen,
+                  GuardTokens.g2,
+                  GuardTokens.padScreen,
+                  0,
+                ),
+                child: TimelineSkeleton(itemCount: 2),
+              ),
               error: (_, _) => const SizedBox.shrink(),
               data: (rows) {
                 // Filter out today's entries — only show history
