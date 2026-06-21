@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
+import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/expense_breakdown_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 
@@ -131,16 +133,7 @@ class WhereMoneyGoesCard extends ConsumerWidget {
           if (hasData)
             ..._content(data, inr)
           else if (async.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
+            const _BodySkeleton()
           else
             _emptyBody(ref),
         ],
@@ -324,6 +317,46 @@ class WhereMoneyGoesCard extends ConsumerWidget {
   }
 }
 
+/// Skeleton for the card body: mirrors the donut chart + legend rows shown
+/// once the expense breakdown loads.
+class _BodySkeleton extends StatelessWidget {
+  const _BodySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ShimmerWrap(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShimmerBox(height: 12, borderRadius: 6, width: 200),
+            SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                ShimmerBox(width: 104, height: 104, borderRadius: 52),
+                SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(height: 14, borderRadius: 6),
+                      SizedBox(height: AppSpacing.sm),
+                      ShimmerBox(height: 14, borderRadius: 6),
+                      SizedBox(height: AppSpacing.sm),
+                      ShimmerBox(height: 14, borderRadius: 6, width: 120),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LegendRow extends StatelessWidget {
   const _LegendRow({
     required this.color,
@@ -438,7 +471,7 @@ class _CyclePickerSheetState extends ConsumerState<_CyclePickerSheet> {
             fysAsync.when(
               loading: () => const Padding(
                 padding: EdgeInsets.all(AppSpacing.lg),
-                child: Center(child: CircularProgressIndicator()),
+                child: PickerSkeleton(itemCount: 3),
               ),
               error: (_, _) => Text(
                 'Couldn\'t load financial years.',
@@ -522,7 +555,7 @@ class _CyclePickerSheetState extends ConsumerState<_CyclePickerSheet> {
     return cyclesAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(AppSpacing.lg),
-        child: Center(child: CircularProgressIndicator()),
+        child: PickerSkeleton(itemCount: 4),
       ),
       error: (_, _) => Text(
         'Couldn\'t load cycles.',

@@ -60,6 +60,8 @@ class SurfaceColors extends ThemeExtension<SurfaceColors> {
     required this.defaultSurface,
     required this.elevated,
     required this.border,
+    required this.skeletonBase,
+    required this.skeletonHighlight,
   });
 
   /// Outer-most page background (`#FFFFFF` light / `#020617` dark).
@@ -75,18 +77,29 @@ class SurfaceColors extends ThemeExtension<SurfaceColors> {
   /// 1-pixel border between surfaces (`#E2E8F0` / `#334155`).
   final Color border;
 
+  /// Base fill for skeleton/shimmer placeholders — contrasty enough to be
+  /// visible on white cards and the page background.
+  final Color skeletonBase;
+
+  /// Highlight color swept across [skeletonBase] during the shimmer animation.
+  final Color skeletonHighlight;
+
   @override
   SurfaceColors copyWith({
     Color? background,
     Color? defaultSurface,
     Color? elevated,
     Color? border,
+    Color? skeletonBase,
+    Color? skeletonHighlight,
   }) =>
       SurfaceColors(
         background: background ?? this.background,
         defaultSurface: defaultSurface ?? this.defaultSurface,
         elevated: elevated ?? this.elevated,
         border: border ?? this.border,
+        skeletonBase: skeletonBase ?? this.skeletonBase,
+        skeletonHighlight: skeletonHighlight ?? this.skeletonHighlight,
       );
 
   @override
@@ -97,6 +110,8 @@ class SurfaceColors extends ThemeExtension<SurfaceColors> {
       defaultSurface: Color.lerp(defaultSurface, other.defaultSurface, t)!,
       elevated: Color.lerp(elevated, other.elevated, t)!,
       border: Color.lerp(border, other.border, t)!,
+      skeletonBase: Color.lerp(skeletonBase, other.skeletonBase, t)!,
+      skeletonHighlight: Color.lerp(skeletonHighlight, other.skeletonHighlight, t)!,
     );
   }
 
@@ -105,6 +120,8 @@ class SurfaceColors extends ThemeExtension<SurfaceColors> {
         defaultSurface: p.surfaceDefault,
         elevated: p.surfaceElevated,
         border: p.surfaceBorder,
+        skeletonBase: p.skeletonBase,
+        skeletonHighlight: p.skeletonHighlight,
       );
 }
 

@@ -24,6 +24,8 @@ class AppColorPalette {
     required this.surfaceDefault,
     required this.surfaceElevated,
     required this.surfaceBorder,
+    required this.skeletonBase,
+    required this.skeletonHighlight,
     required this.textPrimary,
     required this.textSecondary,
     required this.textTertiary,
@@ -50,6 +52,12 @@ class AppColorPalette {
   final Color surfaceDefault;
   final Color surfaceElevated;
   final Color surfaceBorder;
+
+  /// Skeleton/shimmer placeholder colors. Deliberately more contrasty than the
+  /// surfaces above so loading states are clearly visible on white cards and
+  /// the page background (which on light mode are both pure white).
+  final Color skeletonBase;
+  final Color skeletonHighlight;
 
   final Color textPrimary;
   final Color textSecondary;
@@ -81,6 +89,8 @@ class AppColorPalette {
     surfaceDefault: Color(0xFFFFFFFF),
     surfaceElevated: Color(0xFFF8FAFC),
     surfaceBorder: Color(0xFFE5E7EB),
+    skeletonBase: Color(0xFFE2E8F0), // Slate 200 — visible on white
+    skeletonHighlight: Color(0xFFF1F5F9), // Slate 100 — lighter sweep
     textPrimary: Color(0xFF111827),
     textSecondary: Color(0xFF4B5563),
     textTertiary: Color(0xFF9CA3AF),
@@ -120,6 +130,8 @@ class AppColorPalette {
     surfaceDefault: Color(0xFF141B2D), // Cards, panels
     surfaceElevated: Color(0xFF1E293B), // Modals, popovers, sheets
     surfaceBorder: Color(0xFF2D3A4F), // Subtle but visible dividers
+    skeletonBase: Color(0xFF1E293B), // Slate 800 — visible on navy
+    skeletonHighlight: Color(0xFF334155), // Slate 700 — lighter sweep
 
     // Off-white hierarchy — less harsh than pure white.
     textPrimary: Color(0xFFF1F5F9), // Slate 100

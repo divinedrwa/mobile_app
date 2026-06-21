@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/shimmer_box.dart';
+
 /// In-app Privacy Policy / Terms viewer (bundled Markdown assets).
 class LegalMarkdownScreen extends StatefulWidget {
   const LegalMarkdownScreen({
@@ -41,7 +44,7 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const _MarkdownSkeleton();
           }
           if (snapshot.hasError || snapshot.data == null) {
             return Center(
@@ -70,6 +73,35 @@ class _LegalMarkdownScreenState extends State<LegalMarkdownScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Skeleton resembling a long-text document: a heading line plus
+/// several full-width paragraph lines.
+class _MarkdownSkeleton extends StatelessWidget {
+  const _MarkdownSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerWrap(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+        children: [
+          const ShimmerBox(height: 26, borderRadius: 6, width: 200),
+          const SizedBox(height: DesignSpacing.lg),
+          for (var section = 0; section < 4; section++) ...[
+            const ShimmerBox(height: 18, borderRadius: 6, width: 160),
+            const SizedBox(height: DesignSpacing.sm),
+            for (var line = 0; line < 4; line++) ...[
+              const ShimmerBox(height: 13, borderRadius: 4),
+              const SizedBox(height: 10),
+            ],
+            const ShimmerBox(height: 13, borderRadius: 4, width: 240),
+            const SizedBox(height: DesignSpacing.lg),
+          ],
+        ],
       ),
     );
   }

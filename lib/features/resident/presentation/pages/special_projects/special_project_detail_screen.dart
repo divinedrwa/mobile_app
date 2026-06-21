@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/empty_state_widget.dart';
 import '../../../../../core/widgets/enterprise_ui.dart';
+import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/special_project_model.dart';
 import '../../../data/providers/special_project_provider.dart';
@@ -395,10 +396,9 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
                   .copyWith(color: DesignColors.textPrimary)),
           const SizedBox(height: AppSpacing.md),
           expensesAsync.when(
-            loading: () => const Center(
-                child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.lg),
-                    child: CircularProgressIndicator())),
+            loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: PickerSkeleton(itemCount: 3)),
             error: (e, _) => Text('Failed to load expenses',
                 style: DesignTypography.bodySmall
                     .copyWith(color: DesignColors.error)),

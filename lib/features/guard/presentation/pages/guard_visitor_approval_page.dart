@@ -363,10 +363,8 @@ class _GuardVisitorApprovalPageState
                     const SizedBox(height: GuardTokens.g2),
               villas.when(
                       loading: () => const Padding(
-                        padding: EdgeInsets.all(GuardTokens.g3),
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        padding: EdgeInsets.all(GuardTokens.g2),
+                        child: PickerSkeleton(),
                       ),
                       error: (e, _) => Padding(
                         padding: const EdgeInsets.symmetric(

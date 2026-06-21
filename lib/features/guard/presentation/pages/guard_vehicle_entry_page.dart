@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
@@ -239,8 +240,8 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                         .watch(guardResidentsPickerProvider)
                         .when(
                           loading: () => const Padding(
-                            padding: EdgeInsets.all(GuardTokens.g3),
-                            child: Center(child: CircularProgressIndicator()),
+                            padding: EdgeInsets.all(GuardTokens.g2),
+                            child: PickerSkeleton(),
                           ),
                           error: (e, _) => Text(
                             userFacingMessage(e, 'Residents unavailable'),

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
+import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/upi_payment_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
@@ -681,10 +682,15 @@ class _MySubmissionsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(myUpiPaymentsProvider);
     return async.when(
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(strokeWidth: 2),
+      loading: () => const ShimmerWrap(
+        child: Column(
+          children: [
+            ShimmerBox(height: 64, borderRadius: DesignRadius.md),
+            SizedBox(height: 8),
+            ShimmerBox(height: 64, borderRadius: DesignRadius.md),
+            SizedBox(height: 8),
+            ShimmerBox(height: 64, borderRadius: DesignRadius.md),
+          ],
         ),
       ),
       error: (_, __) => const SizedBox.shrink(),

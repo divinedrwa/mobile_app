@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 
@@ -398,14 +399,10 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
             ),
             const SizedBox(height: 10),
             if (_loadingGarbageStatus)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+              const ShimmerWrap(
+                child: ShimmerBox(
+                  height: 68,
+                  borderRadius: 14,
                 ),
               )
             else if (_activeGarbageEvent != null)

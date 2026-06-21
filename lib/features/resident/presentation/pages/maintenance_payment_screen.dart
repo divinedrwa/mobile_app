@@ -9,7 +9,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/widgets/screen_skeletons.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../widgets/list_skeleton.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/providers/maintenance_provider.dart';
@@ -598,7 +598,7 @@ class _MaintenancePaymentScreenState
             final fyList = ref.watch(billingFinancialYearsProvider);
 
             if (fyList.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return _buildDashboardSkeleton();
             }
 
             final hasNoFinancialYears = fyList.whenOrNull(
@@ -674,9 +674,8 @@ class _MaintenancePaymentScreenState
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         child: fyAsync.when(
-          loading: () => const SizedBox(
-            height: 48,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          loading: () => const ShimmerWrap(
+            child: ShimmerBox(height: 48, borderRadius: 12),
           ),
           error: (err, stack) => _noFinancialYearMessage(),
           data: (fys) {
@@ -1058,12 +1057,7 @@ class _MaintenancePaymentScreenState
     }
 
     return cyclesAsync.when(
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(48),
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
+      loading: () => const ListSkeleton(itemHeight: 100),
       error: (e, _) => _wrapTabWithRefresh(
         Center(
           child: _emptyState(
@@ -1120,12 +1114,7 @@ class _MaintenancePaymentScreenState
 
         // Show loading if year breakdowns haven't arrived yet.
         if (!allYearsLoaded && neededYears.isNotEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(48),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
+          return const ListSkeleton(itemHeight: 100);
         }
 
         // Build cycle rows with financial data.
@@ -3814,9 +3803,7 @@ class _MaintenancePaymentScreenState
     }
 
     return cyclesAsync.when(
-      loading: () => const Center(
-        child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
+      loading: () => const ListSkeleton(itemHeight: 100),
       error: (e, _) => _wrapTabWithRefresh(
         Center(
           child: _emptyState(
@@ -3868,9 +3855,7 @@ class _MaintenancePaymentScreenState
         }
 
         if (!allYearsLoaded && neededYears.isNotEmpty) {
-          return const Center(
-            child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(strokeWidth: 2)),
-          );
+          return const ListSkeleton(itemHeight: 100);
         }
 
         // Build per-cycle rows with financial data

@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../widgets/list_skeleton.dart';

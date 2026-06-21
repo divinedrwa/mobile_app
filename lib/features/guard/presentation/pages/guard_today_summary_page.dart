@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -243,9 +244,11 @@ class GuardTodaySummaryPage extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               today.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: GuardTokens.g3),
-                  child: Center(child: CircularProgressIndicator()),
+                loading: () => const ShimmerWrap(
+                  child: ShimmerBox(
+                    height: 180,
+                    borderRadius: GuardTokens.radiusCard,
+                  ),
                 ),
                 error: (e, _) => DecoratedBox(
                   decoration: BoxDecoration(

@@ -31,7 +31,7 @@ class ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: context.surface.defaultSurface,
+        color: context.surface.skeletonBase,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -62,8 +62,8 @@ class ShimmerWrap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: context.surface.defaultSurface,
-      highlightColor: context.surface.elevated,
+      baseColor: context.surface.skeletonBase,
+      highlightColor: context.surface.skeletonHighlight,
       child: child,
     );
   }

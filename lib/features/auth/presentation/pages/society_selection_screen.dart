@@ -9,6 +9,7 @@ import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/widgets/polished_button.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../providers/auth_provider.dart';
 
 /// First step of login: pick a society; id/name are persisted for the login screen and API context.
@@ -302,6 +303,38 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     );
   }
 
+  Widget _buildLoadingSkeleton() {
+    return ShimmerWrap(
+      child: ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        itemCount: 4,
+        separatorBuilder: (context, _) => const SizedBox(height: 10),
+        itemBuilder: (context, i) => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              ShimmerBox(width: 24, height: 24, borderRadius: 12),
+              SizedBox(width: 14),
+              ShimmerBox(width: 44, height: 44, borderRadius: 22),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerBox(height: 16, borderRadius: 6),
+                    SizedBox(height: 8),
+                    ShimmerBox(height: 12, borderRadius: 6, width: 120),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildList() {
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -486,25 +519,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
                   child: _loading
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: DesignColors.primary,
-                              ),
-                              SizedBox(height: AppSpacing.lg),
-                              Text(
-                                'Loading societies…',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: DesignColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
+                      ? _buildLoadingSkeleton()
                       : _error != null
                           ? _buildError()
                           : RefreshIndicator(

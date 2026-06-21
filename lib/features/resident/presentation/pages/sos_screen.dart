@@ -14,6 +14,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../providers/sos_provider.dart';
 
@@ -319,10 +320,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                 }).toList(),
               );
             },
-            loading: () => const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            loading: () => const TimelineSkeleton(itemCount: 4),
             error: (e, _) => Text(userFacingMessage(e)),
           ),
           const SizedBox(height: 48),
