@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/page_transitions.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 import 'theme_extensions.dart';
@@ -71,6 +72,9 @@ class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
+      // App-wide slide-up + fade route transitions (Cupertino on iOS/macOS to
+      // keep swipe-back). See page_transitions.dart.
+      pageTransitionsTheme: appPageTransitionsTheme,
       scaffoldBackgroundColor: surface.background,
       canvasColor: surface.defaultSurface,
       dividerColor: surface.border,

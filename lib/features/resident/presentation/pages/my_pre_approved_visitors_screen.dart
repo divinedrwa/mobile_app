@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/async_animated_switcher.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 import '../providers/visitor_provider.dart';
 import '../widgets/list_skeleton.dart';
@@ -202,7 +203,6 @@ class _MyPreApprovedVisitorsScreenState
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(preApprovedVisitorsProvider);
-    final scheme = Theme.of(context).colorScheme;
     final dtf = DateFormat('EEE, d MMM yyyy · h:mm a');
 
     return Scaffold(
@@ -260,7 +260,7 @@ class _MyPreApprovedVisitorsScreenState
           orElse: () => null,
         ),
       ),
-      body: async.when(
+      body: async.whenAnimated(
         loading: () => const ListSkeleton(itemHeight: 100),
         error: (e, _) => Center(
           child: Padding(

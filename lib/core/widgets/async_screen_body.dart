@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/dio_exception_mapper.dart';
 import '../theme/design_tokens.dart';
+import 'async_animated_switcher.dart';
 import 'enterprise_ui.dart';
 import 'shimmer_box.dart';
 import '../../theme/context_extensions.dart';
@@ -31,9 +32,11 @@ class AsyncScreenBody<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Crossfade between loading → content → error so the swap is smooth
+    // instead of an abrupt jump (shared logic in [AsyncValueAnimatedX]).
     return ColoredBox(
       color: backgroundColor ?? context.surface.background,
-      child: asyncValue.when(
+      child: asyncValue.whenAnimated(
         loading: () => skeleton ?? const _DefaultListShimmer(),
         error: (error, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),

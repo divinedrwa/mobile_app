@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/async_animated_switcher.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
@@ -32,7 +33,7 @@ class EmergencyContactsScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(emergencyContactProvider.notifier).fetchContacts(),
-        child: contactsState.when(
+        child: contactsState.whenAnimated(
         loading: () => const ListSkeleton(),
         error: (error, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),

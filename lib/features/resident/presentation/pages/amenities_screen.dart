@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/async_animated_switcher.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../theme/context_extensions.dart';
@@ -134,7 +135,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
           ),
         ],
       ),
-      body: amenitiesState.when(
+      body: amenitiesState.whenAnimated(
         loading: () => const ListSkeleton(itemHeight: 88),
         error: (error, _) => Padding(
           padding: EdgeInsets.all(context.spacing.s16),

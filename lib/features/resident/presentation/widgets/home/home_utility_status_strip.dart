@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/tap_scale.dart';
 import '../../../data/providers/utilities_provider.dart';
 
 class HomeUtilityStatusStrip extends ConsumerWidget {
@@ -85,7 +86,7 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TapScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

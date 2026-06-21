@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/tap_scale.dart';
 import '../../../../../theme/context_extensions.dart';
 import 'home_shared.dart';
 
@@ -25,7 +26,8 @@ class HomeVisitorsGateSection extends StatelessWidget {
           children: [
             // Left card — filled green, horizontal layout
             Expanded(
-              child: GestureDetector(
+              child: TapScale(
+                haptic: false,
                 onTap: () {
                   DesignHaptics.impact();
                   context.push('/resident/pre-approve-visitor');
@@ -90,7 +92,8 @@ class HomeVisitorsGateSection extends StatelessWidget {
             const SizedBox(width: 8),
             // Right card — outlined, horizontal layout
             Expanded(
-              child: GestureDetector(
+              child: TapScale(
+                haptic: false,
                 onTap: () {
                   DesignHaptics.impact();
                   context.push('/resident/my-pre-approved-visitors');
