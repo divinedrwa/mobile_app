@@ -101,3 +101,17 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 }
+
+// AGP 8.x + coreLibraryDesugaring: expand*L8ArtProfileWildcards must run before
+// l8DexDesugarLib*; stale/cached builds can leave baseline-prof.txt missing.
+afterEvaluate {
+    listOf("Debug", "Release").forEach { variant ->
+        val expandTask = "expand${variant}L8ArtProfileWildcards"
+        val mergeTask = "merge${variant}ArtProfile"
+        tasks.findByName(mergeTask)?.let { merge ->
+            tasks.matching { it.name == expandTask }.configureEach {
+                dependsOn(merge)
+            }
+        }
+    }
+}
