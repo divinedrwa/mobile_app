@@ -8,6 +8,235 @@ import '../../../../../core/widgets/enterprise_ui.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 
+/// Active tab index while swiping (accounts for [TabController.offset]).
+int communityEffectiveTabIndex(TabController controller, int tabCount) {
+  final value = controller.index + controller.offset;
+  return value.round().clamp(0, tabCount - 1);
+}
+
+/// Defers building [child] until its tab is visible (±1 neighbour while swiping).
+class LazyCommunityTab extends StatefulWidget {
+  const LazyCommunityTab({
+    super.key,
+    required this.index,
+    required this.tabCount,
+    required this.controller,
+    required this.child,
+    this.placeholder,
+  });
+
+  final int index;
+  final int tabCount;
+  final TabController controller;
+  final Widget child;
+  final Widget? placeholder;
+
+  @override
+  State<LazyCommunityTab> createState() => _LazyCommunityTabState();
+}
+
+class _LazyCommunityTabState extends State<LazyCommunityTab> {
+  var _activated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _activated = _isNearActive();
+    widget.controller.addListener(_onTabMotion);
+  }
+
+  @override
+  void didUpdateWidget(covariant LazyCommunityTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTabMotion);
+      widget.controller.addListener(_onTabMotion);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTabMotion);
+    super.dispose();
+  }
+
+  bool _isNearActive() {
+    final active =
+        communityEffectiveTabIndex(widget.controller, widget.tabCount);
+    return (widget.index - active).abs() <= 1;
+  }
+
+  void _onTabMotion() {
+    if (_activated) return;
+    if (_isNearActive()) {
+      setState(() => _activated = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_activated) {
+      return widget.placeholder ??
+          const CommunityShimmerList(itemHeight: 88, count: 4);
+    }
+    return widget.child;
+  }
+}
+
+/// One pill in [CommunitySubTabBar] (Notices, Polls, Events, Docs).
+class CommunitySubTab {
+  const CommunitySubTab({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+}
+
+/// Pill tab row that stays in sync with [TabController] during taps and swipes.
+class CommunitySubTabBar extends StatefulWidget {
+  const CommunitySubTabBar({
+    super.key,
+    required this.controller,
+    required this.tabs,
+  });
+
+  final TabController controller;
+  final List<CommunitySubTab> tabs;
+
+  @override
+  State<CommunitySubTabBar> createState() => _CommunitySubTabBarState();
+}
+
+class _CommunitySubTabBarState extends State<CommunitySubTabBar> {
+  late final List<GlobalKey> _tabKeys;
+  int _lastScrolledIndex = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabKeys = List.generate(widget.tabs.length, (_) => GlobalKey());
+    widget.controller.addListener(_scrollSelectedIntoView);
+  }
+
+  @override
+  void didUpdateWidget(covariant CommunitySubTabBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_scrollSelectedIntoView);
+      widget.controller.addListener(_scrollSelectedIntoView);
+    }
+    if (oldWidget.tabs.length != widget.tabs.length) {
+      _tabKeys
+        ..clear()
+        ..addAll(List.generate(widget.tabs.length, (_) => GlobalKey()));
+      _lastScrolledIndex = -1;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_scrollSelectedIntoView);
+    super.dispose();
+  }
+
+  static int effectiveIndex(TabController controller, int tabCount) =>
+      communityEffectiveTabIndex(controller, tabCount);
+
+  void _scrollSelectedIntoView() {
+    if (!mounted) return;
+    final idx = effectiveIndex(widget.controller, widget.tabs.length);
+    if (idx == _lastScrolledIndex) return;
+    _lastScrolledIndex = idx;
+    final ctx = _tabKeys[idx].currentContext;
+    if (ctx == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: 0.45,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        final selected =
+            effectiveIndex(widget.controller, widget.tabs.length);
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(widget.tabs.length, (i) {
+              final tab = widget.tabs[i];
+              final isSelected = selected == i;
+              return Padding(
+                key: _tabKeys[i],
+                padding: EdgeInsets.only(
+                  right: i < widget.tabs.length - 1 ? 8 : 0,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => widget.controller.animateTo(i),
+                    borderRadius: DesignRadius.borderXL,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? context.brand.primary
+                            : context.surface.defaultSurface,
+                        borderRadius: DesignRadius.borderXL,
+                        border: Border.all(
+                          color: isSelected
+                              ? context.brand.primary
+                              : context.surface.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            tab.icon,
+                            size: 16,
+                            color: isSelected
+                                ? Colors.white
+                                : context.text.secondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            tab.label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? Colors.white
+                                  : context.text.secondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Shared async list body for Community sub-tabs.
 class CommunityListBody<T> extends StatelessWidget {
   const CommunityListBody({

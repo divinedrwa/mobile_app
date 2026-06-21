@@ -7,6 +7,7 @@ import '../../ui/guard_tokens.dart';
 import '../../../resident/data/models/parcel_model.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_error_banner.dart';
+import '../widgets/guard_keep_alive_tab.dart';
 import '../widgets/guard_skeletons.dart';
 
 /// Gate logs: today/date range filter + searchable lists per tab.
@@ -33,8 +34,7 @@ class _GuardLogsPageState extends ConsumerState<GuardLogsPage>
   }
 
   void _onTabCtl() {
-    if (_tab.indexIsChanging) return;
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -189,17 +189,20 @@ class _GuardLogsPageState extends ConsumerState<GuardLogsPage>
                   ],
                 ),
               ),
-            // IndexedStack avoids TabBarView + go_router StatefulShellRoute
-            // interaction where inactive branches disable tickers, leaving
-            // TabBarView pages blank until a manual rebuild.
             Expanded(
-              child: IndexedStack(
-                index: _tab.index,
-                sizing: StackFit.expand,
+              child: TabBarView(
+                controller: _tab,
+                physics: const BouncingScrollPhysics(),
                 children: [
-                  _VisitorLogs(logKey: key, query: q),
-                  _DeliveryLogs(logKey: key, query: q),
-                  _VehicleLogs(logKey: key, query: q),
+                  GuardKeepAliveTab(
+                    child: _VisitorLogs(logKey: key, query: q),
+                  ),
+                  GuardKeepAliveTab(
+                    child: _DeliveryLogs(logKey: key, query: q),
+                  ),
+                  GuardKeepAliveTab(
+                    child: _VehicleLogs(logKey: key, query: q),
+                  ),
                 ],
               ),
             ),

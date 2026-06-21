@@ -10,18 +10,43 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
+import '../../data/resident_home_prefetch.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/resident_data_refresh.dart';
+import '../providers/resident_tab_provider.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 
 /// Main shell for resident app with modern bottom navigation
-class ResidentShell extends ConsumerWidget {
+class ResidentShell extends ConsumerStatefulWidget {
   const ResidentShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ResidentShell> createState() => _ResidentShellState();
+}
+
+class _ResidentShellState extends ConsumerState<ResidentShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      prefetchResidentHomeData(ref);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<int>(currentTabProvider, (prev, next) {
+      if (next == 1) {
+        prefetchCommunityTabData(
+          ref,
+          activeTab: ref.read(communitySubTabIndexProvider),
+        );
+      }
+    });
+
     final currentTab = ref.watch(currentTabProvider);
     final unreadCount = ref.watch(unreadCountProvider);
     final user = ref.watch(authProvider).user;

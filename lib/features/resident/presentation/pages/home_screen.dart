@@ -109,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       data: (list) => list.where((n) => !n.isRead).length,
       orElse: () => 0,
     );
-    final hasImportantNotices =
+    final hasImportantNotices = noticesState.isLoading ||
         (noticesState.valueOrNull ?? const <NoticeModel>[]).isNotEmpty;
 
     return Scaffold(
@@ -218,15 +218,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 }
 
 extension _SectionAnimate on Widget {
-  Widget animateSection(int index) => animate(
-        delay: DesignAnimations.sectionStaggerFor(index),
-      )
-          .fadeIn(
-            duration: DesignAnimations.durationEntrance,
-            curve: DesignAnimations.curveEntrance,
-          )
-          .slideY(
-            begin: DesignAnimations.slideSubtle,
-            curve: DesignAnimations.curveEntrance,
-          );
+  /// Light entrance for top sections only — lower blocks render immediately so
+  /// data/shimmer is visible without stagger delay.
+  Widget animateSection(int index) {
+    if (index > 2) return this;
+    return animate(
+      delay: DesignAnimations.sectionStaggerFor(index),
+    )
+        .fadeIn(
+          duration: DesignAnimations.durationEntrance,
+          curve: DesignAnimations.curveEntrance,
+        )
+        .slideY(
+          begin: DesignAnimations.slideSubtle,
+          curve: DesignAnimations.curveEntrance,
+        );
+  }
 }

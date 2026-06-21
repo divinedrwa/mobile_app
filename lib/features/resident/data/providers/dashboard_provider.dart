@@ -16,7 +16,7 @@ final residentDashboardProvider =
       (s) => '${s.user?.id}:${s.user?.villaId}:${s.user?.maintenanceBillingRole}',
     ),
   );
-  cacheFor(ref, const Duration(seconds: 15));
+  cacheFor(ref, const Duration(seconds: 45));
   final repo = ref.watch(dashboardRepositoryProvider);
   return repo.getDashboard();
 });

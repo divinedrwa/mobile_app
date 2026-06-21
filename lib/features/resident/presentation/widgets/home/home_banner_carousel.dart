@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/utils/media_url.dart';
+import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/banner_model.dart';
 import '../../../data/providers/banner_provider.dart';
 import 'home_shared.dart';
@@ -19,12 +20,18 @@ class HomeBannerCarousel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bannersAsync = ref.watch(activeBannersProvider);
-    return bannersAsync.maybeWhen(
+    return bannersAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.only(bottom: 12),
+        child: ShimmerWrap(
+          child: ShimmerBox(height: 148, borderRadius: DesignRadius.xl),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
       data: (banners) {
         if (banners.isEmpty) return const SizedBox.shrink();
         return _BannerCarouselWidget(banners: banners);
       },
-      orElse: () => const SizedBox.shrink(),
     );
   }
 }

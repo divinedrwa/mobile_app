@@ -55,10 +55,13 @@ class RetryInterceptor extends Interceptor {
       }
     }
 
-    // Handle transient server errors (502, 503, 504) - GET only
-    final isTimeout = err.type == DioExceptionType.connectionTimeout ||
-        err.type == DioExceptionType.receiveTimeout;
-    if (!isGet || (!isTimeout && (statusCode == null || !_retriableStatuses.contains(statusCode)))) {
+    // Handle transient server errors (502, 503, 504) — GET only.
+    // Do not retry receiveTimeout: slow responses would double wait time.
+    final isConnectionTimeout =
+        err.type == DioExceptionType.connectionTimeout;
+    if (!isGet ||
+        (!isConnectionTimeout &&
+            (statusCode == null || !_retriableStatuses.contains(statusCode)))) {
       return handler.next(err);
     }
 
@@ -69,7 +72,8 @@ class RetryInterceptor extends Interceptor {
 
     final delayMs = min(1000 * (1 << attempt), 4000); // 1s, 2s, 4s
     if (kDebugMode) {
-      final reason = isTimeout ? 'timeout(${err.type.name})' : '$statusCode';
+      final reason =
+          isConnectionTimeout ? 'connectionTimeout' : '$statusCode';
       debugPrint('[RetryInterceptor] $reason on ${err.requestOptions.path} '
           '— retry ${attempt + 1}/$maxRetries in ${delayMs}ms');
     }

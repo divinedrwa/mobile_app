@@ -261,8 +261,8 @@ class AppConstants {
   static const int maxPageSize = 100;
   
   // Timeouts
-  static const int connectTimeout = 30000; // 30 seconds
-  static const int receiveTimeout = 30000; // 30 seconds
+  static const int connectTimeout = 12000; // 12 seconds
+  static const int receiveTimeout = 18000; // 18 seconds
   
   // Date Formats
   static const String dateFormat = 'dd MMM yyyy';

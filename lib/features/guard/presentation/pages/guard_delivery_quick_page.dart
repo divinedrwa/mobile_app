@@ -452,7 +452,7 @@ class _GuardDeliveryQuickPageState
                                   ),
                                 )
                               : const Text(
-                                  'Marked delivered',
+                                  'Mark delivered',
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                         ),

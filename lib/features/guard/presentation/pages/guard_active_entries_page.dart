@@ -10,6 +10,7 @@ import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
+import '../widgets/guard_keep_alive_tab.dart';
 import '../widgets/guard_pre_approved_entries_list.dart';
 import '../widgets/guard_empty_placeholder.dart';
 import '../widgets/guard_skeletons.dart';
@@ -59,8 +60,7 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
   }
 
   void _onTabCtl() {
-    if (_tab.indexIsChanging) return;
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -129,12 +129,16 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
         ),
         body: TabBarView(
           controller: _tab,
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           children: [
-            _VisitorsTab(scrollController: _visitorsScroll),
-            _PreApprovedTab(scrollController: _preApprovedScroll),
-            _DeliveriesTab(scrollController: _deliveriesScroll),
-            _VehicleTab(scrollController: _vehiclesScroll),
+            GuardKeepAliveTab(child: _VisitorsTab(scrollController: _visitorsScroll)),
+            GuardKeepAliveTab(
+              child: _PreApprovedTab(scrollController: _preApprovedScroll),
+            ),
+            GuardKeepAliveTab(
+              child: _DeliveriesTab(scrollController: _deliveriesScroll),
+            ),
+            GuardKeepAliveTab(child: _VehicleTab(scrollController: _vehiclesScroll)),
           ],
         ),
       ),

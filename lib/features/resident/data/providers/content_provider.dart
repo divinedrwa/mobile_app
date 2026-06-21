@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../shared/utils/provider_cache.dart';
 import '../models/document_model.dart';
 import '../models/notice_model.dart';
 import '../repositories/content_repository.dart';
@@ -9,19 +10,27 @@ final contentRepositoryProvider = Provider<ContentRepository>(
   (ref) => ContentRepository(),
 );
 
-final noticesProvider = FutureProvider<List<NoticeModel>>((ref) async {
+final noticesProvider =
+    FutureProvider.autoDispose<List<NoticeModel>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 3));
   return ref.watch(contentRepositoryProvider).getNotices();
 });
 
-final documentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
+final documentsProvider =
+    FutureProvider.autoDispose<List<DocumentModel>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 3));
   return ref.watch(contentRepositoryProvider).getDocuments();
 });
 
-final pollsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final pollsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 3));
   return ref.watch(contentRepositoryProvider).getPolls();
 });
 
-final eventsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final eventsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  cacheFor(ref, const Duration(minutes: 3));
   return ref.watch(contentRepositoryProvider).getEventBanners();
 });
 

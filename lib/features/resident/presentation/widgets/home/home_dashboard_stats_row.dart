@@ -5,10 +5,19 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/animated_counter.dart';
+import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/resident_dashboard_model.dart';
 import '../../pages/amenity_booking_history_screen.dart';
 import '../../pages/parcel_management_screen.dart';
+
+const _fallbackStats = ResidentDashboardStats(
+  pendingMaintenance: 0,
+  activeComplaints: 0,
+  pendingParcels: 0,
+  upcomingBookings: 0,
+);
+
 class HomeDashboardStatsRow extends ConsumerWidget {
   const HomeDashboardStatsRow({
     super.key,
@@ -21,17 +30,51 @@ class HomeDashboardStatsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const fallbackStats = ResidentDashboardStats(
-      pendingMaintenance: 0,
-      activeComplaints: 0,
-      pendingParcels: 0,
-      upcomingBookings: 0,
+    return dashboardAsync.when(
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Overview',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: DesignColors.textPrimary,
+              letterSpacing: -0.38,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ShimmerWrap(
+            child: Row(
+              children: List.generate(4, (i) {
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: i == 0 ? 0 : 3,
+                      right: i == 3 ? 0 : 3,
+                    ),
+                    child: const ShimmerBox(
+                      height: 72,
+                      borderRadius: DesignRadius.lg,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+      error: (_, __) => _buildTiles(context, _fallbackStats, isBillingExcluded),
+      data: (d) => _buildTiles(context, d.stats, isBillingExcluded),
     );
-    final s = dashboardAsync.maybeWhen(
-      data: (d) => d.stats,
-      orElse: () => fallbackStats,
-    );
+  }
 
+  Widget _buildTiles(
+    BuildContext context,
+    ResidentDashboardStats s,
+    bool isBillingExcluded,
+  ) {
     final tiles = <_TileSpec>[
       if (!isBillingExcluded)
         _TileSpec(

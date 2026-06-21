@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../data/resident_home_prefetch.dart';
 import '../../data/providers/notification_provider.dart';
 import '../providers/resident_tab_provider.dart';
 import 'documents_list_screen.dart';
 import 'events_list_screen.dart';
 import 'notifications_center_screen.dart';
+import '../widgets/community/community_ui.dart';
 import 'notices_list_screen.dart';
 import 'polls_list_screen.dart';
 
@@ -24,10 +25,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
   late final TabController _tabController;
 
   static const _tabs = [
-    (icon: Icons.campaign_outlined, label: 'Notices'),
-    (icon: Icons.poll_outlined, label: 'Polls'),
-    (icon: Icons.event_rounded, label: 'Events'),
-    (icon: Icons.folder_open_rounded, label: 'Docs'),
+    CommunitySubTab(icon: Icons.campaign_outlined, label: 'Notices'),
+    CommunitySubTab(icon: Icons.poll_outlined, label: 'Polls'),
+    CommunitySubTab(icon: Icons.event_rounded, label: 'Events'),
+    CommunitySubTab(icon: Icons.folder_open_rounded, label: 'Docs'),
   ];
 
   @override
@@ -43,11 +44,14 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
   }
 
   void _syncProviderFromTab() {
-    if (!_tabController.indexIsChanging && mounted) {
+    if (!mounted) return;
+    // Settled index (tap or swipe complete).
+    if (!_tabController.indexIsChanging) {
       final idx = _tabController.index;
       if (ref.read(communitySubTabIndexProvider) != idx) {
         ref.read(communitySubTabIndexProvider.notifier).state = idx;
       }
+      prefetchCommunityTabData(ref, activeTab: idx);
     }
   }
 
@@ -61,9 +65,13 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     ref.listen<int>(communitySubTabIndexProvider, (prev, next) {
-      if (next != _tabController.index && mounted) {
-        _tabController.animateTo(next.clamp(0, _tabs.length - 1));
+      if (!mounted) return;
+      final target = next.clamp(0, _tabs.length - 1);
+      if (target == _tabController.index &&
+          !_tabController.indexIsChanging) {
+        return;
       }
+      _tabController.animateTo(target);
     });
 
     final unreadCount = ref.watch(unreadCountProvider);
@@ -163,58 +171,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
               context.spacing.s12,
               context.spacing.s8,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: List.generate(_tabs.length, (i) {
-                  final selected = _tabController.index == i;
-                  final tab = _tabs[i];
-                  return Padding(
-                    padding: EdgeInsets.only(right: i < _tabs.length - 1 ? 8 : 0),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _tabController.animateTo(i),
-                        borderRadius: DesignRadius.borderXL,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? context.brand.primary
-                                : context.surface.defaultSurface,
-                            borderRadius: DesignRadius.borderXL,
-                            border: Border.all(
-                              color: selected
-                                  ? context.brand.primary
-                                  : context.surface.border,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                tab.icon,
-                                size: 16,
-                                color: selected ? Colors.white : context.text.secondary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                tab.label,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                                  color: selected ? Colors.white : context.text.secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
+            child: CommunitySubTabBar(
+              controller: _tabController,
+              tabs: _tabs,
             ),
           ),
         ),
@@ -222,11 +181,31 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
       body: TabBarView(
         controller: _tabController,
         physics: const BouncingScrollPhysics(),
-        children: const [
-          NoticesListScreen(),
-          PollsListScreen(),
-          EventsListScreen(),
-          DocumentsListScreen(),
+        children: [
+          LazyCommunityTab(
+            index: 0,
+            tabCount: _tabs.length,
+            controller: _tabController,
+            child: const NoticesListScreen(),
+          ),
+          LazyCommunityTab(
+            index: 1,
+            tabCount: _tabs.length,
+            controller: _tabController,
+            child: const PollsListScreen(),
+          ),
+          LazyCommunityTab(
+            index: 2,
+            tabCount: _tabs.length,
+            controller: _tabController,
+            child: const EventsListScreen(),
+          ),
+          LazyCommunityTab(
+            index: 3,
+            tabCount: _tabs.length,
+            controller: _tabController,
+            child: const DocumentsListScreen(),
+          ),
         ],
       ),
     );
