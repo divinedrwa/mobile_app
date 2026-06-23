@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,10 +26,52 @@ class SocietySelectionScreen extends ConsumerStatefulWidget {
 typedef _SocietyRow = ({String id, String name, bool isSelectable});
 
 class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen> {
+  static const _pageSize = 30;
+
   List<_SocietyRow> _societies = [];
   String? _selectedId;
+  String? _selectedName;
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _total = 0;
   String? _error;
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+  final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _loadingMore || _loading) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() => _searchQuery = value.trim());
+      _loadInitial();
+    });
+  }
 
   bool get _canContinue {
     final id = _selectedId;
@@ -35,7 +79,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     for (final s in _societies) {
       if (s.id == id) return s.isSelectable;
     }
-    return false;
+    return _selectedName != null && _selectedName!.isNotEmpty;
   }
 
   int get _selectableCount =>
@@ -47,43 +91,54 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     for (final s in _societies) {
       if (s.id == id) return s.name;
     }
-    return null;
+    return _selectedName;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
+  Future<void> _loadInitial() async {
     setState(() {
       _loading = true;
       _error = null;
+      _hasMore = true;
     });
     try {
       final repo = ref.read(authRepositoryProvider);
-      final list = await repo.fetchPublicSocieties();
+      final page = await repo.fetchPublicSocieties(
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+        limit: _pageSize,
+        offset: 0,
+      );
       if (!mounted) return;
       final saved = StorageService.getPreferredLoginSocietyId();
+      final savedName = StorageService.getPreferredLoginSocietyName();
       String? pick;
       if (saved != null) {
-        for (final e in list) {
+        for (final e in page.items) {
           if (e.id == saved && e.isSelectable) {
             pick = saved;
             break;
           }
         }
       }
-      if (pick == null && list.length == 1 && list.first.isSelectable) {
-        pick = list.first.id;
+      if (pick == null && _searchQuery.isEmpty && page.items.length == 1 && page.items.first.isSelectable) {
+        pick = page.items.first.id;
       }
-      if (pick == null && list.where((e) => e.isSelectable).length == 1) {
-        pick = list.firstWhere((e) => e.isSelectable).id;
+      if (pick == null && _searchQuery.isEmpty && page.items.where((e) => e.isSelectable).length == 1) {
+        pick = page.items.firstWhere((e) => e.isSelectable).id;
       }
       setState(() {
-        _societies = List<_SocietyRow>.from(list);
-        _selectedId = pick;
+        _societies = List<_SocietyRow>.from(page.items);
+        _total = page.total;
+        _hasMore = page.hasMore;
+        _selectedId = pick ?? _selectedId;
+        if (pick != null) {
+          for (final e in page.items) {
+            if (e.id == pick) {
+              _selectedName = e.name;
+              break;
+            }
+          }
+          _selectedName ??= savedName;
+        }
         _loading = false;
       });
     } catch (e) {
@@ -94,6 +149,31 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
       });
     }
   }
+
+  Future<void> _loadMore() async {
+    if (!_hasMore || _loadingMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final page = await repo.fetchPublicSocieties(
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+        limit: _pageSize,
+        offset: _societies.length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _societies = [..._societies, ...page.items];
+        _total = page.total;
+        _hasMore = page.hasMore;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _load() => _loadInitial();
 
   Future<void> _continue() async {
     final id = _selectedId?.trim();
@@ -110,7 +190,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
         break;
       }
     }
-    if (row == null || !row.isSelectable) {
+    if (row == null && _selectedName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('This society is not available for sign-in.'),
@@ -118,7 +198,15 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
       );
       return;
     }
-    final name = row.name;
+    if (row != null && !row.isSelectable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This society is not available for sign-in.'),
+        ),
+      );
+      return;
+    }
+    final name = row?.name ?? _selectedName ?? id;
     await StorageService.savePreferredLoginSociety(id: id, name: name);
     if (!mounted) return;
     context.go('/login');
@@ -136,7 +224,10 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
       );
       return;
     }
-    setState(() => _selectedId = s.id);
+    setState(() {
+      _selectedId = s.id;
+      _selectedName = s.name;
+    });
   }
 
   Widget _buildBrandHeader() {
@@ -336,13 +427,54 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
   }
 
   Widget _buildList() {
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      itemCount: _societies.length,
-      separatorBuilder: (context, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        final s = _societies[i];
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Search societies…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              filled: true,
+              fillColor: DesignColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: DesignColors.borderLight),
+              ),
+            ),
+          ),
+        ),
+        if (_total > 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Showing ${_societies.length} of $_total',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: DesignColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        Expanded(
+          child: ListView.separated(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: AppSpacing.md, top: 8),
+            itemCount: _societies.length + (_loadingMore ? 1 : 0),
+            separatorBuilder: (context, _) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              if (i >= _societies.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final s = _societies[i];
         final sel = _selectedId == s.id && s.isSelectable;
         final enabled = s.isSelectable;
         return Material(
@@ -483,6 +615,9 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
           ),
         );
       },
+          ),
+        ),
+      ],
     );
   }
 

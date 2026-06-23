@@ -64,9 +64,25 @@ class AuthRepository {
   final NotificationService _notificationService = NotificationService();
 
   /// Societies for login picker (`GET /public/societies`, no auth). Includes status when present.
-  Future<List<({String id, String name, bool isSelectable})>> fetchPublicSocieties() async {
+  Future<({
+    List<({String id, String name, bool isSelectable})> items,
+    int total,
+    bool hasMore,
+  })> fetchPublicSocieties({
+    String? search,
+    int limit = 30,
+    int offset = 0,
+  }) async {
     try {
-      final response = await _dio.get(ApiEndpoints.publicSocieties);
+      final queryParameters = <String, dynamic>{
+        'limit': limit,
+        'offset': offset,
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      };
+      final response = await _dio.get(
+        ApiEndpoints.publicSocieties,
+        queryParameters: queryParameters,
+      );
       dynamic root = response.data;
       if (root is String && root.trim().isNotEmpty) {
         try {
@@ -99,11 +115,14 @@ class AuthRepository {
           ));
         }
       }
+      final total = (map['total'] is num) ? (map['total'] as num).toInt() : out.length;
+      final hasMore = map['hasMore'] == true ||
+          (offset + out.length < total);
       if (kDebugMode) {
-        debugPrint('📋 Public societies loaded: ${out.length} (selectable: '
+        debugPrint('📋 Public societies loaded: ${out.length}/$total (selectable: '
             '${out.where((e) => e.isSelectable).length})');
       }
-      return out;
+      return (items: out, total: total, hasMore: hasMore);
     } on DioException catch (e) {
       final wrapped = e.error;
       if (wrapped is AppException) {
@@ -116,6 +135,12 @@ class AuthRepository {
         ),
       );
     }
+  }
+
+  /// Back-compat wrapper — loads first page only.
+  Future<List<({String id, String name, bool isSelectable})>> fetchPublicSocietiesList() async {
+    final page = await fetchPublicSocieties(limit: 200);
+    return page.items;
   }
 
   /// Login with username or email and password (tenant `/auth/login`; requires society).
