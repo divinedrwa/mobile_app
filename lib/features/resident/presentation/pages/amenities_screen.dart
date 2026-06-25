@@ -148,11 +148,16 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
             onAction: () => ref.invalidate(amenitiesProvider),
           ),
         ),
-        data: (amenities) => amenities.isEmpty
-            ? const EmptyStateWidget(
-                icon: Icons.sports_tennis_outlined,
-                title: 'No amenities available',
-                subtitle: 'Your society hasn\'t set up bookable amenities yet. Check back later!',
+        data: (amenities) => RefreshIndicator(
+          onRefresh: () async => ref.invalidate(amenitiesProvider),
+          child: amenities.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [EmptyStateWidget(
+                  icon: Icons.sports_tennis_outlined,
+                  title: 'No amenities available',
+                  subtitle: 'Your society hasn\'t set up bookable amenities yet. Check back later!',
+                )],
               )
             : ListView(
                 padding: EdgeInsets.fromLTRB(
@@ -203,6 +208,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
                         ),
                 ],
               ),
+        ),
       ),
     );
   }

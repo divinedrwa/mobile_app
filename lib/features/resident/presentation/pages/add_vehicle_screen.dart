@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../data/models/vehicle_model.dart';
 import '../../data/providers/vehicle_provider.dart';
@@ -54,106 +54,97 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DesignColors.background,
       appBar: AppBar(
-        title: Text(widget.vehicle == null ? 'Add Vehicle' : 'Edit Vehicle'),
+        backgroundColor: DesignColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
+        ),
+        title: Text(
+          widget.vehicle == null ? 'Add Vehicle' : 'Edit Vehicle',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
+        ),
       ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(DesignSpacing.lg, DesignSpacing.md, DesignSpacing.lg, DesignSpacing.xxxl),
           children: [
-            // Vehicle Number
+            const DivineFlowSectionLabel('Vehicle details'),
             TextFormField(
               controller: _numberController,
               autofocus: false,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Vehicle Number',
-                hintText: 'e.g., MH 12 AB 1234',
-                prefixIcon: Icon(Icons.numbers),
+              decoration: DesignComponents.inputDecoration(
+                label: 'Vehicle Number',
+                hint: 'e.g., MH 12 AB 1234',
+                prefixIcon: const Icon(Icons.numbers_rounded),
               ),
               textCapitalization: TextCapitalization.characters,
               validator: Validators.vehicleNumber,
             ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            // Type Dropdown
+            const SizedBox(height: DesignSpacing.md),
             DropdownButtonFormField<String>(
               initialValue: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Vehicle Type',
-                prefixIcon: Icon(Icons.directions_car),
+              decoration: DesignComponents.inputDecoration(
+                label: 'Vehicle Type',
+                prefixIcon: const Icon(Icons.directions_car_outlined),
               ),
-              items: _vehicleTypes.map((type) {
-                return DropdownMenuItem(value: type, child: Text(type));
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value!;
-                });
-              },
+              items: _vehicleTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+              onChanged: (value) => setState(() => _selectedType = value!),
             ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            // Brand
+            const SizedBox(height: DesignSpacing.lg),
+            const DivineFlowSectionLabel('Optional details'),
             TextFormField(
               controller: _brandController,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Brand (Optional)',
-                hintText: 'e.g., Honda, Hero',
-                prefixIcon: Icon(Icons.branding_watermark),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Brand', hint: 'e.g., Honda, Hero'),
             ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            // Model
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _modelController,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Model (Optional)',
-                hintText: 'e.g., City, Splendor',
-                prefixIcon: Icon(Icons.category),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Model', hint: 'e.g., City, Splendor'),
             ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            // Color
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _colorController,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Color (Optional)',
-                hintText: 'e.g., White, Black',
-                prefixIcon: Icon(Icons.palette),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // Submit Button
-            ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitForm,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.vehicle == null ? 'Add Vehicle' : 'Update Vehicle',
-                    ),
+              decoration: DesignComponents.inputDecoration(label: 'Color', hint: 'e.g., White, Black'),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          border: Border(top: BorderSide(color: DesignColors.borderLight.withValues(alpha: 0.9))),
+          boxShadow: DesignElevation.sm,
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.fromLTRB(DesignSpacing.lg, 0, DesignSpacing.lg, DesignSpacing.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
+            child: FilledButton(
+              onPressed: _isSubmitting ? null : _submitForm,
+              style: FilledButton.styleFrom(
+                backgroundColor: DesignColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  : Text(widget.vehicle == null ? 'Add Vehicle' : 'Update Vehicle',
+                      style: DesignTypography.label.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ),
         ),
       ),
     );

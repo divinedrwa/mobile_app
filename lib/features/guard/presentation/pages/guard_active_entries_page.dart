@@ -372,32 +372,41 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(guardActiveVisitorsTabProvider);
+    final staleData = async.valueOrNull;
+    final isInitialLoad = async.isLoading && staleData == null;
+    final hasError = async.hasError && staleData == null;
 
-    return async.when(
-      loading: () => const SizedBox.expand(
-        child: GuardListSkeleton(),
+    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
+    if (hasError) return SizedBox.expand(
+      child: guardRefreshableMinHeight(
+        context: context,
+        scrollController: widget.scrollController,
+        onRefresh: () async {
+          ref.invalidate(guardActiveVisitorsTabProvider);
+          await ref.read(guardActiveVisitorsTabProvider.future);
+        },
+        children: [
+          GuardEmptyPlaceholder(
+            icon: Icons.cloud_off_rounded,
+            iconColor: GuardTokens.warning,
+            title: 'Could not load visitors',
+            message: userFacingMessage(async.error!, 'Check your connection and try again.'),
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(guardActiveVisitorsTabProvider),
+          ),
+        ],
       ),
-      error: (e, _) => SizedBox.expand(
-        child: guardRefreshableMinHeight(
-          context: context,
-          scrollController: widget.scrollController,
-          onRefresh: () async {
-            ref.invalidate(guardActiveVisitorsTabProvider);
-            await ref.read(guardActiveVisitorsTabProvider.future);
-          },
-          children: [
-            GuardEmptyPlaceholder(
-              icon: Icons.cloud_off_rounded,
-              iconColor: GuardTokens.warning,
-              title: 'Could not load visitors',
-              message: userFacingMessage(e, 'Check your connection and try again.'),
-              actionLabel: 'Retry',
-              onAction: () => ref.invalidate(guardActiveVisitorsTabProvider),
-            ),
-          ],
-        ),
-      ),
-      data: (data) {
+    );
+
+    // Use stale data during background refresh to avoid list flicker
+    final liveOrStale = staleData ?? async.valueOrNull;
+    if (liveOrStale == null) return const SizedBox.expand(child: GuardListSkeleton());
+
+    // original data branch — replace local `data` with `liveOrStale`
+    return _buildVisitorsList(context, liveOrStale);
+  }
+
+  Widget _buildVisitorsList(BuildContext context, dynamic data) {
         final rows = data.pendingVisitors;
         final ve = data.pendingVisitorsError;
 
@@ -478,8 +487,6 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             ),
           ),
         );
-      },
-    );
   }
 
   Widget? _visitorTrailing(
@@ -605,50 +612,45 @@ class _PreApprovedTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(guardPreApprovedEntriesProvider);
+    final stale = async.valueOrNull;
+    final isInitialLoad = async.isLoading && stale == null;
+    final hasError = async.hasError && stale == null;
 
-    return async.when(
-      loading: () => const SizedBox.expand(
-        child: GuardListSkeleton(),
-      ),
-      error: (e, _) => SizedBox.expand(
-        child: guardRefreshableMinHeight(
-          context: context,
-          scrollController: scrollController,
-          onRefresh: () async {
-            ref.invalidate(guardPreApprovedEntriesProvider);
-            await ref.read(guardPreApprovedEntriesProvider.future);
-          },
-          children: [
-            GuardEmptyPlaceholder(
-              icon: Icons.cloud_off_rounded,
-              iconColor: GuardTokens.warning,
-              title: 'Could not load pre-approved',
-              message: userFacingMessage(
-                e,
-                'Check your connection and try again.',
-              ),
-              actionLabel: 'Retry',
-              onAction: () => ref.invalidate(guardPreApprovedEntriesProvider),
-            ),
-          ],
-        ),
-      ),
-      data: (rows) => SizedBox.expand(
-        child: RefreshIndicator(
-          color: GuardTokens.guardAccentDeep,
-          onRefresh: () async {
-            ref.invalidate(guardPreApprovedEntriesProvider);
-            await ref.read(guardPreApprovedEntriesProvider.future);
-          },
-          child: GuardPreApprovedEntriesListContent(
-            rows: rows,
-            scrollController: scrollController,
-            showVisitorArrivedButton: true,
-            onEntryTap: (e) => context.push(
-              GuardRoutes.preApprovedArrival,
-              extra: e,
-            ),
+    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
+    if (hasError) return SizedBox.expand(
+      child: guardRefreshableMinHeight(
+        context: context,
+        scrollController: scrollController,
+        onRefresh: () async {
+          ref.invalidate(guardPreApprovedEntriesProvider);
+          await ref.read(guardPreApprovedEntriesProvider.future);
+        },
+        children: [
+          GuardEmptyPlaceholder(
+            icon: Icons.cloud_off_rounded,
+            iconColor: GuardTokens.warning,
+            title: 'Could not load pre-approved',
+            message: userFacingMessage(async.error!, 'Check your connection and try again.'),
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(guardPreApprovedEntriesProvider),
           ),
+        ],
+      ),
+    );
+
+    final rows = stale ?? [];
+    return SizedBox.expand(
+      child: RefreshIndicator(
+        color: GuardTokens.guardAccentDeep,
+        onRefresh: () async {
+          ref.invalidate(guardPreApprovedEntriesProvider);
+          await ref.read(guardPreApprovedEntriesProvider.future);
+        },
+        child: GuardPreApprovedEntriesListContent(
+          rows: rows,
+          scrollController: scrollController,
+          showVisitorArrivedButton: true,
+          onEntryTap: (e) => context.push(GuardRoutes.preApprovedArrival, extra: e),
         ),
       ),
     );
@@ -663,11 +665,13 @@ class _DeliveriesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final parcelsAsync = ref.watch(guardPendingParcelsProvider);
+    final stale = parcelsAsync.valueOrNull;
+    final isInitialLoad = parcelsAsync.isLoading && stale == null;
+
+    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
 
     return parcelsAsync.when(
-      loading: () => const SizedBox.expand(
-        child: GuardListSkeleton(),
-      ),
+      loading: () => const SizedBox.expand(child: GuardListSkeleton()),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
         context: context,
@@ -747,81 +751,25 @@ class _DeliveriesTab extends ConsumerWidget {
                   p.status != ParcelStatus.collected &&
                   p.status != ParcelStatus.returned;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  title: Text(
-                    primaryTitle,
-                    style: GuardTokens.bodyStyle(context).copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (p.trackingNumber.trim().isNotEmpty &&
-                            primaryTitle.trim() !=
-                                p.trackingNumber.trim())
-                          Text(
-                            'Tracking · ${p.trackingNumber}',
-                            style: GuardTokens.captionStyle(context),
-                          ),
-                        if (p.courier.trim().isNotEmpty &&
-                            primaryTitle.trim() !=
-                                p.courier.trim())
-                          Text(
-                            'Carrier · ${p.courier}',
-                            style: GuardTokens.captionStyle(context),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Received ${_fmtTime(p.receivedAt)}',
-                          style: GuardTokens.captionStyle(context),
-                        ),
-                        if ((p.status == ParcelStatus.collected ||
-                                p.status == ParcelStatus.returned))
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              'Status · ${p.status.label}',
-                              style: GuardTokens.captionStyle(context),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  trailing: canCollect
-                      ? _BusyTextActionButton(
-                          style: GuardTokens.textLink(context),
-                          label: 'Collected',
-                          busyLabel: 'Marking…',
-                          onPressed: () async {
-                            try {
-                              await ref
-                                  .read(guardRepositoryProvider)
-                                  .markParcelCollected(p.id!);
-                              ref.invalidate(guardPendingParcelsProvider);
-                              ref.invalidate(guardTodayParcelsProvider);
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(userFacingMessage(e)),
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        )
-                      : null,
-                ),
+              return _DeliveryCard(
+                parcel: p,
+                primaryTitle: primaryTitle,
+                canCollect: canCollect,
+                onCollected: () async {
+                  try {
+                    await ref
+                        .read(guardRepositoryProvider)
+                        .markParcelCollected(p.id!);
+                    ref.invalidate(guardPendingParcelsProvider);
+                    ref.invalidate(guardTodayParcelsProvider);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(userFacingMessage(e))),
+                      );
+                    }
+                  }
+                },
               );
             },
           ),
@@ -840,11 +788,12 @@ class _VehicleTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(guardGateVehicleTodayProvider);
+    final isInitialLoad = async.isLoading && async.valueOrNull == null;
+
+    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
 
     return async.when(
-      loading: () => const SizedBox.expand(
-        child: GuardListSkeleton(),
-      ),
+      loading: () => const SizedBox.expand(child: GuardListSkeleton()),
       error: (e, _) => SizedBox.expand(
         child: guardRefreshableMinHeight(
         context: context,
@@ -916,83 +865,26 @@ class _VehicleTab extends ConsumerWidget {
                 );
               }
               final v = entries[i - 1];
-              final subtitleLine = [
-                _vehicleKindLabel(v.kind),
-                if (v.flatLabel.isNotEmpty) v.flatLabel,
-              ].join(' · ');
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  leading: const Icon(Icons.directions_car_outlined),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          v.registrationNumber.isNotEmpty ? v.registrationNumber : '(No plate)',
-                          style: GuardTokens.bodyStyle(context).copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      _StatePill(
-                        label: v.isInside ? 'Inside' : 'Out',
-                        tone: v.isInside
-                            ? GuardTokens.success
-                            : GuardTokens.textSecondary,
-                      ),
-                    ],
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          subtitleLine,
-                          style: GuardTokens.captionStyle(context),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          v.isInside
-                              ? 'Awaiting exit mark'
-                              : 'Exit recorded',
-                          style: GuardTokens.captionStyle(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  trailing: !v.isInside || v.id.isEmpty
-                      ? null
-                      : _BusyTextActionButton(
-                          style: GuardTokens.textLink(context),
-                          label: 'Exit',
-                          busyLabel: 'Recording…',
-                          onPressed: () async {
-                            try {
-                              await ref
-                                  .read(guardRepositoryProvider)
-                                  .markGateVehicleExit(v.id);
-                              ref.invalidate(
-                                guardGateVehicleTodayProvider,
-                              );
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(
-                                  SnackBar(
-                                    content: Text(userFacingMessage(e)),
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                ),
+              return _VehicleCard(
+                entry: v,
+                onMarkExit: (!v.isInside || v.id.isEmpty)
+                    ? null
+                    : () async {
+                        try {
+                          await ref
+                              .read(guardRepositoryProvider)
+                              .markGateVehicleExit(v.id);
+                          ref.invalidate(guardGateVehicleTodayProvider);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(userFacingMessage(e)),
+                              ),
+                            );
+                          }
+                        }
+                      },
               );
             },
           ),
@@ -1017,6 +909,293 @@ String _vehicleKindLabel(String kind) {
 String _fmtTime(DateTime? dt) {
   if (dt == null) return '--:--';
   return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+}
+
+class _DeliveryCard extends StatelessWidget {
+  const _DeliveryCard({
+    required this.parcel,
+    required this.primaryTitle,
+    required this.canCollect,
+    required this.onCollected,
+  });
+
+  final dynamic parcel;
+  final String primaryTitle;
+  final bool canCollect;
+  final Future<void> Function() onCollected;
+
+  Color _statusTone() {
+    if (parcel.status == ParcelStatus.collected) return GuardTokens.success;
+    if (parcel.status == ParcelStatus.returned) return GuardTokens.textSecondary;
+    return GuardTokens.warning;
+  }
+
+  String _statusLabel() => parcel.status.label as String;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tone = _statusTone();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+          boxShadow: _visitorsListCardShadow(context),
+        ),
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+            side: BorderSide(
+              color: isDark
+                  ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                  : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: GuardTokens.guardAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(
+                          color: GuardTokens.guardAccent.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 20,
+                        color: GuardTokens.guardAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  primaryTitle,
+                                  style: GuardTokens.headingStyle(context).copyWith(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.25,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _StatePill(label: _statusLabel(), tone: tone),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          if ((parcel.trackingNumber as String).trim().isNotEmpty &&
+                              primaryTitle.trim() != (parcel.trackingNumber as String).trim())
+                            _VisitorMetaLine(
+                              icon: Icons.tag_rounded,
+                              text: 'Tracking · ${parcel.trackingNumber}',
+                            ),
+                          if ((parcel.courier as String).trim().isNotEmpty &&
+                              primaryTitle.trim() != (parcel.courier as String).trim())
+                            _VisitorMetaLine(
+                              icon: Icons.local_shipping_outlined,
+                              text: 'Carrier · ${parcel.courier}',
+                            ),
+                          _VisitorMetaLine(
+                            icon: Icons.schedule_rounded,
+                            text: 'Received ${_fmtTime(parcel.receivedAt as DateTime?)}',
+                            muted: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (canCollect) ...[
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: isDark
+                      ? GuardTokens.darkBorder.withValues(alpha: 0.65)
+                      : GuardTokens.borderSubtle.withValues(alpha: 0.75),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: _BusyTextActionButton(
+                      style: GuardTokens.textLink(context),
+                      label: 'Mark collected',
+                      busyLabel: 'Marking…',
+                      onPressed: onCollected,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.entry,
+    required this.onMarkExit,
+  });
+
+  final dynamic entry;
+  final Future<void> Function()? onMarkExit;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isInside = entry.isInside as bool;
+    final tone = isInside ? GuardTokens.success : GuardTokens.textSecondary;
+    final reg = (entry.registrationNumber as String).isNotEmpty
+        ? entry.registrationNumber as String
+        : '(No plate)';
+    final subtitleLine = [
+      _vehicleKindLabel(entry.kind as String),
+      if ((entry.flatLabel as String).isNotEmpty) entry.flatLabel as String,
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+          boxShadow: _visitorsListCardShadow(context),
+        ),
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+            side: BorderSide(
+              color: isDark
+                  ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                  : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: tone.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(color: tone.withValues(alpha: 0.22)),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.directions_car_outlined,
+                        size: 20,
+                        color: tone,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  reg,
+                                  style: GuardTokens.headingStyle(context).copyWith(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.25,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _StatePill(
+                                label: isInside ? 'Inside' : 'Out',
+                                tone: tone,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          _VisitorMetaLine(
+                            icon: Icons.layers_outlined,
+                            text: subtitleLine,
+                          ),
+                          _VisitorMetaLine(
+                            icon: isInside
+                                ? Icons.login_rounded
+                                : Icons.logout_rounded,
+                            text: isInside
+                                ? 'Awaiting exit mark'
+                                : 'Exit recorded',
+                            muted: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onMarkExit != null) ...[
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: isDark
+                      ? GuardTokens.darkBorder.withValues(alpha: 0.65)
+                      : GuardTokens.borderSubtle.withValues(alpha: 0.75),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: _BusyTextActionButton(
+                      style: GuardTokens.textLink(context),
+                      label: 'Mark exit',
+                      busyLabel: 'Recording…',
+                      onPressed: onMarkExit!,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// A small `TextButton` wrapper that owns its own busy state so per-row

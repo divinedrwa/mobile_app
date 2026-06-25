@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/poll_model.dart';
 import '../../data/providers/content_provider.dart';
 
@@ -37,7 +38,19 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Poll Details'),
+        backgroundColor: DesignColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Text(
+          'Poll Details',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -206,21 +219,28 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
         ),
       ),
       bottomNavigationBar: widget.poll.canVote && _selectedOptionId != null
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitVote,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: DesignColors.surface,
+                border: Border(top: BorderSide(color: DesignColors.borderLight.withValues(alpha: 0.9))),
+                boxShadow: DesignElevation.sm,
+              ),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(DesignSpacing.lg, 0, DesignSpacing.lg, DesignSpacing.sm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
+                  child: FilledButton(
+                    onPressed: _isSubmitting ? null : _submitVote,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DesignColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                      shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                        : Text('Submit Vote', style: DesignTypography.label.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Submit Vote'),
                 ),
               ),
             )
@@ -237,31 +257,31 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
   ) {
     final showResults = widget.poll.hasVoted || !widget.poll.canVote;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: InkWell(
-        onTap: widget.poll.canVote
-            ? () {
-                setState(() {
-                  _selectedOptionId = option.id;
-                });
-              }
-            : null,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Material(
+        color: DesignColors.surface,
         borderRadius: DesignRadius.borderLG,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: DesignRadius.borderLG,
-            border: Border.all(
-              color: isSelected
-                  ? DesignColors.primary
-                  : (isMyVote && showResults)
-                      ? DesignColors.success
-                      : Colors.transparent,
-              width: isSelected || (isMyVote && showResults) ? 2 : 0,
+        child: InkWell(
+          onTap: widget.poll.canVote
+              ? () => setState(() => _selectedOptionId = option.id)
+              : null,
+          borderRadius: DesignRadius.borderLG,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: DesignRadius.borderLG,
+              border: Border.all(
+                color: isSelected
+                    ? DesignColors.primary
+                    : (isMyVote && showResults)
+                        ? DesignColors.success
+                        : DesignColors.borderLight,
+                width: isSelected || (isMyVote && showResults) ? 2 : 1,
+              ),
+              boxShadow: DesignElevation.sm,
             ),
-          ),
-          child: Column(
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -352,6 +372,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
           ),
         ),
       ),
+    ),
     ).animate().fadeIn(
           duration: 300.ms,
           delay: DesignAnimations.staggerFor(index + 2),

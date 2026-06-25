@@ -61,41 +61,50 @@ class _AdminSocietySettingsScreenState
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _refresh,
-        child: settingsAsync.when(
-          loading: () => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: ShimmerWrap(
-              child: Column(
-                children: List.generate(
-                  4,
-                  (i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          error: (e, _) => ListView(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 80),
-                child: EmptyStateWidget(
-                  icon: Icons.error_outline_rounded,
-                  title: 'Failed to load settings',
-                  subtitle: 'Something went wrong. Please try again.',
-                  iconColor: DesignColors.error,
-                  actionLabel: 'Retry',
-                  onAction: _refresh,
-                ),
-              ),
-            ],
-          ),
-          data: (settings) => _buildBody(settings),
-        ),
+        child: _buildSettingsBody(settingsAsync),
       ),
     );
   }
+
+  Widget _buildSettingsBody(AsyncValue<dynamic> settingsAsync) {
+    final settingsData = settingsAsync.valueOrNull;
+    final isInitialLoad = settingsAsync.isLoading && settingsData == null;
+    final hasError = settingsAsync.hasError && settingsData == null;
+
+    if (isInitialLoad) return _loadingShimmer();
+    if (hasError) return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 80),
+          child: EmptyStateWidget(
+            icon: Icons.error_outline_rounded,
+            title: 'Failed to load settings',
+            subtitle: 'Something went wrong. Please try again.',
+            iconColor: DesignColors.error,
+            actionLabel: 'Retry',
+            onAction: _refresh,
+          ),
+        ),
+      ],
+    );
+    if (settingsData != null) return _buildBody(settingsData);
+    return _loadingShimmer();
+  }
+
+  Widget _loadingShimmer() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    child: ShimmerWrap(
+      child: Column(
+        children: List.generate(
+          4,
+          (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ShimmerBox(height: 64, borderRadius: DesignRadius.lg),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _buildBody(Map<String, dynamic> settings) {
     final societyName = settings['name']?.toString() ??

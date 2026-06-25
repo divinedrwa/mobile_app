@@ -10,7 +10,6 @@ import '../../../../core/widgets/animated_counter.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../resident/data/models/maintenance_due_model.dart';
 import '../../../resident/data/models/notification_model.dart';
 import '../../../resident/data/providers/dashboard_provider.dart';
 import '../../../resident/data/providers/notification_provider.dart';
@@ -96,11 +95,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               _buildHeroCard(context, user?.name, user?.societyName, unread),
               Padding(
                 padding: const EdgeInsets.fromLTRB(_kPadH, 14, _kPadH, 100),
-                child: dashboardAsync.when(
-                  loading: _skeleton,
-                  error: (_, __) => _error(),
-                  data: (d) => _body(context, d),
-                ),
+                child: Builder(builder: (context) {
+                  final data = dashboardAsync.valueOrNull;
+                  final isInitialLoad = dashboardAsync.isLoading && data == null;
+                  final hasError = dashboardAsync.hasError && data == null;
+                  if (isInitialLoad) return _skeleton();
+                  if (hasError) return _error();
+                  if (data != null) return _body(context, data);
+                  return _skeleton();
+                }),
               ),
             ],
           ),
@@ -374,7 +377,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         // Same "Society Finances" card the resident home page shows.
         HomeSocietyFinances(
           dashboardAsync: fundAsync,
-          pendingState: const AsyncValue.data(<MaintenanceDueModel>[]),
         ),
         SizedBox(height: _kSectionGap),
         _buildAdminMaintenanceCard(ctx),

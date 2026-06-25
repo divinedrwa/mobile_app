@@ -5,9 +5,9 @@ class AppConstants {
   // App Info — single source of truth for all branding strings.
   static const String appName = 'GatePass+';
   static const String appTagline = 'Society Management Platform';
-  /// Fallback version string. Runtime code should use
-  /// `PackageInfo.fromPlatform()` for the actual installed version.
-  static const String appVersion = '1.1.1';
+  /// Fallback version string shown before PackageInfo resolves.
+  /// Keep in sync with pubspec.yaml `version:` line.
+  static const String appVersion = '1.1.10';
 
   /// Splash screen credit line. Override per-build:
   /// `--dart-define=ORG_NAME=Your Welfare Association`
@@ -242,7 +242,7 @@ class AppConstants {
   /// `--dart-define=SUPPORT_EMAIL=…`.
   static const String supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',
-    defaultValue: 'support@gatepass.app',
+    defaultValue: 'divine.drwa@gmail.com',
   );
 
   /// Google Play listing (`applicationId` from Android `build.gradle.kts`).

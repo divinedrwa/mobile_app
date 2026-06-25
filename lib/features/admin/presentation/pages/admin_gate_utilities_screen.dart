@@ -138,22 +138,47 @@ class _AdminGateUtilitiesScreenState
     required String confirmLabel,
     required Color confirmColor,
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: confirmColor.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(Icons.warning_amber_rounded, color: confirmColor, size: 28)),
+              const SizedBox(height: 16),
+              Text(title, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text(message, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx, false),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Cancel'))),
+                const SizedBox(width: 12),
+                Expanded(child: FilledButton(
+                  onPressed: () => Navigator.pop(sheetCtx, true),
+                  style: FilledButton.styleFrom(backgroundColor: confirmColor, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: Text(confirmLabel, style: const TextStyle(fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 16),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: confirmColor),
-            child: Text(confirmLabel),
-          ),
-        ],
+        ),
       ),
     );
     return result == true;

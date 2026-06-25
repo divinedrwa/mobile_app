@@ -489,7 +489,31 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      child: Container(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _sectionTitle('Payment record'),
+              const SizedBox(width: 6),
+              if (stars > 0)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Icon(
+                        i < stars
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: 14,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -534,25 +558,12 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
             if (badgeIcon != null)
-              Icon(badgeIcon, size: 22, color: const Color(0xFF16A34A))
-            else
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < 3; i++)
-                    Icon(
-                      i < stars
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      size: 16,
-                      color: const Color(0xFFF59E0B),
-                    ),
-                ],
-              ),
+              Icon(badgeIcon, size: 22, color: const Color(0xFF16A34A)),
           ],
         ),
+          ),
+        ],
       ),
     );
   }

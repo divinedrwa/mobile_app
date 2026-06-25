@@ -777,27 +777,38 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
                   (r['status']?.toString() ?? '').toUpperCase();
               final isChecked = _selectedVillaIds.contains(villaId);
 
-              return ListTile(
-                dense: true,
-                leading: Checkbox(
-                  value: isChecked,
-                  activeColor: DesignColors.primary,
-                  onChanged: _busy ? null : (_) => _toggle(villaId),
-                ),
-                title: Text(
-                  'Villa $villa',
-                  style: DesignTypography.bodyMedium.copyWith(
-                    color: DesignColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+              return InkWell(
+                onTap: _busy ? null : () => _toggle(villaId),
+                borderRadius: BorderRadius.circular(DesignRadius.md),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: isChecked,
+                          activeColor: DesignColors.primary,
+                          onChanged: _busy ? null : (_) => _toggle(villaId),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Villa $villa', style: DesignTypography.bodyMedium.copyWith(color: DesignColors.textPrimary, fontWeight: FontWeight.w600)),
+                            Text('$owner · ${inr.format(remaining)} due', style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      _statusBadge(status),
+                    ],
                   ),
                 ),
-                subtitle: Text(
-                  '$owner · ${inr.format(remaining)} due',
-                  style: DesignTypography.bodySmall
-                      .copyWith(color: DesignColors.textSecondary),
-                ),
-                trailing: _statusBadge(status),
-                onTap: _busy ? null : () => _toggle(villaId),
               );
             },
           ),

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../data/models/daily_help_model.dart';
 import '../../data/providers/daily_help_provider.dart';
@@ -51,16 +51,27 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DesignColors.background,
       appBar: AppBar(
+        backgroundColor: DesignColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
+        ),
         title: Text(
-          widget.helper == null ? 'Add Vendor' : 'Edit Vendor',
+          widget.helper == null ? 'Add Staff' : 'Edit Staff',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
         ),
       ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(DesignSpacing.lg, DesignSpacing.md, DesignSpacing.lg, DesignSpacing.xxxl),
           children: [
             // Photo
             Center(
@@ -100,61 +111,59 @@ class _AddDailyHelpScreenState extends ConsumerState<AddDailyHelpScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: DesignSpacing.lg),
+            const DivineFlowSectionLabel('Staff details'),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                prefixIcon: Icon(Icons.person),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Name', prefixIcon: const Icon(Icons.person_outline_rounded)),
               validator: (v) => v?.isEmpty ?? true ? 'Please enter name' : null,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: DesignSpacing.md),
             DropdownButtonFormField<String>(
               initialValue: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Type',
-                prefixIcon: Icon(Icons.work),
-              ),
-              items: _helpTypes
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                  .toList(),
+              decoration: DesignComponents.inputDecoration(label: 'Type', prefixIcon: const Icon(Icons.work_outline_rounded)),
+              items: _helpTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
               onChanged: (v) => setState(() => _selectedType = v!),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                prefixIcon: Icon(Icons.phone),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Phone', prefixIcon: const Icon(Icons.phone_outlined)),
               keyboardType: TextInputType.phone,
               validator: Validators.phone,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _timingsController,
-              decoration: const InputDecoration(
-                labelText: 'Timings (Optional)',
-                hintText: 'e.g., 8:00 AM - 10:00 AM',
-                prefixIcon: Icon(Icons.access_time),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitForm,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(widget.helper == null ? 'Add Vendor' : 'Update Vendor'),
+              decoration: DesignComponents.inputDecoration(label: 'Timings (Optional)', hint: 'e.g., 8:00 AM - 10:00 AM', prefixIcon: const Icon(Icons.access_time_outlined)),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          border: Border(top: BorderSide(color: DesignColors.borderLight.withValues(alpha: 0.9))),
+          boxShadow: DesignElevation.sm,
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.fromLTRB(DesignSpacing.lg, 0, DesignSpacing.lg, DesignSpacing.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
+            child: FilledButton(
+              onPressed: _isSubmitting ? null : _submitForm,
+              style: FilledButton.styleFrom(
+                backgroundColor: DesignColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  : Text(widget.helper == null ? 'Add Staff' : 'Update Staff',
+                      style: DesignTypography.label.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ),
         ),
       ),
     );

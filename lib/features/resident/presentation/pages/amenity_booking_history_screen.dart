@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../data/models/amenity_booking_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
 import '../widgets/list_skeleton.dart';
@@ -40,33 +41,27 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
     return Scaffold(
       backgroundColor: DesignColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: DesignColors.surface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               'My Bookings',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: DesignColors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
             ),
-            if (upcomingCount > 0)
-              Text(
-                '$upcomingCount upcoming',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: DesignColors.textSecondary,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
+            Text(
+              upcomingCount > 0 ? '$upcomingCount upcoming' : 'Amenity booking history',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DesignColors.textSecondary, height: 1.2),
+            ),
           ],
         ),
         bottom: TabBar(
@@ -74,12 +69,13 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           labelColor: DesignColors.primary,
           unselectedLabelColor: DesignColors.textSecondary,
           indicatorColor: DesignColors.primary,
+          dividerColor: DesignColors.borderLight,
           tabs: [
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.upcoming, size: 18),
+                  const Icon(Icons.upcoming_outlined, size: 18),
                   const SizedBox(width: 8),
                   const Text('Upcoming'),
                   if (upcomingCount > 0) ...[
@@ -92,11 +88,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
                       ),
                       child: Text(
                         '$upcomingCount',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -107,7 +99,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 18),
+                  Icon(Icons.history_rounded, size: 18),
                   SizedBox(width: 8),
                   Text('Past'),
                 ],
@@ -117,7 +109,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.list, size: 18),
+                  Icon(Icons.list_alt_rounded, size: 18),
                   SizedBox(width: 8),
                   Text('All'),
                 ],
@@ -157,22 +149,15 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           );
         },
         loading: () => const ListSkeleton(),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'Failed to load bookings',
-                style: TextStyle(fontSize: 16, color: DesignColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.refresh(amenityBookingProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (error, stack) => Padding(
+          padding: const EdgeInsets.all(DesignSpacing.lg),
+          child: EnterpriseInfoBanner(
+            icon: Icons.event_seat_outlined,
+            title: 'Could not load bookings',
+            message: 'Check your connection and try again.',
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.refresh(amenityBookingProvider),
           ),
         ),
       ),
@@ -447,55 +432,89 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
   void _handleCancel(AmenityBookingModel booking) {
     final reasonController = TextEditingController();
     final parentContext = context;
-    
-    showDialog(
+
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Booking'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Are you sure you want to cancel your ${booking.amenityName} booking?'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: DesignColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No, Keep It'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final error = await ref.read(amenityBookingProvider.notifier).cancelBooking(
-                    booking.id!,
-                    reason: reasonController.text.isNotEmpty ? reasonController.text : null,
-                  );
-              if (!parentContext.mounted) return;
-              ScaffoldMessenger.of(parentContext).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    error ?? 'Booking cancelled successfully',
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
                   ),
-                  backgroundColor: error == null ? DesignColors.success : DesignColors.error,
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: DesignColors.error,
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
+                    child: const Icon(Icons.event_busy_outlined, color: DesignColors.error, size: 28),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Cancel booking?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Cancel your ${booking.amenityName} booking?\nThis action cannot be undone.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    decoration: DesignComponents.inputDecoration(label: 'Reason (optional)'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetCtx),
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                          child: const Text('No, Keep It'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () async {
+                            Navigator.pop(sheetCtx);
+                            final error = await ref.read(amenityBookingProvider.notifier).cancelBooking(
+                                  booking.id!,
+                                  reason: reasonController.text.isNotEmpty ? reasonController.text : null,
+                                );
+                            if (!parentContext.mounted) return;
+                            ScaffoldMessenger.of(parentContext).showSnackBar(
+                              SnackBar(
+                                content: Text(error ?? 'Booking cancelled successfully'),
+                                backgroundColor: error == null ? DesignColors.success : DesignColors.error,
+                              ),
+                            );
+                          },
+                          style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                          child: const Text('Yes, Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
-            child: const Text('Yes, Cancel'),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

@@ -355,8 +355,6 @@ class _AdminWaterAnalyticsScreenState
           final label = item['label']?.toString() ??
               '${item['hour']?.toString().padLeft(2, '0')}:00';
           final total = _toInt(item['totalEvents']);
-          final on = _toInt(item['onCount']);
-          final off = _toInt(item['offCount']);
           final fraction = maxVal > 0 ? total / maxVal : 0.0;
 
           return Padding(

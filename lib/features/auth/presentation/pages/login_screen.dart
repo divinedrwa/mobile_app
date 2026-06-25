@@ -650,8 +650,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await SecureCredentialsStore.instance.clearRememberMe();
         }
 
-        if (StorageService.getBool(AppConstants.keyBiometricLoginEnabled) ==
-            true) {
+        final biometricWasEnabled =
+            StorageService.getBool(AppConstants.keyBiometricLoginEnabled) == true;
+        final hadCredentials =
+            biometricWasEnabled && !await SecureCredentialsStore.instance.hasCredentials();
+        if (biometricWasEnabled) {
           await SecureCredentialsStore.instance.saveCredentials(
             username: _usernameOrEmailController.text.trim(),
             password: _passwordController.text.trim(),
@@ -663,13 +666,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // automatically when auth state changes. No explicit context.go needed.
         final user = ref.read(authProvider).user;
         if (user != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Welcome back, ${user.name}!'),
-              backgroundColor: DesignColors.success,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          // If this login just completed biometric setup, show a confirmation.
+          if (hadCredentials && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Biometric login is now active. Use fingerprint next time!'),
+                backgroundColor: DesignColors.success,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Welcome back, ${user.name}!'),
+                backgroundColor: DesignColors.success,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
         }
       } else {
         DesignHaptics.error();

@@ -699,10 +699,16 @@ class NotificationService {
           }
           return true;
         }
-        if (type == 'SOS_CREATED' ||
-            type == 'SOS_ESCALATION' ||
-            type == 'SOS_ESCALATION_ADMIN') {
+        if (type == 'SOS_CREATED' || type == 'SOS_ESCALATION') {
           router.go('/guard/dashboard');
+          return true;
+        }
+        if (type == 'SOS_ESCALATION_ADMIN') {
+          if (_isGuardSession()) {
+            router.go('/guard/dashboard');
+          } else {
+            router.push('/resident/admin-sos');
+          }
           return true;
         }
         if (type == 'SOS_UPDATE' || type == 'SOS_CANCELLED') {
@@ -728,7 +734,7 @@ class NotificationService {
           return true;
         }
         if (type == 'notice') {
-          router.go('/resident');
+          router.push('/resident/notices');
           return true;
         }
         if (type == 'BILLING_CYCLE_CREATED' ||
@@ -743,7 +749,7 @@ class NotificationService {
           return true;
         }
         if (type == 'PARCEL_RECEIVED') {
-          router.go('/resident');
+          router.push('/resident/parcels');
           return true;
         }
         if (type == 'amenity_booking_status') {

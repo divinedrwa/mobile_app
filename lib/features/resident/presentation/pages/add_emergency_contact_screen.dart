@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../data/providers/emergency_contact_provider.dart';
 
 class AddEmergencyContactScreen extends ConsumerStatefulWidget {
@@ -33,84 +33,82 @@ class _AddEmergencyContactScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DesignColors.background,
       appBar: AppBar(
-        title: const Text('Add Emergency Contact'),
         backgroundColor: DesignColors.error,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+        ),
+        title: const Text(
+          'Add Emergency Contact',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+        ),
       ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(DesignSpacing.lg, DesignSpacing.md, DesignSpacing.lg, DesignSpacing.xxxl),
           children: [
-            Card(
-              color: DesignColors.error.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: DesignColors.error),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'This contact will be notified during SOS alerts',
-                        style: TextStyle(color: DesignColors.error),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const EnterpriseInfoBanner(
+              icon: Icons.warning_amber_rounded,
+              title: 'SOS notification recipient',
+              message: 'This contact will be notified immediately when you trigger an SOS emergency alert.',
+              tone: EnterpriseTone.danger,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: DesignSpacing.lg),
             TextFormField(
               controller: _nameController,
               autofocus: false,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                prefixIcon: Icon(Icons.person),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Full Name', prefixIcon: const Icon(Icons.person_outline_rounded)),
               validator: (v) => v?.isEmpty ?? true ? 'Please enter name' : null,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _relationController,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Relation',
-                hintText: 'e.g., Brother, Friend',
-                prefixIcon: Icon(Icons.people),
-              ),
-              validator: (v) =>
-                  v?.isEmpty ?? true ? 'Please enter relation' : null,
+              decoration: DesignComponents.inputDecoration(label: 'Relation', hint: 'e.g., Brother, Friend', prefixIcon: const Icon(Icons.people_outline_rounded)),
+              validator: (v) => v?.isEmpty ?? true ? 'Please enter relation' : null,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: DesignSpacing.md),
             TextFormField(
               controller: _phoneController,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                prefixIcon: Icon(Icons.phone),
-              ),
+              decoration: DesignComponents.inputDecoration(label: 'Phone Number', prefixIcon: const Icon(Icons.phone_outlined)),
               keyboardType: TextInputType.phone,
               validator: Validators.phone,
             ),
-            const SizedBox(height: AppSpacing.xl),
-            ElevatedButton(
+          ],
+        ),
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          border: Border(top: BorderSide(color: DesignColors.borderLight.withValues(alpha: 0.9))),
+          boxShadow: DesignElevation.sm,
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.fromLTRB(DesignSpacing.lg, 0, DesignSpacing.lg, DesignSpacing.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
+            child: FilledButton(
               onPressed: _isSubmitting ? null : _submitForm,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: FilledButton.styleFrom(
                 backgroundColor: DesignColors.error,
+                padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
               ),
               child: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Add Contact'),
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  : Text('Add Contact', style: DesignTypography.label.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -88,14 +88,8 @@ final residentHomeQuickActionsGrid = [
 ];
 
 /// Overflow actions shown in the “More” bottom sheet.
+/// Maintenance is excluded here — owners reach it via the home maintenance card.
 final residentQuickActionsOverflow = [
-  const QuickAction(
-    id: 'maintenance_expenses',
-    label: 'Maintenance & expenses',
-    icon: Icons.bar_chart_rounded,
-    color: Color(0xFF1565C0),
-    route: '/resident/maintenance-payment',
-  ),
   const QuickAction(
     id: 'utilities',
     label: 'Utilities',
@@ -135,8 +129,119 @@ const moreQuickAction = QuickAction(
   route: '/resident/more',
 );
 
-/// “View all” bottom sheet — shortcuts not on the home grid (by id), even if lists overlap later.
-final List<QuickAction> residentQuickActionsViewAll = [
-  for (final a in residentQuickActionsOverflow)
-    if (!residentHomeQuickActionsGrid.any((h) => h.id == a.id)) a,
+/// Hero card — Visitor Entry (left card in quick-actions row).
+const residentHomeVisitorEntryAction = QuickAction(
+  id: 'visitor_entry',
+  label: 'GatePass+',
+  icon: Icons.person_add_alt_1_rounded,
+  color: Color(0xFF6C5CE7),
+  route: '/resident/visitor-hub',
+);
+
+/// Hero row overflow (not shown as separate tiles on the new home layout).
+final residentHomeHeroOverflowActions = [
+  const QuickAction(
+    id: 'special_projects',
+    label: 'Projects',
+    icon: Icons.construction_rounded,
+    color: Color(0xFF7C3AED),
+    route: '/resident/special-projects',
+  ),
 ];
+
+/// Secondary icon row under hero cards (mock: Parcel … More).
+final residentHomeSecondaryActionsGrid = [
+  const QuickAction(
+    id: 'parcels',
+    label: 'Parcel',
+    icon: Icons.inventory_2_outlined,
+    color: Color(0xFF16A34A),
+    route: '/resident/parcels',
+  ),
+  const QuickAction(
+    id: 'amenity_bookings',
+    label: 'Facility Booking',
+    icon: Icons.event_note_outlined,
+    color: Color(0xFF7C3AED),
+    route: '/resident/amenity-bookings',
+  ),
+  const QuickAction(
+    id: 'daily_help',
+    label: 'Vendors',
+    icon: Icons.badge_outlined,
+    color: Color(0xFF2563EB),
+    route: '/resident/daily-help',
+  ),
+  const QuickAction(
+    id: 'amenities',
+    label: 'Amenity Booking',
+    icon: Icons.pool_rounded,
+    color: Color(0xFF16A34A),
+    route: '/resident/amenities',
+  ),
+  const QuickAction(
+    id: 'community',
+    label: 'Notices',
+    icon: Icons.campaign_outlined,
+    color: Color(0xFF7C3AED),
+    route: '',
+  ),
+  moreQuickAction,
+];
+
+/// Action ids pinned on the home quick-actions section (hero row + icon row).
+const Set<String> residentHomeOnScreenQuickActionIds = {
+  'visitor_entry',
+  'sos',
+  'complaint',
+  'parcels',
+  'amenity_bookings',
+  'daily_help',
+  'amenities',
+  'community',
+};
+
+/// Full resident shortcut catalog (deduped by id).
+final List<QuickAction> residentQuickActionsCatalog = () {
+  final seen = <String>{};
+  final out = <QuickAction>[];
+  void add(QuickAction a) {
+    if (seen.add(a.id)) out.add(a);
+  }
+
+  add(residentHomeVisitorEntryAction);
+  for (final a in residentHomeQuickActionsGrid) {
+    add(a);
+  }
+  for (final a in residentHomeSecondaryActionsGrid) {
+    if (a.id != 'more') add(a);
+  }
+  for (final a in residentHomeHeroOverflowActions) {
+    add(a);
+  }
+  for (final a in residentQuickActionsOverflow) {
+    add(a);
+  }
+  return out;
+}();
+
+/// Shortcuts not pinned on the home quick-actions UI (for View All sheet).
+List<QuickAction> residentQuickActionsOffHomeSection() => [
+      for (final a in residentQuickActionsCatalog)
+        if (!residentHomeOnScreenQuickActionIds.contains(a.id)) a,
+    ];
+
+/// Overflow shortcuts for the “More” tile (not on hero or icon row).
+List<QuickAction> residentQuickActionsMoreSheet() {
+  final seen = <String>{};
+  final out = <QuickAction>[];
+  for (final a in [
+    ...residentHomeHeroOverflowActions,
+    ...residentQuickActionsOverflow,
+  ]) {
+    if (!residentHomeOnScreenQuickActionIds.contains(a.id) && seen.add(a.id)) {
+      out.add(a);
+    }
+  }
+  return out;
+}

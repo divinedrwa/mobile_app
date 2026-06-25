@@ -237,43 +237,68 @@ class _AdminGuardShiftsScreenState
   }
 
   void _confirmDelete(String id) {
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Shift'),
-        content: const Text('Are you sure you want to delete this shift?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref
-                    .read(adminGuardShiftRepositoryProvider)
-                    .deleteShift(id);
-                ref.invalidate(adminGuardShiftsProvider);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Shift deleted'),
-                    backgroundColor: DesignColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(userFacingMessage(e)),
-                    backgroundColor: DesignColors.error,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                }
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
+              const SizedBox(height: 16),
+              const Text('Delete Shift?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              const SizedBox(height: 8),
+              const Text('Are you sure you want to delete this shift?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Cancel'))),
+                const SizedBox(width: 12),
+                Expanded(child: FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(sheetCtx);
+                    try {
+                      await ref.read(adminGuardShiftRepositoryProvider).deleteShift(id);
+                      ref.invalidate(adminGuardShiftsProvider);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Shift deleted'),
+                          backgroundColor: DesignColors.primary,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(userFacingMessage(e)),
+                          backgroundColor: DesignColors.error,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                      }
+                    }
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 16),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -593,20 +618,17 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
 
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: DesignComponents.primaryButtonStyle.copyWith(
-                      backgroundColor: const WidgetStatePropertyAll(
-                          Color(0xFF0EA5E9)),
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF0EA5E9),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
                     ),
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(_isEdit ? 'Update' : 'Create'),
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(_isEdit ? 'Update Shift' : 'Create Shift',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ),
                 ),
               ],

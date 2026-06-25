@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../widgets/list_skeleton.dart';
 import '../../data/models/daily_help_model.dart';
 import '../../data/models/vendor_model.dart';
@@ -107,10 +111,47 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
     final staffState = ref.watch(dailyHelpProvider);
 
     return Scaffold(
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        title: const Text('Vendors'),
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Vendors & Staff',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Society vendors and daily help',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: DesignColors.primary,
+          unselectedLabelColor: DesignColors.textSecondary,
+          indicatorColor: DesignColors.primary,
+          dividerColor: context.surface.border.withValues(alpha: 0.5),
           tabs: const [
             Tab(text: 'Vendors'),
             Tab(text: 'Staff'),
@@ -151,17 +192,15 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
       loading: () => const ListSkeleton(),
       error: (error, _) => ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.all(context.spacing.s16),
         children: [
-          const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
-          const SizedBox(height: 10),
-          Text(userFacingMessage(error), textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          Center(
-            child: ElevatedButton(
-              onPressed: () => ref.read(vendorProvider.notifier).fetchVendors(),
-              child: const Text('Retry'),
-            ),
+          EnterpriseInfoBanner(
+            icon: Icons.storefront_outlined,
+            title: 'Could not load vendors',
+            message: userFacingMessage(error),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.read(vendorProvider.notifier).fetchVendors(),
           ),
         ],
       ),
@@ -169,72 +208,105 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
         if (vendors.isEmpty) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.lg),
             children: const [
-              SizedBox(height: 100),
-              Icon(Icons.storefront_outlined, size: 54, color: DesignColors.textTertiary),
-              SizedBox(height: 10),
-              Text(
-                'No vendors available',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w600),
+              SizedBox(height: 48),
+              EmptyStateWidget(
+                icon: Icons.storefront_outlined,
+                title: 'No vendors available',
+                subtitle: 'Society-registered vendors will appear here.',
               ),
             ],
           );
         }
         return ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: EdgeInsets.fromLTRB(
+            context.spacing.s16,
+            context.spacing.s12,
+            context.spacing.s16,
+            context.spacing.s32,
+          ),
           itemCount: vendors.length,
           itemBuilder: (context, index) {
             final vendor = vendors[index];
             final category = _vendorCategoryLabel(vendor.category);
             final categoryColor = _vendorCategoryColor(vendor.category);
             final categoryIcon = _vendorCategoryIcon(vendor.category);
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: categoryColor.withValues(alpha: 0.14),
-                  child: Icon(categoryIcon, color: categoryColor),
-                ),
-                title: Text(vendor.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            return Padding(
+              padding: EdgeInsets.only(bottom: context.spacing.s12),
+              child: EnterprisePanel(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
                         color: categoryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(context.radius.md),
                       ),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: categoryColor,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      alignment: Alignment.center,
+                      child: Icon(categoryIcon, color: categoryColor, size: 22),
+                    ),
+                    SizedBox(width: context.spacing.s12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vendor.name,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: context.text.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          SizedBox(height: context.spacing.s4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: categoryColor.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: categoryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (vendor.phone.isNotEmpty) ...[
+                            SizedBox(height: context.spacing.s4),
+                            Text(
+                              vendor.phone,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: context.text.secondary,
+                                  ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (vendor.phone.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Text(vendor.phone, style: const TextStyle(fontSize: 12.5)),
-                    ],
+                    if (vendor.phone.trim().isNotEmpty)
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: DesignColors.success.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: IconButton(
+                          tooltip: 'Call vendor',
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _makeCall(vendor.phone.trim()),
+                          icon: const Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
+                        ),
+                      ),
                   ],
                 ),
-                trailing: IconButton(
-                  tooltip: 'Call',
-                  onPressed: vendor.phone.trim().isEmpty ? null : () => _makeCall(vendor.phone.trim()),
-                  icon: const Icon(Icons.call, color: Colors.green),
-                ),
               ),
-            );
+            ).animate().fadeIn(duration: 280.ms, delay: DesignAnimations.staggerFor(index));
           },
         );
       },
@@ -246,17 +318,15 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
       loading: () => const ListSkeleton(),
       error: (error, _) => ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.all(context.spacing.s16),
         children: [
-          const Icon(Icons.error_outline, size: 56, color: DesignColors.error),
-          const SizedBox(height: 10),
-          Text(userFacingMessage(error), textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          Center(
-            child: ElevatedButton(
-              onPressed: () => ref.read(dailyHelpProvider.notifier).fetchDailyHelp(),
-              child: const Text('Retry'),
-            ),
+          EnterpriseInfoBanner(
+            icon: Icons.badge_outlined,
+            title: 'Could not load staff',
+            message: userFacingMessage(error),
+            tone: EnterpriseTone.danger,
+            actionLabel: 'Retry',
+            onAction: () => ref.read(dailyHelpProvider.notifier).fetchDailyHelp(),
           ),
         ],
       ),
@@ -264,53 +334,100 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
         if (helpers.isEmpty) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: const [
-              SizedBox(height: 100),
-              Icon(Icons.people_outline_rounded, size: 54, color: DesignColors.textTertiary),
-              SizedBox(height: 10),
-              Text(
-                'No staff added yet',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w600),
+            children: [
+              const SizedBox(height: 48),
+              EmptyStateWidget(
+                icon: Icons.badge_outlined,
+                title: 'No staff added yet',
+                subtitle: 'Add daily help and domestic staff for your household.',
+                actionLabel: 'Add staff',
+                onAction: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddDailyHelpScreen()),
+                  );
+                },
               ),
             ],
           );
         }
         return ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: EdgeInsets.fromLTRB(
+            context.spacing.s16,
+            context.spacing.s12,
+            context.spacing.s16,
+            context.spacing.s32,
+          ),
           itemCount: helpers.length,
           itemBuilder: (context, index) {
             final helper = helpers[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: DesignColors.primary.withValues(alpha: 0.12),
-                  child: const Icon(Icons.badge_outlined, color: DesignColors.primary),
-                ),
-                title: Text(helper.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            return Padding(
+              padding: EdgeInsets.only(bottom: context.spacing.s12),
+              child: EnterprisePanel(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 4),
-                    Text(helper.type),
-                    const SizedBox(height: 2),
-                    Text(helper.phone, style: const TextStyle(fontSize: 12.5)),
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: DesignColors.primary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(context.radius.md),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.badge_outlined, color: DesignColors.primary, size: 22),
+                    ),
+                    SizedBox(width: context.spacing.s12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            helper.name,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: context.text.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          SizedBox(height: context.spacing.s4),
+                          Text(
+                            helper.type,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: context.text.secondary,
+                                ),
+                          ),
+                          if (helper.phone.trim().isNotEmpty) ...[
+                            SizedBox(height: context.spacing.s4),
+                            Text(
+                              helper.phone,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: context.text.secondary,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (helper.phone.trim().isNotEmpty)
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: DesignColors.success.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: IconButton(
+                          tooltip: 'Call',
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _makeCall(helper.phone.trim()),
+                          icon: const Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
+                        ),
+                      ),
                   ],
                 ),
-                trailing: IconButton(
-                  tooltip: 'Call',
-                  onPressed: helper.phone.trim().isEmpty ? null : () => _makeCall(helper.phone.trim()),
-                  icon: const Icon(Icons.call, color: Colors.green),
-                ),
               ),
-            );
+            ).animate().fadeIn(duration: 280.ms, delay: DesignAnimations.staggerFor(index));
           },
         );
       },

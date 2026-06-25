@@ -1,10 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../../core/theme/design_animations.dart';
-import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/utils/media_url.dart';
 import '../../../../../shared/models/user_model.dart';
 import '../../../../../theme/context_extensions.dart';
@@ -34,22 +33,7 @@ class HomeHeader extends StatelessWidget {
     return 'Good Night';
   }
 
-  String _roleLabel(UserRole role) {
-    switch (role) {
-      case UserRole.superAdmin:
-        return 'Platform';
-      case UserRole.admin:
-        return 'Admin';
-      case UserRole.guard:
-        return 'Guard';
-      case UserRole.resident:
-        return 'Resident';
-      case UserRole.residentCumAdmin:
-        return 'Admin · Resident';
-    }
-  }
-
-  String _headerOccupantOrRoleBadge(UserRole role, UserModel? user) {
+  String _occupantChipLabel() {
     if (role.isResidentLike) {
       final occ = user?.effectiveOccupantDisplay;
       if (occ != null && occ.isNotEmpty) return occ;
@@ -59,368 +43,159 @@ class HomeHeader extends StatelessWidget {
         user!.villaId!.isNotEmpty) {
       return 'Admin · Resident';
     }
-    return _roleLabel(role);
+    switch (role) {
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.residentCumAdmin:
+        return 'Admin · Resident';
+      case UserRole.resident:
+        return 'Resident';
+      default:
+        return 'Resident';
+    }
+  }
+
+  String? _unitLocationChip() {
+    final parts = <String>[];
+    final prop = user?.effectivePropertyDisplay;
+    final unit = user?.effectiveUnitDisplay;
+    if (prop != null && prop.isNotEmpty) parts.add(prop);
+    if (unit != null && unit.isNotEmpty) parts.add(unit);
+    if (parts.isEmpty) {
+      final n = user?.villaNumber?.trim();
+      final b = user?.villaBlock?.trim();
+      if (n != null && n.isNotEmpty) parts.add(n);
+      if (b != null && b.isNotEmpty && (n == null || !parts.contains(b))) {
+        parts.add(b);
+      }
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
   }
 
   @override
   Widget build(BuildContext context) {
     final society = user?.societyName?.trim();
-
-    final unitBlockLabel = <String>[];
-    final propLine = user?.effectivePropertyDisplay;
-    final unitLine = user?.effectiveUnitDisplay;
-    if (propLine != null && propLine.isNotEmpty) unitBlockLabel.add(propLine);
-    if (unitLine != null && unitLine.isNotEmpty) unitBlockLabel.add(unitLine);
-    if (unitBlockLabel.isEmpty) {
-      final unitNo = user?.villaNumber?.trim();
-      if (unitNo != null && unitNo.isNotEmpty) {
-        unitBlockLabel.add('Unit $unitNo');
-      }
-      final block = user?.villaBlock?.trim();
-      if (block != null && block.isNotEmpty) unitBlockLabel.add('Block $block');
-    }
-    final unitBlockText = unitBlockLabel.join(' · ');
-
+    final unitChip = _unitLocationChip();
     final badgeText =
         unreadNotifications > 99 ? '99+' : '$unreadNotifications';
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: context.surface.defaultSurface,
-        borderRadius:
-            const BorderRadius.vertical(bottom: Radius.circular(14)),
-        border: Border(
-          bottom: BorderSide(color: context.surface.border),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          _buildHeaderIllustration(),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(kHomePadH, 4, 10, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+      color: Colors.white,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(kHomePadH, 10, kHomePadH, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HeaderAvatar(name: name, photoUrl: user?.photoUrl),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _greeting(),
+                          '${_greeting()} 👋',
                           style: TextStyle(
                             fontSize: 11,
+                            fontWeight: FontWeight.w500,
                             color: context.text.secondary,
-                            fontWeight: FontWeight.w600,
-                            height: 1.15,
-                            letterSpacing: 0.02,
+                            height: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        LayoutBuilder(
-                          builder: (context, c) {
-                            const gap = 6.0;
-                            const pillReserve = 76.0;
-                            final nameW = (c.maxWidth - pillReserve - gap)
-                                .clamp(48.0, double.infinity);
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: nameW,
-                                  child: Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: context.text.primary,
-                                      height: 1.18,
-                                      letterSpacing: -0.4,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                        const SizedBox(height: 1),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.text.primary,
+                                  letterSpacing: -0.4,
+                                  height: 1.15,
                                 ),
-                                const SizedBox(width: gap),
-                                _buildHeaderActivePill(),
-                              ],
-                            );
-                          },
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _ActivePill(),
+                          ],
                         ),
                         const SizedBox(height: 6),
                         Wrap(
                           spacing: 6,
-                          runSpacing: 5,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                          runSpacing: 6,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: context.brand.primary
-                                    .withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.badge_outlined,
-                                      size: 12,
-                                      color: context.brand.primary),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    _headerOccupantOrRoleBadge(role, user),
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.brand.primary,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            _InfoChip(
+                              label: _occupantChipLabel(),
+                              icon: Icons.person_outline_rounded,
+                              background: kHomePurpleLight,
+                              foreground: kHomePurple,
+                              border: kHomePurple.withValues(alpha: 0.15),
                             ),
-                            if (unitBlockText.isNotEmpty)
-                              Container(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 200),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: context.surface.background,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: context.surface.border,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.apartment_rounded,
-                                      size: 12,
-                                      color: DesignColors.primary,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Expanded(
-                                      child: Text(
-                                        unitBlockText,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: context.text.primary,
-                                          height: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            if (unitChip != null)
+                              _InfoChip(
+                                label: unitChip,
+                                icon: Icons.apartment_rounded,
+                                background: const Color(0xFFECFDF5),
+                                foreground: const Color(0xFF15803D),
+                                border: const Color(0xFF86EFAC)
+                                    .withValues(alpha: 0.45),
                               ),
                           ],
                         ),
-                        if (society != null && society.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          KeyedSubtree(
-                            key: ValueKey<String>(society),
-                            child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: context.surface.background,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: context.surface.border,
-                                  ),
-                                ),
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: context.brand.primary
-                                            .withValues(alpha: 0.08),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.domain_rounded,
-                                        size: 14,
-                                        color: context.brand.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'Society',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              letterSpacing: 0.4,
-                                              color: context.text.secondary,
-                                              height: 1,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            society,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: context.text.primary,
-                                              height: 1.28,
-                                              letterSpacing: -0.15,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            )
-                                .animate()
-                                .fadeIn(
-                                    duration: 380.ms,
-                                    curve: Curves.easeOut)
-                                .slideY(
-                                  begin:
-                                      DesignAnimations.slideNormal,
-                                  end: 0,
-                                  duration: 380.ms,
-                                  curve: Curves.easeOutCubic,
-                                ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Material(
-                    color: context.surface.defaultSurface,
-                    elevation: 0,
-                    shape: const CircleBorder(),
-                    shadowColor: Colors.transparent,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => residentNotificationsEntry,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border:
-                              Border.all(color: context.surface.border),
-                        ),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_none_rounded,
-                              color: context.text.primary,
-                              size: 20,
-                            ),
-                            if (unreadNotifications > 0)
-                              Positioned(
-                                right: 5,
-                                top: 5,
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal:
-                                        unreadNotifications > 9 ? 3 : 4,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: DesignColors.error,
-                                    borderRadius:
-                                        BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: Colors.white,
-                                        width: 1.25),
-                                  ),
-                                  constraints: const BoxConstraints(
-                                      minHeight: 15),
-                                  child: Text(
-                                    badgeText,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.05,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
+                  _NotificationButton(
+                    unread: unreadNotifications,
+                    badgeText: badgeText,
                   ),
                 ],
               ),
-            ),
+              if (society != null && society.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _SocietyCard(societyName: society),
+              ],
+              const SizedBox(height: 12),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildHeaderActivePill() {
+class _ActivePill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: kHomeGreen.withValues(alpha: 0.18)),
+        border: Border.all(color: const Color(0xFF86EFAC).withValues(alpha: 0.5)),
       ),
-      child: Row(
+      child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: const BoxDecoration(
-              color: kHomeGreen,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Text(
+          _GreenDot(),
+          SizedBox(width: 4),
+          Text(
             'Active',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: kHomeGreen,
+              color: Color(0xFF16A34A),
               height: 1,
             ),
           ),
@@ -428,48 +203,279 @@ class HomeHeader extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildHeaderIllustration() {
-    return Positioned(
-      right: 8,
-      top: 34,
-      child: IgnorePointer(
-        child: SizedBox(
-          width: 88,
-          height: 64,
+class _GreenDot extends StatelessWidget {
+  const _GreenDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: const BoxDecoration(
+        color: Color(0xFF16A34A),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.foreground,
+    required this.border,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+  final Color border;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: foreground,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationButton extends StatelessWidget {
+  const _NotificationButton({
+    required this.unread,
+    required this.badgeText,
+  });
+
+  final int unread;
+  final String badgeText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.surface.defaultSurface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => residentNotificationsEntry,
+            ),
+          );
+        },
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.surface.border),
+            boxShadow: homeCardShadow(0.04),
+          ),
           child: Stack(
             clipBehavior: Clip.none,
+            alignment: Alignment.center,
             children: [
-              Positioned(
-                right: 2,
-                top: 14,
-                child: Icon(
-                  Icons.grass_rounded,
-                  size: 22,
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
-                ),
+              Icon(
+                Icons.notifications_outlined,
+                color: context.text.primary,
+                size: 20,
               ),
-              Positioned(
-                right: 24,
-                top: 6,
-                child: Icon(
-                  Icons.park_rounded,
-                  size: 26,
-                  color: const Color(0xFF66BB6A).withValues(alpha: 0.16),
+              if (unread > 0)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: unread > 9 ? 4 : 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignColors.error,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 1.2),
+                    ),
+                    constraints: const BoxConstraints(minHeight: 16),
+                    child: Text(
+                      badgeText,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              Positioned(
-                right: 28,
-                top: 22,
-                child: Icon(
-                  Icons.holiday_village_rounded,
-                  size: 34,
-                  color: DesignColors.primary.withValues(alpha: 0.1),
-                ),
-              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SocietyCard extends StatelessWidget {
+  const _SocietyCard({required this.societyName});
+
+  final String societyName;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push('/resident/overview'),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            kHomePurple.withValues(alpha: 0.08),
+            const Color(0xFFEEF2FF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kHomePurple.withValues(alpha: 0.12)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned(
+            right: 8,
+            top: 8,
+            bottom: 8,
+            child: IgnorePointer(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Icon(
+                    Icons.park_rounded,
+                    size: 28,
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.35),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.apartment_rounded,
+                    size: 42,
+                    color: kHomePurple.withValues(alpha: 0.18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: kHomePurple.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Icon(
+                        Icons.domain_rounded,
+                        size: 16,
+                        color: kHomePurple,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Society',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: context.text.secondary,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  societyName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: context.text.primary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: context.text.tertiary,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.verified_user_outlined,
+                      size: 12,
+                      color: kHomePurple.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Safe · Secure · Connected',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: kHomePurple.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
@@ -487,41 +493,41 @@ class _HeaderAvatar extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'R';
 
     return Container(
-      width: 44,
-      height: 44,
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: context.brand.primary.withValues(alpha: 0.12),
+        color: kHomePurpleLight,
         border: Border.all(
-          color: context.brand.primary.withValues(alpha: 0.16),
-          width: 1.2,
+          color: kHomePurple.withValues(alpha: 0.16),
+          width: 1.5,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: url == null
-          ? _initialFallback(context, initial)
+          ? _initialFallback(initial)
           : CachedNetworkImage(
               key: ValueKey(url),
               imageUrl: url,
               cacheKey: url,
               fit: BoxFit.cover,
-              width: 44,
-              height: 44,
+              width: 46,
+              height: 46,
               fadeInDuration: const Duration(milliseconds: 180),
-              placeholder: (_, _) => _initialFallback(context, initial),
-              errorWidget: (_, _, _) => _initialFallback(context, initial),
+              placeholder: (_, _) => _initialFallback(initial),
+              errorWidget: (_, _, _) => _initialFallback(initial),
             ),
     );
   }
 
-  Widget _initialFallback(BuildContext context, String initial) {
+  Widget _initialFallback(String initial) {
     return Center(
       child: Text(
         initial,
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w800,
-          color: context.brand.primary,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: kHomePurple,
           letterSpacing: -0.35,
           height: 1,
         ),

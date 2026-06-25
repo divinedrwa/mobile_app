@@ -416,86 +416,139 @@ class _PatrolCard extends StatelessWidget {
         ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
         : '--:--';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(GuardTokens.g2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(GuardTokens.g1),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.14),
-                borderRadius:
-                    BorderRadius.circular(GuardTokens.radiusChip),
-              ),
-              child: Icon(statusIcon, color: statusColor, size: 24),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GuardTokens.g2),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.035),
+              blurRadius: 8,
+              offset: const Offset(0, 1),
             ),
-            const SizedBox(width: GuardTokens.g2),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    patrol.checkpointName,
-                    style: GuardTokens.headingStyle(context)
-                        .copyWith(fontSize: GuardTokens.body),
-                  ),
-                  if (patrol.checkpointLocation != null &&
-                      patrol.checkpointLocation!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      patrol.checkpointLocation!,
-                      style: GuardTokens.captionStyle(context),
-                    ),
-                  ],
-                  if (patrol.notes != null &&
-                      patrol.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      patrol.notes!,
-                      style: GuardTokens.captionStyle(context),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
+          ],
+        ),
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+            side: BorderSide(
+              color: isDark
+                  ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                  : GuardTokens.borderSubtle.withValues(alpha: 0.9),
             ),
-            const SizedBox(width: GuardTokens.g1),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(GuardTokens.g2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  timeStr,
-                  style: GuardTokens.captionStyle(context)
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: GuardTokens.g1,
-                    vertical: 2,
-                  ),
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius:
-                        BorderRadius.circular(GuardTokens.radiusChip),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: GuardTokens.captionStyle(context).copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: GuardTokens.caption - 1,
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.22),
                     ),
                   ),
+                  alignment: Alignment.center,
+                  child: Icon(statusIcon, color: statusColor, size: 22),
+                ),
+                const SizedBox(width: GuardTokens.g2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        patrol.checkpointName,
+                        style: GuardTokens.headingStyle(context).copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      if (patrol.checkpointLocation != null &&
+                          patrol.checkpointLocation!.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.place_outlined,
+                              size: 13,
+                              color: GuardTokens.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                patrol.checkpointLocation!,
+                                style: GuardTokens.captionStyle(context),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (patrol.notes != null &&
+                          patrol.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          patrol.notes!,
+                          style: GuardTokens.captionStyle(context).copyWith(
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: GuardTokens.g1),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      timeStr,
+                      style: GuardTokens.captionStyle(context).copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.30),
+                        ),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: GuardTokens.captionStyle(context).copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

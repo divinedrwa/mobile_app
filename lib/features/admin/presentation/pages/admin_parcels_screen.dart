@@ -594,17 +594,16 @@ class _UpdateParcelStatusSheetState
 
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: DesignComponents.primaryButtonStyle,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: DesignColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+                ),
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Confirm'),
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
             ),
           ],

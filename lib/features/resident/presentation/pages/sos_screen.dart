@@ -143,27 +143,68 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
       if (!mounted) return;
       final msg = userFacingMessage(e, 'Could not send SOS');
       if (_isConflict(e)) {
-        await showDialog<void>(
+        await showModalBottomSheet<void>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Active SOS exists'),
-            content: const Text(
-              'You already have an open emergency. Open your active SOS screen.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+          backgroundColor: Colors.transparent,
+          builder: (sheetCtx) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: DesignColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  context.go('/resident/sos/active');
-                },
-                child: const Text('View active SOS'),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40, height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
+                    ),
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.warning_amber_rounded, color: DesignColors.error, size: 28),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Active SOS exists', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'You already have an open emergency.\nOpen your active SOS screen.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetCtx),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                            child: const Text('Dismiss'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () {
+                              Navigator.pop(sheetCtx);
+                              context.go('/resident/sos/active');
+                            },
+                            style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                            child: const Text('View SOS', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
-            ],
-          ),
+            );
+          },
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +226,9 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
         backgroundColor: DesignColors.error,
         foregroundColor: Colors.white,
       ),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(sosAlertsProvider),
+        child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           const Icon(Icons.emergency, size: 88, color: DesignColors.error)
@@ -295,12 +338,36 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                 ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          historyAsync.when(
-            data: (list) {
+          Builder(builder: (context) {
+            final stale = historyAsync.valueOrNull;
+            final isInitialLoad = historyAsync.isLoading && stale == null;
+            if (isInitialLoad) return const TimelineSkeleton(itemCount: 4);
+            if (historyAsync.hasError && stale == null) return Text(
+              userFacingMessage(historyAsync.error!),
+              style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+            );
+            final list = stale ?? [];
+            return Builder(builder: (context) {
               if (list.isEmpty) {
-                return const Text(
-                  'No past alerts yet.',
-                  style: TextStyle(color: DesignColors.textSecondary),
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: DesignColors.surfaceSoft,
+                    borderRadius: DesignRadius.borderLG,
+                    border: Border.all(color: DesignColors.borderLight),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.history_rounded, size: 18, color: DesignColors.textTertiary),
+                      const SizedBox(width: 10),
+                      Text(
+                        'No past alerts',
+                        style: DesignTypography.bodySmall.copyWith(
+                          color: DesignColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
               final sorted = [...list]
@@ -308,23 +375,86 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                     .compareTo(a.createdAt ?? DateTime(0)));
               return Column(
                 children: sorted.take(15).map((a) {
-                  return Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.history, color: DesignColors.error),
-                      title: Text(a.type.value),
-                      subtitle: Text(
-                        '${a.status.value} · ${a.createdAt != null ? DateFormat('MMM d HH:mm').format(a.createdAt!.toLocal()) : '—'}',
+                  final statusColor = a.status.value.toUpperCase() == 'RESOLVED'
+                      ? DesignColors.success
+                      : a.status.value.toUpperCase() == 'ACTIVE'
+                          ? DesignColors.error
+                          : DesignColors.warning;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: DesignColors.surface,
+                        borderRadius: DesignRadius.borderLG,
+                        border: Border.all(color: DesignColors.borderLight),
+                        boxShadow: DesignElevation.sm,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: DesignColors.error.withValues(alpha: 0.10),
+                                borderRadius: DesignRadius.borderMD,
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.emergency_rounded, size: 18, color: DesignColors.error),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    a.type.value,
+                                    style: DesignTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: DesignColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    a.createdAt != null
+                                        ? DateFormat('MMM d · HH:mm').format(a.createdAt!.toLocal())
+                                        : '—',
+                                    style: DesignTypography.caption.copyWith(
+                                      color: DesignColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.12),
+                                borderRadius: DesignRadius.borderMD,
+                              ),
+                              child: Text(
+                                a.status.value.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: statusColor,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
                 }).toList(),
               );
-            },
-            loading: () => const TimelineSkeleton(itemCount: 4),
-            error: (e, _) => Text(userFacingMessage(e)),
-          ),
+            });
+          }),
           const SizedBox(height: 48),
         ],
+        ),
       ),
     );
   }
@@ -383,14 +513,53 @@ class _CountdownDialogState extends State<_CountdownDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Confirm SOS'),
-      content: Text(
-        'Sending in $_left… Tap cancel if this was a mistake.',
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: DesignRadius.borderXL,
+          boxShadow: DesignElevation.md,
+        ),
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
+              child: Center(
+                child: Text(
+                  '$_left',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DesignColors.error),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Confirm SOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+            const SizedBox(height: 8),
+            const Text(
+              'Sending emergency alert…\nTap cancel if this was a mistake.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: widget.onCancel,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: DesignColors.error),
+                  foregroundColor: DesignColors.error,
+                  shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+                ),
+                child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(onPressed: widget.onCancel, child: const Text('Cancel')),
-      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -16,6 +17,12 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/notification_settings_notifier.dart';
 import 'legal_markdown_screen.dart';
 import 'legal_webview_screen.dart';
+
+/// Reads the real installed version from the OS (e.g. "1.1.10").
+final _appVersionProvider = FutureProvider.autoDispose<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
 
 /// Settings Screen
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -124,9 +131,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final pushEnabled = notif.pushEnabled;
     final emailEnabled = notif.emailEnabled;
     final notifBusy = notif.isBusy;
+    final appVersion = ref.watch(_appVersionProvider).valueOrNull ?? AppConstants.appVersion;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Settings',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Notifications, security & preferences',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           context.spacing.s16,
@@ -269,7 +311,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Report a problem',
                 subtitle: 'Email us with a description and screenshots',
                 onTap: () => _openSupportEmail(
-                  subject: '${AppConstants.appName} v${AppConstants.appVersion} — Report a problem',
+                  subject: '${AppConstants.appName} v$appVersion — Report a problem',
                 ),
               ),
             ],
@@ -279,10 +321,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'About',
             subtitle: 'Product information and store links.',
             children: [
-              const _SettingsTile(
+              _SettingsTile(
                 icon: Icons.info_outline_rounded,
                 title: 'App version',
-                subtitle: AppConstants.appVersion,
+                subtitle: appVersion,
               ),
               _SettingsTile(
                 icon: Icons.rate_review_outlined,

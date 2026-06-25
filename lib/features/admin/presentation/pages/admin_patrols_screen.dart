@@ -209,29 +209,45 @@ class _PatrolCard extends ConsumerWidget {
 
     final selected = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Text(
-                'Update patrol status',
-                style: DesignTypography.headingM.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Update patrol status', style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w700)),
               ),
-            ),
-            ...options.entries.map(
-              (e) => ListTile(
-                title: Text(e.value),
+              const SizedBox(height: 12),
+              ...options.entries.map((e) => InkWell(
                 onTap: () => Navigator.of(ctx).pop(e.key),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                  child: Row(
+                    children: [
+                      Container(width: 36, height: 36,
+                          decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.shield_outlined, color: DesignColors.primary, size: 18)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(e.value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary))),
+                      const Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
+                    ],
+                  ),
+                ),
+              )),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );

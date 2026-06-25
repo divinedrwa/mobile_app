@@ -613,25 +613,21 @@ class _AdminMaintenanceHubScreenState
 
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
           backgroundColor: DesignColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignRadius.lg),
           ),
-          elevation: 0,
         ),
         onPressed: _sendingReminders || count == 0 ? null : _onSendReminders,
         icon: _sendingReminders
             ? const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.notifications_active_outlined, size: 18),
         label: Text(
@@ -657,25 +653,51 @@ class _AdminMaintenanceHubScreenState
     final pendingList = data != null ? _pendingResidents(data) : <Map<String, dynamic>>[];
     final isBulk = _allSelected(pendingList);
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Send Reminders'),
-        content: Text(
-          isBulk
-              ? 'Send payment reminders to all ${_selectedVillaIds.length} residents with pending dues for $periodLabel?'
-              : 'Send payment reminders to ${_selectedVillaIds.length} selected resident${_selectedVillaIds.length == 1 ? "" : "s"} for $periodLabel?',
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.notifications_active_outlined, color: DesignColors.primary, size: 28)),
+              const SizedBox(height: 16),
+              const Text('Send Reminders?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text(
+                isBulk
+                    ? 'Send payment reminders to all ${_selectedVillaIds.length} residents with pending dues for $periodLabel?'
+                    : 'Send payment reminders to ${_selectedVillaIds.length} selected resident${_selectedVillaIds.length == 1 ? "" : "s"} for $periodLabel?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx, false),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Cancel'))),
+                const SizedBox(width: 12),
+                Expanded(child: FilledButton(
+                  onPressed: () => Navigator.pop(sheetCtx, true),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Send', style: TextStyle(fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 16),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Send'),
-          ),
-        ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -942,38 +964,52 @@ class _AdminMaintenanceHubScreenState
     final villaNumber = resident['villaNumber']?.toString() ?? '—';
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text(
-                'Villa $villaNumber',
-                style: DesignTypography.headingM.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Villa $villaNumber', style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w700)),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit amounts'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _openEditVillaRowSheet(resident);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Payment history'),
-              onTap: () {
-                Navigator.pop(ctx);
-                if (villaId.isNotEmpty) {
-                  context.go('/resident/admin-villa-history/$villaId');
-                }
-              },
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              _sheetAction(ctx, icon: Icons.edit_outlined, color: DesignColors.primary, label: 'Edit amounts',
+                  onTap: () { Navigator.pop(ctx); _openEditVillaRowSheet(resident); }),
+              const Divider(height: 1),
+              _sheetAction(ctx, icon: Icons.history_rounded, color: const Color(0xFF6366F1), label: 'Payment history',
+                  onTap: () { Navigator.pop(ctx); if (villaId.isNotEmpty) context.go('/resident/admin-villa-history/$villaId'); }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetAction(BuildContext ctx, {required IconData icon, required Color color, required String label, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+        child: Row(
+          children: [
+            Container(width: 36, height: 36, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: color, size: 20)),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary)),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
           ],
         ),
       ),

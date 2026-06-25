@@ -559,19 +559,16 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
 
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: isChanged
-                    ? DesignComponents.primaryButtonStyle
-                    : DesignComponents.disabledButtonStyle,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: isChanged ? DesignColors.primary : DesignColors.textTertiary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+                ),
                 onPressed: isChanged && !_submitting ? _submit : null,
                 child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Confirm Change'),
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Confirm Change', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
             ),
           ],

@@ -35,8 +35,12 @@ class LazyCommunityTab extends StatefulWidget {
   State<LazyCommunityTab> createState() => _LazyCommunityTabState();
 }
 
-class _LazyCommunityTabState extends State<LazyCommunityTab> {
+class _LazyCommunityTabState extends State<LazyCommunityTab>
+    with AutomaticKeepAliveClientMixin {
   var _activated = false;
+
+  @override
+  bool get wantKeepAlive => _activated;
 
   @override
   void initState() {
@@ -69,12 +73,16 @@ class _LazyCommunityTabState extends State<LazyCommunityTab> {
   void _onTabMotion() {
     if (_activated) return;
     if (_isNearActive()) {
-      setState(() => _activated = true);
+      setState(() {
+        _activated = true;
+        // Notify keep-alive framework that this tab is now worth preserving.
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (!_activated) {
       return widget.placeholder ??
           const CommunityShimmerList(itemHeight: 88, count: 4);

@@ -7,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/event_model.dart';
 import '../../data/providers/content_provider.dart';
 
@@ -32,11 +34,23 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Event Details'),
+        backgroundColor: DesignColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Text(
+          'Event Details',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
+        ),
         actions: [
           IconButton(
             tooltip: 'Share',
-            icon: const Icon(Icons.share),
+            icon: Icon(Icons.share_rounded, color: context.text.primary),
             onPressed: () {
               Share.share(
                 '${widget.event.title}\n\n'
@@ -162,46 +176,38 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   if (widget.event.requiresRegistration &&
                       widget.event.maxAttendees != null) ...[
                     const SizedBox(height: AppSpacing.lg),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Registration',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '${widget.event.currentAttendees}/${widget.event.maxAttendees}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            ClipRRect(
-                              borderRadius: DesignRadius.borderXS,
-                              child: LinearProgressIndicator(
-                                value: widget.event.maxAttendees! > 0
-                                    ? widget.event.currentAttendees /
-                                        widget.event.maxAttendees!
-                                    : 0,
-                                backgroundColor: DesignColors.borderLight,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  widget.event.isFull ? Colors.red : categoryColor,
-                                ),
-                                minHeight: 8,
+                    EnterprisePanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Registration',
+                                style: TextStyle(fontWeight: FontWeight.w700, color: context.text.primary),
                               ),
+                              Text(
+                                '${widget.event.currentAttendees}/${widget.event.maxAttendees}',
+                                style: TextStyle(fontWeight: FontWeight.w700, color: context.text.primary),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          ClipRRect(
+                            borderRadius: DesignRadius.borderXS,
+                            child: LinearProgressIndicator(
+                              value: widget.event.maxAttendees! > 0
+                                  ? widget.event.currentAttendees / widget.event.maxAttendees!
+                                  : 0,
+                              backgroundColor: DesignColors.borderLight,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                widget.event.isFull ? DesignColors.error : categoryColor,
+                              ),
+                              minHeight: 8,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -212,25 +218,28 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         ),
       ),
       bottomNavigationBar: widget.event.canRegister
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: ElevatedButton(
-                  onPressed: _isRegistering ? null : _registerForEvent,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: categoryColor,
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: DesignColors.surface,
+                border: Border(top: BorderSide(color: DesignColors.borderLight.withValues(alpha: 0.9))),
+                boxShadow: DesignElevation.sm,
+              ),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(DesignSpacing.lg, 0, DesignSpacing.lg, DesignSpacing.sm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
+                  child: FilledButton(
+                    onPressed: _isRegistering ? null : _registerForEvent,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: categoryColor,
+                      padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                      shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
+                    ),
+                    child: _isRegistering
+                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                        : Text('Register for Event', style: DesignTypography.label.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
-                  child: _isRegistering
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Register for Event'),
                 ),
               ),
             )

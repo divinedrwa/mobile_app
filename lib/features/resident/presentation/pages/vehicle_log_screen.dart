@@ -27,7 +27,31 @@ class _VehicleLogScreenState extends ConsumerState<VehicleLogScreen> {
 
     return Scaffold(
       backgroundColor: context.surface.background,
-      appBar: AppBar(title: const Text('Vehicle Log')),
+      appBar: AppBar(
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Vehicle Log',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
+            ),
+            Text(
+              'Gate entry & exit history',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: context.text.secondary, height: 1.2),
+            ),
+          ],
+        ),
+      ),
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: () async => ref.invalidate(vehicleLogProvider),
@@ -311,24 +335,19 @@ class _VehicleLogScreenState extends ConsumerState<VehicleLogScreen> {
   }
 
   Widget _buildError(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, color: DesignColors.error, size: 48),
-          const SizedBox(height: DesignSpacing.sm),
-          Text(
-            'Failed to load vehicle log',
-            style:
-                DesignTypography.body.copyWith(color: context.text.secondary),
-          ),
-          const SizedBox(height: DesignSpacing.sm),
-          TextButton(
-            onPressed: () => ref.invalidate(vehicleLogProvider),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(DesignSpacing.lg),
+      children: [
+        EnterpriseInfoBanner(
+          icon: Icons.directions_car_outlined,
+          title: 'Could not load vehicle log',
+          message: 'Check your connection and try again.',
+          tone: EnterpriseTone.danger,
+          actionLabel: 'Retry',
+          onAction: () => ref.invalidate(vehicleLogProvider),
+        ),
+      ],
     );
   }
 }

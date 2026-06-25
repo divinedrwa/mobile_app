@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../../core/widgets/tap_scale.dart';
 import '../../../data/providers/utilities_provider.dart';
+import 'home_shared.dart';
+import 'home_skeletons.dart';
 
 class HomeUtilityStatusStrip extends ConsumerWidget {
   const HomeUtilityStatusStrip({super.key});
@@ -16,132 +17,186 @@ class HomeUtilityStatusStrip extends ConsumerWidget {
     final waterAsync = ref.watch(waterSupplyStatusProvider);
     final garbageAsync = ref.watch(garbageCollectionActiveProvider);
 
+    final isInitialLoad = (waterAsync.isLoading && waterAsync.valueOrNull == null) ||
+        (garbageAsync.isLoading && garbageAsync.valueOrNull == null);
+    if (isInitialLoad) return const HomeUtilityStripSkeleton();
+
     final waterGates = waterAsync.valueOrNull ?? [];
     final collectorInside = garbageAsync.valueOrNull?.isInside ?? false;
 
-    // Show water card only when supply is ON at any gate
     final anyOn = waterGates.any((g) => g.isOn);
-    final onGate = anyOn
-        ? waterGates.firstWhere((g) => g.isOn)
-        : null;
+    final onGate =
+        anyOn ? waterGates.firstWhere((g) => g.isOn) : null;
 
-    // Hide entire strip when water is off AND garbage collector is not inside
-    if (!anyOn && !collectorInside) return const SizedBox.shrink();
+    // Hide entirely when nothing active — AnimatedSize handles the collapse.
+    if (!anyOn && !collectorInside) {
+      return const AnimatedSize(
+        duration: Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        child: SizedBox.shrink(),
+      );
+    }
 
-    final cards = <Widget>[];
+    final cards = <_LiveStatusCard>[];
 
-    // Water card — only when supply is ON
     if (anyOn && onGate != null) {
       final gateName =
           onGate.gateName.isNotEmpty ? onGate.gateName : 'Main Gate';
-      cards.add(Expanded(
-        child: _StatusCard(
-          icon: Icons.water_drop_rounded,
-          color: DesignColors.success,
-          title: 'Water supply is ON',
-          subtitle: 'at $gateName — available now',
-          onTap: () => context.push('/resident/utilities'),
-        ),
+      cards.add(_LiveStatusCard(
+        icon: Icons.water_drop_rounded,
+        accentColor: DesignColors.success,
+        badgeLabel: 'LIVE',
+        title: 'Water supply ON',
+        subtitle: 'at $gateName — available now',
+        onTap: () => context.push('/resident/utilities'),
       ));
     }
 
-    // Garbage card — only when collector is inside
     if (collectorInside) {
-      if (cards.isNotEmpty) cards.add(const SizedBox(width: 8));
-      cards.add(Expanded(
-        child: _StatusCard(
-          icon: Icons.delete_outline_rounded,
-          color: DesignColors.warning,
-          title: 'Garbage collector inside',
-          subtitle: 'Collection in progress',
-          onTap: () => context.push('/resident/utilities'),
-        ),
+      cards.add(_LiveStatusCard(
+        icon: Icons.delete_outline_rounded,
+        accentColor: DesignColors.warning,
+        badgeLabel: 'ACTIVE',
+        title: 'Garbage collection',
+        subtitle: 'Collector is inside the society',
+        onTap: () => context.push('/resident/utilities'),
       ));
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: cards),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: kHomeSectionGap),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const HomeSectionHeader(title: 'Live Updates'),
+            const SizedBox(height: 10),
+            if (cards.length == 1)
+              cards.first
+            else
+              Row(
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 10),
+                  Expanded(child: cards[1]),
+                ],
+              ),
+          ],
+        ),
+      ),
     )
         .animate()
-        .fadeIn(duration: DesignAnimations.durationEntrance);
+        .fadeIn(duration: DesignAnimations.durationEntrance)
+        .slideY(begin: DesignAnimations.slideSubtle, end: 0);
   }
-
 }
 
-class _StatusCard extends StatelessWidget {
-  const _StatusCard({
+class _LiveStatusCard extends StatelessWidget {
+  const _LiveStatusCard({
     required this.icon,
-    required this.color,
+    required this.accentColor,
+    required this.badgeLabel,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
-  final Color color;
+  final Color accentColor;
+  final String badgeLabel;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return TapScale(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: DesignRadius.borderLG,
-          border: Border.all(color: color.withValues(alpha: 0.18)),
+          color: accentColor.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(kHomeRadiusLg),
+          border: Border.all(color: accentColor.withValues(alpha: 0.22)),
+          boxShadow: homeCardShadow(0.025),
         ),
         child: Row(
           children: [
             Container(
-              width: 28,
-              height: 28,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                color: accentColor.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, size: 14, color: color),
+              child: Icon(icon, size: 20, color: accentColor),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                      height: 1.15,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                            height: 1.15,
+                            letterSpacing: -0.15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          badgeLabel,
+                          style: const TextStyle(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w500,
-                      color: color.withValues(alpha: 0.6),
+                      color: accentColor.withValues(alpha: 0.65),
                       height: 1.15,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded,
-                size: 16, color: color.withValues(alpha: 0.4)),
+                size: 18, color: accentColor.withValues(alpha: 0.45)),
           ],
         ),
       ),
     );
   }
 }
-

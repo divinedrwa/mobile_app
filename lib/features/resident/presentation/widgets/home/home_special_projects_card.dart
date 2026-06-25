@@ -17,19 +17,26 @@ class HomeSpecialProjectsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(residentSpecialProjectsProvider);
+    final stale = projectsAsync.valueOrNull;
+    final isInitialLoad = projectsAsync.isLoading && stale == null;
 
-    return projectsAsync.when(
-      loading: () => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomeSectionHeader(
-            title: 'Special projects',
-            onViewAll: () => context.push('/resident/special-projects'),
-          ),
-          const SizedBox(height: kHomeSectionGap / 2),
-          const CardCarouselSkeleton(),
-        ],
-      ),
+    if (isInitialLoad) return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        HomeSectionHeader(
+          title: 'Special projects',
+          onViewAll: () => context.push('/resident/special-projects'),
+        ),
+        const SizedBox(height: kHomeSectionGap / 2),
+        const CardCarouselSkeleton(),
+      ],
+    );
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: projectsAsync.when(
+      loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (projects) {
         final active =
@@ -157,6 +164,7 @@ class HomeSpecialProjectsCard extends ConsumerWidget {
                 duration: DesignAnimations.durationEntrance)
             .slideY(begin: 0.05, end: 0);
       },
+      ),
     );
   }
 }

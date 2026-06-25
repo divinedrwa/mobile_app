@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
-import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/notification_model.dart';
 import '../../pages/notifications_center_screen.dart';
 import 'home_shared.dart';
+import 'home_skeletons.dart';
 
 class HomeRecentActivity extends StatelessWidget {
   const HomeRecentActivity({
@@ -43,15 +43,7 @@ class HomeRecentActivity extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: notificationsState.when(
-            loading: () => ShimmerWrap(
-              child: Column(
-                children: List.generate(3, (_) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  child: ShimmerBox(height: 56, borderRadius: DesignRadius.lg),
-                )),
-              ),
-            ),
+            loading: () => const HomeRecentActivitySkeleton(),
             error: (_, _) => HomeEmptyBlock(
               message: 'Could not load recent activity',
               onRetry: onRetry,

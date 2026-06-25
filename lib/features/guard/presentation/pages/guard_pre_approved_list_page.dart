@@ -6,6 +6,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/models/guard_models.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
+import '../widgets/guard_empty_placeholder.dart';
 import '../widgets/guard_pre_approved_entries_list.dart';
 import '../widgets/guard_skeletons.dart';
 import '../../ui/guard_tokens.dart';
@@ -38,52 +39,79 @@ class _GuardPreApprovedListPageState
     context.push(GuardRoutes.preApprovedArrival, extra: entry);
   }
 
+  Widget _buildErrorBody(BuildContext context, Object e) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(GuardTokens.padScreen),
+      children: [
+        SizedBox(height: MediaQuery.paddingOf(context).top + 48),
+        GuardEmptyPlaceholder(
+          icon: Icons.cloud_off_rounded,
+          iconColor: GuardTokens.warning,
+          title: 'Could not load list',
+          message: userFacingMessage(e, 'Check your connection and try again.'),
+          actionLabel: 'Retry',
+          onAction: _onRefresh,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyBody(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(GuardTokens.padScreen),
+      children: [
+        SizedBox(height: MediaQuery.paddingOf(context).top + 48),
+        const GuardEmptyPlaceholder(
+          icon: Icons.event_available_rounded,
+          title: 'No pre-approved visitors',
+          message:
+              'When residents pre-approve guests via the app, they appear here for quick gate admission.',
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(guardPreApprovedEntriesProvider);
     final focusId = GoRouterState.of(context).uri.queryParameters['focus'];
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: _handleBack,
         ),
         title: Text(
           'Pre-approved visitors',
-          style: GuardTokens.headingStyle(context),
+          style: GuardTokens.headingStyle(context).copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
       body: async.when(
         loading: () => const GuardListSkeleton(),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(GuardTokens.padScreen),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  userFacingMessage(e, 'Could not load list.'),
-                  style: GuardTokens.bodyStyle(context),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: GuardTokens.g2),
-                FilledButton(
-                  onPressed: _onRefresh,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        error: (e, _) => _buildErrorBody(context, e),
         data: (rows) => RefreshIndicator.adaptive(
+          color: GuardTokens.guardAccentDeep,
           onRefresh: _onRefresh,
-          child: GuardPreApprovedEntriesListContent(
-            rows: rows,
-            focusId: focusId,
-            onEntryTap: _openArrival,
-          ),
+          child: rows.isEmpty
+              ? _buildEmptyBody(context)
+              : GuardPreApprovedEntriesListContent(
+                  rows: rows,
+                  focusId: focusId,
+                  onEntryTap: _openArrival,
+                ),
         ),
       ),
     );

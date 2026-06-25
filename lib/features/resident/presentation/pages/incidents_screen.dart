@@ -30,7 +30,23 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
     return Scaffold(
       backgroundColor: context.surface.background,
       appBar: AppBar(
-        title: const Text('Incident Reports'),
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Incident Reports', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary)),
+            Text('Society safety & incident log', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: context.text.secondary, height: 1.2)),
+          ],
+        ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,

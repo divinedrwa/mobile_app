@@ -104,20 +104,27 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
         ),
         centerTitle: false,
       ),
-      body: dashAsync.when(
-        loading: () => const GuardDashboardSkeleton(),
-        error: (e, _) => GuardDashboardError(
-          message: userFacingMessage(e, 'Could not load dashboard.'),
-          onRetry: _refreshAll,
-        ),
-        data: (d) => RefreshIndicator.adaptive(
-          onRefresh: _refreshAll,
-          child: _DashboardContent(
-            dash: d,
-            onRefreshInvalidate: _refreshAll,
-            scrollController: _scroll,
-          ),
-        ),
+      body: _buildBody(dashAsync),
+    );
+  }
+
+  Widget _buildBody(AsyncValue<dynamic> dashAsync) {
+    final data = dashAsync.valueOrNull;
+    final isInitialLoad = dashAsync.isLoading && data == null;
+    final hasError = dashAsync.hasError && data == null;
+
+    if (isInitialLoad) return const GuardDashboardSkeleton();
+    if (hasError) return GuardDashboardError(
+      message: userFacingMessage(dashAsync.error!, 'Could not load dashboard.'),
+      onRetry: _refreshAll,
+    );
+
+    return RefreshIndicator.adaptive(
+      onRefresh: _refreshAll,
+      child: _DashboardContent(
+        dash: data!,
+        onRefreshInvalidate: _refreshAll,
+        scrollController: _scroll,
       ),
     );
   }
@@ -216,7 +223,7 @@ class _DashboardContent extends ConsumerWidget {
         ),
         const SizedBox(height: GuardTokens.sectionGap),
         GuardViewVisitorsCta(
-          onTap: () => context.push(GuardRoutes.entries),
+          onTap: () => context.go(GuardRoutes.entries),
         ),
         const SizedBox(height: GuardTokens.sectionGap),
         GuardPremiumQuickActions(

@@ -147,6 +147,13 @@ class GuardProfilePage extends ConsumerWidget {
             subtitle: 'Trigger urgent alerts for the society when needed',
             onTap: () => context.push(GuardRoutes.emergency),
           ),
+          _tile(
+            context,
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
+            subtitle: 'View society alerts, approvals, and activity updates',
+            onTap: () => context.push(GuardRoutes.notifications),
+          ),
           const SizedBox(height: GuardTokens.sectionGap),
           _sectionLabel(context, 'Session'),
           const SizedBox(height: GuardTokens.g2),

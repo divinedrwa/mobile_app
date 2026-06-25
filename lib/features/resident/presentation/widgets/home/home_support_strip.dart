@@ -7,6 +7,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/security_contact_model.dart';
 import 'home_shared.dart';
+import 'home_skeletons.dart';
 
 class HomeSupportStrip extends StatelessWidget {
   const HomeSupportStrip({
@@ -18,14 +19,22 @@ class HomeSupportStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final contacts = securityContactsAsync.maybeWhen(
-      data: (list) =>
-          list.where((c) => c.phone.trim().isNotEmpty).toList(),
-      orElse: () => const <SecurityContactModel>[],
+    return securityContactsAsync.when(
+      loading: () => const HomeSupportStripSkeleton(),
+      error: (_, _) => _buildStrip(context, const []),
+      data: (list) => _buildStrip(context, list),
     );
+  }
+
+  Widget _buildStrip(
+    BuildContext context,
+    List<SecurityContactModel> contacts,
+  ) {
+    final callable =
+        contacts.where((c) => c.phone.trim().isNotEmpty).toList();
     final primaryPhone =
-        contacts.isNotEmpty ? contacts.first.phone.trim() : '100';
-    final hasGuardContact = contacts.isNotEmpty;
+        callable.isNotEmpty ? callable.first.phone.trim() : '100';
+    final hasGuardContact = callable.isNotEmpty;
     final securityLine = hasGuardContact
         ? 'Security: $primaryPhone'
         : 'Emergency: 100';

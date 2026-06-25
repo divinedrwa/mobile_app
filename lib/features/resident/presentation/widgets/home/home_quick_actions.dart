@@ -231,10 +231,10 @@ class HomeQuickActions extends ConsumerWidget {
             );
     final excluded = userExcluded || cycleExcluded;
     final viewAllActions = excluded
-        ? residentQuickActionsViewAll
+        ? residentQuickActionsOffHomeSection()
             .where((a) => a.id != 'maintenance_expenses')
             .toList()
-        : residentQuickActionsViewAll;
+        : residentQuickActionsOffHomeSection();
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,

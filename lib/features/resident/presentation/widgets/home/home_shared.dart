@@ -7,13 +7,28 @@ import '../../../../../theme/context_extensions.dart';
 
 const Color kHomeOrange = Color(0xFFF39C12);
 const Color kHomeGreen = DesignColors.primary;
-const double kHomePadH = 20;
-const double kHomeSectionGap = 20;
+
+/// Mock-aligned accent purple for GatePass+ hero and home CTAs.
+const Color kHomePurple = Color(0xFF6C5CE7);
+const Color kHomePurpleDark = Color(0xFF5B4BD4);
+const Color kHomePurpleLight = Color(0xFFF3F0FF);
+
+const double kHomePadH = 16;
+const double kHomeSectionGap = 14;
+const double kHomeHeroRowHeight = 108;
+const double kHomeRadiusCard = 14;
 const double kHomeRadiusLg = DesignRadius.xl; // 16
 const double kHomeRadiusMd = DesignRadius.lg; // 12
 const double kHomeRadiusSm = DesignRadius.md; // 8
 
-List<BoxShadow> homeCardShadow([double opacity = 0.06]) => DesignElevation.sm;
+/// Subtle elevation for enterprise cards (no heavy glow).
+List<BoxShadow> homeCardShadow([double opacity = 0.045]) => [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: opacity),
+        blurRadius: 10,
+        offset: const Offset(0, 2),
+      ),
+    ];
 
 // ── Shared helpers ──
 
@@ -32,14 +47,15 @@ class HomeSectionHeader extends StatelessWidget {
   const HomeSectionHeader({
     super.key,
     required this.title,
-    required this.onViewAll,
+    this.onViewAll,
     this.subtitle,
     this.dense = false,
   });
 
   final String title;
   final String? subtitle;
-  final VoidCallback onViewAll;
+  /// When null the "View All" button is hidden.
+  final VoidCallback? onViewAll;
   final bool dense;
 
   @override
@@ -58,19 +74,19 @@ class HomeSectionHeader extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                  fontSize: dense ? 14 : 15,
+                  fontWeight: FontWeight.w700,
                   color: DesignColors.textPrimary,
-                  letterSpacing: -0.35,
+                  letterSpacing: -0.3,
                   height: dense ? 1.1 : 1.2,
                 ),
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   subtitle!,
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w500,
                     color: DesignColors.textSecondary,
                   ),
@@ -79,10 +95,11 @@ class HomeSectionHeader extends StatelessWidget {
             ],
           ),
         ),
+        if (onViewAll != null)
         TextButton(
           onPressed: onViewAll,
           style: TextButton.styleFrom(
-            foregroundColor: DesignColors.primary,
+            foregroundColor: kHomePurple,
             padding: EdgeInsets.fromLTRB(4, dense ? 0 : 4, 0, dense ? 0 : 4),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -96,16 +113,16 @@ class HomeSectionHeader extends StatelessWidget {
                 'View All',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: 12,
                   height: dense ? 1.1 : 1.2,
-                  color: DesignColors.primary,
+                  color: kHomePurple,
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 1),
               const Icon(
                 Icons.chevron_right_rounded,
-                size: 18,
-                color: DesignColors.primary,
+                size: 16,
+                color: kHomePurple,
               ),
             ],
           ),

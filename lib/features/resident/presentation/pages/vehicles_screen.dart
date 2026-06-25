@@ -21,7 +21,41 @@ class VehiclesScreen extends ConsumerWidget {
     final vehiclesState = ref.watch(vehicleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Vehicles')),
+      appBar: AppBar(
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'My Vehicles',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Registered household vehicles',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(vehicleProvider.notifier).fetchVehicles(),
         child: vehiclesState.when(
@@ -151,53 +185,108 @@ class VehiclesScreen extends ConsumerWidget {
     WidgetRef ref,
     VehicleModel vehicle,
   ) {
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Vehicle?'),
-        content: Text('Remove ${vehicle.vehicleNumber} from your vehicles?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              if (vehicle.id == null || vehicle.id!.isEmpty) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Unable to remove this vehicle'),
-                    backgroundColor: DesignColors.error,
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: DesignColors.borderLight,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                );
-                return;
-              }
-              final error = await ref
-                  .read(vehicleProvider.notifier)
-                  .deleteVehicle(vehicle.id!);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    error == null
-                        ? '${vehicle.vehicleNumber} removed'
-                        : error,
-                  ),
-                  backgroundColor: error == null
-                      ? DesignColors.success
-                      : DesignColors.error,
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DesignColors.error,
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: DesignColors.error.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.directions_car_outlined, color: DesignColors.error, size: 28),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Remove vehicle?',
+                  style: DesignTypography.headingM.copyWith(letterSpacing: -0.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Remove ${vehicle.vehicleNumber} from your registered vehicles?',
+                  textAlign: TextAlign.center,
+                  style: DesignTypography.bodySmall.copyWith(
+                    color: DesignColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderLG),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () async {
+                          Navigator.pop(sheetCtx);
+                          if (vehicle.id == null || vehicle.id!.isEmpty) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                behavior: SnackBarBehavior.floating,
+                                content: Text('Unable to remove this vehicle'),
+                                backgroundColor: DesignColors.error,
+                              ),
+                            );
+                            return;
+                          }
+                          final error = await ref.read(vehicleProvider.notifier).deleteVehicle(vehicle.id!);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              content: Text(error ?? '${vehicle.vehicleNumber} removed'),
+                              backgroundColor: error == null ? DesignColors.success : DesignColors.error,
+                            ),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DesignColors.error,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderLG),
+                        ),
+                        child: const Text('Remove'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            child: const Text('Delete'),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

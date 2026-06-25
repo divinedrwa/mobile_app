@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+// Colors is part of flutter/material.dart — no extra import needed.
 
 /// Horizontal row of icon shortcuts under the hero. Each tile has an icon,
 /// a label, and an optional status sub-label (e.g. "No pending",
@@ -16,12 +17,35 @@ class MaintenanceQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final a in actions)
-          Expanded(child: _Tile(action: a)),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        color: DesignColors.surface,
+        borderRadius: BorderRadius.circular(DesignRadius.lg),
+        border: Border.all(color: DesignColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < actions.length; i++) ...[
+            Expanded(child: _Tile(action: actions[i])),
+            if (i < actions.length - 1)
+              Container(
+                width: 1,
+                height: 56,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                color: DesignColors.borderLight,
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

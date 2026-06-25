@@ -88,40 +88,79 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
 
   Future<void> _cancelSos(SOSAlertModel alert) async {
     final reasonCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel SOS'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Only cancel if the emergency is over or was triggered by mistake.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Reason',
-                border: OutlineInputBorder(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: DesignColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40, height: 4,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
+                      ),
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
+                        child: const Icon(Icons.cancel_outlined, color: DesignColors.error, size: 28),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Cancel SOS?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Only cancel if the emergency is over or was triggered by mistake.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: reasonCtrl,
+                        decoration: DesignComponents.inputDecoration(label: 'Reason', hint: 'Briefly describe why you are cancelling'),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(sheetCtx, false),
+                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                              child: const Text('Back'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => Navigator.pop(sheetCtx, true),
+                              style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                              child: const Text('Cancel SOS', style: TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
               ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Back'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: DesignColors.error),
-            child: const Text('Cancel SOS'),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
     if (ok != true) {
       reasonCtrl.dispose();
@@ -168,10 +207,21 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
         backgroundColor: DesignColors.error,
         foregroundColor: Colors.white,
       ),
-      body: async.when(
-        loading: () => const DetailSkeleton(heroHeight: 140),
-        error: (e, _) => Center(child: Text(userFacingMessage(e))),
-        data: (alert) {
+      body: _buildBody(async),
+    );
+  }
+
+  Widget _buildBody(AsyncValue<dynamic> async) {
+    final stale = async.valueOrNull;
+    final isInitialLoad = async.isLoading && stale == null;
+
+    if (isInitialLoad) return const DetailSkeleton(heroHeight: 140);
+    if (async.hasError && stale == null) {
+      return Center(child: Text(userFacingMessage(async.error!)));
+    }
+
+    final alert = stale ?? async.valueOrNull;
+    return Builder(builder: (context) {
           if (alert == null || alert.status.isTerminal) {
             return Center(
               child: Padding(
@@ -319,8 +369,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
             ),
           );
         },
-      ),
-    );
+      );
   }
 
   String _formatDuration(Duration d) {

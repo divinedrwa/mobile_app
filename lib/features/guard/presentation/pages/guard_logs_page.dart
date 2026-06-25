@@ -299,60 +299,95 @@ class _VisitorLogs extends ConsumerWidget {
                     }
                     final v = filtered[i - 1];
                     final inGate = v.checkOutTime == null;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
+                    final tone = inGate
+                        ? GuardTokens.success
+                        : GuardTokens.textSecondary;
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+                          side: BorderSide(
+                            color: isDark
+                                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+                          ),
                         ),
-                        leading: CircleAvatar(
-                          backgroundColor: GuardTokens.guardAccent.withValues(
-                            alpha: 0.14,
-                          ),
-                          child: const Icon(
-                            Icons.person_outline_rounded,
-                            color: GuardTokens.guardAccentDeep,
-                          ),
-                        ),
-                        title: Text(
-                          v.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          [
-                            if (v.villaLabel != null) 'Flat ${v.villaLabel}',
-                            v.status,
-                          ].join(' · '),
-                          style: GuardTokens.captionStyle(context),
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: inGate
-                                ? GuardTokens.successMuted
-                                : GuardTokens.dangerMuted,
-                            borderRadius: BorderRadius.circular(
-                              GuardTokens.radiusChip,
-                            ),
-                          ),
-                          child: Text(
-                            inGate ? 'IN' : 'OUT',
-                            style: TextStyle(
-                              color: inGate
-                                  ? GuardTokens.success
-                                  : GuardTokens.dangerBrand,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                            ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: GuardTokens.guardAccent.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: GuardTokens.guardAccent.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  v.name.trim().isNotEmpty ? v.name.trim()[0].toUpperCase() : '?',
+                                  style: const TextStyle(
+                                    color: GuardTokens.guardAccentDeep,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      v.name,
+                                      style: GuardTokens.headingStyle(context).copyWith(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.25,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      [
+                                        if (v.villaLabel != null) 'Flat ${v.villaLabel}',
+                                        v.status,
+                                      ].join(' · '),
+                                      style: GuardTokens.captionStyle(context),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: tone.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: tone.withValues(alpha: 0.30)),
+                                ),
+                                child: Text(
+                                  inGate ? 'IN' : 'OUT',
+                                  style: TextStyle(
+                                    color: tone,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -423,34 +458,91 @@ class _DeliveryLogs extends ConsumerWidget {
                       );
                     }
                     final p = filtered[i - 1];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: GuardTokens.warning.withValues(
-                            alpha: 0.14,
-                          ),
-                          child: const Icon(
-                            Icons.inventory_2_outlined,
-                            color: GuardTokens.warning,
-                          ),
-                        ),
-                        title: Text(
-                          p.trackingNumber.isNotEmpty
-                              ? p.trackingNumber
-                              : p.courier,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    final title = p.trackingNumber.isNotEmpty ? p.trackingNumber : p.courier;
+                    final statusTone = p.status == ParcelStatus.collected
+                        ? GuardTokens.success
+                        : p.status == ParcelStatus.returned
+                            ? GuardTokens.textSecondary
+                            : GuardTokens.warning;
+                    final isDarkD = Theme.of(context).brightness == Brightness.dark;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+                          side: BorderSide(
+                            color: isDarkD
+                                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
                           ),
                         ),
-                        subtitle: Text(
-                          '${p.courier} · ${p.status.label}',
-                          style: GuardTokens.captionStyle(context),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: GuardTokens.warning.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: GuardTokens.warning.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 19,
+                                  color: GuardTokens.warning,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: GuardTokens.headingStyle(context).copyWith(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.25,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      p.courier.isNotEmpty ? p.courier : '—',
+                                      style: GuardTokens.captionStyle(context),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: statusTone.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: statusTone.withValues(alpha: 0.30)),
+                                ),
+                                child: Text(
+                                  p.status.label,
+                                  style: TextStyle(
+                                    color: statusTone,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -519,29 +611,83 @@ class _VehicleLogs extends ConsumerWidget {
                       );
                     }
                     final v = list[i - 1];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: GuardTokens.success.withValues(
-                            alpha: 0.12,
-                          ),
-                          child: const Icon(Icons.directions_car_rounded),
-                        ),
-                        title: Text(
-                          v.registrationNumber.isEmpty ? '—' : v.registrationNumber,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
+                    final vTone = v.isInside ? GuardTokens.success : GuardTokens.textSecondary;
+                    final isDarkV = Theme.of(context).brightness == Brightness.dark;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+                          side: BorderSide(
+                            color: isDarkV
+                                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
                           ),
                         ),
-                        subtitle: Text(
-                          '${v.kind.replaceAll('_', ' ')} · ${v.isInside ? 'Inside' : 'Out'}',
-                          style: GuardTokens.captionStyle(context),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: vTone.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: vTone.withValues(alpha: 0.22)),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.directions_car_outlined,
+                                  size: 19,
+                                  color: vTone,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      v.registrationNumber.isEmpty ? '(No plate)' : v.registrationNumber,
+                                      style: GuardTokens.headingStyle(context).copyWith(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      v.kind.replaceAll('_', ' '),
+                                      style: GuardTokens.captionStyle(context),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: vTone.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: vTone.withValues(alpha: 0.30)),
+                                ),
+                                child: Text(
+                                  v.isInside ? 'IN' : 'OUT',
+                                  style: TextStyle(
+                                    color: vTone,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

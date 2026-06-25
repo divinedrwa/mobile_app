@@ -20,18 +20,27 @@ class HomeBannerCarousel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bannersAsync = ref.watch(activeBannersProvider);
-    return bannersAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.only(bottom: 12),
+    final stale = bannersAsync.valueOrNull;
+    final isInitialLoad = bannersAsync.isLoading && stale == null;
+
+    Widget child;
+    if (isInitialLoad) {
+      child = const Padding(
+        padding: EdgeInsets.only(bottom: kHomeSectionGap),
         child: ShimmerWrap(
-          child: ShimmerBox(height: 148, borderRadius: DesignRadius.xl),
+          child: ShimmerBox(height: 160, borderRadius: DesignRadius.xl),
         ),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (banners) {
-        if (banners.isEmpty) return const SizedBox.shrink();
-        return _BannerCarouselWidget(banners: banners);
-      },
+      );
+    } else if (bannersAsync.hasError || (stale?.isEmpty ?? true)) {
+      child = const SizedBox.shrink();
+    } else {
+      child = _BannerCarouselWidget(banners: stale!);
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: child,
     );
   }
 }

@@ -162,24 +162,65 @@ class _MyPreApprovedVisitorsScreenState
     final id = v.id;
     if (id == null) return;
 
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove pre-approval?'),
-        content: Text(
-          'Guards will no longer see ${v.name} under expected visitors.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: DesignColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
+                ),
+                Container(
+                  width: 56, height: 56,
+                  decoration: BoxDecoration(color: DesignColors.warning.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.no_meeting_room_outlined, color: DesignColors.warning, size: 28),
+                ),
+                const SizedBox(height: 16),
+                const Text('Remove pre-approval?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                const SizedBox(height: 8),
+                Text(
+                  'Guards will no longer see ${v.name} under expected visitors.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx, false),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(sheetCtx, true),
+                        style: FilledButton.styleFrom(backgroundColor: DesignColors.warning, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                        child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
     if (ok != true || !context.mounted) return;
 
@@ -492,10 +533,7 @@ class _PreApprovalVisitorCard extends StatelessWidget {
               : DesignColors.borderLight,
         ),
       ),
-      child: InkWell(
-        borderRadius: DesignRadius.borderLG,
-        onTap: null,
-        child: Padding(
+      child: Padding(
           padding: const EdgeInsets.fromLTRB(
             DesignSpacing.md + 2,
             DesignSpacing.md + 2,
@@ -726,7 +764,6 @@ class _PreApprovalVisitorCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

@@ -15,8 +15,15 @@ import '../widgets/list_skeleton.dart';
 import '../widgets/visitor_management_ui.dart';
 
 /// Visitor history — compact cards with scrollable period tabs and clear status chips.
+///
+/// [statusFilter] — optional status to pre-filter the list (e.g. `CHECKED_IN`,
+/// `CHECKED_OUT`). When provided, a dismissible filter chip is shown and the
+/// list is pre-filtered to that status.
 class VisitorHistoryScreen extends ConsumerStatefulWidget {
-  const VisitorHistoryScreen({super.key});
+  const VisitorHistoryScreen({super.key, this.statusFilter});
+
+  /// Optional pre-filter: `CHECKED_IN`, `CHECKED_OUT`, etc.
+  final String? statusFilter;
 
   @override
   ConsumerState<VisitorHistoryScreen> createState() =>
@@ -28,12 +35,28 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
   late TabController _tabController;
   final _scrollController = ScrollController();
   String _searchQuery = '';
+  late String? _activeStatusFilter;
+
+  // Human-readable label for the active filter chip.
+  static String _filterLabel(String status) {
+    switch (status.toUpperCase()) {
+      case 'CHECKED_IN':
+        return 'Currently inside';
+      case 'CHECKED_OUT':
+        return 'Checked out';
+      case 'PENDING_APPROVAL':
+        return 'Awaiting approval';
+      default:
+        return status.replaceAll('_', ' ').toLowerCase();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _scrollController.addListener(_onScroll);
+    _activeStatusFilter = widget.statusFilter;
   }
 
   @override
@@ -47,6 +70,28 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       ref.read(paginatedVisitorHistoryProvider.notifier).loadMore();
+    }
+  }
+
+  static Color _filterColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'CHECKED_IN':
+        return const Color(0xFF00B37E);
+      case 'CHECKED_OUT':
+        return const Color(0xFF0EA5E9);
+      default:
+        return DesignColors.primary;
+    }
+  }
+
+  static IconData _filterIcon(String status) {
+    switch (status.toUpperCase()) {
+      case 'CHECKED_IN':
+        return Icons.home_work_rounded;
+      case 'CHECKED_OUT':
+        return Icons.logout_rounded;
+      default:
+        return Icons.filter_list_rounded;
     }
   }
 
@@ -104,7 +149,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
           ),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(96),
+          preferredSize: Size.fromHeight(_activeStatusFilter != null ? 124 : 96),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -115,6 +160,65 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                   onChanged: (value) => setState(() => _searchQuery = value),
                 ),
               ),
+              // Active status filter chip — dismissible
+              if (_activeStatusFilter != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _filterColor(_activeStatusFilter!).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _filterColor(_activeStatusFilter!).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _filterIcon(_activeStatusFilter!),
+                              size: 13,
+                              color: _filterColor(_activeStatusFilter!),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              _filterLabel(_activeStatusFilter!),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _filterColor(_activeStatusFilter!),
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () =>
+                                  setState(() => _activeStatusFilter = null),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: _filterColor(_activeStatusFilter!),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Tap × to clear filter',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: DesignColors.textTertiary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               VisitorMgmtTabBar(
                 controller: _tabController,
                 tabs: const [
@@ -161,6 +265,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                 v.name.toLowerCase().contains(q) ||
                 v.phone.toLowerCase().contains(q),
           )
+          .toList();
+    }
+    // Apply status filter (set from hub stat box tap)
+    if (_activeStatusFilter != null) {
+      filteredVisitors = filteredVisitors
+          .where((v) =>
+              v.status.toUpperCase() == _activeStatusFilter!.toUpperCase())
           .toList();
     }
 
@@ -390,6 +501,13 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
   }
 
   Widget _buildEmptyState() {
+    if (_activeStatusFilter != null) {
+      return EmptyStateWidget(
+        icon: _filterIcon(_activeStatusFilter!) ,
+        title: 'No visitors ${_filterLabel(_activeStatusFilter!).toLowerCase()}',
+        subtitle: 'When visitors have this status, they\'ll appear here.',
+      );
+    }
     return const EmptyStateWidget(
       icon: Icons.people_outline_rounded,
       title: 'No visitor history yet',

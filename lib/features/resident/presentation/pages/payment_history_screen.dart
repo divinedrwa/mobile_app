@@ -23,29 +23,78 @@ class PaymentHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.surface.background,
-      appBar: AppBar(title: const Text('Payment History')),
-      body: historyState.when(
-        loading: () => const ListSkeleton(),
-        error: (error, _) => Padding(
+      appBar: AppBar(
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Payment History',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Maintenance transactions & receipts',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: Builder(builder: (context) {
+        final stale = historyState.valueOrNull;
+        final isInitialLoad = historyState.isLoading && stale == null;
+        final hasError = historyState.hasError && stale == null;
+
+        if (isInitialLoad) return const ListSkeleton();
+        if (hasError) return Padding(
           padding: EdgeInsets.all(context.spacing.s16),
           child: EnterpriseInfoBanner(
             icon: Icons.receipt_long_outlined,
             title: 'Could not load payment history',
-            message: userFacingMessage(error),
+            message: userFacingMessage(historyState.error!),
             tone: EnterpriseTone.danger,
             actionLabel: 'Retry',
             onAction: () => ref.invalidate(maintenanceHistoryProvider),
           ),
-        ),
-        data: (records) {
-          if (records.isEmpty) {
-            return const EmptyStateWidget(
-              icon: Icons.receipt_long_outlined,
-              title: 'No payment history',
-              subtitle: 'Your maintenance payment records will appear here.',
-            );
-          }
-          return ListView(
+        );
+
+        final records = stale ?? [];
+        if (records.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(maintenanceHistoryProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                EmptyStateWidget(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'No payment history',
+                  subtitle: 'Your maintenance payment records will appear here.',
+                ),
+              ],
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(maintenanceHistoryProvider),
+          child: ListView(
             padding: EdgeInsets.fromLTRB(
               context.spacing.s16,
               context.spacing.s16,
@@ -75,9 +124,9 @@ class PaymentHistoryScreen extends ConsumerWidget {
                       delay: DesignAnimations.staggerFor(index),
                     ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      }),
     );
   }
 }

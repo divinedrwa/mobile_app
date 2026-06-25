@@ -21,7 +21,7 @@ class AdminUpiVerificationsScreen extends ConsumerStatefulWidget {
 
 class _AdminUpiVerificationsScreenState
     extends ConsumerState<AdminUpiVerificationsScreen> {
-  bool _processing = false;
+  String? _processingId;
 
   Future<void> _refresh() async {
     ref.invalidate(adminPendingUpiPaymentsProvider);
@@ -29,29 +29,52 @@ class _AdminUpiVerificationsScreenState
   }
 
   Future<void> _verify(UpiPaymentModel s) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Verify Payment?'),
-        content: Text(
-          'Approve \u20B9${s.amount.toStringAsFixed(0)} from '
-          '${s.userName ?? 'Resident'} (Villa ${s.villaNumber ?? ''}) '
-          'for ${s.month}/${s.year}?\n\n'
-          'This will record the payment in the ledger.',
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: const BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Verify')),
-        ],
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.currency_rupee_rounded, color: Color(0xFF16A34A), size: 28)),
+              const SizedBox(height: 16),
+              const Text('Verify Payment?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text('Approve \u20B9${s.amount.toStringAsFixed(0)} from ${s.userName ?? 'Resident'} (Villa ${s.villaNumber ?? ''}) for ${s.month}/${s.year}? This will record the payment in the ledger.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx, false),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Cancel'))),
+                const SizedBox(width: 12),
+                Expanded(child: FilledButton(
+                  onPressed: () => Navigator.pop(sheetCtx, true),
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _processing = true);
+    setState(() => _processingId = s.id);
     try {
       await ref.read(adminUpiPaymentRepositoryProvider).verifySubmission(s.id);
       if (mounted) {
@@ -67,58 +90,68 @@ class _AdminUpiVerificationsScreenState
         );
       }
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) setState(() => _processingId = null);
     }
   }
 
   Future<void> _reject(UpiPaymentModel s) async {
     final reasonController = TextEditingController();
-    final reason = await showDialog<String>(
+    final reason = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reject Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Reject \u20B9${s.amount.toStringAsFixed(0)} from '
-                '${s.userName ?? 'Resident'}?'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Reason',
-                hintText: 'e.g. UTR not found, wrong amount',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: DesignColors.error),
-            onPressed: () {
-              final text = reasonController.text.trim();
-              if (text.length < 3) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(
-                      content: Text('Reason must be at least 3 characters')),
-                );
-                return;
-              }
-              Navigator.pop(ctx, text);
-            },
-            child: const Text('Reject'),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: DesignColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-        ],
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)))),
+              const Text('Reject Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('Reject \u20B9${s.amount.toStringAsFixed(0)} from ${s.userName ?? 'Resident'}?',
+                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                autofocus: true,
+                decoration: DesignComponents.inputDecoration(label: 'Reason', hint: 'e.g. UTR not found, wrong amount'),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Cancel'))),
+                const SizedBox(width: 12),
+                Expanded(child: FilledButton(
+                  onPressed: () {
+                    final text = reasonController.text.trim();
+                    if (text.length < 3) {
+                      ScaffoldMessenger.of(sheetCtx).showSnackBar(const SnackBar(content: Text('Reason must be at least 3 characters')));
+                      return;
+                    }
+                    Navigator.pop(sheetCtx, text);
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.w600)))),
+              ]),
+            ],
+          ),
+        ),
       ),
     );
     if (reason == null || !mounted) return;
 
-    setState(() => _processing = true);
+    setState(() => _processingId = s.id);
     try {
       await ref
           .read(adminUpiPaymentRepositoryProvider)
@@ -136,7 +169,7 @@ class _AdminUpiVerificationsScreenState
         );
       }
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) setState(() => _processingId = null);
     }
   }
 
@@ -273,7 +306,7 @@ class _AdminUpiVerificationsScreenState
                     itemCount: submissions.length,
                     itemBuilder: (ctx, i) => _SubmissionCard(
                       submission: submissions[i],
-                      processing: _processing,
+                      processing: _processingId == submissions[i].id,
                       onVerify: () => _verify(submissions[i]),
                       onReject: () => _reject(submissions[i]),
                     ),
@@ -379,6 +412,25 @@ class _SubmissionCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: DesignColors.textPrimary,
               ),
+            ),
+          ],
+          if (submission.remark != null && submission.remark!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.comment_outlined, size: 12, color: DesignColors.textSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    submission.remark!,
+                    style: DesignTypography.captionSmall.copyWith(
+                      color: DesignColors.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
           const SizedBox(height: 4),

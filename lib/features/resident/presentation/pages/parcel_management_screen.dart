@@ -47,32 +47,44 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
       backgroundColor: context.surface.background,
       appBar: AppBar(
         backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back, color: context.text.primary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: context.text.primary,
+          ),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'My Parcels',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
                 color: context.text.primary,
               ),
             ),
-            if (pendingCount > 0)
-              Text(
-                '$pendingCount pending collection',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: context.text.secondary,
-                  fontWeight: FontWeight.normal,
-                ),
+            Text(
+              pendingCount > 0
+                  ? '$pendingCount awaiting collection'
+                  : 'All parcels at your gate',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: pendingCount > 0
+                    ? context.state.pending.solid
+                    : context.text.secondary,
+                height: 1.2,
               ),
+            ),
           ],
         ),
         bottom: TabBar(
@@ -80,12 +92,13 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
           labelColor: DesignColors.primary,
           unselectedLabelColor: DesignColors.textSecondary,
           indicatorColor: DesignColors.primary,
+          dividerColor: context.surface.border.withValues(alpha: 0.5),
           tabs: [
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.inbox, size: 18),
+                  const Icon(Icons.inbox_outlined, size: 18),
                   const SizedBox(width: 8),
                   const Text('Pending'),
                   if (pendingCount > 0) ...[
@@ -113,7 +126,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 18),
+                  Icon(Icons.history_rounded, size: 18),
                   SizedBox(width: 8),
                   Text('History'),
                 ],
@@ -367,36 +380,114 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
 
   void _handleCollect(ParcelModel parcel) {
     final pageContext = context;
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Collect Parcel'),
-        content: Text(
-          'Mark this parcel from ${parcel.courier} as collected?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: context.surface.defaultSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final error = await ref.read(parcelProvider.notifier).markAsCollected(parcel.id!);
-              if (!pageContext.mounted) return;
-              ScaffoldMessenger.of(pageContext).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    error ?? 'Parcel marked as collected',
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: context.surface.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  backgroundColor: error == null ? DesignColors.success : DesignColors.error,
                 ),
-              );
-            },
-            child: const Text('Confirm'),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: DesignColors.success.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.inventory_2_rounded,
+                    color: DesignColors.success,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Collect parcel?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: context.text.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Mark the ${parcel.courier} parcel as collected.\nThis action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.text.secondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: DesignRadius.borderLG,
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () async {
+                          Navigator.pop(sheetCtx);
+                          final error = await ref
+                              .read(parcelProvider.notifier)
+                              .markAsCollected(parcel.id!);
+                          if (!pageContext.mounted) return;
+                          ScaffoldMessenger.of(pageContext).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              content: Text(error ?? 'Parcel marked as collected'),
+                              backgroundColor:
+                                  error == null ? DesignColors.success : DesignColors.error,
+                            ),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DesignColors.success,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: DesignRadius.borderLG,
+                          ),
+                        ),
+                        child: const Text('Confirm'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

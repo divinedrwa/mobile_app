@@ -6,6 +6,7 @@ import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_skeletons.dart';
 
 class _VisitBreakdown {
@@ -129,17 +130,10 @@ class GuardTodaySummaryPage extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(GuardTokens.padScreen),
             children: [
-              SizedBox(height: MediaQuery.paddingOf(context).top + 32),
-              Icon(Icons.signal_wifi_bad_rounded, size: 48, color: scheme.error),
-              const SizedBox(height: GuardTokens.g2),
-              Text(
-                userFacingMessage(e, 'Could not load summary.'),
-                style: GuardTokens.bodyStyle(context),
-              ),
-              const SizedBox(height: GuardTokens.g3),
-              FilledButton(
-                onPressed: () => ref.invalidate(guardDashboardProvider),
-                child: const Text('Retry'),
+              SizedBox(height: MediaQuery.paddingOf(context).top + 24),
+              GuardInlineErrorBanner(
+                message: userFacingMessage(e, 'Could not load summary.'),
+                onRetry: () => ref.invalidate(guardDashboardProvider),
               ),
             ],
           ),

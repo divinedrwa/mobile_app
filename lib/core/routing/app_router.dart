@@ -32,6 +32,8 @@ import '../../features/resident/presentation/pages/amenity_booking_history_scree
 import '../../features/resident/presentation/pages/visitor_approval_requests_screen.dart';
 import '../../features/resident/presentation/pages/visitor_approval_detail_screen.dart';
 import '../../features/resident/presentation/pages/my_pre_approved_visitors_screen.dart';
+import '../../features/resident/presentation/pages/visitor_hub_screen.dart';
+import '../../features/resident/presentation/pages/visitor_history_screen.dart';
 import '../../features/resident/presentation/pages/resident_overview_screen.dart';
 import '../../features/resident/presentation/pages/society_expenses_screen.dart';
 import '../../features/resident/presentation/pages/expense_detail_screen.dart';
@@ -66,6 +68,8 @@ import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.da
 import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
 import '../../features/resident/presentation/pages/utilities_screen.dart';
 import '../../features/resident/presentation/pages/incidents_screen.dart';
+import '../../features/resident/presentation/pages/notices_list_screen.dart';
+import '../../features/resident/presentation/pages/parcel_management_screen.dart';
 import '../../features/resident/presentation/pages/vehicle_log_screen.dart';
 import '../../features/resident/presentation/pages/community_directory_screen.dart';
 import '../../features/resident/presentation/pages/special_projects/special_projects_screen.dart';
@@ -352,6 +356,16 @@ class AppRouter {
               builder: (context, state) => const AmenityBookingHistoryScreen(),
             ),
             GoRoute(
+              path: 'visitor-hub',
+              builder: (context, state) => const VisitorHubScreen(),
+            ),
+            GoRoute(
+              path: 'visitor-history',
+              builder: (context, state) => VisitorHistoryScreen(
+                statusFilter: state.uri.queryParameters['status'],
+              ),
+            ),
+            GoRoute(
               path: 'visitor-requests',
               builder: (context, state) => const VisitorApprovalRequestsScreen(),
             ),
@@ -402,6 +416,14 @@ class AppRouter {
             GoRoute(
               path: 'directory',
               builder: (context, state) => const CommunityDirectoryScreen(),
+            ),
+            GoRoute(
+              path: 'notices',
+              builder: (context, state) => const NoticesListScreen(),
+            ),
+            GoRoute(
+              path: 'parcels',
+              builder: (context, state) => const ParcelManagementScreen(),
             ),
             // Special Projects (resident + admin)
             GoRoute(
