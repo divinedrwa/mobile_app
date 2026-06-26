@@ -56,32 +56,32 @@ class HomeSocietyFundCard extends StatelessWidget {
             fund.societyFund + fund.pendingDues;
         final projectedPositive = projectedSociety >= 0;
         final projectedColor = projectedPositive
-            ? const Color(0xFF166534)
+            ? DesignColors.success
             : DesignColors.error;
         final bankPositive = fund.currentBalance >= 0;
         final bankColor = bankPositive
-            ? const Color(0xFF16A34A)
+            ? DesignColors.success
             : DesignColors.error;
         final progress =
             (fund.collectionRate / 100).clamp(0.0, 1.0);
         final progressColor = progress >= 0.9
-            ? const Color(0xFF16A34A)
+            ? DesignColors.success
             : progress >= 0.7
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFFEF4444);
+                ? DesignColors.warning
+                : DesignColors.error;
 
         final heroBg = isPositive
-            ? const Color(0xFFF0FDF4)
-            : const Color(0xFFFEF2F2);
+            ? DesignColors.successLight
+            : DesignColors.errorLight;
         final heroBorder = isPositive
-            ? const Color(0xFFBBF7D0)
-            : const Color(0xFFFECACA);
+            ? DesignColors.success.withValues(alpha: 0.35)
+            : DesignColors.error.withValues(alpha: 0.35);
         final heroAmountColor = isPositive
-            ? const Color(0xFF16A34A)
+            ? DesignColors.success
             : DesignColors.error;
         final heroMuted = isPositive
-            ? const Color(0xFF15803D)
-            : const Color(0xFF991B1B);
+            ? DesignColors.primary
+            : DesignColors.error;
 
         return Container(
           decoration: DesignComponents.cardDecoration(
@@ -221,10 +221,8 @@ class HomeSocietyFundCard extends StatelessWidget {
                                 .format(fund.allTimeCollected),
                             subtitle:
                                 'of ${inr.format(fund.expectedAllTime)}',
-                            accentColor:
-                                const Color(0xFF16A34A),
-                            bgColor:
-                                const Color(0xFFF0FDF4),
+                            accentColor: DesignColors.success,
+                            bgColor: DesignColors.successLight,
                           ),
                         ),
                         const SizedBox(width: 7),
@@ -256,11 +254,11 @@ class HomeSocietyFundCard extends StatelessWidget {
                                 ? 'outstanding'
                                 : 'all clear',
                             accentColor: hasPending
-                                ? const Color(0xFFD97706)
-                                : const Color(0xFF16A34A),
+                                ? DesignColors.warning
+                                : DesignColors.success,
                             bgColor: hasPending
-                                ? const Color(0xFFFFFBEB)
-                                : const Color(0xFFF0FDF4),
+                                ? DesignColors.warning.withValues(alpha: 0.08)
+                                : DesignColors.successLight,
                           ),
                         ),
                         const SizedBox(width: 7),
@@ -274,10 +272,8 @@ class HomeSocietyFundCard extends StatelessWidget {
                             subtitle: hasAdvanceCredit
                                 ? 'resident credit'
                                 : 'no credit',
-                            accentColor:
-                                const Color(0xFF2563EB),
-                            bgColor:
-                                const Color(0xFFEFF6FF),
+                            accentColor: DesignColors.info,
+                            bgColor: DesignColors.info.withValues(alpha: 0.08),
                           ),
                         ),
                       ],
@@ -546,14 +542,14 @@ class HomeSocietyFundCard extends StatelessWidget {
             const SizedBox(height: 14),
             _infoRow(
               context,
-              const Color(0xFF166534),
+              DesignColors.success,
               'Spendable',
               'Money the society can use for expenses. This is the total bank balance minus advance credit.',
             ),
             const SizedBox(height: 10),
             _infoRow(
               context,
-              const Color(0xFF1E40AF),
+              DesignColors.info,
               'Advance credit',
               'Prepayments by residents for future billing cycles. Reserved for those residents and not available for general spending.',
             ),

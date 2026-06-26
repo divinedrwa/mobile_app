@@ -87,11 +87,11 @@ class _HomeHeroQuickActionsState extends ConsumerState<HomeHeroQuickActions> {
                   background: const Color(0xFFFFF8F8),
                   borderColor: const Color(0xFFFECACA),
                   iconBg: const Color(0xFFFEE2E2),
-                  iconColor: const Color(0xFFDC2626),
+                  iconColor: DesignColors.error,
                   icon: Icons.phone_in_talk_rounded,
                   title: 'SOS',
                   subtitle: 'Emergency assistance',
-                  arrowColor: const Color(0xFFDC2626),
+                  arrowColor: DesignColors.error,
                   onTap: () {
                     DesignHaptics.selection();
                     HomeQuickActionNavigation.open(
@@ -114,11 +114,11 @@ class _HomeHeroQuickActionsState extends ConsumerState<HomeHeroQuickActions> {
                   background: const Color(0xFFFFFBF5),
                   borderColor: const Color(0xFFFED7AA),
                   iconBg: const Color(0xFFFFEDD5),
-                  iconColor: const Color(0xFFEA580C),
+                  iconColor: DesignColors.warning,
                   icon: Icons.warning_amber_rounded,
                   title: 'Complaint',
                   subtitle: 'Raise a complaint instantly',
-                  arrowColor: const Color(0xFFEA580C),
+                  arrowColor: DesignColors.warning,
                   onTap: () {
                     DesignHaptics.selection();
                     HomeQuickActionNavigation.open(
@@ -224,11 +224,11 @@ class _VisitorEntryCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                DesignColors.primaryLight,
+                DesignColors.secondary,
                 DesignColors.primary,
                 DesignColors.primaryDark,
               ],
-              stops: const [0.0, 0.55, 1.0],
+              stops: const [0.0, 0.5, 1.0],
             ),
             borderRadius: BorderRadius.circular(18),
             boxShadow: [

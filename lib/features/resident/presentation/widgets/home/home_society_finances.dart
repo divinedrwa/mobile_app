@@ -88,17 +88,17 @@ class HomeSocietyFinances extends StatelessWidget {
     final shownRate = fund.collectionRate.clamp(0.0, 100.0);
     final progress = (shownRate / 100).clamp(0.0, 1.0);
     final progressColor = progress >= 0.9
-        ? const Color(0xFF16A34A)
+        ? DesignColors.success
         : progress >= 0.7
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
+            ? DesignColors.warning
+            : DesignColors.error;
     final hasPending = fund.pendingDues > 0;
     final hasAdvance = fund.totalAdvanceCredit > 0;
     final bankColor =
-        fund.currentBalance >= 0 ? const Color(0xFF16A34A) : DesignColors.error;
+        fund.currentBalance >= 0 ? DesignColors.success : DesignColors.error;
     final projected = fund.projectedBalance;
     final projColor =
-        projected >= 0 ? const Color(0xFF166534) : DesignColors.error;
+        projected >= 0 ? DesignColors.success : DesignColors.error;
     final healthLabel = _healthLabel(shownRate, fund.societyFund);
     final healthColor = _healthColor(shownRate, fund.societyFund);
     final healthEmoji = _healthEmoji(shownRate, fund.societyFund);
@@ -208,8 +208,8 @@ class HomeSocietyFinances extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isPositive
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFEE2E2),
+                            ? DesignColors.successLight
+                            : DesignColors.errorLight,
                         borderRadius:
                             BorderRadius.circular(DesignRadius.full),
                       ),
@@ -222,7 +222,7 @@ class HomeSocietyFinances extends StatelessWidget {
                                 : Icons.warning_amber_rounded,
                             size: 11,
                             color: isPositive
-                                ? const Color(0xFF16A34A)
+                                ? DesignColors.success
                                 : DesignColors.error,
                           ),
                           const SizedBox(width: 3),
@@ -234,7 +234,7 @@ class HomeSocietyFinances extends StatelessWidget {
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
                               color: isPositive
-                                  ? const Color(0xFF16A34A)
+                                  ? DesignColors.success
                                   : DesignColors.error,
                               height: 1.1,
                             ),
@@ -317,7 +317,7 @@ class HomeSocietyFinances extends StatelessWidget {
                     label: 'Collection',
                     value: inr.format(fund.allTimeCollected),
                     sub: 'of ${inr.format(fund.expectedAllTime)}',
-                    color: const Color(0xFF16A34A),
+                    color: DesignColors.success,
                   ),
                 ),
                 ),
@@ -330,7 +330,7 @@ class HomeSocietyFinances extends StatelessWidget {
                     label: 'Expenses',
                     value: inr.format(fund.allTimeSpent),
                     sub: 'total spent',
-                    color: const Color(0xFFDC2626),
+                    color: DesignColors.error,
                   ),
                 ),
                 ),
@@ -345,8 +345,8 @@ class HomeSocietyFinances extends StatelessWidget {
                         hasPending ? inr.format(fund.pendingDues) : 'None',
                     sub: 'across Villas',
                     color: hasPending
-                        ? const Color(0xFFD97706)
-                        : const Color(0xFF16A34A),
+                        ? DesignColors.warning
+                        : DesignColors.success,
                   ),
                 ),
                 ),
@@ -361,7 +361,7 @@ class HomeSocietyFinances extends StatelessWidget {
                         ? inr.format(fund.totalAdvanceCredit)
                         : 'None',
                     sub: 'extra paid',
-                    color: const Color(0xFF2563EB),
+                    color: DesignColors.info,
                   ),
                 ),
                 ),
@@ -454,8 +454,8 @@ class HomeSocietyFinances extends StatelessWidget {
   }
 
   Color _healthColor(double r, double f) {
-    if (r >= 90 && f >= 0) return const Color(0xFF16A34A);
-    if (r >= 70 || f >= 0) return const Color(0xFFF59E0B);
+    if (r >= 90 && f >= 0) return DesignColors.success;
+    if (r >= 70 || f >= 0) return DesignColors.warning;
     return DesignColors.error;
   }
 

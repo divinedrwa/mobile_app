@@ -63,10 +63,12 @@ class DesignColors {
   static Color get divider     => _c.divider;
 
   // ── SEMANTIC ──────────────────────────────────────────────────────────────
-  static Color get success => _c.success;
-  static Color get warning => _c.warning;
-  static Color get error   => _c.error;
-  static Color get info    => _c.info;
+  static Color get success      => _c.success;
+  static Color get successLight => _c.successLight;
+  static Color get warning      => _c.warning;
+  static Color get error        => _c.error;
+  static Color get errorLight   => _c.errorLight;
+  static Color get info         => _c.info;
 
   // ── SOCIAL (brand-fixed, never themed) ─────────────────────────────────────
   static const Color google = Color(0xFFDB4437);

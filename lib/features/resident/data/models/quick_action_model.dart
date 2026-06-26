@@ -150,11 +150,11 @@ final residentHomeHeroOverflowActions = [
 
 /// Secondary icon row under hero cards (mock: Parcel … More).
 final residentHomeSecondaryActionsGrid = [
-  const QuickAction(
+  QuickAction(
     id: 'parcels',
     label: 'Parcel',
     icon: Icons.inventory_2_outlined,
-    color: Color(0xFF16A34A),
+    color: DesignColors.success,
     route: '/resident/parcels',
   ),
   QuickAction(
@@ -164,18 +164,18 @@ final residentHomeSecondaryActionsGrid = [
     color: DesignColors.primary,
     route: '/resident/amenity-bookings',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'daily_help',
     label: 'Vendors',
     icon: Icons.badge_outlined,
-    color: Color(0xFF2563EB),
+    color: DesignColors.info,
     route: '/resident/daily-help',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'amenities',
     label: 'Amenity Booking',
     icon: Icons.pool_rounded,
-    color: Color(0xFF16A34A),
+    color: DesignColors.success,
     route: '/resident/amenities',
   ),
   QuickAction(

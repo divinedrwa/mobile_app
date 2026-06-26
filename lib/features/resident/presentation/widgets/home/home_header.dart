@@ -138,17 +138,16 @@ class HomeHeader extends StatelessWidget {
                               label: _occupantChipLabel(),
                               icon: Icons.person_outline_rounded,
                               background: kHomePurpleLight,
-                              foreground: kHomePurple,
-                              border: kHomePurple.withValues(alpha: 0.15),
+                              foreground: kHomePurple.withValues(alpha: 0.92),
+                              border: kHomePurple.withValues(alpha: 0.22),
                             ),
                             if (unitChip != null)
                               _InfoChip(
                                 label: unitChip,
                                 icon: Icons.apartment_rounded,
-                                background: const Color(0xFFECFDF5),
-                                foreground: const Color(0xFF15803D),
-                                border: const Color(0xFF86EFAC)
-                                    .withValues(alpha: 0.45),
+                                background: DesignColors.successLight,
+                                foreground: DesignColors.primary,
+                                border: DesignColors.primary.withValues(alpha: 0.2),
                               ),
                           ],
                         ),
@@ -181,21 +180,23 @@ class _ActivePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5),
+        color: DesignColors.successLight,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF86EFAC).withValues(alpha: 0.5)),
+        border: Border.all(
+          color: DesignColors.success.withValues(alpha: 0.35),
+        ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _GreenDot(),
-          SizedBox(width: 4),
+          const _GreenDot(),
+          const SizedBox(width: 4),
           Text(
             'Active',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF16A34A),
+              color: DesignColors.success,
               height: 1,
             ),
           ),
@@ -213,8 +214,8 @@ class _GreenDot extends StatelessWidget {
     return Container(
       width: 5,
       height: 5,
-      decoration: const BoxDecoration(
-        color: Color(0xFF16A34A),
+      decoration: BoxDecoration(
+        color: DesignColors.success,
         shape: BoxShape.circle,
       ),
     );
@@ -357,7 +358,7 @@ class _SocietyCard extends StatelessWidget {
           end: Alignment.centerRight,
           colors: [
             kHomePurple.withValues(alpha: 0.08),
-            const Color(0xFFEEF2FF),
+            DesignColors.primaryLight,
           ],
         ),
         borderRadius: BorderRadius.circular(12),
