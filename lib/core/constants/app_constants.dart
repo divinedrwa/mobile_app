@@ -204,6 +204,9 @@ class AppConstants {
   /// startup so returning users don't see the default→society palette flash.
   static const String keyCachedSocietyTheme = 'cached_society_theme';
 
+  /// Cached society splash image URL — shown on the splash on the next launch.
+  static const String keyCachedSplashUrl = 'cached_society_splash_url';
+
   /// In-app legal documents (Markdown bundled via `pubspec.yaml` → `assets/legal/`).
   /// Keep in sync with `docs/legal/` in the monorepo when you update policy text.
   static const String privacyPolicyAsset = 'assets/legal/privacy_policy.md';

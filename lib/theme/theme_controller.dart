@@ -177,8 +177,14 @@ final themeRepositoryProvider = Provider<ThemeRepository>((ref) {
 /// or a society switch).
 final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
   final repo = ref.watch(themeRepositoryProvider);
-  final json = await repo.fetchThemeColors();
-  if (json == null) {
+  final theme = await repo.fetchSocietyTheme();
+  // Splash image is independent of the palette — cache it (or clear) for the
+  // next launch's splash screen regardless of whether colors are customized.
+  await StorageService.setString(
+    AppConstants.keyCachedSplashUrl,
+    theme.splashUrl ?? '',
+  );
+  if (theme.colors == null) {
     // reset() also clears the cached society palette.
     AppColorBridge.reset();
     ref.read(themeTokensProvider.notifier).reset();
@@ -188,8 +194,8 @@ final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
   // (no default→society flash) before this network fetch completes.
   await StorageService.setString(
     AppConstants.keyCachedSocietyTheme,
-    jsonEncode(json),
+    jsonEncode(theme.colors),
   );
-  final newLight = AppColorPalette.fromApiJson(json, AppColorPalette.light);
+  final newLight = AppColorPalette.fromApiJson(theme.colors!, AppColorPalette.light);
   ref.read(themeTokensProvider.notifier).set(light: newLight);
 });

@@ -83,6 +83,15 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
     }
   }
 
+  static const _spinner = SizedBox(
+    width: 22,
+    height: 22,
+    child: CircularProgressIndicator(
+      strokeWidth: 2.4,
+      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     // Over-the-air splash logo: served from the API origin (/brand/app-logo.png).
@@ -95,23 +104,69 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
           fit: BoxFit.contain,
         );
 
-    // Gradient stops follow the active society theme (cached palette is applied
-    // synchronously at startup, so this reflects the selected template).
+    // Brand gradient — stops follow the active society theme (the cached palette
+    // is applied synchronously at startup, so this reflects the selected template).
+    final brandGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        DesignColors.primaryDark,
+        DesignColors.primary,
+        DesignColors.secondary,
+      ],
+    );
+
+    // Admin-uploaded splash image, cached from a prior fetch. Shown full-screen
+    // under a brand-gradient tint so it always matches the theme.
+    final cachedSplash =
+        StorageService.getString(AppConstants.keyCachedSplashUrl) ?? '';
+    final hasSplash = cachedSplash.isNotEmpty;
+
+    if (hasSplash) {
+      return Scaffold(
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: cachedSplash,
+              fit: BoxFit.cover,
+              placeholder: (_, _) =>
+                  DecoratedBox(decoration: BoxDecoration(gradient: brandGradient)),
+              errorWidget: (_, _, _) =>
+                  DecoratedBox(decoration: BoxDecoration(gradient: brandGradient)),
+            ),
+            // Brand-color tint overlay so the uploaded image matches the theme.
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    DesignColors.primaryDark.withValues(alpha: 0.62),
+                    DesignColors.primary.withValues(alpha: 0.50),
+                    DesignColors.secondary.withValues(alpha: 0.62),
+                  ],
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: _fade,
+              child: const Align(
+                alignment: Alignment(0, 0.78),
+                child: _spinner,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No uploaded splash — themed gradient + logo + name + tagline.
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              DesignColors.primaryDark,
-              DesignColors.primary,
-              DesignColors.secondary,
-            ],
-          ),
-        ),
+        decoration: BoxDecoration(gradient: brandGradient),
         child: FadeTransition(
           opacity: _fade,
           child: Center(
@@ -163,16 +218,7 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                   ),
                 ),
                 const SizedBox(height: 28),
-                SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ),
+                _spinner,
               ],
             ),
           ),
