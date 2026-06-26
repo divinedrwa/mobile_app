@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import 'gateway_payment_poll_actions.dart';
 import 'gateway_sdk_errors.dart';
@@ -150,15 +151,23 @@ class _RazorpayPaymentScreenState
       _platformFeeGst = platformFeeGst;
       _totalPayable = totalPayable;
 
+      // Show the society's name as the checkout title, with the maintenance
+      // period as the description (selected month, or all outstanding).
+      final societyName = ref.read(authProvider).user?.societyName?.trim();
+      final checkoutTitle = (societyName != null && societyName.isNotEmpty)
+          ? societyName
+          : 'Society Maintenance';
+      final checkoutDescription = widget.payAllPending
+          ? 'Society maintenance · All outstanding dues'
+          : 'Society maintenance · ${_monthName(widget.month)} ${widget.year}';
+
       final options = {
         'key': key,
         'amount': amountPaise,
         'currency': currency,
         'order_id': orderId,
-        'name': 'Society Maintenance',
-        'description': widget.payAllPending
-            ? 'Pay all outstanding maintenance'
-            : 'Maintenance for ${_monthName(widget.month)} ${widget.year}',
+        'name': checkoutTitle,
+        'description': checkoutDescription,
         'timeout': 300, // 5 minutes
         'method': {
           'upi': true,
