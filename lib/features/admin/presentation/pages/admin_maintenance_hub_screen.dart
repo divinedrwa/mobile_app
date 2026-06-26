@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -255,7 +256,7 @@ class _AdminMaintenanceHubScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -339,7 +340,7 @@ class _AdminMaintenanceHubScreenState
         value: filter.financialYearId,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        icon: const Icon(Icons.keyboard_arrow_down,
+        icon: Icon(Icons.keyboard_arrow_down,
             color: DesignColors.textSecondary),
         style: DesignTypography.bodyMedium.copyWith(
           color: DesignColors.textPrimary,
@@ -475,7 +476,7 @@ class _AdminMaintenanceHubScreenState
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [DesignColors.primaryLight, DesignColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -657,7 +658,7 @@ class _AdminMaintenanceHubScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -671,16 +672,16 @@ class _AdminMaintenanceHubScreenState
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.notifications_active_outlined, color: DesignColors.primary, size: 28)),
+                  child: Icon(Icons.notifications_active_outlined, color: DesignColors.primary, size: 28)),
               const SizedBox(height: 16),
-              const Text('Send Reminders?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Send Reminders?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text(
                 isBulk
                     ? 'Send payment reminders to all ${_selectedVillaIds.length} residents with pending dues for $periodLabel?'
                     : 'Send payment reminders to ${_selectedVillaIds.length} selected resident${_selectedVillaIds.length == 1 ? "" : "s"} for $periodLabel?',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
               ),
               const SizedBox(height: 24),
               Row(children: [
@@ -877,8 +878,8 @@ class _AdminMaintenanceHubScreenState
         count: residents.length,
         child: Column(
           children: [
-            for (final r in residents) ...[
-              _residentRow(r, status, selectable: selectable),
+            for (var i = 0; i < residents.length; i++) ...[
+              _residentRow(residents[i], status, selectable: selectable, index: i),
               const SizedBox(height: AppSpacing.sm),
             ],
           ],
@@ -894,6 +895,7 @@ class _AdminMaintenanceHubScreenState
     Map<String, dynamic> r,
     PaymentTileStatus status, {
     bool selectable = false,
+    int index = 0,
   }) {
     final inr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final villaNumber = r['villaNumber']?.toString() ?? '—';
@@ -956,7 +958,7 @@ class _AdminMaintenanceHubScreenState
           ),
         ),
       ],
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showRowMenu(Map<String, dynamic> resident) {
@@ -966,7 +968,7 @@ class _AdminMaintenanceHubScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -1007,7 +1009,7 @@ class _AdminMaintenanceHubScreenState
             Container(width: 36, height: 36, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, color: color, size: 20)),
             const SizedBox(width: 12),
-            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary)),
+            Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary)),
             const Spacer(),
             Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
           ],
@@ -1117,7 +1119,7 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
                   AnimatedRotation(
                     turns: _open ? 0.5 : 0,
                     duration: const Duration(milliseconds: 180),
-                    child: const Icon(Icons.keyboard_arrow_down, color: DesignColors.textTertiary),
+                    child: Icon(Icons.keyboard_arrow_down, color: DesignColors.textTertiary),
                   ),
                 ],
               ),
@@ -1219,7 +1221,7 @@ class _PaymentActionsSheetState extends ConsumerState<_PaymentActionsSheet>
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(DesignRadius.xl)),
@@ -1768,7 +1770,7 @@ class _EditVillaRowSheetState extends ConsumerState<_EditVillaRowSheet> {
           AppSpacing.xl,
           AppSpacing.xl,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(DesignRadius.xl)),

@@ -8,6 +8,8 @@ class ApiEndpoints {
   // Public (no auth)
   /// App version check for in-app update prompts (`GET ?platform=ANDROID`).
   static const String appVersionCheck = '/public/app-version';
+  /// Society theme colors (`GET`). Returns `{ themeColors: {...} | null }`.
+  static const String societyTheme = '/public/society-theme';
 
   // Authentication
   static const String login = '/auth/login';
@@ -92,6 +94,7 @@ class ApiEndpoints {
   
   // Resident - Visitors
   static const String myVisitors = '/residents/my-visitors';
+  static const String visitorsToday = '/residents/visitors-today';
   /// Guard walk-in requests pending resident approve/reject.
   static const String visitorApprovalRequests = '/residents/visitor-approval-requests';
   static String visitorApprovalRequestDetail(String id) =>

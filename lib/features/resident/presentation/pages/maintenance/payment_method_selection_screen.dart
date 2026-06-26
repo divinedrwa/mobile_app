@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/enterprise_ui.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 
@@ -13,6 +15,34 @@ import '../../../data/providers/payment_methods_provider.dart';
 /// WebView-based PhonePe SDK). Hidden on web where only Razorpay (Checkout.js)
 /// and bank transfer (display-only) work.
 const _mobileOnlyPaymentTypes = {'UPI_VPA', 'UPI_QR', 'PHONEPE'};
+
+/// Residents should prefer direct UPI (no gateway fee); Razorpay second.
+int _paymentMethodSortKey(PaymentMethodModel m) {
+  switch (m.type) {
+    case 'UPI_VPA':
+      return 0;
+    case 'UPI_QR':
+      return 1;
+    case 'RAZORPAY':
+      return 2;
+    case 'PHONEPE':
+      return 3;
+    case 'BANK_TRANSFER':
+      return 4;
+    default:
+      return 5;
+  }
+}
+
+List<PaymentMethodModel> _sortPaymentMethods(List<PaymentMethodModel> methods) {
+  final sorted = List<PaymentMethodModel>.from(methods);
+  sorted.sort((a, b) {
+    final byType = _paymentMethodSortKey(a).compareTo(_paymentMethodSortKey(b));
+    if (byType != 0) return byType;
+    return a.sortOrder.compareTo(b.sortOrder);
+  });
+  return sorted;
+}
 
 /// Screen that shows enabled payment methods and lets the resident pick one.
 ///
@@ -44,42 +74,43 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
     final async = ref.watch(paymentMethodsListProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Choose payment method',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Choose payment method',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Select how you want to pay',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
       ),
       body: async.when(
         loading: () => const DetailSkeleton(heroHeight: 120),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: DesignColors.error),
-              const SizedBox(height: 12),
-              Text(
-                'Failed to load payment methods',
-                style: DesignTypography.label.copyWith(color: DesignColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => ref.invalidate(paymentMethodsListProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.error_outline_rounded,
+            tone: EnterpriseTone.danger,
+            title: 'Failed to load payment methods',
+            message: 'Check your connection and try again.',
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(paymentMethodsListProvider),
           ),
         ),
         data: (methods) {
@@ -98,7 +129,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
               ),
             );
           }
-          return _buildMethodList(context, filtered);
+          return _buildMethodList(context, _sortPaymentMethods(filtered));
         },
       ),
     );
@@ -118,7 +149,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.currency_rupee, size: 20, color: DesignColors.primary),
+              Icon(Icons.currency_rupee, size: 20, color: DesignColors.primary),
               const SizedBox(width: 8),
               Text(
                 'Amount to pay: ',
@@ -252,25 +283,48 @@ class _MethodTile extends StatelessWidget {
     }
   }
 
-  String get _subtitle {
+  bool get _isUpi => method.type == 'UPI_VPA' || method.type == 'UPI_QR';
+
+  String? get _detailLine {
     switch (method.type) {
+      case 'UPI_VPA':
+        return method.vpa;
+      case 'UPI_QR':
+        return 'Scan QR code in any UPI app';
+      case 'RAZORPAY':
+        return 'Card · Net banking · Wallets';
       case 'BANK_TRANSFER':
         return 'Transfer to bank account';
-      case 'UPI_VPA':
-        return method.vpa ?? 'Pay via UPI app';
-      case 'UPI_QR':
-        return 'Scan QR code to pay';
-      case 'RAZORPAY':
-        return 'Pay with card / net banking';
       case 'PHONEPE':
-        return 'Pay via PhonePe';
+        return 'Pay via PhonePe app';
       default:
-        return '';
+        return null;
     }
+  }
+
+  String get _helperText {
+    if (_isUpi) {
+      return 'Pay in your UPI app, then tap I\'ve paid on the next screen. '
+          'Admin will verify once payment is received — maintenance shows as paid after confirmation.';
+    }
+    if (method.type == 'RAZORPAY') {
+      return 'Instant online payment. A platform fee and GST are added at checkout on top of your maintenance amount.';
+    }
+    if (method.type == 'PHONEPE') {
+      return 'Instant online payment. Platform fee and GST may apply at checkout.';
+    }
+    if (method.type == 'BANK_TRANSFER') {
+      return 'Transfer the amount and share the receipt with your admin for verification.';
+    }
+    return '';
   }
 
   @override
   Widget build(BuildContext context) {
+    final isRecommended = _isUpi;
+    final detail = _detailLine;
+    final helper = _helperText;
+
     return Material(
       color: DesignColors.surface,
       borderRadius: BorderRadius.circular(DesignRadius.lg),
@@ -281,9 +335,14 @@ class _MethodTile extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(DesignRadius.lg),
-            border: Border.all(color: DesignColors.borderLight),
+            border: Border.all(
+              color: isRecommended
+                  ? DesignColors.primary.withValues(alpha: 0.35)
+                  : DesignColors.borderLight,
+            ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
@@ -298,27 +357,68 @@ class _MethodTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      method.displayName,
-                      style: DesignTypography.label.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: DesignColors.textPrimary,
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          _isUpi ? 'UPI' : method.displayName,
+                          style: DesignTypography.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: DesignColors.textPrimary,
+                          ),
+                        ),
+                        if (isRecommended)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(DesignRadius.sm),
+                            ),
+                            child: Text(
+                              'Recommended',
+                              style: DesignTypography.captionSmall.copyWith(
+                                color: const Color(0xFF16A34A),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _subtitle,
-                      style: DesignTypography.bodySmall.copyWith(
-                        color: DesignColors.textSecondary,
+                    if (detail != null && detail.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        detail,
+                        style: DesignTypography.bodySmall.copyWith(
+                          color: DesignColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                    ],
+                    if (helper.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        helper,
+                        style: DesignTypography.captionSmall.copyWith(
+                          color: DesignColors.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: DesignColors.textSecondary,
-                size: 22,
+              Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.chevron_right,
+                  color: DesignColors.textSecondary,
+                  size: 22,
+                ),
               ),
             ],
           ),
@@ -338,7 +438,7 @@ class _BankDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: DesignColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -447,7 +547,7 @@ class _DetailRow extends StatelessWidget {
                   SnackBar(content: Text('$label copied'), duration: const Duration(seconds: 1)),
                 );
               },
-              child: const Icon(Icons.copy, size: 16, color: DesignColors.primary),
+              child: Icon(Icons.copy, size: 16, color: DesignColors.primary),
             ),
         ],
       ),

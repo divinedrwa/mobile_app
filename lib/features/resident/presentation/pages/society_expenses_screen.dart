@@ -5,9 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
+import '../../../../theme/context_extensions.dart';
 import '../widgets/list_skeleton.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../data/models/expense_model.dart';
@@ -98,39 +99,72 @@ class _SocietyExpensesScreenState
         : 'Society Expenses';
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0.5,
+        leading: _showSearch
+            ? IconButton(
+                tooltip: 'Close search',
+                onPressed: _toggleSearch,
+                icon: Icon(Icons.close_rounded, size: 20, color: context.text.primary),
+              )
+            : IconButton(
+                tooltip: 'Go back',
+                onPressed: () => context.pop(),
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+              ),
         title: _showSearch
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
                 onChanged: _onSearchChanged,
-                style: DesignTypography.bodyMedium.copyWith(
-                  color: DesignColors.textPrimary,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: context.text.primary,
+                  fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Search expenses...',
-                  hintStyle: DesignTypography.bodyMedium.copyWith(
-                    color: DesignColors.textTertiary,
+                  hintStyle: TextStyle(
+                    color: context.text.tertiary,
+                    fontSize: 16,
                   ),
                   border: InputBorder.none,
                 ),
               )
-            : Text(
-                titleText,
-                style: DesignTypography.headingM.copyWith(
-                  color: DesignColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    titleText,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: context.text.primary,
+                    ),
+                  ),
+                  Text(
+                    'Approved society expenditures',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: context.text.secondary,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
         actions: [
           IconButton(
+            tooltip: _showSearch ? 'Close' : 'Search',
             icon: Icon(
-              _showSearch ? Icons.close : Icons.search,
-              color: DesignColors.textSecondary,
+              _showSearch ? Icons.close_rounded : Icons.search_rounded,
+              color: context.text.secondary,
             ),
             onPressed: _toggleSearch,
           ),
@@ -140,11 +174,11 @@ class _SocietyExpensesScreenState
         color: DesignColors.primary,
         onRefresh: _refresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.xs,
-            AppSpacing.lg,
-            AppSpacing.xl,
+          padding: EdgeInsets.fromLTRB(
+            context.spacing.s16,
+            context.spacing.s4,
+            context.spacing.s16,
+            context.spacing.s32,
           ),
           children: [
             // Category filter chips
@@ -158,8 +192,7 @@ class _SocietyExpensesScreenState
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: categories.length + 1,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(width: AppSpacing.xs),
+                    separatorBuilder: (_, __) => const SizedBox(width: 6),
                     itemBuilder: (context, index) {
                       if (index == 0) {
                         final isSelected = filter.categoryId == null;
@@ -220,22 +253,18 @@ class _SocietyExpensesScreenState
                 );
               },
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 12),
 
             // Expenses list
             expensesAsync.when(
               loading: () => const ListSkeleton(itemHeight: 96),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.only(top: 80),
-                child: Center(
-                  child: Text(
-                    'Failed to load expenses.\nPull down to retry.',
-                    textAlign: TextAlign.center,
-                    style: DesignTypography.bodySmall.copyWith(
-                      color: DesignColors.error,
-                    ),
-                  ),
-                ),
+              error: (e, _) => EnterpriseInfoBanner(
+                icon: Icons.receipt_long_outlined,
+                title: 'Could not load expenses',
+                message: 'Check your connection and pull down to retry.',
+                tone: EnterpriseTone.danger,
+                actionLabel: 'Retry',
+                onAction: _refresh,
               ),
               data: (expenses) {
                 if (expenses.isEmpty) {
@@ -260,7 +289,7 @@ class _SocietyExpensesScreenState
                           '/resident/expenses/${expense.id}',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: 8),
                     ],
                   ],
                 );
@@ -293,16 +322,16 @@ class _ExpenseCard extends StatelessWidget {
     final hasAttachments = expense.attachmentCount > 0;
 
     return Material(
-      color: DesignColors.surface,
-      borderRadius: BorderRadius.circular(DesignRadius.lg),
+      color: context.surface.defaultSurface,
+      borderRadius: DesignRadius.borderLG,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
+        borderRadius: DesignRadius.borderLG,
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            border: Border.all(color: DesignColors.borderLight),
-            borderRadius: BorderRadius.circular(DesignRadius.lg),
+            border: Border.all(color: context.surface.border),
+            borderRadius: DesignRadius.borderLG,
           ),
           child: Row(
             children: [
@@ -315,7 +344,7 @@ class _ExpenseCard extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm + 2),
+              const SizedBox(width: 10),
               // Title + paid-to + date
               Expanded(
                 child: Column(
@@ -325,8 +354,9 @@ class _ExpenseCard extends StatelessWidget {
                       expense.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: DesignTypography.bodyMedium.copyWith(
-                        color: DesignColors.textPrimary,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: context.text.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -335,22 +365,25 @@ class _ExpenseCard extends StatelessWidget {
                       '${expense.paidTo}  •  ${dateFmt.format(expense.paymentDate)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: DesignTypography.caption.copyWith(
-                        color: DesignColors.textTertiary,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.text.tertiary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 8),
               // Amount + attachment badge
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     inr.format(expense.amount),
-                    style: DesignTypography.bodyMedium.copyWith(
-                      color: DesignColors.textPrimary,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: context.text.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -362,13 +395,15 @@ class _ExpenseCard extends StatelessWidget {
                         Icon(
                           Icons.attach_file,
                           size: 12,
-                          color: DesignColors.textTertiary,
+                          color: context.text.tertiary,
                         ),
                         const SizedBox(width: 2),
                         Text(
                           '${expense.attachmentCount}',
-                          style: DesignTypography.caption.copyWith(
-                            color: DesignColors.textTertiary,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.text.tertiary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -377,9 +412,9 @@ class _ExpenseCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 4),
-              const Icon(
-                Icons.chevron_right,
-                color: DesignColors.textTertiary,
+              Icon(
+                Icons.chevron_right_rounded,
+                color: context.text.tertiary,
                 size: 18,
               ),
             ],

@@ -14,7 +14,8 @@ import '../../data/providers/visitor_history_provider.dart';
 import '../providers/visitor_provider.dart';
 
 // ─── design accents ──────────────────────────────────────────────────────────
-const _kPurple = Color(0xFF6C5CE7);
+// Dynamic: resolves to the society's primary brand colour at runtime.
+Color get _kPurple => DesignColors.primary;
 const _kGreen = Color(0xFF00B37E);
 const _kGreenLight = Color(0xFFE6FAF5);
 const _kBlue = Color(0xFF0EA5E9);
@@ -33,10 +34,12 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
     ref.invalidate(preApprovedVisitorsProvider);
     ref.invalidate(visitorApprovalRequestsProvider('pending'));
     ref.invalidate(visitorHistoryProvider);
+    ref.invalidate(visitorTodaySummaryProvider);
     await Future.wait<void>([
       ref.read(preApprovedVisitorsProvider.future).then((_) {}).catchError((_) {}),
       ref.read(visitorApprovalRequestsProvider('pending').future).then((_) {}).catchError((_) {}),
       ref.read(visitorHistoryProvider.future).then((_) {}).catchError((_) {}),
+      ref.read(visitorTodaySummaryProvider.future).then((_) {}).catchError((_) {}),
     ]);
   }
 
@@ -44,7 +47,8 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
   Widget build(BuildContext context) {
     final preApprovedAsync = ref.watch(preApprovedVisitorsProvider);
     final pendingAsync = ref.watch(visitorApprovalRequestsProvider('pending'));
-    // Use visitor history for accurate today/inside/completed counts.
+    final todaySummaryAsync = ref.watch(visitorTodaySummaryProvider);
+    // Use visitor history for live visitors and history sections.
     final historyAsync = ref.watch(visitorHistoryProvider);
 
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
@@ -62,7 +66,10 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _TodaySummaryCard(historyAsync: historyAsync),
+                  _TodaySummaryCard(
+                    summaryAsync: todaySummaryAsync,
+                    onRetry: () => ref.invalidate(visitorTodaySummaryProvider),
+                  ),
                   const SizedBox(height: 16),
                   _QuickActionsRow(
                     preApprovedAsync: preApprovedAsync,
@@ -107,7 +114,7 @@ class _HubAppBar extends StatelessWidget {
         color: DesignColors.textPrimary,
         onPressed: () => context.pop(),
       ),
-      title: const Column(
+      title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -122,6 +129,8 @@ class _HubAppBar extends StatelessWidget {
           ),
           Text(
             'Manage your guests and gate passes',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
@@ -147,7 +156,7 @@ class _HubAppBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: DesignColors.borderLight),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.notifications_none_rounded,
                   size: 22,
                   color: DesignColors.textPrimary,
@@ -189,8 +198,8 @@ class _HubAppBar extends StatelessWidget {
               DesignHaptics.selection();
               context.push('/resident/pre-approve-visitor');
             },
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
+            icon: Icon(Icons.add_rounded, size: 18),
+            label: Text(
               'Invite Guest',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
@@ -210,12 +219,16 @@ class _HubAppBar extends StatelessWidget {
 }
 
 // ─── Today's Summary ──────────────────────────────────────────────────────────
-// Uses visitorHistoryProvider (GET /residents/my-visitors) for accurate counts.
+// Uses GET /residents/visitors-today for accurate same-day counts.
 
 class _TodaySummaryCard extends StatelessWidget {
-  const _TodaySummaryCard({required this.historyAsync});
+  const _TodaySummaryCard({
+    required this.summaryAsync,
+    required this.onRetry,
+  });
 
-  final AsyncValue<List<dynamic>> historyAsync;
+  final AsyncValue<VisitorTodaySummary> summaryAsync;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -249,14 +262,14 @@ class _TodaySummaryCard extends StatelessWidget {
                   color: _kPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.bar_chart_rounded, color: _kPurple, size: 18),
+                child: Icon(Icons.bar_chart_rounded, color: _kPurple, size: 18),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Today's Summary",
                       style: TextStyle(
                         fontSize: 15,
@@ -267,7 +280,7 @@ class _TodaySummaryCard extends StatelessWidget {
                     ),
                     Text(
                       '${dayFmt.format(today)}  •  ${weekdayFmt.format(today)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: DesignColors.textSecondary,
@@ -290,14 +303,14 @@ class _TodaySummaryCard extends StatelessWidget {
                         color: _kPurple.withValues(alpha: 0.9),
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: _kPurple, size: 16),
+                    Icon(Icons.chevron_right_rounded, color: _kPurple, size: 16),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          historyAsync.when(
+          summaryAsync.when(
             loading: () => Row(
               children: [
                 for (var i = 0; i < 3; i++) ...[
@@ -310,32 +323,12 @@ class _TodaySummaryCard extends StatelessWidget {
                 ],
               ],
             ),
-            error: (_, _) => _SummaryErrorRow(
-              onRetry: () => context.push('/resident/visitor-history'),
-            ),
-            data: (visitors) {
-              final todayStart = DateTime(today.year, today.month, today.day);
-              final todayVisitors = visitors.where((v) {
-                final ci = v.checkInTime;
-                if (ci == null) return false;
-                return (ci as DateTime).toLocal().isAfter(todayStart);
-              }).toList();
-
-              final expectedCount = todayVisitors.length;
-              final insideCount = todayVisitors.where((v) {
-                final s = (v.status as String).toUpperCase();
-                return s == 'CHECKED_IN';
-              }).length;
-              final completedCount = todayVisitors.where((v) {
-                final s = (v.status as String).toUpperCase();
-                return s == 'CHECKED_OUT';
-              }).length;
-
+            error: (_, __) => _SummaryErrorRow(onRetry: onRetry),
+            data: (summary) {
               return Row(
                 children: [
-                  // "Visitors" → all today's visitors (full history, no filter)
                   _StatBox(
-                    count: expectedCount,
+                    count: summary.total,
                     label: 'Visitors',
                     sublabel: 'Arrived today',
                     footer: 'Today',
@@ -344,9 +337,8 @@ class _TodaySummaryCard extends StatelessWidget {
                     onTap: () => context.push('/resident/visitor-history'),
                   ),
                   const SizedBox(width: 10),
-                  // "Inside" → visitor history filtered to CHECKED_IN
                   _StatBox(
-                    count: insideCount,
+                    count: summary.checkedIn,
                     label: 'Inside',
                     sublabel: 'Currently inside',
                     footer: 'Live now',
@@ -358,9 +350,8 @@ class _TodaySummaryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  // "Completed" → visitor history filtered to CHECKED_OUT
                   _StatBox(
-                    count: completedCount,
+                    count: summary.checkedOut,
                     label: 'Completed',
                     sublabel: 'Checked out today',
                     footer: 'Today',
@@ -396,17 +387,26 @@ class _SummaryErrorRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: DesignColors.borderLight),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.refresh_rounded, size: 16, color: DesignColors.textSecondary),
             SizedBox(width: 6),
             Text(
-              'Tap to load today\'s stats',
+              'Couldn\'t load today\'s stats',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: DesignColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Tap to retry',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _kPurple,
               ),
             ),
           ],
@@ -468,7 +468,7 @@ class _StatBox extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: DesignColors.textPrimary,
@@ -477,7 +477,7 @@ class _StatBox extends StatelessWidget {
               ),
               Text(
                 sublabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w500,
                   color: DesignColors.textSecondary,
@@ -536,7 +536,7 @@ class _QuickActionsRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quick Actions',
           style: TextStyle(
             fontSize: 16,
@@ -584,7 +584,7 @@ class _QuickActionsRow extends StatelessWidget {
               iconBg: _kBlue.withValues(alpha: 0.13),
               icon: Icons.door_front_door_outlined,
               iconColor: _kBlue,
-              title: 'Gate\nRequests',
+              title: 'Gate Requests',
               subtitle: 'Approve visitors',
               badge: pendingCount > 0 ? pendingCount : null,
               badgeColor: const Color(0xFFEF4444),
@@ -644,9 +644,10 @@ class _QuickActionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: borderColor),
           ),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
@@ -659,81 +660,82 @@ class _QuickActionCard extends StatelessWidget {
                     child: Icon(icon, color: iconColor, size: 19),
                   ),
                   const Spacer(),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      color: DesignColors.textPrimary,
-                      letterSpacing: -0.2,
-                      height: 1.15,
+                  if (showStar)
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: iconColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.star_rounded, size: 12, color: Colors.white),
+                    )
+                  else if (badge != null && badge! > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: effectiveBadgeColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$badge',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: flex == 1 ? 11.5 : 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: DesignColors.textPrimary,
+                            letterSpacing: -0.2,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                            color: DesignColors.textSecondary,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                      color: DesignColors.textSecondary,
-                      height: 1.2,
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      shape: BoxShape.circle,
                     ),
+                    child: Icon(Icons.chevron_right_rounded, size: 14, color: iconColor),
                   ),
                 ],
               ),
-              // Chevron arrow
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.chevron_right_rounded, size: 14, color: iconColor),
-                ),
-              ),
-              // Featured star (primary action only)
-              if (showStar)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: iconColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.star_rounded, size: 12, color: Colors.white),
-                  ),
-                ),
-              // Numeric badge
-              if (badge != null && badge! > 0)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: effectiveBadgeColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$badge',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -801,7 +803,7 @@ class _LiveVisitorsSection extends StatelessWidget {
                   children: [
                     for (int i = 0; i < live.length && i < 3; i++) ...[
                       if (i > 0)
-                        const Divider(height: 1, color: DesignColors.borderLight),
+                        Divider(height: 1, color: DesignColors.borderLight),
                       _LiveVisitorRow(visitor: live[i]),
                     ],
                   ],
@@ -856,7 +858,7 @@ class _LiveVisitorRow extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 initial,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: _kPurple,
@@ -876,7 +878,7 @@ class _LiveVisitorRow extends StatelessWidget {
                           displayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w700,
                             color: DesignColors.textPrimary,
@@ -892,7 +894,7 @@ class _LiveVisitorRow extends StatelessWidget {
                           color: _kPurple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Inside',
                           style: TextStyle(
                             fontSize: 9.5,
@@ -942,7 +944,7 @@ class _LiveVisitorRow extends StatelessWidget {
                 onTap: callVisitor,
               ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded,
+            Icon(Icons.chevron_right_rounded,
                 color: DesignColors.textTertiary, size: 18),
           ],
         ),
@@ -1068,7 +1070,7 @@ class _UpcomingVisitorsSection extends StatelessWidget {
                   children: [
                     for (int i = 0; i < upcoming.length; i++) ...[
                       if (i > 0)
-                        const Divider(height: 1, color: DesignColors.borderLight),
+                        Divider(height: 1, color: DesignColors.borderLight),
                       _UpcomingRow(visitor: upcoming[i]),
                     ],
                   ],
@@ -1165,7 +1167,7 @@ class _UpcomingRow extends StatelessWidget {
                           visitor.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: DesignColors.textPrimary,
@@ -1197,7 +1199,7 @@ class _UpcomingRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '${isToday ? 'Today' : timeFmt}${flat.isNotEmpty ? '  ·  Flat $flat' : ''}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: DesignColors.textSecondary,
@@ -1231,7 +1233,7 @@ class _UpcomingRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
+            Icon(Icons.chevron_right_rounded,
                 color: DesignColors.textTertiary, size: 18),
           ],
         ),
@@ -1465,11 +1467,11 @@ class _HistoryFooterCard extends StatelessWidget {
                     color: _kPurple.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: const Icon(Icons.calendar_month_outlined,
+                  child: Icon(Icons.calendar_month_outlined,
                       color: _kPurple, size: 20),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1500,7 +1502,7 @@ class _HistoryFooterCard extends StatelessWidget {
                   children: [
                     Text(
                       '$todayCount',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,
@@ -1508,7 +1510,7 @@ class _HistoryFooterCard extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Today',
                       style: TextStyle(
                         fontSize: 10,
@@ -1525,7 +1527,7 @@ class _HistoryFooterCard extends StatelessWidget {
                   children: [
                     Text(
                       '${all.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: _kPurple,
@@ -1533,7 +1535,7 @@ class _HistoryFooterCard extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Total',
                       style: TextStyle(
                         fontSize: 10,
@@ -1545,7 +1547,7 @@ class _HistoryFooterCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right_rounded,
+                Icon(Icons.chevron_right_rounded,
                     color: DesignColors.textTertiary, size: 20),
               ],
             ),
@@ -1571,7 +1573,7 @@ Widget _sectionHeader(
     children: [
       Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w800,
           color: DesignColors.textPrimary,
@@ -1607,13 +1609,13 @@ Widget _sectionHeader(
             children: [
               Text(
                 actionLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: _kPurple,
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _kPurple, size: 16),
+              Icon(Icons.chevron_right_rounded, color: _kPurple, size: 16),
             ],
           ),
         ),

@@ -11,10 +11,11 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../providers/sos_provider.dart';
 
@@ -148,7 +149,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
           backgroundColor: Colors.transparent,
           builder: (sheetCtx) {
             return Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: DesignColors.surface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -166,12 +167,12 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                     Container(
                       width: 56, height: 56,
                       decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                      child: const Icon(Icons.warning_amber_rounded, color: DesignColors.error, size: 28),
+                      child: Icon(Icons.warning_amber_rounded, color: DesignColors.error, size: 28),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Active SOS exists', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                    Text('Active SOS exists', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'You already have an open emergency.\nOpen your active SOS screen.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
@@ -221,36 +222,71 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
     final historyAsync = ref.watch(sosAlertsProvider);
 
     return Scaffold(
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        title: const Text('Emergency SOS'),
-        backgroundColor: DesignColors.error,
-        foregroundColor: Colors.white,
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Emergency SOS',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Alert guards & admins immediately',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
       body: RefreshIndicator(
+        color: DesignColors.primary,
         onRefresh: () async => ref.invalidate(sosAlertsProvider),
         child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
         children: [
-          const Icon(Icons.emergency, size: 88, color: DesignColors.error)
+          // Warning banner
+          EnterpriseInfoBanner(
+            icon: Icons.warning_amber_rounded,
+            title: 'For real emergencies only',
+            message: 'Guards and admins are notified immediately. Misuse may affect your account.',
+            tone: EnterpriseTone.warning,
+          ),
+          const SizedBox(height: 24),
+          Icon(Icons.emergency_rounded, size: 72, color: DesignColors.error)
               .animate()
               .shake(duration: 600.ms),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 12),
           Text(
-            'Select type, then press & hold the button for 2 seconds',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            'Select type, then press & hold for 2 seconds',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.text.primary,
+              letterSpacing: -0.2,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Guards and admins are notified immediately. Misuse may affect your account.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: DesignColors.textSecondary,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: 20),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -263,7 +299,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
               _typeChip(SOSType.other, 'Other', Icons.warning_amber_rounded),
             ],
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: 24),
           Semantics(
             label: 'Hold to trigger SOS alert',
             button: true,
@@ -330,14 +366,12 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
           ),
           ),
           ),
-          const SizedBox(height: AppSpacing.xxl),
-          Text(
-            'SOS history',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+          const SizedBox(height: 28),
+          EnterpriseSectionHeader(
+            title: 'SOS history',
+            subtitle: 'Past emergency alerts from your account',
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 12),
           Builder(builder: (context) {
             final stale = historyAsync.valueOrNull;
             final isInitialLoad = historyAsync.isLoading && stale == null;
@@ -358,7 +392,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.history_rounded, size: 18, color: DesignColors.textTertiary),
+                      Icon(Icons.history_rounded, size: 18, color: DesignColors.textTertiary),
                       const SizedBox(width: 10),
                       Text(
                         'No past alerts',
@@ -401,7 +435,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                                 borderRadius: DesignRadius.borderMD,
                               ),
                               alignment: Alignment.center,
-                              child: const Icon(Icons.emergency_rounded, size: 18, color: DesignColors.error),
+                              child: Icon(Icons.emergency_rounded, size: 18, color: DesignColors.error),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -531,14 +565,14 @@ class _CountdownDialogState extends State<_CountdownDialog> {
               child: Center(
                 child: Text(
                   '$_left',
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DesignColors.error),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DesignColors.error),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Confirm SOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+            Text('Confirm SOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Sending emergency alert…\nTap cancel if this was a mistake.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
@@ -550,7 +584,7 @@ class _CountdownDialogState extends State<_CountdownDialog> {
                 onPressed: widget.onCancel,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: DesignColors.error),
+                  side: BorderSide(color: DesignColors.error),
                   foregroundColor: DesignColors.error,
                   shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
                 ),

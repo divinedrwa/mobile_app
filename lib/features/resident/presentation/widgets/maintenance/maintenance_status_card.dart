@@ -197,7 +197,7 @@ _Palette _palette(MaintenanceStatusKind kind) {
         icon: Icons.check_circle_outline,
       );
     case MaintenanceStatusKind.due:
-      return const _Palette(
+      return _Palette(
         gradient: [DesignColors.primaryLight, DesignColors.primaryDark],
         icon: Icons.account_balance_wallet_outlined,
       );
@@ -212,8 +212,8 @@ _Palette _palette(MaintenanceStatusKind kind) {
         icon: Icons.event_available_outlined,
       );
     case MaintenanceStatusKind.excluded:
-      return const _Palette(
-        gradient: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+      return _Palette(
+        gradient: [DesignColors.primary, DesignColors.primaryDark],
         icon: Icons.info_outline,
       );
   }

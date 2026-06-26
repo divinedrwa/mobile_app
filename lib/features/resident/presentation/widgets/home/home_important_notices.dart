@@ -171,7 +171,7 @@ class _SectionHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(11),
             border: Border.all(color: kHomePurple.withValues(alpha: 0.1)),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.campaign_rounded,
             size: 19,
             color: kHomePurple,
@@ -182,7 +182,7 @@ class _SectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Important Notices',
                 style: TextStyle(
                   fontSize: 14.5,
@@ -200,7 +200,7 @@ class _SectionHeader extends StatelessWidget {
                   totalCount > 0
                       ? '$totalCount society update${totalCount == 1 ? '' : 's'}'
                       : 'Society updates & reminders',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w500,
                     color: DesignColors.textSecondary,
@@ -228,7 +228,7 @@ class _SectionHeader extends StatelessWidget {
                   border:
                       Border.all(color: kHomePurple.withValues(alpha: 0.14)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
@@ -492,7 +492,7 @@ class _NoticeCard extends StatelessWidget {
                   notice.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: DesignColors.textPrimary,

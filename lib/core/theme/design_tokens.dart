@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_colors_bridge.dart';
+
 /// 🎨 GATEPASS+ - DESIGN TOKENS
 /// Centralized design system — professional brand palette.
 ///
@@ -21,130 +23,84 @@ import 'package:google_fonts/google_fonts.dart';
 // COLORS - Design Tokens (GatePass+ Brand)
 // ============================================================================
 
+/// Design tokens — resolves live from [AppColorBridge] so every screen that
+/// imports `DesignColors.*` reflects the society's admin-configured theme the
+/// moment it loads. Values mirror [AppColors]; for new code prefer
+/// `context.brand` / `context.surface` or [AppColors].
+///
+/// NOTE: these are getters (not `const`) on purpose — they must re-read the
+/// active palette on every build. Do not reintroduce `const` here.
 class DesignColors {
-  // PRIMARY BRAND COLORS (from GatePass+ logo)
-  /// Primary brand color - Forest Green (#3D8361)
-  /// Used for: primary buttons, active states, key actions, logo "G"
-  static const Color primary = Color(0xFF3D8361);
+  DesignColors._();
 
-  /// Primary light - Soft Green (#5BA878)
-  /// Used for: hover states, light backgrounds, positive feedback
-  static const Color primaryLight = Color(0xFF5BA878);
+  static AppColorState get _c => AppColorBridge.current;
 
-  /// Primary dark - Deep Forest (#2A5D47)
-  /// Used for: pressed states, emphasis, shadows
-  static const Color primaryDark = Color(0xFF2A5D47);
-  
-  // SECONDARY BRAND COLORS
-  /// Secondary brand color - Navy Blue (#1B2B3A)
-  /// Used for: headers, navigation, professional elements, logo "P"
-  static const Color secondary = Color(0xFF1B2B3A);
-  
-  /// Tertiary/Alternative color - Soft Navy (#4A5F7A)
-  /// Used for: subtle accents, inactive states
-  static const Color tertiary = Color(0xFF4A5F7A);
-  
-  // ACCENT COLORS
-  /// Accent Green - Light Spring (#6BC990)
-  /// Used for: success messages, approval badges, positive indicators
-  static const Color accent = Color(0xFF6BC990);
-  
-  /// Accent hover - Vibrant Green (#4FB376)
-  /// Used for: hover states on accent elements
-  static const Color accentHover = Color(0xFF4FB376);
-  
-  // NEUTRAL / SURFACES
-  /// Background - Main app background (#FFFFFF)
-  static const Color background = Color(0xFFFFFFFF);
-  
-  /// Surface - Card/Panel background (#FFFFFF)
-  static const Color surface = Color(0xFFFFFFFF);
-  
-  /// Surface Soft - Subtle background (#F8FAFC)
-  static const Color surfaceSoft = Color(0xFFF8FAFC);
-  
-  // TEXT COLORS
-  /// Text Primary - Main text color (#0F172A)
-  static const Color textPrimary = Color(0xFF0F172A);
-  
-  /// Text Secondary - Secondary text (#475569)
-  static const Color textSecondary = Color(0xFF475569);
-  
-  /// Text Tertiary - Disabled/placeholder (#94A3B8)
-  static const Color textTertiary = Color(0xFF94A3B8);
-  
-  // BORDER / DIVIDER
-  /// Border Light - Subtle borders (#E2E8F0)
-  static const Color borderLight = Color(0xFFE2E8F0);
-  
-  /// Border - Standard borders (#CBD5E1)
-  static const Color border = Color(0xFFCBD5E1);
-  
-  /// Divider color (#F1F5F9)
-  static const Color divider = Color(0xFFF1F5F9);
-  
-  // SEMANTIC COLORS (kept professional, not too bright)
-  /// Error/Danger color - Soft Red (#E74C3C)
-  static const Color error = Color(0xFFE74C3C);
-  
-  /// Success color - Brand Green (#3D8361)
-  /// Reuses primary brand color for consistency
-  static const Color success = primary;
-  
-  /// Warning color - Warm Amber (#F39C12)
-  static const Color warning = Color(0xFFF39C12);
-  
-  /// Info color - quiet neutral signal
-  static const Color info = tertiary;
-  
-  // SOCIAL COLORS
-  /// Google red (#DB4437)
+  // ── PRIMARY — Brand ────────────────────────────────────────────────────────
+  static Color get primary      => _c.primary;
+  static Color get primaryLight => _c.primaryLight;
+  static Color get primaryDark  => _c.primaryDark;
+
+  // ── SECONDARY ──────────────────────────────────────────────────────────────
+  static Color get secondary => _c.secondary;
+
+  // ── ACCENT ─────────────────────────────────────────────────────────────────
+  static Color get accent      => _c.accent;
+  static Color get accentHover => _c.accentContainer;
+
+  // ── SURFACES ──────────────────────────────────────────────────────────────
+  static Color get background  => _c.background;
+  static Color get surface     => _c.surface;
+  static Color get surfaceSoft => _c.surfaceVariant;
+
+  // ── TEXT ──────────────────────────────────────────────────────────────────
+  static Color get textPrimary   => _c.textPrimary;
+  static Color get textSecondary => _c.textSecondary;
+  static Color get textTertiary  => _c.textTertiary;
+
+  // ── BORDERS ───────────────────────────────────────────────────────────────
+  static Color get borderLight => _c.border;
+  static Color get border      => _c.borderDark;
+  static Color get divider     => _c.divider;
+
+  // ── SEMANTIC ──────────────────────────────────────────────────────────────
+  static Color get success => _c.success;
+  static Color get warning => _c.warning;
+  static Color get error   => _c.error;
+  static Color get info    => _c.info;
+
+  // ── SOCIAL (brand-fixed, never themed) ─────────────────────────────────────
   static const Color google = Color(0xFFDB4437);
-  
-  /// Apple black (#000000)
-  static const Color apple = Color(0xFF000000);
-  
-  // STATE COLORS (Overlays)
-  /// Hover overlay (5% black)
-  static const Color hoverOverlay = Color(0x0D000000);
-  
-  /// Pressed overlay (10% black)
-  static const Color pressedOverlay = Color(0x1A000000);
-  
-  /// Focus overlay (12% primary - brand green)
-  static const Color focusOverlay = Color(0x1F3D8361);
-  
-  /// Disabled overlay (38% white)
+  static const Color apple  = Color(0xFF000000);
+
+  // ── OVERLAYS (derived from active brand) ───────────────────────────────────
+  static Color get hoverOverlay    => _c.primary.withValues(alpha: 0.05);
+  static Color get pressedOverlay  => _c.primary.withValues(alpha: 0.10);
+  static Color get focusOverlay    => _c.primary.withValues(alpha: 0.12);
   static const Color disabledOverlay = Color(0x61FFFFFF);
-  
-  // GRADIENTS (brand-aligned, subtle)
-  /// Primary gradient for hero sections - Green gradient
-  static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [primary, primaryLight], // Forest → Light Green
-  );
-  
-  /// Secondary gradient - Navy blend
-  static const LinearGradient secondaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [secondary, Color(0xFF2C3E50)], // Navy → Charcoal
-  );
-  
-  /// Accent gradient - Vibrant green for CTAs
-  static const LinearGradient accentGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [accent, primaryLight], // Light Green → Soft Green
-  );
-  
-  /// Subtle background gradient
-  static const LinearGradient backgroundGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFFFAFAFA), Color(0xFFFFFFFF)],
-  );
+
+  // ── GRADIENTS (derived from active brand) ──────────────────────────────────
+  static LinearGradient get primaryGradient => _c.primaryGradient;
+
+  static LinearGradient get secondaryGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [_c.secondary, _c.accent],
+      );
+
+  static LinearGradient get accentGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [_c.accent, _c.accentContainer],
+      );
+
+  static LinearGradient get backgroundGradient => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [_c.background, _c.surface],
+      );
+
+  // ── TERTIARY (legacy alias) ────────────────────────────────────────────────
+  static Color get tertiary => _c.textSecondary;
 }
 
 // ============================================================================
@@ -451,7 +407,7 @@ class DesignComponents {
       // Default border
       border: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.borderLight,
           width: 1,
         ),
@@ -459,7 +415,7 @@ class DesignComponents {
       // Enabled border
       enabledBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.borderLight,
           width: 1,
         ),
@@ -467,7 +423,7 @@ class DesignComponents {
       // Focused border
       focusedBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.primary,
           width: 2,
         ),
@@ -475,7 +431,7 @@ class DesignComponents {
       // Error border
       errorBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.error,
           width: 1,
         ),
@@ -483,7 +439,7 @@ class DesignComponents {
       // Focused error border
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.error,
           width: 2,
         ),
@@ -491,7 +447,7 @@ class DesignComponents {
       // Disabled border
       disabledBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderMD,
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: DesignColors.borderLight,
           width: 1,
         ),
@@ -528,7 +484,7 @@ class DesignComponents {
   }
   
   // BUTTON STYLE - Primary
-  static ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
+  static ButtonStyle get primaryButtonStyle => ElevatedButton.styleFrom(
     backgroundColor: DesignColors.primary,
     foregroundColor: Colors.white,
     elevation: 0,
@@ -554,10 +510,10 @@ class DesignComponents {
   );
   
   // BUTTON STYLE - Secondary
-  static ButtonStyle secondaryButtonStyle = OutlinedButton.styleFrom(
+  static ButtonStyle get secondaryButtonStyle => OutlinedButton.styleFrom(
     foregroundColor: DesignColors.primary,
     backgroundColor: Colors.transparent,
-    side: const BorderSide(
+    side: BorderSide(
       color: DesignColors.primary,
       width: 1,
     ),
@@ -572,7 +528,7 @@ class DesignComponents {
   );
   
   // BUTTON STYLE - Disabled
-  static ButtonStyle disabledButtonStyle = ElevatedButton.styleFrom(
+  static ButtonStyle get disabledButtonStyle => ElevatedButton.styleFrom(
     backgroundColor: DesignColors.surfaceSoft,
     foregroundColor: DesignColors.textTertiary,
     elevation: 0,
@@ -588,10 +544,10 @@ class DesignComponents {
   );
   
   // SOCIAL BUTTON - Google
-  static ButtonStyle googleButtonStyle = OutlinedButton.styleFrom(
+  static ButtonStyle get googleButtonStyle => OutlinedButton.styleFrom(
     foregroundColor: DesignColors.textPrimary,
     backgroundColor: Colors.white,
-    side: const BorderSide(
+    side: BorderSide(
       color: DesignColors.borderLight,
       width: 1,
     ),
@@ -606,7 +562,7 @@ class DesignComponents {
   );
   
   // SOCIAL BUTTON - Apple
-  static ButtonStyle appleButtonStyle = ElevatedButton.styleFrom(
+  static ButtonStyle get appleButtonStyle => ElevatedButton.styleFrom(
     backgroundColor: DesignColors.apple,
     foregroundColor: Colors.white,
     elevation: 0,

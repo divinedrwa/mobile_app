@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -54,7 +56,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -265,7 +267,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                 ),
               )
             else
-              ...filtered.map(_residentCard),
+              ...filtered.asMap().entries.map((entry) => _residentCard(entry.value, entry.key)),
           ],
         );
       },
@@ -296,7 +298,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
     );
   }
 
-  Widget _residentCard(Map<String, dynamic> r) {
+  Widget _residentCard(Map<String, dynamic> r, [int index = 0]) {
     final name = r['name']?.toString() ?? r['username']?.toString() ?? '';
     final role = r['type']?.toString() ?? r['role']?.toString() ?? '';
     final villa = r['villa'] as Map<String, dynamic>?;
@@ -306,7 +308,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
 
     final roleColor = role.toUpperCase().contains('TENANT')
         ? const Color(0xFF0EA5E9)
-        : const Color(0xFF7C3AED);
+        : DesignColors.primary;
 
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 8),
@@ -394,7 +396,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showResidentSheet(Map<String, dynamic> r) {
@@ -477,7 +479,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                     label: const Text('Move Out'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: DesignColors.error,
-                      side: const BorderSide(color: DesignColors.error),
+                      side: BorderSide(color: DesignColors.error),
                     ),
                   ),
                 ),
@@ -506,7 +508,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -520,11 +522,11 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.logout_rounded, color: DesignColors.error, size: 28)),
+                  child: Icon(Icons.logout_rounded, color: DesignColors.error, size: 28)),
               const SizedBox(height: 16),
-              const Text('Confirm move-out?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Confirm move-out?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('This resident will be marked as moved out and lose access.',
+              Text('This resident will be marked as moved out and lose access.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),
@@ -571,7 +573,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -585,11 +587,11 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.refresh_rounded, color: DesignColors.primary, size: 28)),
+                  child: Icon(Icons.refresh_rounded, color: DesignColors.primary, size: 28)),
               const SizedBox(height: 16),
-              const Text('Reactivate resident?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Reactivate resident?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('This will restore the resident\'s access to the society app.',
+              Text('This will restore the resident\'s access to the society app.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),

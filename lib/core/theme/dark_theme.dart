@@ -12,41 +12,51 @@ class DarkTheme {
       fontFamily: AppTypography.fontFamily,
 
       // Color Scheme
-      colorScheme: const ColorScheme.dark(
+      colorScheme: ColorScheme.dark(
         primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        surface: Color(0xFF1E1E1E),
-        error: AppColors.error,
-        onSurface: Colors.white,
         onPrimary: Colors.white,
+        primaryContainer: Color(0xFF0E2A52), // dark blue container
+        secondary: AppColors.secondary,
+        onSecondary: Colors.white,
+        tertiary: AppColors.accent,
+        onTertiary: Colors.white,
+        surface: Color(0xFF141B2D), // deep navy surface
+        onSurface: Color(0xFFF1F5F9),
+        error: AppColors.error,
+        onError: Colors.white,
+        outline: Color(0xFF1E2D4A),
       ),
 
-      scaffoldBackgroundColor: const Color(0xFF121212),
+      scaffoldBackgroundColor: const Color(0xFF0D1322), // very deep navy bg
 
       // AppBar Theme
       appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: const Color(0xFF141B2D),
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         centerTitle: false,
+        shadowColor: AppColors.shadowMedium,
         titleTextStyle: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: Colors.white,
+          letterSpacing: -0.3,
         ),
       ),
 
       // Card Theme
       cardTheme: CardThemeData(
-        color: const Color(0xFF2C2C2C),
-        elevation: 2,
+        color: const Color(0xFF1A2338),
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF1E2D4A), width: 1),
         ),
       ),
 
       // Bottom Navigation
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: const Color(0xFF141B2D),
         indicatorColor: AppColors.primary.withValues(alpha: 0.2),
         labelTextStyle: WidgetStateProperty.all(
           GoogleFonts.inter(fontSize: 12, color: Colors.white70),
@@ -56,19 +66,20 @@ class DarkTheme {
       // Input Decoration
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2C2C2C),
+        fillColor: const Color(0xFF1A2338),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1E2D4A)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1E2D4A)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
+        hintStyle: const TextStyle(color: Color(0xFF4A5568)),
       ),
 
       // Elevated Button
@@ -76,13 +87,14 @@ class DarkTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          elevation: 2,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           textStyle: GoogleFonts.inter(
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),

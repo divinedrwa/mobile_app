@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/amenity_booking_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
 import '../widgets/list_skeleton.dart';
@@ -39,37 +40,37 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
     final upcomingCount = ref.watch(upcomingBookingsCountProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'My Bookings',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
             ),
             Text(
               upcomingCount > 0 ? '$upcomingCount upcoming' : 'Amenity booking history',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DesignColors.textSecondary, height: 1.2),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: context.text.secondary, height: 1.2),
             ),
           ],
         ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: DesignColors.primary,
-          unselectedLabelColor: DesignColors.textSecondary,
+          unselectedLabelColor: context.text.secondary,
           indicatorColor: DesignColors.primary,
-          dividerColor: DesignColors.borderLight,
+          dividerColor: context.surface.border.withValues(alpha: 0.5),
           tabs: [
             Tab(
               child: Row(
@@ -252,7 +253,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
                     children: [
                       Text(
                         booking.amenityName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: DesignColors.textPrimary,
@@ -398,7 +399,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 color: DesignColors.textSecondary,
               ),
@@ -406,7 +407,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
             const SizedBox(height: 2),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: DesignColors.textPrimary,
@@ -441,7 +442,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         return Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: DesignColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -459,15 +460,15 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
                   Container(
                     width: 56, height: 56,
                     decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                    child: const Icon(Icons.event_busy_outlined, color: DesignColors.error, size: 28),
+                    child: Icon(Icons.event_busy_outlined, color: DesignColors.error, size: 28),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Cancel booking?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                  Text('Cancel booking?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                   const SizedBox(height: 8),
                   Text(
                     'Cancel your ${booking.amenityName} booking?\nThis action cannot be undone.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                    style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -525,7 +526,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.event_busy, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No Bookings',
             style: TextStyle(
               fontSize: 20,
@@ -556,7 +557,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.event_available, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No Upcoming Bookings',
             style: TextStyle(
               fontSize: 20,
@@ -581,7 +582,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
         children: [
           Icon(Icons.history, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No Past Bookings',
             style: TextStyle(
               fontSize: 20,

@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/providers/notification_provider.dart';
 import '../widgets/notification_skeleton.dart';
@@ -70,47 +71,50 @@ class _NotificationsCenterScreenState
     final notificationsState = ref.watch(notificationProvider);
     final unreadCount = ref.watch(unreadCountProvider);
 
-    final surface = isDark ? scheme.surfaceContainerHigh : Colors.white;
-    final pageBg = isDark ? scheme.surface : DesignColors.background;
-
     return Scaffold(
-      backgroundColor: pageBg,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: surface,
-        foregroundColor: scheme.onSurface,
+        scrolledUnderElevation: 0.5,
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               widget.title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: scheme.onSurface,
-                  ),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
             ),
             if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
               Text(
                 widget.subtitle!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: context.text.secondary,
+                  height: 1.2,
+                ),
               )
             else if (unreadCount > 0)
               Text(
                 '$unreadCount unread',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.brand.primary,
+                  height: 1.2,
+                ),
               ),
           ],
         ),
@@ -126,14 +130,13 @@ class _NotificationsCenterScreenState
                       .markAllAsRead();
                   if (!pageContext.mounted || error != null) return;
                   ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       behavior: SnackBarBehavior.floating,
-                      content: const Text('All marked as read'),
-                      backgroundColor: scheme.inverseSurface,
+                      content: Text('All marked as read'),
                     ),
                   );
                 },
-                child: const Text('Clear unread'),
+                child: const Text('Clear all'),
               ),
             ),
         ],
@@ -144,11 +147,11 @@ class _NotificationsCenterScreenState
             child: TabBar(
               controller: _tabController,
               isScrollable: true,
-              dividerColor: scheme.outline.withValues(alpha: 0.25),
+              dividerColor: context.surface.border.withValues(alpha: 0.5),
               indicatorSize: TabBarIndicatorSize.label,
-              indicatorColor: scheme.primary,
-              labelColor: scheme.primary,
-              unselectedLabelColor: scheme.onSurfaceVariant,
+              indicatorColor: context.brand.primary,
+              labelColor: context.brand.primary,
+              unselectedLabelColor: context.text.secondary,
               labelStyle: const TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -198,12 +201,12 @@ class _NotificationsCenterScreenState
                   ? _emptyScrollableRefresh(
                       child: _buildEmptyState(scheme, isDark),
                     )
-                  : _buildNotificationsList(notifications, scheme, isDark),
+                  : _buildNotificationsList(notifications, scheme, isDark: isDark),
               unreadList.isEmpty
                   ? _emptyScrollableRefresh(
                       child: _buildNoUnreadState(scheme),
                     )
-                  : _buildNotificationsList(unreadList, scheme, isDark),
+                  : _buildNotificationsList(unreadList, scheme, isDark: isDark),
             ],
           );
         },
@@ -274,9 +277,9 @@ class _NotificationsCenterScreenState
 
   Widget _buildNotificationsList(
     List<NotificationModel> notifications,
-    ColorScheme scheme,
-    bool isDark,
-  ) {
+    ColorScheme scheme, {
+    required bool isDark,
+  }) {
     // Group by Today / Yesterday / Earlier
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

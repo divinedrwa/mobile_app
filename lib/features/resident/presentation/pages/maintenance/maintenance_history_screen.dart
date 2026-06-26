@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/empty_state_widget.dart';
+import '../../../../../core/widgets/enterprise_ui.dart';
+import '../../../../../core/network/dio_exception_mapper.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../widgets/list_skeleton.dart';
@@ -44,22 +47,40 @@ class _MaintenanceHistoryScreenState
     final async = ref.watch(maintenanceHistoryProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Payment history',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Payment history',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Maintenance cycle records',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(
@@ -83,10 +104,10 @@ class _MaintenanceHistoryScreenState
 
     if (filtered.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(DesignSpacing.lg),
         children: [
           if (fyOptions.isNotEmpty) _filterRow(fyOptions),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: DesignSpacing.xxl),
           _emptyState(),
         ],
       );
@@ -95,17 +116,17 @@ class _MaintenanceHistoryScreenState
     final byMonth = _groupByMonth(filtered);
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.md,
-        AppSpacing.xl,
-        AppSpacing.xxl,
+        DesignSpacing.xl,
+        DesignSpacing.md,
+        DesignSpacing.xl,
+        DesignSpacing.xxl,
       ),
       children: [
         if (fyOptions.isNotEmpty) _filterRow(fyOptions),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: DesignSpacing.lg),
         for (final entry in byMonth.entries) ...[
           _monthHeader(entry.key, entry.value),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: DesignSpacing.sm),
           for (final m in entry.value) ...[
             PaymentListTile(
               title: m.title.isNotEmpty
@@ -118,9 +139,9 @@ class _MaintenanceHistoryScreenState
               paidDate: m.paidAt,
               onTap: () => _open(m),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: DesignSpacing.sm),
           ],
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: DesignSpacing.md),
         ],
       ],
     );
@@ -137,14 +158,14 @@ class _MaintenanceHistoryScreenState
           _filterChip(label: 'All', active: _filter == _allFilter, onTap: () {
             setState(() => _filter = _allFilter);
           }),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: DesignSpacing.sm),
           for (final fy in fyOptions) ...[
             _filterChip(
               label: fy,
               active: _filter == fy,
               onTap: () => setState(() => _filter = fy),
             ),
-            const SizedBox(width: AppSpacing.sm),
+            const SizedBox(width: DesignSpacing.sm),
           ],
         ],
       ),
@@ -208,87 +229,24 @@ class _MaintenanceHistoryScreenState
   }
 
   Widget _emptyState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.xxxl,
-      ),
-      decoration: BoxDecoration(
-        color: DesignColors.surface,
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: DesignColors.borderLight),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: const BoxDecoration(
-              color: DesignColors.surfaceSoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.receipt_long_outlined,
-              size: 32,
-              color: DesignColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'No payments yet',
-            style: DesignTypography.bodyMedium.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Once you pay a maintenance bill, the receipt will appear here.',
-            textAlign: TextAlign.center,
-            style: DesignTypography.bodySmall.copyWith(
-              color: DesignColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.receipt_long_outlined,
+      title: 'No payments yet',
+      subtitle: 'Once you pay a maintenance bill, the receipt will appear here.',
     );
   }
 
   Widget _errorView(Object e) {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(DesignSpacing.lg),
       children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: DesignColors.error.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(DesignRadius.lg),
-            border: Border.all(color: DesignColors.error.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.cloud_off_outlined, color: DesignColors.error),
-                  SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Couldn\'t load history',
-                    style: TextStyle(
-                      color: DesignColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Pull down to retry, or check your connection.',
-                style: DesignTypography.bodySmall.copyWith(
-                  color: DesignColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+        EnterpriseInfoBanner(
+          icon: Icons.receipt_long_outlined,
+          title: 'Could not load payment history',
+          message: userFacingMessage(e),
+          tone: EnterpriseTone.danger,
+          actionLabel: 'Retry',
+          onAction: _refresh,
         ),
       ],
     );

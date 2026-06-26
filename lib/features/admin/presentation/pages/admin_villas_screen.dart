@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -52,14 +54,14 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showVillaForm(),
-        backgroundColor: const Color(0xFF7C3AED),
+        backgroundColor: DesignColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Villa', style: TextStyle(color: Colors.white)),
       ),
@@ -109,7 +111,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
               icon: Icons.home_work_outlined,
               title: 'No properties yet',
               subtitle: 'Tap + to add your first villa or property.',
-              iconColor: const Color(0xFF7C3AED),
+              iconColor: DesignColors.primary,
             ),
           ),
         ],
@@ -126,8 +128,8 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF7C3AED), Color(0xFF5B21B6)],
+            gradient: LinearGradient(
+              colors: [DesignColors.primary, DesignColors.primaryDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -156,7 +158,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
           hint: 'Search by villa number, block, owner…',
         ),
         const SizedBox(height: 12),
-        ..._filteredVillas(villas).map((v) => _villaCard(v, inr)),
+        ..._filteredVillas(villas).asMap().entries.map((e) => _villaCard(e.value, inr, e.key)),
       ],
     );
   }
@@ -173,7 +175,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
     }).toList();
   }
 
-  Widget _villaCard(Map<String, dynamic> v, NumberFormat inr) {
+  Widget _villaCard(Map<String, dynamic> v, NumberFormat inr, [int index = 0]) {
     final villaNumber = v['villaNumber']?.toString() ?? '';
     final block = v['block']?.toString() ?? '';
     final ownerName = v['ownerName']?.toString() ?? '';
@@ -191,13 +193,13 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+              color: DesignColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               villaNumber.isNotEmpty ? villaNumber : '?',
-              style: const TextStyle(
-                color: Color(0xFF7C3AED),
+              style: TextStyle(
+                color: DesignColors.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -245,7 +247,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showVillaForm({Map<String, dynamic>? existing}) {
@@ -325,7 +327,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: DesignColors.error,
-                              side: const BorderSide(color: DesignColors.error),
+                              side: BorderSide(color: DesignColors.error),
                             ),
                             child: const Text('Delete'),
                           ),
@@ -361,7 +363,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
                             }
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF7C3AED),
+                            backgroundColor: DesignColors.primary,
                           ),
                           child: Text(isEdit ? 'Update' : 'Create'),
                         ),
@@ -384,13 +386,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
       child: TextFormField(
         controller: ctrl,
         keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DesignRadius.md),
-          ),
-          isDense: true,
-        ),
+        decoration: DesignComponents.inputDecoration(label: label),
         validator: required
             ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
             : null,
@@ -473,7 +469,7 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -487,11 +483,11 @@ class _AdminVillasScreenState extends ConsumerState<AdminVillasScreen> {
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.home_work_outlined, color: DesignColors.error, size: 28)),
+                  child: Icon(Icons.home_work_outlined, color: DesignColors.error, size: 28)),
               const SizedBox(height: 16),
-              const Text('Delete Villa?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Delete Villa?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('Are you sure you want to delete this villa? This cannot be undone.',
+              Text('Are you sure you want to delete this villa? This cannot be undone.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),

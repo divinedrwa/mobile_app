@@ -120,7 +120,7 @@ class DivineFlowBottomBar extends StatelessWidget {
                     onPressed: primaryLoading ? null : onLeading,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: DesignColors.textPrimary,
-                      side: const BorderSide(color: DesignColors.border, width: 1.2),
+                      side: BorderSide(color: DesignColors.border, width: 1.2),
                       padding: const EdgeInsets.symmetric(
                         horizontal: DesignSpacing.lg,
                         vertical: DesignSpacing.md,
@@ -262,7 +262,7 @@ class DivineChoiceCard extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
                   color: DesignColors.primary,
                   size: 22,
@@ -341,7 +341,7 @@ class DivinePickerRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 color: DesignColors.textTertiary,
               ),

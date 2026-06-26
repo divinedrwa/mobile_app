@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/widgets/enterprise_ui.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/upi_payment_model.dart';
@@ -162,36 +164,43 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
     final configAsync = ref.watch(upiConfigProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Pay via UPI',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Pay via UPI',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Complete your maintenance payment',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
       ),
       body: configAsync.when(
         loading: () => const DetailSkeleton(),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: DesignColors.error),
-              const SizedBox(height: 12),
-              Text('Failed to load UPI config',
-                  style: DesignTypography.label
-                      .copyWith(color: DesignColors.textSecondary)),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => ref.invalidate(upiConfigProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.error_outline_rounded,
+            tone: EnterpriseTone.danger,
+            title: 'Failed to load UPI config',
+            message: 'Check your connection and try again.',
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(upiConfigProvider),
           ),
         ),
         data: (config) {

@@ -404,7 +404,7 @@ class _SocietyCard extends StatelessWidget {
                         color: kHomePurple.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(9),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.domain_rounded,
                         size: 16,
                         color: kHomePurple,
@@ -524,7 +524,7 @@ class _HeaderAvatar extends StatelessWidget {
     return Center(
       child: Text(
         initial,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w700,
           color: kHomePurple,

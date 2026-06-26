@@ -16,6 +16,7 @@ import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -34,8 +35,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   XFile? _selectedImage;
   bool _isSubmitting = false;
-
-  static const _kPageBg = DesignColors.background;
 
   InputDecoration _fieldDecoration({
     required String label,
@@ -57,19 +56,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       border: OutlineInputBorder(borderRadius: DesignRadius.borderXL),
       enabledBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderXL,
-        borderSide: const BorderSide(color: DesignColors.borderLight, width: 1),
+        borderSide: BorderSide(color: DesignColors.borderLight, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderXL,
-        borderSide: const BorderSide(color: DesignColors.primary, width: 1.5),
+        borderSide: BorderSide(color: DesignColors.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderXL,
-        borderSide: const BorderSide(color: DesignColors.error, width: 1),
+        borderSide: BorderSide(color: DesignColors.error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: DesignRadius.borderXL,
-        borderSide: const BorderSide(color: DesignColors.error, width: 1.5),
+        borderSide: BorderSide(color: DesignColors.error, width: 1.5),
       ),
       labelStyle: DesignTypography.label.copyWith(color: DesignColors.textSecondary),
       hintStyle: DesignTypography.body.copyWith(color: DesignColors.textTertiary),
@@ -98,7 +97,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
-      backgroundColor: _kPageBg,
+      backgroundColor: context.surface.background,
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -109,21 +108,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               pinned: true,
               elevation: 0,
               scrolledUnderElevation: 0.5,
-              backgroundColor: DesignColors.surface,
+              backgroundColor: context.surface.defaultSurface,
               surfaceTintColor: Colors.transparent,
               leading: IconButton(
                 tooltip: 'Go back',
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                color: DesignColors.textPrimary,
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
               title: Text(
                 'Edit Profile',
-                style: DesignTypography.headingL.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: DesignColors.textPrimary,
-                  letterSpacing: -0.3,
-                ),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
               ),
               centerTitle: true,
               bottom: PreferredSize(
@@ -222,7 +216,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         _readOnlyRow(
                           icon: Icons.layers_outlined,
                           iconBg: const Color(0xFFF3E8FF),
-                          iconColor: const Color(0xFF7C3AED),
+                          iconColor: DesignColors.primary,
                           label: 'Unit / floor',
                           value: user?.effectiveUnitDisplay?.trim().isNotEmpty == true
                               ? user!.effectiveUnitDisplay!.trim()
@@ -564,7 +558,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Profile updated'),
           backgroundColor: DesignColors.success,
         ),
@@ -582,7 +576,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Failed to update profile'),
             backgroundColor: DesignColors.error,
           ),

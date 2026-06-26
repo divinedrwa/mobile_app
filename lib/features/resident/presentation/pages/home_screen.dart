@@ -170,11 +170,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     HomeSupportStrip(
                       securityContactsAsync: securityContactsAsync,
                     ),
-                    const SizedBox(height: kHomeSectionGap),
-                    // Recent activity — shows skeleton / empty state internally
+                    // Recent activity — hidden when empty
                     HomeRecentActivity(
                       notificationsState: notificationsState,
-                      onRetry: () => ref.invalidate(notificationProvider),
                     ),
                   ],
                 ),

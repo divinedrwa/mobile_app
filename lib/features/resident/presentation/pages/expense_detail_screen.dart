@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/expense_attachment_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/providers/expense_provider.dart';
@@ -26,31 +28,43 @@ class ExpenseDetailScreen extends ConsumerWidget {
     final dateFmt = DateFormat('dd MMM yyyy');
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Expense Details',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Expense Details',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Society expense breakdown',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
       ),
       body: async.when(
         loading: () => const DetailSkeleton(),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Text(
-              'Failed to load expense details.',
-              textAlign: TextAlign.center,
-              style: DesignTypography.bodyMedium.copyWith(
-                color: DesignColors.error,
-              ),
-            ),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.error_outline_rounded,
+            tone: EnterpriseTone.danger,
+            title: 'Failed to load expense details',
+            message: 'Check your connection and try again.',
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(expenseDetailProvider(expenseId)),
           ),
         ),
         data: (expense) => _Body(

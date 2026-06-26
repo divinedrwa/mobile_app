@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
 
 /// Full-screen payment success confirmation shown after Razorpay / PhonePe /
@@ -98,7 +99,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
         if (!didPop) _done();
       },
       child: Scaffold(
-        backgroundColor: DesignColors.background,
+        backgroundColor: context.surface.background,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -118,7 +119,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                       shape: BoxShape.circle,
                       color: DesignColors.primary.withValues(alpha: 0.1),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_circle,
                       size: 72,
                       color: DesignColors.success,
@@ -170,14 +171,14 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                           _row('GST on Fee', _fmt(widget.platformFeeGst)),
                         if (widget.platformFee > 0 ||
                             widget.platformFeeGst > 0) ...[
-                          const Padding(
+                          Padding(
                             padding:
                                 EdgeInsets.symmetric(vertical: DesignSpacing.sm),
                             child: Divider(color: DesignColors.divider),
                           ),
                           _row('Total Paid', _fmt(effectiveTotal), bold: true),
                         ],
-                        const Padding(
+                        Padding(
                           padding:
                               EdgeInsets.symmetric(vertical: DesignSpacing.sm),
                           child: Divider(color: DesignColors.divider),

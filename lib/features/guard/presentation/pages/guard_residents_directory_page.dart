@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -181,7 +183,11 @@ class _GuardResidentsDirectoryPageState
                       itemCount: rows.length,
                       itemBuilder: (_, i) {
                         final r = rows[i];
-                        return _ResidentCard(row: r, initials: _initials(r.name));
+                        return _ResidentCard(
+                          row: r,
+                          initials: _initials(r.name),
+                          index: i,
+                        );
                       },
                     ),
                   );
@@ -196,169 +202,187 @@ class _GuardResidentsDirectoryPageState
 }
 
 class _ResidentCard extends StatelessWidget {
-  const _ResidentCard({required this.row, required this.initials});
+  const _ResidentCard({
+    required this.row,
+    required this.initials,
+    required this.index,
+  });
 
   final ResidentDirectoryRow row;
   final String initials;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: GuardTokens.g2,
-          vertical: GuardTokens.g2 + 2,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GuardTokens.g2),
+      child: Material(
+        color: cs.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+          side: BorderSide(
+            color: isDark
+                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+          ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: GuardTokens.guardAccent.withValues(alpha: 0.16),
-              foregroundColor: GuardTokens.guardAccentDeep,
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: GuardTokens.title,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: GuardTokens.g2,
+            vertical: GuardTokens.g2 + 2,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: GuardTokens.guardAccent.withValues(alpha: 0.16),
+                foregroundColor: GuardTokens.guardAccentDeep,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: GuardTokens.title,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: GuardTokens.g2),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    row.name,
-                    style: GuardTokens.headingStyle(
-                      context,
-                    ).copyWith(fontSize: GuardTokens.body + 1),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: GuardTokens.g1,
-                    runSpacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: GuardTokens.g1,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(
-                            GuardTokens.radiusChip,
+              const SizedBox(width: GuardTokens.g2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.name,
+                      style: GuardTokens.headingStyle(context).copyWith(
+                        fontSize: GuardTokens.body + 1,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 5),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: GuardTokens.g1,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: GuardTokens.guardAccent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: GuardTokens.guardAccent.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Text(
+                            'Flat ${row.flatLabel}',
+                            style: GuardTokens.captionStyle(context).copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: GuardTokens.guardAccentDeep,
+                              fontSize: 11.5,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          'Flat ${row.flatLabel}',
-                          style: GuardTokens.captionStyle(
-                            context,
-                          ).copyWith(fontWeight: FontWeight.w600),
+                        if (row.phoneMasked != null &&
+                            row.phoneMasked!.trim().isNotEmpty)
+                          Text(
+                            row.phoneMasked!,
+                            style: GuardTokens.captionStyle(context),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: GuardTokens.g1),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                    onPressed: () {
+                      final residentPhone = row.phone?.trim() ?? '';
+                      final q = <String, String>{
+                        'name': row.name,
+                        if (row.villaId != null && row.villaId!.isNotEmpty)
+                          'villaId': row.villaId!,
+                        if (residentPhone.isNotEmpty)
+                          'residentPhone': residentPhone,
+                      };
+                      context.push(
+                        GuardRoutes.visitorApprovalWithQuery('dir', q),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.verified_user_outlined,
+                      color: GuardTokens.guardAccentDeep,
+                    ),
+                    tooltip: 'Check in visitor for ${row.name}',
+                  ),
+                  const SizedBox(height: GuardTokens.g1),
+                  IconButton.outlined(
+                    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                    onPressed: () async {
+                      final display = row.phoneMasked?.trim().isNotEmpty == true
+                          ? row.phoneMasked!
+                          : maskPhone(row.phone);
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Call resident?'),
+                          content: Text('Dial ${row.name} at $display?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Call'),
+                            ),
+                          ],
                         ),
-                      ),
-                      if (row.phoneMasked != null &&
-                          row.phoneMasked!.trim().isNotEmpty)
-                        Text(
-                          row.phoneMasked!,
-                          style: GuardTokens.captionStyle(context),
-                        ),
-                    ],
+                      );
+                      if (confirmed != true || !context.mounted) return;
+                      final ok = await launchDial(row.phone);
+                      if (!context.mounted) return;
+                      if (!ok) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            behavior: SnackBarBehavior.floating,
+                            content: Text(
+                              row.phoneMasked != null &&
+                                      row.phoneMasked!.trim().isNotEmpty
+                                  ? 'Cannot dial — check number format (${row.phoneMasked})'
+                                  : 'Phone not available',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.phone_outlined,
+                      color: GuardTokens.guardAccentDeep,
+                    ),
+                    tooltip: 'Call ${row.name}',
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: GuardTokens.g1),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.filledTonal(
-                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                  onPressed: () {
-                    final residentPhone = row.phone?.trim() ?? '';
-                    final q = <String, String>{
-                      'name': row.name,
-                      if (row.villaId != null && row.villaId!.isNotEmpty)
-                        'villaId': row.villaId!,
-                      // Forward the resident's phone so the approval screen
-                      // can dial directly without bouncing back to the
-                      // directory. Read on the approval side by
-                      // [_GuardVisitorApprovalPageState._callResident].
-                      if (residentPhone.isNotEmpty)
-                        'residentPhone': residentPhone,
-                    };
-                    context.push(
-                      GuardRoutes.visitorApprovalWithQuery('dir', q),
-                    );
-                  },
-                  icon: const Icon(
-                    Icons.verified_user_outlined,
-                    color: GuardTokens.guardAccentDeep,
-                  ),
-                  tooltip: 'Check in visitor for ${row.name}',
-                ),
-                const SizedBox(height: GuardTokens.g1),
-                IconButton.outlined(
-                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                  onPressed: () async {
-                    final display = row.phoneMasked?.trim().isNotEmpty == true
-                        ? row.phoneMasked!
-                        : maskPhone(row.phone);
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Call resident?'),
-                        content: Text('Dial ${row.name} at $display?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Call'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed != true || !context.mounted) return;
-                    final ok = await launchDial(row.phone);
-                    if (!context.mounted) return;
-                    if (!ok) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          behavior: SnackBarBehavior.floating,
-                          content: Text(
-                            row.phoneMasked != null &&
-                                    row.phoneMasked!.trim().isNotEmpty
-                                ? 'Cannot dial — check number format (${row.phoneMasked})'
-                                : 'Phone not available',
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  icon: const Icon(
-                    Icons.phone_outlined,
-                    color: GuardTokens.guardAccentDeep,
-                  ),
-                  tooltip: 'Call ${row.name}',
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
   }
 }
 

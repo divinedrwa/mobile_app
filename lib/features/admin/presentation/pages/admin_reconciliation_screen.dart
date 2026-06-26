@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -45,7 +47,7 @@ class _AdminReconciliationScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -176,7 +178,7 @@ class _AdminReconciliationScreenState
               );
             }
             return Column(
-              children: alerts.map(_alertCard).toList(),
+              children: alerts.asMap().entries.map((e) => _alertCard(e.value, e.key)).toList(),
             );
           },
         ),
@@ -184,7 +186,7 @@ class _AdminReconciliationScreenState
     );
   }
 
-  Widget _alertCard(Map<String, dynamic> alert) {
+  Widget _alertCard(Map<String, dynamic> alert, [int index = 0]) {
     final severity =
         alert['severity']?.toString().toUpperCase() ?? 'INFO';
     final id = alert['id']?.toString() ?? '';
@@ -282,11 +284,11 @@ class _AdminReconciliationScreenState
             ),
           ),
           if (!isResolved)
-            const Icon(Icons.chevron_right,
+            Icon(Icons.chevron_right,
                 size: 18, color: DesignColors.textTertiary),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showResolveSheet(String id) {

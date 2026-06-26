@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -44,7 +46,7 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -129,7 +131,7 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
                           itemBuilder: (_, i) => _PatrolCard(
                             patrol: filtered[i],
                             onStatusUpdated: _refresh,
-                          ),
+                          ).animate(delay: DesignAnimations.staggerFor(i)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance),
                         ),
                 ),
               ],
@@ -211,7 +213,7 @@ class _PatrolCard extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -237,10 +239,10 @@ class _PatrolCard extends ConsumerWidget {
                     children: [
                       Container(width: 36, height: 36,
                           decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                          child: const Icon(Icons.shield_outlined, color: DesignColors.primary, size: 18)),
+                          child: Icon(Icons.shield_outlined, color: DesignColors.primary, size: 18)),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(e.value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary))),
-                      const Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
+                      Expanded(child: Text(e.value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary))),
+                      Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
                     ],
                   ),
                 ),

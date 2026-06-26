@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../data/models/family_member_model.dart';
@@ -55,20 +56,20 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Text(
           widget.member == null ? 'Add Family Member' : 'Edit Family Member',
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
         ),
       ),
       body: Form(
@@ -130,7 +131,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.cake_outlined, color: DesignColors.textSecondary, size: 20),
+                    Icon(Icons.cake_outlined, color: DesignColors.textSecondary, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -142,7 +143,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                         ),
                       ),
                     ),
-                    const Icon(Icons.calendar_today_outlined, color: DesignColors.textTertiary, size: 18),
+                    Icon(Icons.calendar_today_outlined, color: DesignColors.textTertiary, size: 18),
                   ],
                 ),
               ),
@@ -196,7 +197,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Unable to update this family member'),
           backgroundColor: DesignColors.error,
         ),

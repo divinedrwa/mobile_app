@@ -91,7 +91,7 @@ class HomeQuickActions extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
                   color: DesignColors.primary,
@@ -261,7 +261,7 @@ class HomeQuickActions extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const Text(
+                Text(
                   'Additional shortcuts',
                   style: TextStyle(
                     fontSize: 18,
@@ -270,7 +270,7 @@ class HomeQuickActions extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'These are not on your home quick row',
                   style: TextStyle(
                       fontSize: 13,
@@ -278,8 +278,8 @@ class HomeQuickActions extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (viewAllActions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'No extra shortcuts right now.',
                       style: TextStyle(
@@ -304,7 +304,7 @@ class HomeQuickActions extends ConsumerWidget {
                               color: action.color, size: 18),
                           label: Text(
                             action.label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: DesignColors.textPrimary,
                               fontWeight: FontWeight.w600,
                             ),
@@ -312,7 +312,7 @@ class HomeQuickActions extends ConsumerWidget {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 12),
-                            side: const BorderSide(
+                            side: BorderSide(
                                 color: DesignColors.borderLight),
                             shape: RoundedRectangleBorder(
                               borderRadius:

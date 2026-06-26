@@ -200,7 +200,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.person_rounded,
+              Icon(Icons.person_rounded,
                   size: 18, color: DesignColors.primary),
               const SizedBox(width: AppSpacing.sm),
               Text('My Contribution',
@@ -229,7 +229,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                const Icon(Icons.calendar_today_rounded,
+                Icon(Icons.calendar_today_rounded,
                     size: 14, color: DesignColors.textTertiary),
                 const SizedBox(width: AppSpacing.xs),
                 Text('Due: ${_dateFmt.format(contrib.dueDate!)}',
@@ -282,7 +282,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
                         borderRadius:
                             BorderRadius.circular(DesignRadius.md),
                       ),
-                      child: const Icon(Icons.check_circle_rounded,
+                      child: Icon(Icons.check_circle_rounded,
                           color: DesignColors.primary, size: 18),
                     ),
                     const SizedBox(width: AppSpacing.md),
@@ -343,7 +343,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.people_rounded,
+              Icon(Icons.people_rounded,
                   size: 18, color: DesignColors.textTertiary),
               const SizedBox(width: AppSpacing.sm),
               Text('All Contributions',
@@ -365,7 +365,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.info_outline_rounded,
+                Icon(Icons.info_outline_rounded,
                     size: 16, color: DesignColors.textTertiary),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
@@ -430,7 +430,7 @@ class SpecialProjectDetailScreen extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(
                                       DesignRadius.md),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                     Icons.receipt_long_rounded,
                                     color: DesignColors.warning,
                                     size: 18),

@@ -103,14 +103,38 @@ class _VisitorApprovalRequestsScreenState
       backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
         backgroundColor: context.surface.defaultSurface,
-        foregroundColor: context.text.primary,
-        title: Text(
-          'Gate visitor requests',
-          style: DesignTypography.headingM.copyWith(fontSize: 17),
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
-        centerTitle: true,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Gate visitor requests',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Approve or reject gate entry requests',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -409,7 +433,7 @@ class _RequestCard extends StatelessWidget {
         shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: DesignColors.borderLight),
+          side: BorderSide(color: DesignColors.borderLight),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -430,7 +454,7 @@ class _RequestCard extends StatelessWidget {
                         children: [
                           Text(
                             displayName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: DesignColors.textPrimary,
@@ -444,7 +468,7 @@ class _RequestCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text(
                               phone,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: DesignColors.textSecondary,
@@ -457,7 +481,7 @@ class _RequestCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     VisitorMgmtStatusChip(statusRaw: statusRaw),
                     const SizedBox(width: 2),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right_rounded,
                       color: DesignColors.textTertiary,
                       size: 20,

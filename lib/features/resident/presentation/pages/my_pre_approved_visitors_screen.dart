@@ -11,6 +11,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/async_animated_switcher.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 import '../providers/visitor_provider.dart';
 import '../widgets/list_skeleton.dart';
@@ -75,7 +76,7 @@ class _MyPreApprovedVisitorsScreenState
       case VisitorType.delivery:
         return const Color(0xFF0891B2);
       case VisitorType.service:
-        return const Color(0xFF7C3AED);
+        return DesignColors.primary;
       case VisitorType.vendor:
         return const Color(0xFFCA8A04);
     }
@@ -167,7 +168,7 @@ class _MyPreApprovedVisitorsScreenState
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: DesignColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
@@ -185,15 +186,15 @@ class _MyPreApprovedVisitorsScreenState
                 Container(
                   width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.warning.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.no_meeting_room_outlined, color: DesignColors.warning, size: 28),
+                  child: Icon(Icons.no_meeting_room_outlined, color: DesignColors.warning, size: 28),
                 ),
                 const SizedBox(height: 16),
-                const Text('Remove pre-approval?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                Text('Remove pre-approval?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                 const SizedBox(height: 8),
                 Text(
                   'Guards will no longer see ${v.name} under expected visitors.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -247,19 +248,40 @@ class _MyPreApprovedVisitorsScreenState
     final dtf = DateFormat('EEE, d MMM yyyy · h:mm a');
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
-        centerTitle: true,
-        title: Text(
-          'Pre-approved visitors',
-          style: DesignTypography.headingM.copyWith(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Pre-approved visitors',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Share OTP passes for gate entry',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -270,7 +292,7 @@ class _MyPreApprovedVisitorsScreenState
                 color: DesignColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.person_add_alt_1_rounded,
                 color: DesignColors.primary,
                 size: 22,
@@ -309,7 +331,7 @@ class _MyPreApprovedVisitorsScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.wifi_off_rounded,
                   size: 48,
                   color: DesignColors.textTertiary,
@@ -349,7 +371,7 @@ class _MyPreApprovedVisitorsScreenState
                   SizedBox(height: MediaQuery.sizeOf(context).height * 0.1),
                   Container(
                     padding: const EdgeInsets.all(DesignSpacing.lg),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: DesignColors.surfaceSoft,
                       shape: BoxShape.circle,
                     ),
@@ -695,7 +717,7 @@ class _PreApprovalVisitorCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.vpn_key_rounded,
                           size: 22,
                           color: DesignColors.primaryDark,

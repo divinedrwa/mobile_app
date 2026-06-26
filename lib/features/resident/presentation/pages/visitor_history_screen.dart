@@ -208,7 +208,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Tap × to clear filter',
                         style: TextStyle(
                           fontSize: 11,
@@ -529,7 +529,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
         Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: DesignColors.textSecondary,

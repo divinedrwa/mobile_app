@@ -473,7 +473,7 @@ class _MaintenancePaymentScreenState
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline,
                               size: 52,
                               color: DesignColors.error,
@@ -541,7 +541,7 @@ class _MaintenancePaymentScreenState
                           color: DesignColors.primary.withValues(alpha: 0.07),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.calendar_month_outlined,
                           size: 48,
                           color: DesignColors.primary,
@@ -707,7 +707,7 @@ class _MaintenancePaymentScreenState
                 color: DesignColors.primary.withValues(alpha: 0.07),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.account_balance_wallet_outlined,
                 size: 48,
                 color: DesignColors.primary,
@@ -798,7 +798,7 @@ class _MaintenancePaymentScreenState
             enabledBorder: border,
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 color: DesignColors.primary,
                 width: 1.5,
               ),
@@ -943,7 +943,7 @@ class _MaintenancePaymentScreenState
           ? Container(
               width: 7,
               height: 7,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: DesignColors.success,
                 shape: BoxShape.circle,
               ),
@@ -997,7 +997,7 @@ class _MaintenancePaymentScreenState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
+                    Icon(Icons.error_outline,
                         size: 48, color: DesignColors.error),
                     const SizedBox(height: 16),
                     Text(
@@ -2055,7 +2055,7 @@ class _MaintenancePaymentScreenState
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: DesignColors.warning,
                             shape: BoxShape.circle,
                           ),
@@ -3134,7 +3134,7 @@ class _MaintenancePaymentScreenState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: DesignColors.primary, width: 1.5),
+            borderSide: BorderSide(color: DesignColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -3377,7 +3377,7 @@ class _MaintenancePaymentScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: DesignColors.error),
+                Icon(Icons.error_outline, size: 48, color: DesignColors.error),
                 const SizedBox(height: 16),
                 Text(
                   'Failed to load outstanding dues',
@@ -3424,7 +3424,7 @@ class _MaintenancePaymentScreenState
                         color: DesignColors.success.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_circle_outline_rounded, size: 52, color: DesignColors.success),
+                      child: Icon(Icons.check_circle_outline_rounded, size: 52, color: DesignColors.success),
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -3501,7 +3501,7 @@ class _MaintenancePaymentScreenState
                     color: DesignColors.error.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.account_balance_wallet_rounded,
+                  child: Icon(Icons.account_balance_wallet_rounded,
                       size: 20, color: DesignColors.error),
                 ),
                 const SizedBox(width: 12),
@@ -3956,7 +3956,7 @@ class _MaintenancePaymentScreenState
                           color: DesignColors.success.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.check_circle_outline_rounded, size: 48, color: DesignColors.success),
+                        child: Icon(Icons.check_circle_outline_rounded, size: 48, color: DesignColors.success),
                       ),
                       const SizedBox(height: 16),
                       Text('No deficit months',

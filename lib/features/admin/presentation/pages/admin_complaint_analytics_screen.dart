@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -45,7 +47,7 @@ class _AdminComplaintAnalyticsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -202,7 +204,7 @@ class _AdminComplaintAnalyticsScreenState
               );
             }
             return Column(
-              children: pending.take(10).map(_pendingCard).toList(),
+              children: pending.take(10).toList().asMap().entries.map((e) => _pendingCard(e.value, e.key)).toList(),
             );
           },
         ),
@@ -374,7 +376,7 @@ class _AdminComplaintAnalyticsScreenState
     );
   }
 
-  Widget _pendingCard(Map<String, dynamic> c) {
+  Widget _pendingCard(Map<String, dynamic> c, [int index = 0]) {
     final title = c['title']?.toString() ?? c['subject']?.toString() ?? '';
     final category = c['category']?.toString() ?? '';
     final priority = c['priority']?.toString().toUpperCase() ?? '';
@@ -429,7 +431,7 @@ class _AdminComplaintAnalyticsScreenState
             ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   static int _toInt(dynamic v) {

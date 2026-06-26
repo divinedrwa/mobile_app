@@ -110,9 +110,9 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: brand.primary,
-          foregroundColor: text.inverse,
-          textStyle: AppTypography.textTheme(text.inverse).labelLarge,
+          backgroundColor: palette.buttonBackground,
+          foregroundColor: palette.buttonForeground,
+          textStyle: AppTypography.textTheme(palette.buttonForeground).labelLarge,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius.md),
           ),
@@ -124,9 +124,10 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: text.primary,
-          side: BorderSide(color: surface.border),
-          textStyle: AppTypography.textTheme(text.primary).labelLarge,
+          foregroundColor: palette.brandSecondary,
+          backgroundColor: palette.secondaryButtonBackground.withValues(alpha: 0.12),
+          side: BorderSide(color: palette.brandSecondary),
+          textStyle: AppTypography.textTheme(palette.secondaryButtonForeground).labelLarge,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius.md),
           ),
@@ -144,7 +145,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface.defaultSurface,
+        fillColor: surface.elevated,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radius.md),
           borderSide: BorderSide(color: surface.border),
@@ -167,6 +168,8 @@ class AppTheme {
         ),
         hintStyle: TextStyle(color: text.tertiary),
         labelStyle: TextStyle(color: text.secondary),
+        prefixIconColor: palette.iconForeground,
+        suffixIconColor: palette.iconForeground,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surface.elevated,
@@ -181,9 +184,9 @@ class AppTheme {
         space: 1,
         thickness: 1,
       ),
-      iconTheme: IconThemeData(color: text.tertiary),
+      iconTheme: IconThemeData(color: palette.iconForeground),
       listTileTheme: ListTileThemeData(
-        iconColor: text.tertiary,
+        iconColor: palette.iconForeground,
         textColor: text.primary,
         tileColor: surface.defaultSurface,
       ),
@@ -219,8 +222,8 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: brand.primary,
-        foregroundColor: text.inverse,
+        backgroundColor: palette.buttonBackground,
+        foregroundColor: palette.buttonForeground,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface.defaultSurface,

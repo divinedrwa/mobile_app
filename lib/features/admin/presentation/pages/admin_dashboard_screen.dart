@@ -292,6 +292,26 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ],
               ),
               const SizedBox(width: 2),
+              // Account / sign out — ensures villa-less admins (who have no
+              // Profile tab) always have a reachable logout.
+              Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => _confirmAdminLogout(ctx),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white.withValues(alpha: 0.92),
+                      size: 21,
+                    ),
+                  ),
+                ),
+              ),
               // Notification bell
               Material(
                 color: Colors.transparent,
@@ -363,6 +383,35 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // ═══════════════════════════════════════════════════════════════════
   // BODY
   // ═══════════════════════════════════════════════════════════════════
+
+  void _confirmAdminLogout(BuildContext ctx) {
+    showDialog<void>(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'You will need to sign in again to access your society dashboard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: DesignColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              await ref.read(authProvider.notifier).logout();
+            },
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _body(BuildContext ctx, AdminDashboardModel d) {
     final notificationsAsync = ref.watch(notificationProvider);
@@ -479,7 +528,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
               'Maintenance',
@@ -558,7 +607,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,
@@ -784,7 +833,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ctx,
           title: 'Operations',
           subtitle: 'Day-to-day management',
-          items: const [
+          items: [
             _QA(Icons.account_balance_wallet, 'Maintenance Actions',
                 Color(0xFF0D9488), '/resident/admin-maintenance-actions'),
             _QA(Icons.report_problem_outlined, 'Complaints', Color(0xFFEF4444),
@@ -792,7 +841,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             _QA(Icons.notifications_active_outlined, 'Reminders',
                 Color(0xFFF59E0B), '/resident/admin-reminders'),
             _QA(Icons.account_balance_wallet_outlined, 'Expenses',
-                Color(0xFF8B5CF6), '/resident/admin-expenses'),
+                DesignColors.primary, '/resident/admin-expenses'),
             _QA(Icons.campaign_outlined, 'Notices', Color(0xFF3B82F6),
                 '/resident/admin-notices'),
             _QA(Icons.inventory_2_outlined, 'Parcels', Color(0xFF06B6D4),
@@ -800,7 +849,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             _QA(Icons.currency_rupee_rounded, 'UPI Verifications',
                 Color(0xFF16A34A), '/resident/admin-upi-verifications'),
             _QA(Icons.construction_rounded, 'Special Projects',
-                Color(0xFF7C3AED), '/resident/admin-special-projects'),
+                DesignColors.primary, '/resident/admin-special-projects'),
           ],
         ),
         const SizedBox(height: 14),
@@ -808,10 +857,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ctx,
           title: 'People & Property',
           subtitle: 'Users, units, and configuration',
-          items: const [
+          items: [
             _QA(Icons.people_outlined, 'Residents', Color(0xFF0D9488),
                 '/resident/admin-residents'),
-            _QA(Icons.home_work_outlined, 'Properties', Color(0xFF7C3AED),
+            _QA(Icons.home_work_outlined, 'Properties', DesignColors.primary,
                 '/resident/admin-villas'),
             _QA(Icons.person_add_outlined, 'Invite Users', Color(0xFFEC4899),
                 '/resident/admin-invitations'),
@@ -832,7 +881,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ctx,
           title: 'Insights & Analytics',
           subtitle: 'Reports and data views',
-          items: const [
+          items: [
             _QA(Icons.analytics_outlined, 'Gate Analytics', Color(0xFF0891B2),
                 '/resident/admin-gate-analytics'),
             _QA(Icons.bar_chart_rounded, 'Complaint Analytics',
@@ -852,12 +901,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ctx,
           title: 'More Tools',
           subtitle: 'Additional utilities',
-          items: const [
+          items: [
             _QA(Icons.water_drop_outlined, 'Gate Utilities', Color(0xFF10B981),
                 '/resident/admin-gate-utilities'),
             _QA(Icons.sos_rounded, 'SOS Alerts', Color(0xFFDC2626),
                 '/resident/admin-sos'),
-            _QA(Icons.how_to_vote_outlined, 'Polls', Color(0xFF8B5CF6),
+            _QA(Icons.how_to_vote_outlined, 'Polls', DesignColors.primary,
                 '/resident/admin-polls'),
             _QA(Icons.fitness_center_outlined, 'Amenities', Color(0xFFF59E0B),
                 '/resident/admin-amenities'),
@@ -1072,7 +1121,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       },
                     ),
                     if (i != latest.length - 1)
-                      const Divider(
+                      Divider(
                           height: 1, color: DesignColors.borderLight),
                   ],
                 ],
@@ -1121,7 +1170,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: DesignColors.textPrimary,

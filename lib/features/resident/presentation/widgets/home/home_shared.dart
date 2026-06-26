@@ -6,12 +6,14 @@ import '../../../../../theme/context_extensions.dart';
 // ── Constants (were file-private _k* in home_screen.dart) ──
 
 const Color kHomeOrange = Color(0xFFF39C12);
-const Color kHomeGreen = DesignColors.primary;
 
-/// Mock-aligned accent purple for GatePass+ hero and home CTAs.
-const Color kHomePurple = Color(0xFF6C5CE7);
-const Color kHomePurpleDark = Color(0xFF5B4BD4);
-const Color kHomePurpleLight = Color(0xFFF3F0FF);
+/// These accent colours are now driven by the society's dynamic theme so that
+/// every screen that imports from home_shared.dart automatically inherits the
+/// admin-configured palette.  They are getters — NOT const — by design.
+Color get kHomePurple     => DesignColors.primary;
+Color get kHomePurpleDark => DesignColors.primaryDark;
+Color get kHomePurpleLight => DesignColors.primaryLight;
+Color get kHomeGreen      => DesignColors.primary;
 
 const double kHomePadH = 16;
 const double kHomeSectionGap = 14;
@@ -85,7 +87,7 @@ class HomeSectionHeader extends StatelessWidget {
                 const SizedBox(height: 1),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w500,
                     color: DesignColors.textSecondary,
@@ -119,7 +121,7 @@ class HomeSectionHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 1),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 16,
                 color: kHomePurple,

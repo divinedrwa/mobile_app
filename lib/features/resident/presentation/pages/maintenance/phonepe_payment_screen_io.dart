@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import 'gateway_payment_poll_actions.dart';
 
@@ -115,8 +116,23 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       _merchantTxnId = txnId;
       _serverAmount = _readAmount(result['totalDue']) ?? widget.amount;
 
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+      unawaited(
+        GatewayPaymentPollActions.persistPendingGatewayPayment(
+          transactionId: txnId,
+          gateway: 'phonepe',
+          amount: _serverAmount,
+          periodLabel: period,
+          payAllPending: widget.payAllPending,
+          paymentMethod: 'PhonePe',
+        ),
+      );
+
       // Server says this order was already completed at PhonePe.
       if (autoSettled) {
+        unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
         invalidateMaintenancePaymentProviders(ref);
         setState(() {
           _loading = false;
@@ -222,6 +238,9 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         },
         onFailed: (message) {
           _pollTimer?.cancel();
+          if (poll.isFailed) {
+            unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+          }
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
@@ -318,14 +337,14 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: DesignColors.background,
+        backgroundColor: context.surface.background,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: DesignColors.background,
-          scrolledUnderElevation: 0,
+          scrolledUnderElevation: 0.5,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: context.surface.defaultSurface,
           leading: IconButton(
-            icon:
-                const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
             onPressed: () {
               if (_canPop) {
                 context.pop();
@@ -341,10 +360,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
           ),
           title: Text(
             'PhonePe Payment',
-            style: DesignTypography.headingM.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
           ),
         ),
         body: _showWebView
@@ -364,7 +380,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle,
+          Icon(Icons.check_circle,
               size: 64, color: DesignColors.success),
           const SizedBox(height: 16),
           Text('Payment completed',
@@ -395,7 +411,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
+          Icon(Icons.error_outline,
               size: 48, color: DesignColors.error),
           const SizedBox(height: 16),
           Text(

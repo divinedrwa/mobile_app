@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../../utils/shift_active_helper.dart';
@@ -110,78 +112,108 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                         final line =
                             '${_fmtDate(shift.startTime)} · ${_fmtTime(shift.startTime)}–${_fmtTime(shift.endTime)}';
 
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-                          clipBehavior: Clip.antiAlias,
-                          child: Padding(
-                            padding: const EdgeInsets.all(GuardTokens.g2),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(GuardTokens.g1),
-                                  decoration: BoxDecoration(
-                                    color: active
-                                        ? GuardTokens.successMuted
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .surfaceContainerHighest
-                                              .withValues(alpha: 0.65),
-                                    borderRadius: BorderRadius.circular(
-                                      GuardTokens.radiusChip,
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final shiftIndex = i - 1;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: GuardTokens.g2),
+                          child: Material(
+                            color: Theme.of(context).colorScheme.surface,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+                              side: BorderSide(
+                                color: active
+                                    ? GuardTokens.success.withValues(alpha: 0.35)
+                                    : (isDark
+                                        ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                                        : GuardTokens.borderSubtle.withValues(alpha: 0.9)),
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Padding(
+                              padding: const EdgeInsets.all(GuardTokens.g2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? GuardTokens.success.withValues(alpha: 0.12)
+                                          : (isDark
+                                              ? GuardTokens.darkCard
+                                              : GuardTokens.borderSubtle.withValues(alpha: 0.5)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: active
+                                            ? GuardTokens.success.withValues(alpha: 0.3)
+                                            : GuardTokens.borderSubtle.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      active
+                                          ? Icons.brightness_high_rounded
+                                          : Icons.nights_stay_rounded,
+                                      semanticLabel: active ? 'Active shift' : 'Inactive shift',
+                                      color: active
+                                          ? GuardTokens.success
+                                          : GuardTokens.textSecondary,
+                                      size: 22,
                                     ),
                                   ),
-                                  child: Icon(
-                                    active
-                                        ? Icons.brightness_high_rounded
-                                        : Icons.nights_stay_rounded,
-                                    semanticLabel: active ? 'Active shift' : 'Inactive shift',
-                                    color: active
-                                        ? GuardTokens.success
-                                        : GuardTokens.textSecondary,
-                                    size: 26,
+                                  const SizedBox(width: GuardTokens.g2),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          title,
+                                          style: GuardTokens.headingStyle(context).copyWith(
+                                            fontSize: GuardTokens.body,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.2,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          line,
+                                          style: GuardTokens.captionStyle(context),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: GuardTokens.g2),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title,
-                                        style: GuardTokens.headingStyle(
-                                          context,
-                                        ).copyWith(fontSize: GuardTokens.body),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        line,
-                                        style: GuardTokens.captionStyle(
-                                          context,
+                                  if (active)
+                                    Semantics(
+                                      label: 'Shift is currently active',
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: GuardTokens.success.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: GuardTokens.success.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Active',
+                                          style: TextStyle(
+                                            color: GuardTokens.success,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                if (active)
-                                  Semantics(
-                                    label: 'Shift is currently active',
-                                    child: Chip(
-                                    label: const Text('Active'),
-                                    backgroundColor: GuardTokens.successMuted,
-                                    labelStyle: GuardTokens.bodyStyle(context)
-                                        .copyWith(
-                                          color: GuardTokens.success,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: GuardTokens.caption,
-                                        ),
-                                  ),
-                                  ),
-                              ],
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                        );
+                        ).animate(delay: DesignAnimations.staggerFor(shiftIndex)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
                       },
                     ),
                   );

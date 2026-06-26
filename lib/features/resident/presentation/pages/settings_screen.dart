@@ -8,7 +8,6 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/security/secure_credentials_store.dart';
 import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
-import '../../../../theme/theme.dart' as gp_theme;
 import '../../../../core/utils/play_store_launch.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/utils/validators.dart';
@@ -249,7 +248,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   );
                 },
               ),
-              _ThemeModeTile(),
             ],
           ),
           SizedBox(height: context.spacing.s24),
@@ -934,53 +932,3 @@ class _SettingsSwitchTile extends StatelessWidget {
   }
 }
 
-class _ThemeModeTile extends ConsumerWidget {
-  static String _label(ThemeMode m) {
-    switch (m) {
-      case ThemeMode.light:
-        return 'Light mode';
-      case ThemeMode.dark:
-        return 'Dark mode';
-      case ThemeMode.system:
-        return 'System default';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(gp_theme.themeModeProvider);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(Icons.light_mode_outlined, color: context.brand.primary),
-      title: Text(
-        'Theme',
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: context.text.primary,
-              fontWeight: FontWeight.w700,
-            ),
-      ),
-      subtitle: Text(
-        _label(current),
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: context.text.secondary,
-            ),
-      ),
-      trailing: SegmentedButton<ThemeMode>(
-        showSelectedIcon: false,
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        segments: const [
-          ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode, size: 16)),
-          ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 16)),
-          ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode, size: 16)),
-        ],
-        selected: {current},
-        onSelectionChanged: (modes) {
-          ref.read(gp_theme.themeModeProvider.notifier).setMode(modes.first);
-        },
-      ),
-    );
-  }
-}

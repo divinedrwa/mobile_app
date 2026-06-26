@@ -58,7 +58,7 @@ class _AdminSpecialProjectDetailScreenState
                     itemBuilder: (_) => [
                       const PopupMenuItem(
                           value: 'edit', child: Text('Edit Project')),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                           value: 'delete',
                           child: Text('Delete Project',
                               style: TextStyle(color: DesignColors.error))),
@@ -258,7 +258,7 @@ class _AdminSpecialProjectDetailScreenState
             label: const Text('Complete'),
             style: OutlinedButton.styleFrom(
               foregroundColor: DesignColors.primary,
-              side: const BorderSide(color: DesignColors.primary),
+              side: BorderSide(color: DesignColors.primary),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(DesignRadius.md)),
             ),
@@ -272,7 +272,7 @@ class _AdminSpecialProjectDetailScreenState
             label: const Text('Cancel'),
             style: OutlinedButton.styleFrom(
               foregroundColor: DesignColors.error,
-              side: const BorderSide(color: DesignColors.error),
+              side: BorderSide(color: DesignColors.error),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(DesignRadius.md)),
             ),
@@ -320,7 +320,7 @@ class _AdminSpecialProjectDetailScreenState
         ),
         const SizedBox(height: AppSpacing.md),
         if (filtered.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Center(
               child: Text('No contributions match this filter',
@@ -445,7 +445,7 @@ class _AdminSpecialProjectDetailScreenState
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_rounded,
+                        Icon(Icons.check_circle_rounded,
                             size: 14, color: DesignColors.primary),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
@@ -466,7 +466,7 @@ class _AdminSpecialProjectDetailScreenState
                         ),
                         if (project.status == 'ACTIVE')
                           IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded,
+                            icon: Icon(Icons.delete_outline_rounded,
                                 size: 18, color: DesignColors.error),
                             onPressed: () =>
                                 _confirmDeletePayment(project, contrib, p),
@@ -513,7 +513,7 @@ class _AdminSpecialProjectDetailScreenState
         ),
         const SizedBox(height: AppSpacing.sm),
         if (expenses.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Center(
               child: Text('No expenses recorded',
@@ -536,7 +536,7 @@ class _AdminSpecialProjectDetailScreenState
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         color: DesignColors.error.withValues(alpha: 0.1),
-        child: const Icon(Icons.delete_rounded, color: DesignColors.error),
+        child: Icon(Icons.delete_rounded, color: DesignColors.error),
       ),
       confirmDismiss: (_) => _confirmDeleteExpense(expense),
       child: Padding(
@@ -568,7 +568,7 @@ class _AdminSpecialProjectDetailScreenState
               if (project.status == 'ACTIVE') ...[
                 const SizedBox(width: AppSpacing.sm),
                 IconButton(
-                  icon: const Icon(Icons.edit_rounded,
+                  icon: Icon(Icons.edit_rounded,
                       size: 18, color: DesignColors.textTertiary),
                   onPressed: () => _showExpenseSheet(project, expense),
                   constraints: const BoxConstraints(),
@@ -998,7 +998,7 @@ class _RecordPaymentSheetState extends State<_RecordPaymentSheet> {
               controller: _amountCtrl,
               decoration: DesignComponents.inputDecoration(
                 label: 'Amount',
-                prefixIcon: const Icon(Icons.currency_rupee_rounded,
+                prefixIcon: Icon(Icons.currency_rupee_rounded,
                     size: 18, color: DesignColors.textTertiary),
               ),
               keyboardType: TextInputType.number,
@@ -1197,7 +1197,7 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
               controller: _amountCtrl,
               decoration: DesignComponents.inputDecoration(
                 label: 'Amount',
-                prefixIcon: const Icon(Icons.currency_rupee_rounded,
+                prefixIcon: Icon(Icons.currency_rupee_rounded,
                     size: 18, color: DesignColors.textTertiary),
               ),
               keyboardType: TextInputType.number,

@@ -8,8 +8,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import 'gateway_payment_poll_actions.dart';
+import 'gateway_sdk_errors.dart';
 
 class RazorpayPaymentScreen extends ConsumerStatefulWidget {
   const RazorpayPaymentScreen({
@@ -38,7 +40,7 @@ class _RazorpayPaymentScreenState
   bool _loading = true;
   String? _error;
   bool _paymentComplete = false;
-  bool _orderCreated = false;
+  bool _checkoutActive = false;
   /// Set once Razorpay SDK returns (success or error). Once the SDK has
   /// dismissed, always allow back — the user shouldn't be trapped.
   bool _sdkReturned = false;
@@ -49,12 +51,11 @@ class _RazorpayPaymentScreenState
   /// Incremented on each _createOrder call. Stale poll responses are ignored.
   int _verifyGeneration = 0;
   static const _maxVerifyPolls = 40;
-  /// After SDK error, poll briefly (5 attempts ≈ 10s) then show the SDK error.
-  static const _maxErrorVerifyPolls = 5;
+  /// After ambiguous SDK error, poll briefly then show the SDK message.
+  static const _maxErrorVerifyPolls = 2;
   static const _verifyPollInterval = Duration(seconds: 2);
-  /// SDK-reported error message — when set, poll timeout shows this error
-  /// instead of navigating to the "Payment received" pending screen.
   String? _sdkErrorMessage;
+  String _loadingMessage = 'Preparing checkout...';
   double _maintenanceDue = 0;
   double _platformFee = 0;
   double _platformFeeGst = 0;
@@ -79,11 +80,7 @@ class _RazorpayPaymentScreenState
   }
 
   Future<void> _createOrder() async {
-    // After a confirmed failure, generate a new idempotency key so the
-    // server creates a truly fresh Razorpay order.
-    if (_error != null) {
-      _idempotencyKey = const Uuid().v4();
-    }
+    _idempotencyKey = const Uuid().v4();
     _verifyTimer?.cancel();
     _verifyGeneration++;
     _sdkReturned = false;
@@ -91,6 +88,8 @@ class _RazorpayPaymentScreenState
     setState(() {
       _loading = true;
       _error = null;
+      _checkoutActive = false;
+      _loadingMessage = 'Preparing checkout...';
     });
     try {
       final repo = ref.read(maintenanceRepositoryProvider);
@@ -108,6 +107,7 @@ class _RazorpayPaymentScreenState
       final autoSettled = result['autoSettled'] == true;
 
       if (autoSettledFromCredit || autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
+        unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
         _maintenanceDue = _readAmount(result['totalDue']) ?? widget.amount;
         invalidateMaintenancePaymentProviders(ref);
         if (!mounted) return;
@@ -160,6 +160,12 @@ class _RazorpayPaymentScreenState
             ? 'Pay all outstanding maintenance'
             : 'Maintenance for ${_monthName(widget.month)} ${widget.year}',
         'timeout': 300, // 5 minutes
+        'method': {
+          'upi': true,
+          'card': true,
+          'netbanking': true,
+          'wallet': true,
+        },
       };
 
       if (!mounted) return;
@@ -176,10 +182,27 @@ class _RazorpayPaymentScreenState
 
       if (!mounted) return;
       _razorpayOrderId = orderId;
-      _orderCreated = true;
       setState(() {
         _loading = false;
+        _loadingMessage = 'Opening secure checkout...';
       });
+      final period = widget.payAllPending
+          ? 'All outstanding'
+          : '${_monthName(widget.month)} ${widget.year}';
+      unawaited(
+        GatewayPaymentPollActions.persistPendingGatewayPayment(
+          transactionId: orderId,
+          gateway: 'razorpay',
+          amount: _maintenanceDue,
+          periodLabel: period,
+          payAllPending: widget.payAllPending,
+          platformFee: _platformFee,
+          platformFeeGst: _platformFeeGst,
+          totalPaid: _totalPayable,
+          paymentMethod: 'Razorpay',
+        ),
+      );
+      _checkoutActive = true;
       _razorpay.open(options);
     } catch (e) {
       if (!mounted) return;
@@ -193,40 +216,94 @@ class _RazorpayPaymentScreenState
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     if (!mounted) return;
     _sdkReturned = true;
+    _checkoutActive = false;
     _sdkErrorMessage = null;
     setState(() {
       _loading = true;
       _error = null;
+      _loadingMessage = 'Confirming payment...';
     });
-    _verifyPollCount = 0;
-    _verifyTimer?.cancel();
-    _verifyTimer = Timer.periodic(_verifyPollInterval, (_) {
-      _verifyServerPayment(response.paymentId);
-    });
-    unawaited(_verifyServerPayment(response.paymentId));
+    _startServerVerifyPolling(
+      razorpayPaymentId: response.paymentId,
+      maxPolls: _maxVerifyPolls,
+    );
   }
 
-  Future<void> _verifyServerPayment(String? razorpayPaymentId) async {
+  void _startServerVerifyPolling({
+    required String? razorpayPaymentId,
+    required int maxPolls,
+  }) {
+    _verifyTimer?.cancel();
+    _verifyPollCount = 0;
+    unawaited(_runServerVerifyPolls(
+      razorpayPaymentId: razorpayPaymentId,
+      maxPolls: maxPolls,
+    ));
+  }
+
+  Future<void> _runServerVerifyPolls({
+    required String? razorpayPaymentId,
+    required int maxPolls,
+  }) async {
+    final gen = _verifyGeneration;
+    while (mounted && gen == _verifyGeneration && _verifyPollCount < maxPolls) {
+      final handled = await _verifyServerPayment(razorpayPaymentId);
+      if (handled || !mounted || gen != _verifyGeneration) return;
+      if (_verifyPollCount >= maxPolls) break;
+      await Future.delayed(_verifyPollInterval);
+    }
+    if (!mounted || gen != _verifyGeneration) return;
+    if (_sdkErrorMessage != null) {
+      invalidateMaintenancePaymentProviders(ref);
+      setState(() {
+        _loading = false;
+        _error = _sdkErrorMessage;
+      });
+      return;
+    }
     final orderId = _razorpayOrderId;
-    if (orderId == null || orderId.isEmpty || !mounted || _verifying) return;
+    if (orderId == null || orderId.isEmpty) return;
+    final period = widget.payAllPending
+        ? 'All outstanding'
+        : '${_monthName(widget.month)} ${widget.year}';
+    GatewayPaymentPollActions.navigateToPaymentPending(
+      context,
+      transactionId: orderId,
+      paymentMethod: 'Razorpay',
+      gateway: 'razorpay',
+      amount: _maintenanceDue,
+      periodLabel: period,
+      payAllPending: widget.payAllPending,
+      platformFee: _platformFee,
+      platformFeeGst: _platformFeeGst,
+      totalPaid: _totalPayable,
+    );
+  }
+
+  /// Returns true when the poll result was terminal (success / failed / unavailable).
+  Future<bool> _verifyServerPayment(String? razorpayPaymentId) async {
+    final orderId = _razorpayOrderId;
+    if (orderId == null || orderId.isEmpty || !mounted || _verifying) return false;
 
     _verifying = true;
     _verifyPollCount++;
-    final gen = _verifyGeneration; // Capture so stale responses are ignored
+    final gen = _verifyGeneration;
     try {
       final repo = ref.read(maintenanceRepositoryProvider);
       final poll = await repo.checkRazorpayStatus(orderId);
 
-      if (!mounted || gen != _verifyGeneration) return;
+      if (!mounted || gen != _verifyGeneration) return false;
 
       final period = widget.payAllPending
           ? 'All outstanding'
           : '${_monthName(widget.month)} ${widget.year}';
 
-      final handled = GatewayPaymentPollActions.handlePollResult(
+      var handled = false;
+      handled = GatewayPaymentPollActions.handlePollResult(
         poll: poll,
         onSuccess: () {
           _verifyTimer?.cancel();
+          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
@@ -247,6 +324,9 @@ class _RazorpayPaymentScreenState
         },
         onFailed: (message) {
           _verifyTimer?.cancel();
+          if (poll.isFailed) {
+            unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+          }
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
@@ -262,65 +342,46 @@ class _RazorpayPaymentScreenState
           });
         },
       );
-      if (handled) return;
+      return handled;
     } catch (_) {
-      // keep polling on transient network errors
+      return false;
     } finally {
       _verifying = false;
-    }
-
-    if (!mounted || gen != _verifyGeneration) return;
-    final maxPolls =
-        _sdkErrorMessage != null ? _maxErrorVerifyPolls : _maxVerifyPolls;
-    if (_verifyPollCount >= maxPolls) {
-      _verifyTimer?.cancel();
-      if (!mounted) return;
-      if (_sdkErrorMessage != null) {
-        // SDK reported failure, brief verification didn't find success → show error
-        invalidateMaintenancePaymentProviders(ref);
-        setState(() {
-          _loading = false;
-          _error = _sdkErrorMessage;
-        });
-      } else {
-        // SDK reported success but server hasn't confirmed → show pending
-        final period = widget.payAllPending
-            ? 'All outstanding'
-            : '${_monthName(widget.month)} ${widget.year}';
-        GatewayPaymentPollActions.navigateToPaymentPending(
-          context,
-          transactionId: orderId,
-          paymentMethod: 'Razorpay',
-          gateway: 'razorpay',
-          amount: _maintenanceDue,
-          periodLabel: period,
-          payAllPending: widget.payAllPending,
-          platformFee: _platformFee,
-          platformFeeGst: _platformFeeGst,
-          totalPaid: _totalPayable,
-        );
-      }
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     _sdkReturned = true;
+    _checkoutActive = false;
     _verifyTimer?.cancel();
-    _sdkErrorMessage = response.message ?? 'Payment failed';
-    // SDK can report failure while server already captured.
-    // Poll briefly (≈10 s) — if server confirms success, navigate to success;
-    // otherwise show the SDK error. Using a timer (like the success handler)
-    // avoids the .whenComplete() race where a transient network error during
-    // a single verify call prematurely shows "Payment failed".
+    final formatted = GatewaySdkErrors.formatRazorpayFailureMessage(response.message);
+    _sdkErrorMessage = formatted;
+
+    if (GatewaySdkErrors.shouldSkipServerVerifyAfterRazorpayFailure(
+      message: response.message,
+      code: response.code,
+    )) {
+      // User cancelled / timed out before submitting — the order was never paid.
+      // Clear the persisted-pending record so resume-recovery doesn't later show a
+      // false "payment processing" screen for an abandoned checkout.
+      unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+      invalidateMaintenancePaymentProviders(ref);
+      setState(() {
+        _loading = false;
+        _error = formatted;
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
+      _loadingMessage = 'Checking payment status...';
     });
-    _verifyPollCount = 0;
-    _verifyTimer = Timer.periodic(_verifyPollInterval, (_) {
-      _verifyServerPayment(null);
-    });
-    unawaited(_verifyServerPayment(null));
+    _startServerVerifyPolling(
+      razorpayPaymentId: null,
+      maxPolls: _maxErrorVerifyPolls,
+    );
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
@@ -428,7 +489,7 @@ class _RazorpayPaymentScreenState
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_orderCreated || _paymentComplete || _error != null || _sdkReturned,
+      canPop: !_checkoutActive || _paymentComplete || _error != null || _sdkReturned,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -440,16 +501,16 @@ class _RazorpayPaymentScreenState
         }
       },
       child: Scaffold(
-        backgroundColor: DesignColors.background,
+        backgroundColor: context.surface.background,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: DesignColors.background,
-          scrolledUnderElevation: 0,
+          scrolledUnderElevation: 0.5,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: context.surface.defaultSurface,
           leading: IconButton(
-            icon:
-                const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
             onPressed: () {
-              if (!_orderCreated || _paymentComplete || _error != null || _sdkReturned) {
+              if (!_checkoutActive || _paymentComplete || _error != null || _sdkReturned) {
                 context.pop();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -463,10 +524,7 @@ class _RazorpayPaymentScreenState
           ),
           title: Text(
             'Online Payment',
-            style: DesignTypography.headingM.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
           ),
         ),
         body: Center(
@@ -484,7 +542,7 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle,
+          Icon(Icons.check_circle,
               size: 64, color: DesignColors.success),
           const SizedBox(height: 16),
           Text('Payment completed',
@@ -501,9 +559,7 @@ class _RazorpayPaymentScreenState
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(
-            _orderCreated
-                ? 'Verifying payment on server...'
-                : 'Creating payment order...',
+            _loadingMessage,
             style: DesignTypography.label
                 .copyWith(color: DesignColors.textSecondary),
           ),
@@ -515,7 +571,7 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
+          Icon(Icons.error_outline,
               size: 48, color: DesignColors.error),
           const SizedBox(height: 16),
           Text(
@@ -550,7 +606,7 @@ class _RazorpayPaymentScreenState
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.credit_card,
+        Icon(Icons.credit_card,
             size: 48, color: DesignColors.primary),
         const SizedBox(height: 16),
         Text(

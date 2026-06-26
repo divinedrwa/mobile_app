@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -84,7 +86,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -145,7 +147,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, color: DesignColors.error),
+            Icon(Icons.error_outline, color: DesignColors.error),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -426,7 +428,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
                 count: items.length,
                 initiallyOpen: status == 'OPEN' || status == 'IN_PROGRESS',
                 child: Column(
-                  children: items.map((c) => _complaintCard(c)).toList(),
+                  children: items.asMap().entries.map((e) => _complaintCard(e.value, e.key)).toList(),
                 ),
               ),
             ),
@@ -440,7 +442,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
 
   // ── Individual complaint card ───────────────────────────────────────
 
-  Widget _complaintCard(Map<String, dynamic> complaint) {
+  Widget _complaintCard(Map<String, dynamic> complaint, [int index = 0]) {
     final title = complaint['title']?.toString() ?? 'Untitled';
     final category = complaint['category']?.toString() ?? '';
     final status = complaint['status']?.toString() ?? 'OPEN';
@@ -498,7 +500,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
             children: [
               const SizedBox(width: 26), // align with title
               if (villaLabel.isNotEmpty) ...[
-                const Icon(Icons.home_outlined,
+                Icon(Icons.home_outlined,
                     size: 13, color: DesignColors.textTertiary),
                 const SizedBox(width: 3),
                 Text(
@@ -591,7 +593,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
           ],
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showUpdateSheet(Map<String, dynamic> complaint) {
@@ -764,7 +766,7 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
                   AnimatedRotation(
                     turns: _open ? 0.5 : 0,
                     duration: const Duration(milliseconds: 180),
-                    child: const Icon(Icons.keyboard_arrow_down,
+                    child: Icon(Icons.keyboard_arrow_down,
                         color: DesignColors.textTertiary),
                   ),
                 ],

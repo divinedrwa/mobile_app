@@ -100,12 +100,16 @@ class _PolishedButtonState extends State<PolishedButton> {
                             Icon(widget.icon, color: textColor, size: 20),
                             const SizedBox(width: AppSpacing.sm),
                           ],
-                          Text(
-                            widget.text,
-                            style: DesignTypography.button.copyWith(
-                              color: textColor,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
+                          Flexible(
+                            child: Text(
+                              widget.text,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DesignTypography.button.copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ],
@@ -221,12 +225,16 @@ class _PolishedOutlinedButtonState extends State<PolishedOutlinedButton> {
                             Icon(widget.icon, color: buttonColor, size: 20),
                             const SizedBox(width: AppSpacing.sm),
                           ],
-                          Text(
-                            widget.text,
-                            style: DesignTypography.button.copyWith(
-                              color: buttonColor,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
+                          Flexible(
+                            child: Text(
+                              widget.text,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DesignTypography.button.copyWith(
+                                color: buttonColor,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ],

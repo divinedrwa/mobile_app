@@ -224,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .fadeIn(duration: 500.ms)
             .scale(begin: const Offset(0.85, 0.85), curve: Curves.easeOutCubic),
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'GatePass+',
           style: TextStyle(
             fontSize: 22,
@@ -240,7 +240,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildWelcomeText() {
     return Column(
       children: [
-        const Text(
+        Text(
           'Welcome Back',
           style: TextStyle(
             fontSize: 30,
@@ -255,7 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 500.ms)
             .slideY(begin: DesignAnimations.slideNormal, end: 0),
         const SizedBox(height: AppSpacing.sm),
-        const Text(
+        Text(
           'Reside. Approve. Manage.',
           style: TextStyle(
             fontSize: 15,
@@ -275,7 +275,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'Need help? ',
           style: TextStyle(
             fontSize: 13.5,
@@ -284,7 +284,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         GestureDetector(
           onTap: _showContactSupportDialog,
-          child: const Text(
+          child: Text(
             'Contact Support',
             style: TextStyle(
               fontSize: 13.5,
@@ -332,7 +332,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     shape: BoxShape.circle,
                     color: DesignColors.primary.withValues(alpha: 0.10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.apartment_rounded,
                     color: DesignColors.primary,
                     size: 20,
@@ -344,7 +344,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Your society',
                         style: TextStyle(
                           fontSize: 11.5,
@@ -362,7 +362,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : _selectedSocietyId),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15.5,
                           fontWeight: FontWeight.w700,
                           color: DesignColors.textPrimary,
@@ -376,7 +376,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _selectedSocietyId,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontFamily: 'monospace',
                               color: DesignColors.textTertiary,
@@ -446,7 +446,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: DesignColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.person_outline, color: DesignColors.primary, size: 20),
+          child: Icon(Icons.person_outline, color: DesignColors.primary, size: 20),
         ),
         filled: true,
         fillColor: DesignColors.background,
@@ -456,19 +456,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.borderLight, width: 1),
+          borderSide: BorderSide(color: DesignColors.borderLight, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.primary, width: 2),
+          borderSide: BorderSide(color: DesignColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.error, width: 1),
+          borderSide: BorderSide(color: DesignColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.error, width: 2),
+          borderSide: BorderSide(color: DesignColors.error, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -504,7 +504,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             color: DesignColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.lock_outline, color: DesignColors.primary, size: 20),
+          child: Icon(Icons.lock_outline, color: DesignColors.primary, size: 20),
         ),
         suffixIcon: IconButton(
           icon: Icon(
@@ -523,19 +523,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.borderLight, width: 1),
+          borderSide: BorderSide(color: DesignColors.borderLight, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.primary, width: 2),
+          borderSide: BorderSide(color: DesignColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.error, width: 1),
+          borderSide: BorderSide(color: DesignColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: DesignRadius.borderXL,
-          borderSide: const BorderSide(color: DesignColors.error, width: 2),
+          borderSide: BorderSide(color: DesignColors.error, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -578,7 +578,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Remember me',
               style: TextStyle(
                 fontSize: 13.5,
@@ -591,8 +591,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         InkWell(
           onTap: _showForgotPasswordDialog,
           borderRadius: BorderRadius.circular(6),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Text(
               'Forgot Password?',
               style: TextStyle(
@@ -669,10 +669,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           // If this login just completed biometric setup, show a confirmation.
           if (hadCredentials && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Biometric login is now active. Use fingerprint next time!'),
+              SnackBar(
+                content: const Text('Biometric login is now active. Use fingerprint next time!'),
                 backgroundColor: DesignColors.success,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 3),
               ),
             );
           } else if (mounted) {
@@ -731,7 +731,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 color: DesignColors.primary.withValues(alpha: 0.1),
                 borderRadius: DesignRadius.borderLG,
               ),
-              child: const Icon(Icons.lock_reset, color: DesignColors.primary),
+              child: Icon(Icons.lock_reset, color: DesignColors.primary),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -740,7 +740,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Please contact your society admin to reset your password.',
           style: TextStyle(
             color: DesignColors.textSecondary,
@@ -773,7 +773,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 color: DesignColors.info.withValues(alpha: 0.1),
                 borderRadius: DesignRadius.borderLG,
               ),
-              child: const Icon(Icons.support_agent, color: DesignColors.info),
+              child: Icon(Icons.support_agent, color: DesignColors.info),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -782,7 +782,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -795,7 +795,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 height: 1.5,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Reach out to your society admin or management office for assistance with login issues, account activation, or general queries.',
               style: TextStyle(

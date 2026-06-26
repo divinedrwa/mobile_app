@@ -189,7 +189,7 @@ class _ActionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
                   size: 20,
                   color: DesignColors.textTertiary,

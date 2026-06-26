@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -9,7 +10,9 @@ import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../../../shared/utils/resident_capabilities.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../widgets/home/home_shared.dart';
 import 'family_members_screen.dart';
 import 'vehicles_screen.dart';
 import 'emergency_contacts_screen.dart';
@@ -34,8 +37,8 @@ class ProfileScreen extends ConsumerWidget {
 
     // Only block the screen during login/sign-in when there is no user yet.
     if (isLoading && user == null) {
-      return const Scaffold(
-        backgroundColor: DesignColors.background,
+      return Scaffold(
+        backgroundColor: context.surface.background,
         body: DetailSkeleton(heroHeight: 120),
       );
     }
@@ -79,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.family_restroom_outlined,
                       title: 'Family Members',
                       subtitle: 'Manage your family',
-                      iconColor: const Color(0xFF7C3AED),
+                      iconColor: DesignColors.primary,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute<void>(builder: (_) => const FamilyMembersScreen()),
@@ -210,7 +213,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  static const _divider = Divider(
+  static final _divider = Divider(
     height: 1,
     thickness: 1,
     color: DesignColors.divider,
@@ -247,7 +250,7 @@ class ProfileScreen extends ConsumerWidget {
                   color: DesignColors.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.logout_rounded,
                   color: DesignColors.error,
                   size: 28,
@@ -316,153 +319,223 @@ class _ProfileHeroHeader extends StatelessWidget {
   final double topInset;
   final UserModel? user;
 
+  String _roleChipLabel() {
+    if (user != null && userShowsResidentPropertyProfile(user!)) {
+      final occ = user!.effectiveOccupantDisplay;
+      if (occ != null && occ.isNotEmpty) return occ;
+    }
+    return _roleLabel(user?.role);
+  }
+
+  String? _unitLocationChip() {
+    if (user == null) return null;
+    final parts = <String>[];
+    final prop = user!.effectivePropertyDisplay;
+    final unit = user!.effectiveUnitDisplay;
+    if (prop != null && prop.isNotEmpty) parts.add(prop);
+    if (unit != null && unit.isNotEmpty) parts.add(unit);
+    if (parts.isEmpty) {
+      final n = user!.villaNumber?.trim();
+      final b = user!.villaBlock?.trim();
+      if (n != null && n.isNotEmpty) parts.add(n);
+      if (b != null && b.isNotEmpty && (n == null || !parts.contains(b))) {
+        parts.add(b);
+      }
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final avatarUrl = resolveServerFileUrl(user?.photoUrl);
     final email = user?.email.trim();
     final hasEmail = email != null && email.isNotEmpty;
+    final unitChip = _unitLocationChip();
+    final society = user?.societyName?.trim();
+    final completion = _profileCompletion(user);
+    final completionPct = (completion * 100).round();
+    final accent = kHomePurple;
 
     return SliverToBoxAdapter(
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.fromLTRB(
-          DesignSpacing.screenPaddingH,
-          topInset + DesignSpacing.md,
-          DesignSpacing.screenPaddingH,
-          DesignSpacing.xl,
-        ),
-        decoration: const BoxDecoration(
-          gradient: DesignColors.primaryGradient,
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              context.surface.defaultSurface,
+              accent.withValues(alpha: 0.06),
+              const Color(0xFFEEF2FF),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x1A2563EB),
-              blurRadius: 20,
-              offset: Offset(0, 10),
-              spreadRadius: -4,
-            ),
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
+          border: Border(
+            bottom: BorderSide(color: context.surface.border),
+          ),
+          boxShadow: homeCardShadow(0.03),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => const EditProfileScreen(),
-                      ),
-                    );
-                  },
-                  borderRadius: DesignRadius.borderMD,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DesignSpacing.xs,
-                      vertical: DesignSpacing.xs,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            kHomePadH,
+            topInset + 10,
+            kHomePadH,
+            DesignSpacing.lg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          'Edit profile',
-                          style: DesignTypography.labelSmall.copyWith(
-                            color: Colors.white.withValues(alpha: 0.95),
-                            fontWeight: FontWeight.w600,
+                          'Profile',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: context.text.primary,
+                            letterSpacing: -0.5,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Account & preferences',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: context.text.secondary,
+                            height: 1.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                  _ProfileEditButton(
+                    onTap: () {
+                      Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ProfileAvatar(
-                  avatarUrl: avatarUrl,
-                  initials: _initialsFromName(user?.name),
-                  completionFraction: _profileCompletion(user),
-                ),
-                const SizedBox(width: DesignSpacing.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.name ?? 'User',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: DesignTypography.headingL.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                          letterSpacing: -0.35,
-                        ),
-                      ),
-                      const SizedBox(height: DesignSpacing.sm),
-                      Text(
-                        _profileSubtitle(user),
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: DesignTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          height: 1.35,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (hasEmail) ...[
-                        const SizedBox(height: DesignSpacing.sm),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ProfileAvatar(
+                    avatarUrl: avatarUrl,
+                    initials: _initialsFromName(user?.name),
+                    completionFraction: completion,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Icon(
-                                Icons.alternate_email_rounded,
-                                size: 15,
-                                color: Colors.white.withValues(alpha: 0.75),
-                              ),
-                            ),
-                            const SizedBox(width: DesignSpacing.xs),
                             Expanded(
                               child: Text(
-                                email,
+                                user?.name ?? 'User',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: DesignTypography.caption.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  height: 1.35,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.text.primary,
+                                  letterSpacing: -0.4,
+                                  height: 1.15,
                                 ),
                               ),
                             ),
+                            if (completionPct >= 100) ...[
+                              const SizedBox(width: 6),
+                              _ProfileActivePill(),
+                            ],
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            _ProfileInfoChip(
+                              label: _roleChipLabel(),
+                              icon: Icons.person_outline_rounded,
+                              background: kHomePurpleLight,
+                              foreground: accent,
+                              border: accent.withValues(alpha: 0.15),
+                            ),
+                            if (unitChip != null)
+                              _ProfileInfoChip(
+                                label: unitChip,
+                                icon: Icons.apartment_rounded,
+                                background: const Color(0xFFECFDF5),
+                                foreground: const Color(0xFF15803D),
+                                border: const Color(0xFF86EFAC)
+                                    .withValues(alpha: 0.45),
+                              ),
+                            if (completionPct < 100)
+                              _ProfileInfoChip(
+                                label: '$completionPct% complete',
+                                icon: Icons.auto_awesome_rounded,
+                                background: const Color(0xFFFFF7ED),
+                                foreground: const Color(0xFFEA580C),
+                                border: const Color(0xFFFDBA74)
+                                    .withValues(alpha: 0.45),
+                              ),
+                          ],
+                        ),
+                        if (hasEmail) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 1),
+                                child: Icon(
+                                  Icons.alternate_email_rounded,
+                                  size: 14,
+                                  color: context.text.tertiary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  email,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: context.text.secondary,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+              if (society != null && society.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _ProfileSocietyCard(societyName: society),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
       ).animate().fadeIn(duration: 380.ms).slideY(
             begin: -0.03,
@@ -473,41 +546,256 @@ class _ProfileHeroHeader extends StatelessWidget {
   }
 }
 
-String _profileSubtitle(UserModel? user) {
-  if (user == null) {
-    return '${_roleLabel(null)} · Your society';
+class _ProfileActivePill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF86EFAC).withValues(alpha: 0.5),
+        ),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ProfileGreenDot(),
+          SizedBox(width: 4),
+          Text(
+            'Complete',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF16A34A),
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
 
-  if (!userShowsResidentPropertyProfile(user)) {
-    final role = _roleLabel(user.role);
-    final society = user.societyName?.trim();
-    if (society != null && society.isNotEmpty) {
-      return '$role · $society';
-    }
-    return role;
+class _ProfileGreenDot extends StatelessWidget {
+  const _ProfileGreenDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: const BoxDecoration(
+        color: Color(0xFF16A34A),
+        shape: BoxShape.circle,
+      ),
+    );
   }
+}
 
-  final chunks = <String>[];
-  final prop = user.effectivePropertyDisplay;
-  if (prop != null && prop.isNotEmpty) chunks.add(prop);
+class _ProfileSocietyCard extends StatelessWidget {
+  const _ProfileSocietyCard({required this.societyName});
 
-  final unit = user.effectiveUnitDisplay;
-  if (unit != null && unit.isNotEmpty) chunks.add(unit);
+  final String societyName;
 
-  final occ = user.effectiveOccupantDisplay;
-  if (occ != null && occ.isNotEmpty) chunks.add(occ);
-
-  if (chunks.isNotEmpty) {
-    final society = user.societyName?.trim();
-    if (society != null && society.isNotEmpty) chunks.add(society);
-    return chunks.join(' · ');
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push('/resident/overview'),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              kHomePurple.withValues(alpha: 0.08),
+              const Color(0xFFEEF2FF),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: kHomePurple.withValues(alpha: 0.12)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned(
+              right: 8,
+              top: 8,
+              bottom: 8,
+              child: IgnorePointer(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Icon(
+                      Icons.park_rounded,
+                      size: 28,
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.35),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.apartment_rounded,
+                      size: 42,
+                      color: kHomePurple.withValues(alpha: 0.18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: kHomePurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(
+                      Icons.domain_rounded,
+                      size: 16,
+                      color: kHomePurple,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Society',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: context.text.secondary,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                societyName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.text.primary,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: context.text.tertiary,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
 
-  final society = user.societyName?.trim();
-  if (society != null && society.isNotEmpty) {
-    return '${_roleLabel(user.role)} · $society';
+class _ProfileEditButton extends StatelessWidget {
+  const _ProfileEditButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: context.surface.defaultSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.surface.border),
+            boxShadow: homeCardShadow(0.04),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.edit_outlined, size: 16, color: context.text.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Edit',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: context.text.primary,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
-  return '${_roleLabel(user.role)} · Your society';
+}
+
+class _ProfileInfoChip extends StatelessWidget {
+  const _ProfileInfoChip({
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.foreground,
+    required this.border,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+  final Color border;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: foreground,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _roleLabel(UserRole? role) {
@@ -679,7 +967,7 @@ class _ProfileTile extends StatelessWidget {
                   color: DesignColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.chevron_right_rounded,
                   color: DesignColors.textTertiary,
                   size: 22,
@@ -707,7 +995,7 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = 40.0;
+    const radius = 32.0;
     const ringWidth = 3.0;
     const outerSize = (radius + ringWidth) * 2;
 
@@ -717,7 +1005,6 @@ class _ProfileAvatar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Completion ring
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: completionFraction),
             duration: const Duration(milliseconds: 800),
@@ -730,39 +1017,33 @@ class _ProfileAvatar extends StatelessWidget {
                   painter: _RingPainter(
                     progress: value,
                     ringWidth: ringWidth,
-                    activeColor: Colors.white,
-                    trackColor: Colors.white.withValues(alpha: 0.25),
+                    activeColor: kHomePurple,
+                    trackColor: kHomePurple.withValues(alpha: 0.12),
                   ),
                 ),
               );
             },
           ),
-          // Avatar — cached so an uploaded photo persists across screens and
-          // automatically refreshes when `edit_profile_screen` evicts the
-          // previous URL from the image cache after a successful upload.
           Container(
             width: radius * 2,
             height: radius * 2,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+              color: kHomePurpleLight,
+              border: Border.all(
+                color: kHomePurple.withValues(alpha: 0.16),
+                width: 1.5,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: avatarUrl == null
                 ? Center(
                     child: Text(
                       initials,
-                      style: const TextStyle(
-                        fontSize: 28,
+                      style: TextStyle(
+                        fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: DesignColors.primary,
+                        color: kHomePurple,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -778,10 +1059,10 @@ class _ProfileAvatar extends StatelessWidget {
                     placeholder: (_, _) => Center(
                       child: Text(
                         initials,
-                        style: const TextStyle(
-                          fontSize: 28,
+                        style: TextStyle(
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
-                          color: DesignColors.primary,
+                          color: kHomePurple,
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -789,10 +1070,10 @@ class _ProfileAvatar extends StatelessWidget {
                     errorWidget: (_, _, _) => Center(
                       child: Text(
                         initials,
-                        style: const TextStyle(
-                          fontSize: 28,
+                        style: TextStyle(
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
-                          color: DesignColors.primary,
+                          color: kHomePurple,
                           letterSpacing: -0.5,
                         ),
                       ),

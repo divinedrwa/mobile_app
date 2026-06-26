@@ -82,14 +82,14 @@ class HomeSpecialProjectsCard extends ConsumerWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF7C3AED)
+                            color: DesignColors.primary
                                 .withValues(alpha: 0.1),
                             borderRadius:
                                 BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                               Icons.construction_rounded,
-                              color: Color(0xFF7C3AED),
+                              color: DesignColors.primary,
                               size: 22),
                         ),
                         const SizedBox(width: 12),
@@ -136,8 +136,8 @@ class HomeSpecialProjectsCard extends ConsumerWidget {
                         minHeight: 5,
                         backgroundColor: context.surface.border,
                         valueColor:
-                            const AlwaysStoppedAnimation(
-                          Color(0xFF7C3AED),
+                            AlwaysStoppedAnimation(
+                          DesignColors.primary,
                         ),
                       ),
                     ),

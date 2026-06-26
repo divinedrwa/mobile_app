@@ -8,8 +8,10 @@ import 'package:uuid/uuid.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/payments/razorpay_web_interop.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import 'gateway_payment_poll_actions.dart';
+import 'gateway_sdk_errors.dart';
 
 /// Web implementation of the Razorpay payment screen.
 ///
@@ -49,7 +51,7 @@ class _RazorpayPaymentScreenState
   bool _verifying = false;
   int _verifyGeneration = 0;
   static const _maxVerifyPolls = 40;
-  static const _maxErrorVerifyPolls = 5;
+  static const _maxErrorVerifyPolls = 2;
   static const _verifyPollInterval = Duration(seconds: 2);
   String? _sdkErrorMessage;
   double _maintenanceDue = 0;
@@ -71,9 +73,7 @@ class _RazorpayPaymentScreenState
   }
 
   Future<void> _createOrder() async {
-    if (_error != null) {
-      _idempotencyKey = const Uuid().v4();
-    }
+    _idempotencyKey = const Uuid().v4();
     _verifyTimer?.cancel();
     _verifyGeneration++;
     _sdkReturned = false;
@@ -298,7 +298,17 @@ class _RazorpayPaymentScreenState
     if (!mounted) return;
     _sdkReturned = true;
     _verifyTimer?.cancel();
-    _sdkErrorMessage = response.message;
+    final formatted = GatewaySdkErrors.formatRazorpayFailureMessage(response.message);
+    if (GatewaySdkErrors.shouldSkipServerVerifyAfterRazorpayFailure(
+      message: response.message,
+    )) {
+      setState(() {
+        _loading = false;
+        _error = formatted;
+      });
+      return;
+    }
+    _sdkErrorMessage = formatted;
     setState(() {
       _loading = true;
       _error = null;
@@ -421,14 +431,14 @@ class _RazorpayPaymentScreenState
         }
       },
       child: Scaffold(
-        backgroundColor: DesignColors.background,
+        backgroundColor: context.surface.background,
         appBar: AppBar(
           elevation: 0,
-          backgroundColor: DesignColors.background,
-          scrolledUnderElevation: 0,
+          scrolledUnderElevation: 0.5,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: context.surface.defaultSurface,
           leading: IconButton(
-            icon:
-                const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
             onPressed: () {
               if (!_orderCreated ||
                   _paymentComplete ||
@@ -448,10 +458,7 @@ class _RazorpayPaymentScreenState
           ),
           title: Text(
             'Online Payment',
-            style: DesignTypography.headingM.copyWith(
-              color: DesignColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
           ),
         ),
         body: Center(
@@ -469,7 +476,7 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle,
+          Icon(Icons.check_circle,
               size: 64, color: DesignColors.success),
           const SizedBox(height: 16),
           Text('Payment completed',
@@ -500,7 +507,7 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
+          Icon(Icons.error_outline,
               size: 48, color: DesignColors.error),
           const SizedBox(height: 16),
           Text(
@@ -535,7 +542,7 @@ class _RazorpayPaymentScreenState
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.credit_card,
+        Icon(Icons.credit_card,
             size: 48, color: DesignColors.primary),
         const SizedBox(height: 16),
         Text(

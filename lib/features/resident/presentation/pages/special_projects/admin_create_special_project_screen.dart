@@ -212,7 +212,7 @@ class _AdminCreateSpecialProjectScreenState
                   decoration: DesignComponents.inputDecoration(
                     label: 'Amount per Villa',
                     hint: 'e.g. 5000',
-                    prefixIcon: const Icon(Icons.currency_rupee_rounded,
+                    prefixIcon: Icon(Icons.currency_rupee_rounded,
                         size: 18, color: DesignColors.textTertiary),
                   ),
                   keyboardType: TextInputType.number,
@@ -250,11 +250,11 @@ class _AdminCreateSpecialProjectScreenState
                         if (_dueDate != null)
                           GestureDetector(
                             onTap: () => setState(() => _dueDate = null),
-                            child: const Icon(Icons.close, size: 18,
+                            child: Icon(Icons.close, size: 18,
                                 color: DesignColors.textTertiary),
                           )
                         else
-                          const Icon(Icons.calendar_today_rounded, size: 18,
+                          Icon(Icons.calendar_today_rounded, size: 18,
                               color: DesignColors.textTertiary),
                       ],
                     ),
@@ -313,7 +313,7 @@ class _AdminCreateSpecialProjectScreenState
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded,
+                      Icon(Icons.info_outline_rounded,
                           size: 18, color: DesignColors.primary),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -381,7 +381,7 @@ class _AdminCreateSpecialProjectScreenState
           onChanged: (_) => setState(() {}),
           decoration: DesignComponents.inputDecoration(
             hint: 'Search villas…',
-            prefixIcon: const Icon(Icons.search, size: 18,
+            prefixIcon: Icon(Icons.search, size: 18,
                 color: DesignColors.textTertiary),
           ),
         ),

@@ -238,7 +238,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                   children: [
                     Text(
                       parcel.courier,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: DesignColors.textPrimary,
@@ -247,7 +247,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                     const SizedBox(height: 4),
                     Text(
                       parcel.trackingNumber,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         color: DesignColors.textSecondary,
                         fontFamily: 'monospace',
@@ -313,12 +313,12 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.note, size: 16, color: DesignColors.textSecondary),
+                  Icon(Icons.note, size: 16, color: DesignColors.textSecondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       parcel.notes!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         color: DesignColors.textSecondary,
                       ),
@@ -359,7 +359,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             color: DesignColors.textSecondary,
           ),
@@ -367,7 +367,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: DesignColors.textPrimary,
               fontWeight: FontWeight.w500,
@@ -411,7 +411,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                     color: DesignColors.success.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.inventory_2_rounded,
                     color: DesignColors.success,
                     size: 28,
@@ -500,7 +500,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
   }
 
   Widget _buildNoPendingState() {
-    return const EmptyStateWidget(
+    return EmptyStateWidget(
       icon: Icons.check_circle_outline_rounded,
       title: 'All collected!',
       subtitle: 'No pending parcels right now. We\'ll let you know when one arrives.',

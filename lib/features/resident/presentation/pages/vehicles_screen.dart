@@ -216,7 +216,7 @@ class VehiclesScreen extends ConsumerWidget {
                     color: DesignColors.error.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.directions_car_outlined, color: DesignColors.error, size: 28),
+                  child: Icon(Icons.directions_car_outlined, color: DesignColors.error, size: 28),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -253,7 +253,7 @@ class VehiclesScreen extends ConsumerWidget {
                           if (vehicle.id == null || vehicle.id!.isEmpty) {
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 behavior: SnackBarBehavior.floating,
                                 content: Text('Unable to remove this vehicle'),
                                 backgroundColor: DesignColors.error,

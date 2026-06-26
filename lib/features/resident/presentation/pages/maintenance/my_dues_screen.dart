@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/maintenance_due_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
@@ -123,22 +124,30 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
     final async = ref.watch(pendingMaintenanceProvider);
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          'Outstanding bills',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Outstanding bills',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Pay your maintenance dues',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(
@@ -160,7 +169,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
           final oldest = items.first;
           return Container(
             padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: DesignColors.surface,
               border: Border(top: BorderSide(color: DesignColors.borderLight)),
             ),
@@ -386,7 +395,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.task_alt_rounded,
                   size: 44,
                   color: DesignColors.success,
@@ -429,7 +438,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.cloud_off_outlined, color: DesignColors.error),
                   SizedBox(width: AppSpacing.sm),
@@ -640,12 +649,12 @@ class _DueCard extends StatelessWidget {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.download_rounded,
+                          : Icon(Icons.download_rounded,
                               size: 22, color: DesignColors.primary),
                     ),
                   )
                 else if (!showPay)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 8),
                     child: Icon(
                       Icons.chevron_right,

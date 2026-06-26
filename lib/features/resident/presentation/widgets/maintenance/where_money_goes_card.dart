@@ -87,7 +87,7 @@ class WhereMoneyGoesCard extends ConsumerWidget {
                   color: DesignColors.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(DesignRadius.sm),
                 ),
-                child: const Icon(Icons.pie_chart_outline_rounded,
+                child: Icon(Icons.pie_chart_outline_rounded,
                     size: 16, color: DesignColors.warning),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -120,7 +120,7 @@ class WhereMoneyGoesCard extends ConsumerWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const Icon(Icons.expand_more,
+                      Icon(Icons.expand_more,
                           size: 16, color: DesignColors.textSecondary),
                     ],
                   ),
@@ -278,7 +278,7 @@ class WhereMoneyGoesCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
       child: Column(
         children: [
-          const Icon(Icons.receipt_long_outlined,
+          Icon(Icons.receipt_long_outlined,
               size: 28, color: DesignColors.textTertiary),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -677,7 +677,7 @@ class _OptionTile extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle,
+              Icon(Icons.check_circle,
                   size: 18, color: DesignColors.primary),
           ],
         ),

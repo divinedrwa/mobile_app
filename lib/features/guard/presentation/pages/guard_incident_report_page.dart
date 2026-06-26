@@ -82,6 +82,8 @@ class _GuardIncidentReportPageState
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
+          elevation: 0,
+          scrolledUnderElevation: 0.5,
           leading: IconButton(
             tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
@@ -89,7 +91,10 @@ class _GuardIncidentReportPageState
           ),
           title: Text(
             'Incident report',
-            style: GuardTokens.headingStyle(context),
+            style: GuardTokens.headingStyle(context).copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
           ),
           centerTitle: false,
         ),
@@ -107,116 +112,153 @@ class _GuardIncidentReportPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const GuardScreenSectionHeader(
-                      icon: Icons.warning_amber_rounded,
-                      title: 'What happened?',
-                      subtitle: 'SOC and admin inbox — searchable in audits',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    Wrap(
-                      spacing: GuardTokens.g2,
-                      runSpacing: GuardTokens.g2,
-                      children: _types.map((t) {
-                        final sel = _type == t.$1;
-                        return ChoiceChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                t.$2,
-                                size: 18,
-                                color: sel
-                                    ? GuardTokens.guardAccentDeep
-                                    : GuardTokens.textSecondary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(t.$1),
-                            ],
+                    _SectionCard(
+                      isDark: theme.brightness == Brightness.dark,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const GuardScreenSectionHeader(
+                            icon: Icons.warning_amber_rounded,
+                            title: 'What happened?',
+                            subtitle: 'SOC and admin inbox — searchable in audits',
                           ),
-                          selected: sel,
-                          onSelected: _submitting
-                              ? null
-                              : (_) => setState(() => _type = t.$1),
-                          selectedColor: GuardTokens.guardAccent.withValues(
-                            alpha: 0.22,
+                          const SizedBox(height: GuardTokens.g2),
+                          Wrap(
+                            spacing: GuardTokens.g2,
+                            runSpacing: GuardTokens.g2,
+                            children: _types.map((t) {
+                              final sel = _type == t.$1;
+                              return ChoiceChip(
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      t.$2,
+                                      size: 18,
+                                      color: sel
+                                          ? GuardTokens.guardAccentDeep
+                                          : GuardTokens.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(t.$1),
+                                  ],
+                                ),
+                                selected: sel,
+                                onSelected: _submitting
+                                    ? null
+                                    : (_) => setState(() => _type = t.$1),
+                                selectedColor: GuardTokens.guardAccent.withValues(alpha: 0.22),
+                                checkmarkColor: GuardTokens.guardAccentDeep,
+                                labelStyle: TextStyle(
+                                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                ),
+                              );
+                            }).toList(),
                           ),
-                          checkmarkColor: GuardTokens.guardAccentDeep,
-                          labelStyle: TextStyle(
-                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: GuardTokens.sectionGap),
-                    const GuardScreenSectionHeader(
-                      icon: Icons.notes_rounded,
-                      title: 'Description',
-                      subtitle: 'Facts only — adds to the logged title',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    TextField(
-                      controller: _note,
-                      maxLines: 5,
-                      enabled: !_submitting,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Details (optional)',
-                        alignLabelWithHint: true,
-                        hintText:
-                            'Time, gate, witnesses, registration if relevant…',
-                        filled: true,
-                        border: OutlineInputBorder(),
+                        ],
                       ),
                     ),
                     const SizedBox(height: GuardTokens.sectionGap),
-                    const GuardScreenSectionHeader(
-                      icon: Icons.place_outlined,
-                      title: 'Location',
-                      subtitle: 'Optional gate, block, lane, or landmark',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    TextField(
-                      controller: _location,
-                      enabled: !_submitting,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Location (optional)',
-                        hintText: 'Main gate, Block B parking, clubhouse lane…',
-                        filled: true,
-                        border: OutlineInputBorder(),
+                    _SectionCard(
+                      isDark: theme.brightness == Brightness.dark,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const GuardScreenSectionHeader(
+                            icon: Icons.notes_rounded,
+                            title: 'Description',
+                            subtitle: 'Facts only — adds to the logged title',
+                          ),
+                          const SizedBox(height: GuardTokens.g2),
+                          TextField(
+                            controller: _note,
+                            maxLines: 5,
+                            enabled: !_submitting,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Details (optional)',
+                              alignLabelWithHint: true,
+                              hintText:
+                                  'Time, gate, witnesses, registration if relevant…',
+                              filled: true,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: GuardTokens.sectionGap),
-                    const GuardScreenSectionHeader(
-                      icon: Icons.priority_high_rounded,
-                      title: 'Severity',
-                      subtitle: 'Helps admins prioritize the incident',
+                    _SectionCard(
+                      isDark: theme.brightness == Brightness.dark,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const GuardScreenSectionHeader(
+                            icon: Icons.place_outlined,
+                            title: 'Location',
+                            subtitle: 'Optional gate, block, lane, or landmark',
+                          ),
+                          const SizedBox(height: GuardTokens.g2),
+                          TextField(
+                            controller: _location,
+                            enabled: !_submitting,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Location (optional)',
+                              hintText: 'Main gate, Block B parking, clubhouse lane…',
+                              filled: true,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: GuardTokens.g2),
-                    Wrap(
-                      spacing: GuardTokens.g2,
-                      runSpacing: GuardTokens.g2,
-                      children: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((
-                        level,
-                      ) {
-                        final selected = _severity == level;
-                        return ChoiceChip(
-                          label: Text(level),
-                          selected: selected,
-                          onSelected: _submitting
-                              ? null
-                              : (_) => setState(() => _severity = level),
-                          selectedColor: GuardTokens.guardAccent.withValues(
-                            alpha: 0.22,
+                    const SizedBox(height: GuardTokens.sectionGap),
+                    _SectionCard(
+                      isDark: theme.brightness == Brightness.dark,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const GuardScreenSectionHeader(
+                            icon: Icons.priority_high_rounded,
+                            title: 'Severity',
+                            subtitle: 'Helps admins prioritize the incident',
                           ),
-                          checkmarkColor: GuardTokens.guardAccentDeep,
-                          labelStyle: TextStyle(
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                          const SizedBox(height: GuardTokens.g2),
+                          Wrap(
+                            spacing: GuardTokens.g2,
+                            runSpacing: GuardTokens.g2,
+                            children: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((level) {
+                              final selected = _severity == level;
+                              final severityColor = level == 'CRITICAL'
+                                  ? GuardTokens.dangerBrand
+                                  : level == 'HIGH'
+                                      ? GuardTokens.warning
+                                      : level == 'MEDIUM'
+                                          ? GuardTokens.guardAccentDeep
+                                          : GuardTokens.success;
+                              return ChoiceChip(
+                                label: Text(level),
+                                selected: selected,
+                                onSelected: _submitting
+                                    ? null
+                                    : (_) => setState(() => _severity = level),
+                                selectedColor: severityColor.withValues(alpha: 0.18),
+                                checkmarkColor: severityColor,
+                                side: BorderSide(
+                                  color: selected
+                                      ? severityColor
+                                      : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+                                ),
+                                labelStyle: TextStyle(
+                                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                  color: selected ? severityColor : null,
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }).toList(),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -267,6 +309,34 @@ class _GuardIncidentReportPageState
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.isDark, required this.child});
+
+  final bool isDark;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+        side: BorderSide(
+          color: isDark
+              ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+              : GuardTokens.borderSubtle.withValues(alpha: 0.9),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(GuardTokens.padScreen),
+        child: child,
       ),
     );
   }

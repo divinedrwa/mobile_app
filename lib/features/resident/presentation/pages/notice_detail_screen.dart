@@ -27,7 +27,7 @@ class NoticeDetailScreen extends ConsumerWidget {
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back, color: context.text.primary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Text(
           'Notice Details',
@@ -120,7 +120,7 @@ class NoticeDetailScreen extends ConsumerWidget {
             // Meta Info
             Row(
               children: [
-                const Icon(Icons.calendar_today, size: 16, color: DesignColors.textSecondary),
+                Icon(Icons.calendar_today, size: 16, color: DesignColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   DateFormat('MMM d, y • h:mm a').format(notice.publishedAt),
@@ -131,7 +131,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                 ),
                 if (notice.publishedBy != null) ...[
                   const SizedBox(width: 16),
-                  const Icon(Icons.person, size: 16, color: DesignColors.textSecondary),
+                  Icon(Icons.person, size: 16, color: DesignColors.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -179,7 +179,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                             color: DesignColors.primary.withValues(alpha: 0.1),
                             borderRadius: DesignRadius.borderLG,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.attach_file,
                             color: DesignColors.primary,
                             size: 24,

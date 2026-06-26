@@ -179,7 +179,7 @@ class _VehicleLogScreenState extends ConsumerState<VehicleLogScreen> {
                 color: DesignColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(DesignRadius.md),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.directions_car_filled_rounded,
                 color: DesignColors.warning,
                 size: 22,

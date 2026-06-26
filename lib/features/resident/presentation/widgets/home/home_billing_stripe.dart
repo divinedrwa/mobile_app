@@ -153,7 +153,7 @@ class HomeBillingStripe extends StatelessWidget {
                       cycle.title ?? 'Maintenance billing',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,

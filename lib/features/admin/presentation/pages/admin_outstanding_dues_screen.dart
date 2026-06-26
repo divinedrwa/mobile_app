@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
@@ -33,7 +35,7 @@ class AdminOutstandingDuesScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: () => ref.invalidate(adminOutstandingDuesProvider),
           ),
         ],
@@ -156,10 +158,10 @@ class AdminOutstandingDuesScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        for (final villa in villas) ...[
-          _VillaOutstandingTile(villa: villa),
-          const SizedBox(height: AppSpacing.sm),
-        ],
+        ...villas.asMap().entries.map((e) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _VillaOutstandingTile(villa: e.value),
+        ).animate(delay: DesignAnimations.staggerFor(e.key)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance)),
       ],
     );
   }
@@ -357,7 +359,7 @@ class _VillaOutstandingTileState extends State<_VillaOutstandingTile> {
             width: 6,
             height: 6,
             margin: const EdgeInsets.only(right: 6),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: DesignColors.error,
               shape: BoxShape.circle,
             ),

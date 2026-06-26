@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -43,7 +45,7 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -130,7 +132,7 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
                           itemBuilder: (_, i) => _IncidentCard(
                             incident: filtered[i],
                             onResolved: _refresh,
-                          ),
+                          ).animate(delay: DesignAnimations.staggerFor(i)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance),
                         ),
                 ),
               ],
@@ -178,7 +180,7 @@ class _IncidentCard extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -192,11 +194,11 @@ class _IncidentCard extends ConsumerWidget {
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.check_circle_outline_rounded, color: DesignColors.primary, size: 28)),
+                  child: Icon(Icons.check_circle_outline_rounded, color: DesignColors.primary, size: 28)),
               const SizedBox(height: 16),
-              const Text('Mark as resolved?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Mark as resolved?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('This incident will be marked resolved for your records.',
+              Text('This incident will be marked resolved for your records.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),

@@ -106,7 +106,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
       backgroundColor: scheme.surface,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
         title: Text(
@@ -114,6 +114,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
           style: GuardTokens.headingStyle(context).copyWith(
             fontWeight: FontWeight.w700,
             fontSize: 18,
+            letterSpacing: -0.3,
           ),
         ),
       ),

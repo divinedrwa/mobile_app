@@ -367,7 +367,7 @@ _HeroPalette _palette(MaintenanceHeroKind kind) {
         icon: Icons.check_rounded,
       );
     case MaintenanceHeroKind.due:
-      return const _HeroPalette(
+      return _HeroPalette(
         gradient: [DesignColors.primaryLight, DesignColors.primaryDark],
         icon: Icons.account_balance_wallet_outlined,
       );
@@ -382,8 +382,8 @@ _HeroPalette _palette(MaintenanceHeroKind kind) {
         icon: Icons.event_available_outlined,
       );
     case MaintenanceHeroKind.excluded:
-      return const _HeroPalette(
-        gradient: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+      return _HeroPalette(
+        gradient: [DesignColors.primary, DesignColors.primaryDark],
         icon: Icons.info_outline,
       );
   }

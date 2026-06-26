@@ -207,7 +207,7 @@ class VisitorMgmtCompactSearch extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: DesignColors.primary, width: 1.5),
+            borderSide: BorderSide(color: DesignColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -233,7 +233,7 @@ class VisitorMgmtAvatar extends StatelessWidget {
       ),
       child: Text(
         initial,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w800,
           color: DesignColors.primary,
@@ -309,7 +309,7 @@ class VisitorMgmtMetaChip extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: DesignColors.textSecondary,
@@ -347,7 +347,7 @@ class VisitorMgmtSectionHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               color: DesignColors.textSecondary,

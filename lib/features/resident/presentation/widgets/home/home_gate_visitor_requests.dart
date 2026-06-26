@@ -109,7 +109,7 @@ class _PendingRequestCard extends StatelessWidget {
                         color: DesignColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.how_to_reg_rounded,
                         size: 22,
                         color: DesignColors.primary,
@@ -121,7 +121,7 @@ class _PendingRequestCard extends StatelessWidget {
                       child: Container(
                         width: 16,
                         height: 16,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: DesignColors.primary,
                           shape: BoxShape.circle,
                         ),
@@ -146,7 +146,7 @@ class _PendingRequestCard extends StatelessWidget {
                     children: [
                       Text(
                         '$n pending ${n == 1 ? 'request' : 'requests'} awaiting your approval',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w800,
                           color: DesignColors.textPrimary,

@@ -192,7 +192,7 @@ class CommunityNoticeTile extends StatelessWidget {
           background: Color(0xFFE3F2FD),
         );
       case NoticeCategory.announcement:
-        return const _CategoryStyle(
+        return _CategoryStyle(
           icon: Icons.campaign_outlined,
           foreground: DesignColors.primary,
           background: Color(0xFFE8F5E9),

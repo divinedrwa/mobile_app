@@ -177,7 +177,7 @@ class HomeOutstandingDues extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Text(
+                            Text(
                               'Outstanding dues',
                               style: TextStyle(
                                 fontSize: 12,
@@ -237,7 +237,7 @@ class HomeOutstandingDues extends StatelessWidget {
                     children: [
                       Text(
                         inr.format(totalDue),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color:
@@ -247,7 +247,7 @@ class HomeOutstandingDues extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Pay',
                         style: TextStyle(
                           fontSize: 12,

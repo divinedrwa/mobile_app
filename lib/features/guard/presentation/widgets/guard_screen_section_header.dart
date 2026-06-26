@@ -9,11 +9,15 @@ class GuardScreenSectionHeader extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -22,19 +26,50 @@ class GuardScreenSectionHeader extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 22, color: GuardTokens.guardAccent),
-            const SizedBox(width: 10),
+            Icon(icon, size: 20, color: GuardTokens.guardAccent),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 title,
-                style: GuardTokens.headingStyle(context).copyWith(fontSize: 16),
+                style: GuardTokens.headingStyle(context).copyWith(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
+            if (actionLabel != null && onAction != null)
+              GestureDetector(
+                onTap: onAction,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      actionLabel!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: GuardTokens.guardAccentDeep,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: GuardTokens.guardAccentDeep,
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(subtitle!, style: GuardTokens.captionStyle(context)),
+          Text(
+            subtitle!,
+            style: GuardTokens.captionStyle(context).copyWith(
+              height: 1.35,
+            ),
+          ),
         ],
       ],
     );

@@ -376,8 +376,9 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     final isInitialLoad = async.isLoading && staleData == null;
     final hasError = async.hasError && staleData == null;
 
-    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
-    if (hasError) return SizedBox.expand(
+    if (isInitialLoad) { return const SizedBox.expand(child: GuardListSkeleton()); }
+    if (hasError) {
+      return SizedBox.expand(
       child: guardRefreshableMinHeight(
         context: context,
         scrollController: widget.scrollController,
@@ -397,6 +398,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
         ],
       ),
     );
+    }
 
     // Use stale data during background refresh to avoid list flicker
     final liveOrStale = staleData ?? async.valueOrNull;
@@ -616,27 +618,29 @@ class _PreApprovedTab extends ConsumerWidget {
     final isInitialLoad = async.isLoading && stale == null;
     final hasError = async.hasError && stale == null;
 
-    if (isInitialLoad) return const SizedBox.expand(child: GuardListSkeleton());
-    if (hasError) return SizedBox.expand(
-      child: guardRefreshableMinHeight(
-        context: context,
-        scrollController: scrollController,
-        onRefresh: () async {
-          ref.invalidate(guardPreApprovedEntriesProvider);
-          await ref.read(guardPreApprovedEntriesProvider.future);
-        },
-        children: [
-          GuardEmptyPlaceholder(
-            icon: Icons.cloud_off_rounded,
-            iconColor: GuardTokens.warning,
-            title: 'Could not load pre-approved',
-            message: userFacingMessage(async.error!, 'Check your connection and try again.'),
-            actionLabel: 'Retry',
-            onAction: () => ref.invalidate(guardPreApprovedEntriesProvider),
-          ),
-        ],
-      ),
-    );
+    if (isInitialLoad) { return const SizedBox.expand(child: GuardListSkeleton()); }
+    if (hasError) {
+      return SizedBox.expand(
+        child: guardRefreshableMinHeight(
+          context: context,
+          scrollController: scrollController,
+          onRefresh: () async {
+            ref.invalidate(guardPreApprovedEntriesProvider);
+            await ref.read(guardPreApprovedEntriesProvider.future);
+          },
+          children: [
+            GuardEmptyPlaceholder(
+              icon: Icons.cloud_off_rounded,
+              iconColor: GuardTokens.warning,
+              title: 'Could not load pre-approved',
+              message: userFacingMessage(async.error!, 'Check your connection and try again.'),
+              actionLabel: 'Retry',
+              onAction: () => ref.invalidate(guardPreApprovedEntriesProvider),
+            ),
+          ],
+        ),
+      );
+    }
 
     final rows = stale ?? [];
     return SizedBox.expand(

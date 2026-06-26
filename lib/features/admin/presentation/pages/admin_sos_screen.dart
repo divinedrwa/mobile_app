@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -79,7 +81,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -245,10 +247,10 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
       );
     }
 
-    return Column(children: alerts.map(_alertCard).toList());
+    return Column(children: alerts.asMap().entries.map((e) => _alertCard(e.value, e.key)).toList());
   }
 
-  Widget _alertCard(Map<String, dynamic> alert) {
+  Widget _alertCard(Map<String, dynamic> alert, [int index = 0]) {
     final id = alert['id']?.toString() ?? '';
     final status = alert['status']?.toString() ?? 'CREATED';
     final type = alert['emergencyType']?.toString() ?? 'OTHER';
@@ -372,7 +374,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
           ],
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   Widget _actionButton(String label, Color color, VoidCallback onTap) {

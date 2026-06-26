@@ -13,6 +13,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 
 /// Success screen after pre-approving visitor
@@ -46,20 +47,19 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
     final qrData = _qrPayload();
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
-        centerTitle: true,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
         title: Text(
           'Visitor approved',
-          style: DesignTypography.headingM.copyWith(fontSize: 17),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
         ),
         leading: IconButton(
           tooltip: 'Close',
-          icon: const Icon(Icons.close_rounded),
+          icon: Icon(Icons.close_rounded, color: context.text.primary),
           onPressed: () => _exitToResidentHome(context),
         ),
       ),
@@ -156,7 +156,7 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                               : null,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: DesignColors.textPrimary,
-                            side: const BorderSide(color: DesignColors.border),
+                            side: BorderSide(color: DesignColors.border),
                             padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
                             shape: RoundedRectangleBorder(
                               borderRadius: DesignRadius.borderMD,
@@ -209,7 +209,7 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                             onPressed: () => _shareViaSms(context),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: DesignColors.textPrimary,
-                              side: const BorderSide(color: DesignColors.border),
+                              side: BorderSide(color: DesignColors.border),
                               padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm + 2),
                               shape: RoundedRectangleBorder(
                                 borderRadius: DesignRadius.borderMD,
@@ -261,7 +261,7 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.qr_code_2_rounded,
                             size: 44,
                             color: DesignColors.textTertiary,
@@ -332,7 +332,7 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                 label: const Text('My pre-approved visitors'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DesignColors.textPrimary,
-                  side: const BorderSide(color: DesignColors.border),
+                  side: BorderSide(color: DesignColors.border),
                   padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: DesignRadius.borderMD,

@@ -1,15 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/dio_client.dart';
 import '../../../../shared/models/paginated_state.dart';
 import '../models/visitor_model.dart';
 import '../repositories/visitor_repository.dart';
+import '../../presentation/providers/visitor_provider.dart';
 
-final visitorHistoryRepositoryProvider = Provider<VisitorRepository>(
-  (ref) => VisitorRepository(DioClient()),
-);
+typedef VisitorTodaySummary = ({
+  int total,
+  int checkedIn,
+  int checkedOut,
+});
+
+final visitorTodaySummaryProvider =
+    FutureProvider.autoDispose<VisitorTodaySummary>((ref) async {
+  return ref.watch(visitorRepositoryProvider).getVisitorsTodaySummary();
+});
 
 final visitorHistoryProvider = FutureProvider<List<VisitorModel>>((ref) async {
-  return ref.watch(visitorHistoryRepositoryProvider).getVisitorHistory();
+  return ref.watch(visitorRepositoryProvider).getVisitorHistory();
 });
 
 /// Paginated visitor history notifier.
@@ -66,5 +73,5 @@ class VisitorHistoryNotifier extends StateNotifier<PaginatedState<VisitorModel>>
 
 final paginatedVisitorHistoryProvider = StateNotifierProvider.autoDispose<
     VisitorHistoryNotifier, PaginatedState<VisitorModel>>(
-  (ref) => VisitorHistoryNotifier(ref.watch(visitorHistoryRepositoryProvider)),
+  (ref) => VisitorHistoryNotifier(ref.watch(visitorRepositoryProvider)),
 );

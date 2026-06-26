@@ -138,7 +138,7 @@ abstract final class HomeQuickActionNavigation {
                 ),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: DesignColors.textPrimary,
@@ -146,8 +146,8 @@ abstract final class HomeQuickActionNavigation {
                 ),
                 const SizedBox(height: 12),
                 if (actions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'No shortcuts right now.',
                       style: TextStyle(
@@ -171,7 +171,7 @@ abstract final class HomeQuickActionNavigation {
                           icon: Icon(action.icon, color: action.color, size: 18),
                           label: Text(
                             action.label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: DesignColors.textPrimary,
                               fontWeight: FontWeight.w600,
                             ),
@@ -181,7 +181,7 @@ abstract final class HomeQuickActionNavigation {
                               horizontal: 12,
                               vertical: 12,
                             ),
-                            side: const BorderSide(
+                            side: BorderSide(
                               color: DesignColors.borderLight,
                             ),
                             shape: RoundedRectangleBorder(

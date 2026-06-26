@@ -26,7 +26,7 @@ Future<void> showInvoiceActionsSheet(
           ),
           const SizedBox(height: 4),
           ListTile(
-            leading: const Icon(Icons.visibility_outlined,
+            leading: Icon(Icons.visibility_outlined,
                 color: DesignColors.primary),
             title: const Text('View invoice'),
             onTap: () {
@@ -35,7 +35,7 @@ Future<void> showInvoiceActionsSheet(
             },
           ),
           ListTile(
-            leading: const Icon(Icons.ios_share, color: DesignColors.primary),
+            leading: Icon(Icons.ios_share, color: DesignColors.primary),
             title: const Text('Share invoice'),
             onTap: () {
               Navigator.pop(ctx);
@@ -43,7 +43,7 @@ Future<void> showInvoiceActionsSheet(
             },
           ),
           ListTile(
-            leading: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            leading: Icon(Icons.refresh, color: DesignColors.textSecondary),
             title: const Text('Regenerate'),
             subtitle: const Text('Rebuild with the latest details'),
             onTap: () {

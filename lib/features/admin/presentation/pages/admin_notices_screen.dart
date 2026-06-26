@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../resident/data/models/notice_model.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -79,7 +81,7 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -170,10 +172,10 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
                     ),
                   )
                 else
-                  ...filtered.map((n) => Padding(
+                  ...filtered.asMap().entries.map((e) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _noticeCard(n),
-                      )),
+                        child: _noticeCard(e.value, e.key),
+                      ).animate(delay: DesignAnimations.staggerFor(e.key)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance)),
               ],
             );
           },
@@ -184,7 +186,7 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
 
   // ── Notice card ─────────────────────────────────────────────────────
 
-  Widget _noticeCard(NoticeModel notice) {
+  Widget _noticeCard(NoticeModel notice, [int _index = 0]) {
     final dateStr = _formatDate(notice.publishedAt);
 
     return Dismissible(
@@ -249,13 +251,13 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
             // Footer
             Row(
               children: [
-                const Icon(Icons.schedule,
+                Icon(Icons.schedule,
                     size: 13, color: DesignColors.textTertiary),
                 const SizedBox(width: 4),
                 Text(dateStr, style: DesignTypography.captionSmall),
                 if (notice.attachmentUrl != null) ...[
                   const SizedBox(width: 12),
-                  const Icon(Icons.attach_file,
+                  Icon(Icons.attach_file,
                       size: 13, color: DesignColors.textTertiary),
                   const SizedBox(width: 2),
                   Text('Attachment', style: DesignTypography.captionSmall),
@@ -300,7 +302,7 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
           context: context,
           backgroundColor: Colors.transparent,
           builder: (sheetCtx) => Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: DesignColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -314,13 +316,13 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
                       decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
                   Container(width: 56, height: 56,
                       decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                      child: const Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
+                      child: Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
                   const SizedBox(height: 16),
-                  const Text('Delete Notice?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                  Text('Delete Notice?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                   const SizedBox(height: 8),
                   Text('Delete "$title"? This cannot be undone.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+                      style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
                   const SizedBox(height: 24),
                   Row(children: [
                     Expanded(child: OutlinedButton(

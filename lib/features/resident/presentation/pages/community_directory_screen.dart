@@ -136,7 +136,7 @@ class _CommunityDirectoryScreenState
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(DesignRadius.lg),
                   borderSide:
-                      const BorderSide(color: DesignColors.primary, width: 1.5),
+                      BorderSide(color: DesignColors.primary, width: 1.5),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: DesignSpacing.lg,
@@ -358,15 +358,15 @@ String _initials(String name) {
 }
 
 Color _avatarColor(String name) {
-  const palette = [
-    Color(0xFF3D8361),
-    Color(0xFF2563EB),
-    Color(0xFF7C3AED),
-    Color(0xFFE53935),
-    Color(0xFFF39C12),
-    Color(0xFF00897B),
-    Color(0xFF8B5CF6),
-    Color(0xFFDB2777),
+  final palette = [
+    const Color(0xFF3D8361),
+    const Color(0xFF2563EB),
+    DesignColors.primary,
+    const Color(0xFFE53935),
+    const Color(0xFFF39C12),
+    const Color(0xFF00897B),
+    DesignColors.primary,
+    const Color(0xFFDB2777),
   ];
   final hash = name.codeUnits.fold<int>(0, (a, b) => a + b);
   return palette[hash % palette.length];

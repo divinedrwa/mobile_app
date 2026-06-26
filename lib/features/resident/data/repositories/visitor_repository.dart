@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/pre_approved_visitor_model.dart';
@@ -12,6 +13,13 @@ class VisitorRepository {
   final DioClient _dioClient;
 
   VisitorRepository(this._dioClient);
+
+  bool _isResidentVillaMissing(DioException e) {
+    if (e.response?.statusCode != 404) return false;
+    return parseApiErrorMessage(e.response?.data, '')
+        .toLowerCase()
+        .contains('villa not assigned');
+  }
 
   /// Pre-approve a visitor
   Future<PreApprovedVisitorModel> preApproveVisitor(
@@ -90,6 +98,29 @@ class VisitorRepository {
     }
   }
 
+  /// Today's visitor counts for the resident hub summary card.
+  Future<({int total, int checkedIn, int checkedOut})> getVisitorsTodaySummary() async {
+    try {
+      final response = await _dioClient.get(ApiEndpoints.visitorsToday);
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final summary = data['summary'] is Map
+          ? Map<String, dynamic>.from(data['summary'] as Map)
+          : <String, dynamic>{};
+      return (
+        total: (summary['total'] as num?)?.toInt() ?? 0,
+        checkedIn: (summary['checkedIn'] as num?)?.toInt() ?? 0,
+        checkedOut: (summary['checkedOut'] as num?)?.toInt() ?? 0,
+      );
+    } on DioException catch (e) {
+      if (_isResidentVillaMissing(e)) {
+        return (total: 0, checkedIn: 0, checkedOut: 0);
+      }
+      throw mapDioException(e, 'Failed to fetch today\'s visitor stats');
+    }
+  }
+
   /// Get visitor history
   Future<List<VisitorModel>> getVisitorHistory() async {
     try {
@@ -99,6 +130,7 @@ class VisitorRepository {
       final list = data['visitors'] as List? ?? [];
       return _parseVisitors(list);
     } on DioException catch (e) {
+      if (_isResidentVillaMissing(e)) return [];
       throw mapDioException(e, 'Failed to fetch visitor history');
     }
   }
@@ -124,36 +156,46 @@ class VisitorRepository {
           data['hasMore'] as bool? ?? (offset + items.length < total);
       return (items: items, total: total, hasMore: hasMore);
     } on DioException catch (e) {
+      if (_isResidentVillaMissing(e)) {
+        return (items: <VisitorModel>[], total: 0, hasMore: false);
+      }
       throw mapDioException(e, 'Failed to fetch visitor history');
     }
   }
 
   List<VisitorModel> _parseVisitors(List<dynamic> list) {
-    return list.whereType<Map>().map((raw) {
-      final json = Map<String, dynamic>.from(raw);
-      final checkInRaw = json['checkInTime'] ?? json['checkInAt'];
-      json['visitDate'] = checkInRaw ?? json['createdAt'];
-      json['checkInTime'] = checkInRaw;
-      json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
+    final out = <VisitorModel>[];
+    for (final raw in list) {
+      if (raw is! Map) continue;
+      try {
+        final json = Map<String, dynamic>.from(raw);
+        final checkInRaw = json['checkInTime'] ?? json['checkInAt'];
+        json['visitDate'] = checkInRaw ?? json['createdAt'];
+        json['checkInTime'] = checkInRaw;
+        json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
 
-      final checkIn = checkInRaw != null
-          ? DateTime.tryParse(checkInRaw.toString())
-          : null;
-      if (checkIn != null) {
-        json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());
-      } else {
-        json['visitTime'] = null;
+        final checkIn = checkInRaw != null
+            ? DateTime.tryParse(checkInRaw.toString())
+            : null;
+        if (checkIn != null) {
+          json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());
+        } else {
+          json['visitTime'] = null;
+        }
+
+        final purpose = json['purpose']?.toString().trim();
+        if (purpose == null || purpose.isEmpty) {
+          json['purpose'] = null;
+        } else {
+          json['purpose'] = purpose;
+        }
+
+        out.add(VisitorModel.fromJson(json));
+      } catch (_) {
+        // Skip malformed row; rest of list still renders.
       }
-
-      final purpose = json['purpose']?.toString().trim();
-      if (purpose == null || purpose.isEmpty) {
-        json['purpose'] = null;
-      } else {
-        json['purpose'] = purpose;
-      }
-
-      return VisitorModel.fromJson(json);
-    }).toList();
+    }
+    return out;
   }
 
   /// Gate requests where the guard asked for your flat's approval.

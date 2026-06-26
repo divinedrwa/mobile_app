@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -44,13 +46,13 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF8B5CF6),
+        backgroundColor: DesignColors.primary,
         onPressed: () => _showCreateSheet(context),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -124,11 +126,11 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
               subtitle: _statusFilter != null
                   ? 'No polls match the selected filter.'
                   : 'Create a poll to gather opinions from residents.',
-              iconColor: const Color(0xFF8B5CF6),
+              iconColor: DesignColors.primary,
             ),
           )
         else
-          ...filtered.map(_pollCard),
+          ...filtered.asMap().entries.map((e) => _pollCard(e.value, e.key)),
       ],
     );
   }
@@ -153,7 +155,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
             label: Text(entry.value),
             selected: isSelected,
             onSelected: (_) => setState(() => _statusFilter = entry.key),
-            selectedColor: const Color(0xFF8B5CF6),
+            selectedColor: DesignColors.primary,
             backgroundColor: DesignColors.surfaceSoft,
             labelStyle: DesignTypography.labelSmall.copyWith(
               color: isSelected ? Colors.white : DesignColors.textSecondary,
@@ -161,7 +163,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
             ),
             side: BorderSide(
               color: isSelected
-                  ? const Color(0xFF8B5CF6)
+                  ? DesignColors.primary
                   : DesignColors.borderLight,
             ),
             shape: RoundedRectangleBorder(
@@ -175,7 +177,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
     );
   }
 
-  Widget _pollCard(Map<String, dynamic> poll) {
+  Widget _pollCard(Map<String, dynamic> poll, [int index = 0]) {
     final id = poll['id']?.toString() ?? '';
     final title = poll['title']?.toString() ?? '';
     final description = poll['description']?.toString();
@@ -211,7 +213,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (isActive
-                          ? const Color(0xFF8B5CF6)
+                          ? DesignColors.primary
                           : DesignColors.textTertiary)
                       .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
@@ -220,7 +222,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                   isActive ? 'Active' : 'Closed',
                   style: DesignTypography.captionSmall.copyWith(
                     color: isActive
-                        ? const Color(0xFF8B5CF6)
+                        ? DesignColors.primary
                         : DesignColors.textTertiary,
                     fontWeight: FontWeight.w700,
                     fontSize: 10,
@@ -268,7 +270,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                       Text('${(pct * 100).round()}%',
                           style: DesignTypography.captionSmall.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF8B5CF6))),
+                              color: DesignColors.primary)),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -278,8 +280,8 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                       value: pct,
                       minHeight: 6,
                       backgroundColor: DesignColors.surfaceSoft,
-                      valueColor: const AlwaysStoppedAnimation(
-                          Color(0xFF8B5CF6)),
+                      valueColor: AlwaysStoppedAnimation(
+                          DesignColors.primary),
                     ),
                   ),
                 ],
@@ -311,7 +313,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
           ],
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _confirmClose(String id, String title) {
@@ -319,7 +321,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -333,13 +335,13 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.lock_outline_rounded, color: DesignColors.error, size: 28)),
+                  child: Icon(Icons.lock_outline_rounded, color: DesignColors.error, size: 28)),
               const SizedBox(height: 16),
-              const Text('Close Poll?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Close Poll?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Close "$title"? This cannot be undone.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: OutlinedButton(
@@ -354,7 +356,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                       await ref.read(adminPollRepositoryProvider).closePoll(id);
                       ref.invalidate(adminPollsProvider);
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text('Poll closed'),
                           backgroundColor: DesignColors.primary,
                           behavior: SnackBarBehavior.floating,
@@ -463,7 +465,7 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
         .where((t) => t.isNotEmpty)
         .toList();
     if (options.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('At least 2 options required'),
         backgroundColor: DesignColors.error,
         behavior: SnackBarBehavior.floating,
@@ -486,7 +488,7 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onCreated();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Poll created'),
         backgroundColor: DesignColors.primary,
         behavior: SnackBarBehavior.floating,
@@ -593,7 +595,7 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                         ),
                         if (_optionCtrls.length > 2)
                           IconButton(
-                            icon: const Icon(Icons.remove_circle_outline,
+                            icon: Icon(Icons.remove_circle_outline,
                                 color: DesignColors.error, size: 20),
                             onPressed: () => _removeOption(i),
                           ),
@@ -612,7 +614,7 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B5CF6),
+                      backgroundColor: DesignColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
                     ),

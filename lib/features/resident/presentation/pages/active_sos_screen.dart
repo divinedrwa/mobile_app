@@ -98,7 +98,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
             return Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: DesignColors.surface,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
@@ -116,12 +116,12 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
                       Container(
                         width: 56, height: 56,
                         decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                        child: const Icon(Icons.cancel_outlined, color: DesignColors.error, size: 28),
+                        child: Icon(Icons.cancel_outlined, color: DesignColors.error, size: 28),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Cancel SOS?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                      Text('Cancel SOS?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Only cancel if the emergency is over or was triggered by mistake.',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
@@ -229,7 +229,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check_circle_outline,
+                    Icon(Icons.check_circle_outline,
                         size: 64, color: DesignColors.success),
                     const SizedBox(height: 16),
                     Text(

@@ -74,7 +74,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
 
     if (!endDateTime.isAfter(startDateTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('End time must be after start time'),
           backgroundColor: DesignColors.error,
         ),
@@ -119,12 +119,45 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
     final amenitiesState = ref.watch(amenitiesProvider);
 
     return Scaffold(
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        title: const Text('Amenities'),
+        backgroundColor: context.surface.defaultSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Amenities',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: context.text.primary,
+              ),
+            ),
+            Text(
+              'Book shared spaces in your society',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: context.text.secondary,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Booking history',
-            icon: const Icon(Icons.calendar_today),
+            icon: Icon(Icons.history_rounded, color: context.brand.primary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(

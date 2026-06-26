@@ -1,11 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
+import '../../../../theme/context_extensions.dart';
 import '../providers/visitor_provider.dart';
 import '../widgets/visitor_management_ui.dart';
 
@@ -29,67 +32,44 @@ class _VisitorApprovalDetailScreenState
     final async = ref.watch(visitorApprovalDetailProvider(widget.visitorId));
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        title: Text(
-          'Visitor request',
-          style: DesignTypography.headingM.copyWith(fontSize: 17),
-        ),
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
-        centerTitle: true,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Visitor request',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Review and approve or deny',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
+        ),
       ),
       body: async.when(
         loading: () => const DetailSkeleton(heroHeight: 200),
-        error: (e, _) => ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(DesignSpacing.xl),
-          children: [
-            SizedBox(height: MediaQuery.sizeOf(context).height * 0.12),
-            const Icon(
-              Icons.wifi_tethering_error_rounded,
-              size: 56,
-              color: DesignColors.warning,
-            ),
-            const SizedBox(height: DesignSpacing.lg),
-            Text(
-              'Could not load visitor',
-              textAlign: TextAlign.center,
-              style: DesignTypography.headingM.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: DesignSpacing.sm),
-            Text(
-              userFacingMessage(e, 'Check your connection and try again.'),
-              textAlign: TextAlign.center,
-              style: DesignTypography.body.copyWith(
-                color: DesignColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: DesignSpacing.xl),
-            Center(
-              child: FilledButton.icon(
-                onPressed: () => ref.invalidate(
-                  visitorApprovalDetailProvider(widget.visitorId),
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                label: const Text('Retry'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DesignColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: DesignSpacing.xl,
-                    vertical: DesignSpacing.md + 2,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: DesignRadius.borderMD,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: EnterpriseInfoBanner(
+            icon: Icons.wifi_tethering_error_rounded,
+            tone: EnterpriseTone.danger,
+            title: 'Could not load visitor',
+            message: userFacingMessage(e, 'Check your connection and try again.'),
+            actionLabel: 'Retry',
+            onAction: () => ref.invalidate(visitorApprovalDetailProvider(widget.visitorId)),
+          ),
         ),
         data: (bundle) {
           final visitor = bundle['visitor'] as Map<String, dynamic>? ?? {};
@@ -357,7 +337,7 @@ class _VisitorApprovalDetailScreenState
                                   label: const Text('Reject'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: DesignColors.textPrimary,
-                                    side: const BorderSide(
+                                    side: BorderSide(
                                       color: DesignColors.border,
                                       width: 1.2,
                                     ),
@@ -449,7 +429,7 @@ class _HeroHeader extends StatelessWidget {
         shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: DesignColors.borderLight),
+          side: BorderSide(color: DesignColors.borderLight),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
@@ -469,7 +449,7 @@ class _HeroHeader extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,
@@ -526,7 +506,7 @@ class _DetailMetaChip extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 220),
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: DesignColors.textSecondary,
@@ -739,7 +719,7 @@ class _RuleCallout extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.groups_2_outlined,
             color: DesignColors.textSecondary,
             size: 22,

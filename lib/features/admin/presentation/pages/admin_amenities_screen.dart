@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -43,7 +45,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -113,7 +115,9 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      children: amenities.map((a) {
+      children: amenities.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final a = entry.value;
         final name = a['name']?.toString() ?? '';
         final capacity = a['capacity'];
         final price = _toDouble(a['pricePerHour']);
@@ -185,7 +189,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
               ),
             ],
           ),
-        );
+        ).animate(delay: DesignAnimations.staggerFor(idx)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
       }).toList(),
     );
   }

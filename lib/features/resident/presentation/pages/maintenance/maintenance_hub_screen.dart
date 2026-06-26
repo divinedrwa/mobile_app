@@ -180,12 +180,12 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
           IconButton(
             tooltip: 'View all history',
-            icon: const Icon(Icons.history, color: DesignColors.textSecondary),
+            icon: Icon(Icons.history, color: DesignColors.textSecondary),
             onPressed: () => context.push('/resident/maintenance/history'),
           ),
         ],
@@ -375,7 +375,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
         ),
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_outlined, color: DesignColors.error),
+            Icon(Icons.cloud_off_outlined, color: DesignColors.error),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
@@ -426,7 +426,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
             MaintenanceQuickAction(
               icon: Icons.account_balance_wallet_outlined,
               label: 'Society expenses',
-              tone: const Color(0xFF8B5CF6),
+              tone: DesignColors.primary,
               subLabel: 'View reports',
               onTap: () => context.push('/resident/expenses'),
             ),
@@ -629,7 +629,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                   children: [
                     for (var i = 0; i < recent.length; i++) ...[
                       if (i > 0)
-                        const Divider(
+                        Divider(
                             height: 1,
                             thickness: 1,
                             color: DesignColors.borderLight),
@@ -764,7 +764,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                   color: DesignColors.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.help_outline_rounded,
+                child: Icon(Icons.help_outline_rounded,
                     size: 18, color: DesignColors.warning),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -789,7 +789,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
+              Icon(Icons.chevron_right,
                   color: DesignColors.textTertiary, size: 20),
             ],
           ),

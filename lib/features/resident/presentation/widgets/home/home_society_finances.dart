@@ -121,7 +121,7 @@ class HomeSocietyFinances extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Society Finances',
                       style: TextStyle(
                         fontSize: 16,
@@ -179,7 +179,7 @@ class HomeSocietyFinances extends StatelessWidget {
                             inr.format(fund.societyFund),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w700,
                               color: DesignColors.textPrimary,

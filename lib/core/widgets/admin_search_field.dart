@@ -29,7 +29,7 @@ class AdminSearchField extends StatelessWidget {
         hintText: hint,
         hintStyle: DesignTypography.bodySmall
             .copyWith(color: DesignColors.textTertiary),
-        prefixIcon: const Icon(Icons.search, size: 20, color: DesignColors.textTertiary),
+        prefixIcon: Icon(Icons.search, size: 20, color: DesignColors.textTertiary),
         suffixIcon: ValueListenableBuilder<TextEditingValue>(
           valueListenable: controller,
           builder: (_, value, __) => value.text.isEmpty
@@ -58,7 +58,7 @@ class AdminSearchField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DesignRadius.full),
-          borderSide: const BorderSide(color: DesignColors.primary),
+          borderSide: BorderSide(color: DesignColors.primary),
         ),
       ),
     );

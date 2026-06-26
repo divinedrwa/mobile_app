@@ -140,7 +140,7 @@ class DailyHelpScreen extends ConsumerWidget {
                               children: [
                                 IconButton(
                                   tooltip: 'Call',
-                                  icon: const Icon(Icons.call_rounded, color: DesignColors.success, size: 22),
+                                  icon: Icon(Icons.call_rounded, color: DesignColors.success, size: 22),
                                   onPressed: () => _makeCall(helper.phone),
                                 ),
                                 PopupMenuButton<String>(
@@ -213,7 +213,7 @@ class DailyHelpScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: DesignColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
@@ -231,15 +231,15 @@ class DailyHelpScreen extends ConsumerWidget {
                 Container(
                   width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.person_remove_outlined, color: DesignColors.error, size: 28),
+                  child: Icon(Icons.person_remove_outlined, color: DesignColors.error, size: 28),
                 ),
                 const SizedBox(height: 16),
-                const Text('Remove staff?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                Text('Remove staff?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                 const SizedBox(height: 8),
                 Text(
                   'Remove ${helper.name} from your staff list?\nThis cannot be undone.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -259,7 +259,7 @@ class DailyHelpScreen extends ConsumerWidget {
                           if (helper.assignmentId == null || helper.assignmentId!.isEmpty) {
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Unable to remove this entry'), backgroundColor: DesignColors.error),
+                              SnackBar(content: Text('Unable to remove this entry'), backgroundColor: DesignColors.error),
                             );
                             return;
                           }

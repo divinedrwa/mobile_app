@@ -11,6 +11,7 @@ import 'bootstrap/app_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/services/app_update_lifecycle_binding.dart';
+import 'core/services/gateway_payment_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
 import 'core/utils/app_restart.dart';
 import 'theme/theme.dart' as gp_theme;
@@ -95,8 +96,10 @@ void main() async {
 
   final pushBinding = PushLifecycleBinding();
   final appUpdateBinding = AppUpdateLifecycleBinding();
+  final gatewayPaymentBinding = GatewayPaymentLifecycleBinding();
   WidgetsBinding.instance.addObserver(pushBinding);
   WidgetsBinding.instance.addObserver(appUpdateBinding);
+  WidgetsBinding.instance.addObserver(gatewayPaymentBinding);
 
   void startApp() {
     runApp(
@@ -242,16 +245,33 @@ class _DivineAppState extends ConsumerState<DivineApp> {
       if (wasAuth != nowAuth) {
         _routerRefresh.notify();
       }
+      if (wasAuth && !nowAuth) {
+        ref.read(gp_theme.themeTokensProvider.notifier).reset();
+        ref.invalidate(gp_theme.applyRemoteThemeProvider);
+      } else if (!wasAuth && nowAuth) {
+        ref.invalidate(gp_theme.applyRemoteThemeProvider);
+      }
     });
 
     final tokens = ref.watch(gp_theme.themeTokensProvider);
+
+    // Trigger remote theme fetch on boot and re-fetch whenever auth changes.
+    // Silently no-ops when unauthenticated (API returns 401, caught by repo).
+    final authState = ref.watch(authProvider);
+    if (authState.isAuthenticated) {
+      ref.watch(gp_theme.applyRemoteThemeProvider);
+    }
 
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: gp_theme.AppTheme.light(palette: tokens.light),
       darkTheme: gp_theme.AppTheme.dark(palette: tokens.dark),
-      themeMode: ref.watch(gp_theme.themeModeProvider),
+      // Locked to light: ~134 screens still resolve colors via the light-only
+      // AppColorBridge (DesignColors/AppColors), so dark mode renders unreadable
+      // (dark text on dark bg). Re-enable only after those are migrated off the
+      // static bridge to brightness-aware tokens.
+      themeMode: ThemeMode.light,
       routerConfig: _router!,
       builder: (context, child) {
         final scaled = _buildFixedScale(context, child);

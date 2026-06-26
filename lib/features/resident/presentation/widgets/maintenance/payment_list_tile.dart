@@ -237,7 +237,7 @@ _Palette _palette(PaymentTileStatus status) {
         iconFg: DesignColors.error,
       );
     case PaymentTileStatus.upcoming:
-      return const _Palette(
+      return _Palette(
         label: 'UPCOMING',
         icon: Icons.event_available_outlined,
         iconBg: DesignColors.surfaceSoft,

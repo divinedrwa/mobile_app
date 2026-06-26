@@ -38,7 +38,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
@@ -295,7 +295,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                       color: isSelected ? DesignColors.primary : Colors.grey,
                     )
                   else if (isMyVote)
-                    const Icon(
+                    Icon(
                       Icons.check_circle,
                       color: DesignColors.success,
                     )
@@ -335,7 +335,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         ),
                         Text(
                           '${option.votes} votes',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: DesignColors.textSecondary,
                           ),

@@ -37,7 +37,7 @@ class _HomeHeroQuickActionsState extends ConsumerState<HomeHeroQuickActions> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Row(
+        Row(
           children: [
             Text(
               'Quick Actions',
@@ -220,20 +220,20 @@ class _VisitorEntryCard extends StatelessWidget {
         onTap: onTap,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF9B8BFF), // light violet top-left
-                Color(0xFF6C5CE7), // mid purple
-                Color(0xFF5848D4), // deep purple bottom-right
+                DesignColors.primaryLight,
+                DesignColors.primary,
+                DesignColors.primaryDark,
               ],
-              stops: [0.0, 0.55, 1.0],
+              stops: const [0.0, 0.55, 1.0],
             ),
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
+                color: DesignColors.primary.withValues(alpha: 0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -278,9 +278,9 @@ class _VisitorEntryCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.person_add_alt_1_rounded,
-                            color: Color(0xFF6C5CE7),
+                            color: DesignColors.primary,
                             size: 17,
                           ),
                         ),
@@ -495,7 +495,7 @@ class _CompactHeroCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: DesignColors.textPrimary,
@@ -648,7 +648,7 @@ class _SecondaryIconTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w600,
                   color: DesignColors.textPrimary,

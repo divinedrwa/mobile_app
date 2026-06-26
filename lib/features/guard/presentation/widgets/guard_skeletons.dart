@@ -176,37 +176,37 @@ class GuardSummarySkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerWrap(
+    return const ShimmerWrap(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
+        padding: EdgeInsets.symmetric(
           horizontal: GuardTokens.padScreen,
           vertical: GuardTokens.g1,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const ShimmerBox(height: 12, borderRadius: 6, width: 160),
-            const SizedBox(height: 10),
+            ShimmerBox(height: 12, borderRadius: 6, width: 160),
+            SizedBox(height: 10),
             Row(
               children: [
                 Expanded(child: ShimmerBox(height: 60, borderRadius: GuardTokens.radiusCard)),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(child: ShimmerBox(height: 60, borderRadius: GuardTokens.radiusCard)),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Row(
               children: [
                 Expanded(child: ShimmerBox(height: 60, borderRadius: GuardTokens.radiusCard)),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(child: ShimmerBox(height: 60, borderRadius: GuardTokens.radiusCard)),
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             ShimmerBox(height: 48, borderRadius: GuardTokens.radiusCard),
-            const SizedBox(height: 18),
-            const ShimmerBox(height: 14, borderRadius: 6, width: 200),
-            const SizedBox(height: 10),
+            SizedBox(height: 18),
+            ShimmerBox(height: 14, borderRadius: 6, width: 200),
+            SizedBox(height: 10),
             ShimmerBox(height: 120, borderRadius: GuardTokens.radiusCard),
           ],
         ),

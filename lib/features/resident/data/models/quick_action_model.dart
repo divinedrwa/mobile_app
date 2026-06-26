@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/design_tokens.dart';
+
 /// Model for quick action cards on home screen
 class QuickAction {
   final String id;
@@ -35,11 +37,11 @@ final residentHomeQuickActionsGrid = [
     color: Color(0xFFFF9800),
     route: '/resident/complaint',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'daily_help',
     label: 'Vendors',
     icon: Icons.cleaning_services,
-    color: Color(0xFF8B5CF6),
+    color: DesignColors.primary,
     route: '/resident/daily-help',
   ),
   const QuickAction(
@@ -78,11 +80,11 @@ final residentHomeQuickActionsGrid = [
     color: Color(0xFFFF6D00),
     route: '',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'special_projects',
     label: 'Projects',
     icon: Icons.construction_rounded,
-    color: Color(0xFF7C3AED),
+    color: DesignColors.primary,
     route: '/resident/special-projects',
   ),
 ];
@@ -104,13 +106,9 @@ final residentQuickActionsOverflow = [
     color: Color(0xFF00897B),
     route: '/resident/directory',
   ),
-  const QuickAction(
-    id: 'incidents',
-    label: 'Incidents',
-    icon: Icons.shield_outlined,
-    color: Color(0xFFD84315),
-    route: '/resident/incidents',
-  ),
+  // 'Incidents' intentionally omitted for residents: the society incident log
+  // is GUARD/ADMIN-only on the backend (GET /incidents → 403 for residents).
+  // Admin-like users manage incidents via the dedicated admin incidents screen.
   const QuickAction(
     id: 'vehicle_log',
     label: 'Vehicle Log',
@@ -130,21 +128,22 @@ const moreQuickAction = QuickAction(
 );
 
 /// Hero card — Visitor Entry (left card in quick-actions row).
-const residentHomeVisitorEntryAction = QuickAction(
-  id: 'visitor_entry',
-  label: 'GatePass+',
-  icon: Icons.person_add_alt_1_rounded,
-  color: Color(0xFF6C5CE7),
-  route: '/resident/visitor-hub',
-);
+/// Uses dynamic primary so it adopts the society's brand colour.
+QuickAction get residentHomeVisitorEntryAction => QuickAction(
+      id: 'visitor_entry',
+      label: 'GatePass+',
+      icon: Icons.person_add_alt_1_rounded,
+      color: DesignColors.primary,
+      route: '/resident/visitor-hub',
+    );
 
 /// Hero row overflow (not shown as separate tiles on the new home layout).
 final residentHomeHeroOverflowActions = [
-  const QuickAction(
+  QuickAction(
     id: 'special_projects',
     label: 'Projects',
     icon: Icons.construction_rounded,
-    color: Color(0xFF7C3AED),
+    color: DesignColors.primary,
     route: '/resident/special-projects',
   ),
 ];
@@ -158,11 +157,11 @@ final residentHomeSecondaryActionsGrid = [
     color: Color(0xFF16A34A),
     route: '/resident/parcels',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'amenity_bookings',
     label: 'Facility Booking',
     icon: Icons.event_note_outlined,
-    color: Color(0xFF7C3AED),
+    color: DesignColors.primary,
     route: '/resident/amenity-bookings',
   ),
   const QuickAction(
@@ -179,11 +178,11 @@ final residentHomeSecondaryActionsGrid = [
     color: Color(0xFF16A34A),
     route: '/resident/amenities',
   ),
-  const QuickAction(
+  QuickAction(
     id: 'community',
     label: 'Notices',
     icon: Icons.campaign_outlined,
-    color: Color(0xFF7C3AED),
+    color: DesignColors.primary,
     route: '',
   ),
   moreQuickAction,

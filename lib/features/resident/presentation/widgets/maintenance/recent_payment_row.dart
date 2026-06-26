@@ -41,7 +41,7 @@ class RecentPaymentRow extends StatelessWidget {
             horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
         child: Row(
           children: [
-            const Icon(Icons.check_circle,
+            Icon(Icons.check_circle,
                 size: 22, color: DesignColors.success),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -109,7 +109,7 @@ class RecentPaymentRow extends StatelessWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.download_rounded,
+                    : Icon(Icons.download_rounded,
                         size: 20, color: DesignColors.textSecondary),
               )
             else

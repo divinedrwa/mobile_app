@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../../../resident/data/models/parcel_model.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_empty_placeholder.dart';
 import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_keep_alive_tab.dart';
 import '../widgets/guard_skeletons.dart';
@@ -267,13 +270,13 @@ class _VisitorLogs extends ConsumerWidget {
           child: filtered.isEmpty
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(GuardTokens.padScreen),
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-                    Center(
-                      child: Text(
-                        emptyHint,
-                        style: GuardTokens.bodyStyle(context),
-                      ),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                    GuardEmptyPlaceholder(
+                      icon: Icons.groups_outlined,
+                      title: query.isNotEmpty ? 'No matches' : 'No visitors',
+                      message: emptyHint,
                     ),
                   ],
                 )
@@ -298,6 +301,7 @@ class _VisitorLogs extends ConsumerWidget {
                       );
                     }
                     final v = filtered[i - 1];
+                    final rowIdx = i - 1;
                     final inGate = v.checkOutTime == null;
                     final tone = inGate
                         ? GuardTokens.success
@@ -352,6 +356,7 @@ class _VisitorLogs extends ConsumerWidget {
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
                                         height: 1.25,
+                                        letterSpacing: -0.2,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -391,7 +396,7 @@ class _VisitorLogs extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    );
+                    ).animate(delay: DesignAnimations.staggerFor(rowIdx)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
                   },
                 ),
         );
@@ -427,13 +432,13 @@ class _DeliveryLogs extends ConsumerWidget {
           child: filtered.isEmpty
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(GuardTokens.padScreen),
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-                    Center(
-                      child: Text(
-                        emptyHint,
-                        style: GuardTokens.bodyStyle(context),
-                      ),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                    GuardEmptyPlaceholder(
+                      icon: Icons.inventory_2_outlined,
+                      title: query.isNotEmpty ? 'No matches' : 'No deliveries',
+                      message: emptyHint,
                     ),
                   ],
                 )
@@ -458,6 +463,7 @@ class _DeliveryLogs extends ConsumerWidget {
                       );
                     }
                     final p = filtered[i - 1];
+                    final rowIdx = i - 1;
                     final title = p.trackingNumber.isNotEmpty ? p.trackingNumber : p.courier;
                     final statusTone = p.status == ParcelStatus.collected
                         ? GuardTokens.success
@@ -511,6 +517,7 @@ class _DeliveryLogs extends ConsumerWidget {
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
                                         height: 1.25,
+                                        letterSpacing: -0.2,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -545,7 +552,7 @@ class _DeliveryLogs extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    );
+                    ).animate(delay: DesignAnimations.staggerFor(rowIdx)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
                   },
                 ),
         );
@@ -582,13 +589,13 @@ class _VehicleLogs extends ConsumerWidget {
           child: list.isEmpty
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(GuardTokens.padScreen),
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-                    Center(
-                      child: Text(
-                        emptyHint,
-                        style: GuardTokens.bodyStyle(context),
-                      ),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                    GuardEmptyPlaceholder(
+                      icon: Icons.directions_car_outlined,
+                      title: query.isNotEmpty ? 'No matches' : 'No vehicles',
+                      message: emptyHint,
                     ),
                   ],
                 )
@@ -611,6 +618,7 @@ class _VehicleLogs extends ConsumerWidget {
                       );
                     }
                     final v = list[i - 1];
+                    final rowIdx = i - 1;
                     final vTone = v.isInside ? GuardTokens.success : GuardTokens.textSecondary;
                     final isDarkV = Theme.of(context).brightness == Brightness.dark;
                     return Padding(
@@ -690,7 +698,7 @@ class _VehicleLogs extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    );
+                    ).animate(delay: DesignAnimations.staggerFor(rowIdx)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
                   },
                 ),
         );

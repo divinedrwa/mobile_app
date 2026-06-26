@@ -95,7 +95,7 @@ Widget _linkChip(BuildContext context, String url) {
           border: Border.all(color: DesignColors.primary.withValues(alpha: 0.35)),
           color: DesignColors.primary.withValues(alpha: 0.06),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.link_rounded, size: 18, color: DesignColors.primary),
@@ -311,7 +311,7 @@ class _EmergencyPremiumCard extends StatelessWidget {
                     const SizedBox(height: 14),
                     Text(
                       desc,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: DesignColors.textSecondary,
@@ -342,7 +342,7 @@ Widget _metaLine(IconData icon, String text, Color accent) {
       Expanded(
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: DesignColors.textSecondary,
@@ -422,7 +422,7 @@ class _MaintenancePremiumCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Works & schedules',
                         style: TextStyle(
                           fontSize: 13,
@@ -1014,7 +1014,7 @@ Widget _standardBody(
           ),
           child: Text(
             desc,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.45,
               fontWeight: FontWeight.w500,

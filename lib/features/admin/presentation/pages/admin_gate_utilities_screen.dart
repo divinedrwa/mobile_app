@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -142,7 +144,7 @@ class _AdminGateUtilitiesScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -159,10 +161,10 @@ class _AdminGateUtilitiesScreenState
                   child: Icon(Icons.warning_amber_rounded, color: confirmColor, size: 28)),
               const SizedBox(height: 16),
               Text(title, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text(message, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: OutlinedButton(
@@ -239,7 +241,7 @@ class _AdminGateUtilitiesScreenState
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -412,7 +414,9 @@ class _AdminGateUtilitiesScreenState
             }
 
             return Column(
-              children: requests.map((req) {
+              children: requests.asMap().entries.map((reqEntry) {
+                final reqIdx = reqEntry.key;
+                final req = reqEntry.value;
                 final id = req['id']?.toString() ?? '';
                 final user = req['user'] is Map ? req['user'] as Map : {};
                 final gate = req['gate'] is Map ? req['gate'] as Map : {};
@@ -495,7 +499,7 @@ class _AdminGateUtilitiesScreenState
                       ),
                     ],
                   ),
-                );
+                ).animate(delay: DesignAnimations.staggerFor(reqIdx)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
               }).toList(),
             );
           },

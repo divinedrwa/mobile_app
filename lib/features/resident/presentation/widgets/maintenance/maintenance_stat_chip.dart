@@ -81,7 +81,7 @@ class _ToneColors {
 _ToneColors _toneColors(MaintenanceStatTone tone) {
   switch (tone) {
     case MaintenanceStatTone.neutral:
-      return const _ToneColors(DesignColors.surfaceSoft, DesignColors.textSecondary);
+      return _ToneColors(DesignColors.surfaceSoft, DesignColors.textSecondary);
     case MaintenanceStatTone.success:
       return _ToneColors(DesignColors.success.withValues(alpha: 0.12), DesignColors.success);
     case MaintenanceStatTone.warning:

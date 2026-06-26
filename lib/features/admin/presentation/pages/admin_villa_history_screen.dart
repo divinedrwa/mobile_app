@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
@@ -34,7 +36,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: () =>
                 ref.invalidate(adminVillaHistoryProvider(villaId)),
           ),
@@ -195,8 +197,8 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
             subtitle: 'Payment history will appear here once payments are recorded.',
           )
         else
-          for (final p in payments) ...[
-            _paymentTile(p, inr, dateFmt),
+          for (var i = 0; i < payments.length; i++) ...[
+            _paymentTile(payments[i], inr, dateFmt, i),
             const SizedBox(height: AppSpacing.sm),
           ],
       ],
@@ -246,8 +248,9 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
   Widget _paymentTile(
     Map<String, dynamic> p,
     NumberFormat inr,
-    DateFormat dateFmt,
-  ) {
+    DateFormat dateFmt, [
+    int index = 0,
+  ]) {
     final amount = (p['amount'] as num?)?.toDouble() ?? 0;
     final status = (p['status']?.toString() ?? '').toUpperCase();
     final mode = p['paymentMode']?.toString() ?? '';
@@ -326,7 +329,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   Widget _buildSkeleton() {

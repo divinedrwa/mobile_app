@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -53,7 +55,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -280,7 +282,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
             ),
           )
         else
-          ...filtered.map(_vehicleCard),
+          ...filtered.asMap().entries.map((e) => _vehicleCard(e.value, e.key)),
       ],
     );
   }
@@ -311,7 +313,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
     );
   }
 
-  Widget _vehicleCard(Map<String, dynamic> v) {
+  Widget _vehicleCard(Map<String, dynamic> v, [int index = 0]) {
     final number = v['vehicleNumber']?.toString() ??
         v['registrationNumber']?.toString() ??
         '';
@@ -370,7 +372,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   static IconData _vehicleIcon(String type) {

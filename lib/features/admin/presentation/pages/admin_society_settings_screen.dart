@@ -53,7 +53,7 @@ class _AdminSocietySettingsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -338,11 +338,9 @@ class _AdminSocietySettingsScreenState
               const SizedBox(height: 12),
               TextField(
                 controller: _upiVpaController,
-                decoration: InputDecoration(
-                  hintText: 'e.g. society@upi',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                decoration: DesignComponents.inputDecoration(
+                  hint: 'e.g. society@upi',
+                ).copyWith(
                   suffixIcon: _saving
                       ? const Padding(
                           padding: EdgeInsets.all(12),

@@ -1,11 +1,45 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/utils/gateway_payment_status.dart';
+import 'gateway_pending_payment_store.dart';
 
 /// Shared handling for PhonePe / Razorpay status poll results.
 class GatewayPaymentPollActions {
   GatewayPaymentPollActions._();
+
+  /// Remember checkout until server confirms success/failure (survives app kill).
+  static Future<void> persistPendingGatewayPayment({
+    required String transactionId,
+    required String gateway,
+    required double amount,
+    String? periodLabel,
+    bool payAllPending = false,
+    double platformFee = 0,
+    double platformFeeGst = 0,
+    double totalPaid = 0,
+    String paymentMethod = 'Razorpay',
+  }) async {
+    final userId = GatewayPendingPaymentStore.currentUserId();
+    if (userId == null || userId.isEmpty || transactionId.isEmpty) return;
+    await GatewayPendingPaymentStore.saveForUser(
+      userId: userId,
+      transactionId: transactionId,
+      gateway: gateway,
+      amount: amount,
+      periodLabel: periodLabel,
+      payAllPending: payAllPending,
+      platformFee: platformFee,
+      platformFeeGst: platformFeeGst,
+      totalPaid: totalPaid,
+      paymentMethod: paymentMethod,
+    );
+  }
+
+  static Future<void> clearPersistedGatewayPayment() =>
+      GatewayPendingPaymentStore.clear();
 
   /// Returns true when the poll result was terminal (success, failed, or unavailable).
   static bool handlePollResult({
@@ -49,6 +83,19 @@ class GatewayPaymentPollActions {
     double platformFeeGst = 0,
     double totalPaid = 0,
   }) {
+    unawaited(
+      persistPendingGatewayPayment(
+        transactionId: transactionId,
+        gateway: gateway,
+        amount: amount,
+        periodLabel: periodLabel,
+        payAllPending: payAllPending,
+        platformFee: platformFee,
+        platformFeeGst: platformFeeGst,
+        totalPaid: totalPaid,
+        paymentMethod: paymentMethod,
+      ),
+    );
     context.go(
       Uri(
         path: '/resident/maintenance/payment-pending',
@@ -78,6 +125,7 @@ class GatewayPaymentPollActions {
     double platformFee = 0,
     double platformFeeGst = 0,
   }) {
+    unawaited(clearPersistedGatewayPayment());
     context.go(
       Uri(
         path: '/resident/maintenance/payment-success',

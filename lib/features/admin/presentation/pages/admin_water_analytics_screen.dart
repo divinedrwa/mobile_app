@@ -51,7 +51,7 @@ class _AdminWaterAnalyticsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -176,7 +176,7 @@ class _AdminWaterAnalyticsScreenState
         dailyAsync.when(
           loading: () => ShimmerWrap(
               child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (e, _) => const SizedBox.shrink(),
           data: (daily) {
             final activeDays = daily
                 .where((d) => _toInt(d['totalEvents']) > 0)
@@ -192,7 +192,7 @@ class _AdminWaterAnalyticsScreenState
         hourlyAsync.when(
           loading: () => ShimmerWrap(
               child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (e, _) => const SizedBox.shrink(),
           data: (hourly) => _hourlyList(hourly),
         ),
         const SizedBox(height: 16),
@@ -201,7 +201,7 @@ class _AdminWaterAnalyticsScreenState
         gateAsync.when(
           loading: () => ShimmerWrap(
               child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (e, _) => const SizedBox.shrink(),
           data: (gates) => _gateList(gates),
         ),
       ],
@@ -456,13 +456,11 @@ class _AdminWaterAnalyticsScreenState
   }
 
   Widget _emptyPanel(String message) {
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Text(
-        message,
-        style: DesignTypography.bodySmall
-            .copyWith(color: DesignColors.textSecondary),
-      ),
+    return EmptyStateWidget(
+      icon: Icons.water_drop_outlined,
+      title: 'No data',
+      subtitle: message,
+      iconColor: const Color(0xFF0EA5E9),
     );
   }
 

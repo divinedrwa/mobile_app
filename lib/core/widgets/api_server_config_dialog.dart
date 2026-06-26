@@ -146,12 +146,12 @@ class _ApiServerDialogState extends State<_ApiServerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Simulators (leave empty or Clear saved): Android → ${AppConstants.simulatorAndroidApiBase}, iOS → ${AppConstants.simulatorIosApiBase}. A saved URL overrides these.',
               style: TextStyle(fontSize: 12, color: DesignColors.textSecondary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Production: use your HTTPS API host (scheme + domain). `/api` is added automatically if omitted.',
               style: TextStyle(fontSize: 13, color: DesignColors.textSecondary),
             ),
@@ -168,7 +168,7 @@ class _ApiServerDialogState extends State<_ApiServerDialog> {
             const SizedBox(height: 12),
             Text(
               'Active: ${AppConstants.baseUrl}',
-              style: const TextStyle(fontSize: 12, color: DesignColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: DesignColors.textSecondary),
             ),
           ],
         ),

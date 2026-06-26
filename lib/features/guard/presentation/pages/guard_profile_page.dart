@@ -26,8 +26,19 @@ class GuardProfilePage extends ConsumerWidget {
     ].whereType<String>().where((value) => value.isNotEmpty).join('  •  ');
 
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: Text('Profile', style: GuardTokens.headingStyle(context)),
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        backgroundColor: isDark ? GuardTokens.darkCard : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          'Profile',
+          style: GuardTokens.headingStyle(context).copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(GuardTokens.padScreen),
@@ -166,11 +177,11 @@ class GuardProfilePage extends ConsumerWidget {
               ),
             ),
             child: ListTile(
-              leading: const Icon(
+              leading: Icon(
                 Icons.logout_rounded,
                 color: DesignColors.error,
               ),
-              title: const Text(
+              title: Text(
                 'Log out',
                 style: TextStyle(
                   color: DesignColors.error,
@@ -196,26 +207,76 @@ class GuardProfilePage extends ConsumerWidget {
     required String subtitle,
     VoidCallback? onTap,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-      child: ListTile(
-        leading: Icon(icon, color: GuardTokens.guardAccent),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: GuardTokens.body,
-            fontWeight: FontWeight.w600,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GuardTokens.g2),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+          side: BorderSide(
+            color: isDark
+                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
           ),
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            subtitle,
-            style: GuardTokens.captionStyle(context),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: GuardTokens.g2,
+              vertical: 14,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: GuardTokens.guardAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(
+                      color: GuardTokens.guardAccent.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: GuardTokens.guardAccentDeep, size: 20),
+                ),
+                const SizedBox(width: GuardTokens.g2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: GuardTokens.body,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: GuardTokens.captionStyle(context).copyWith(
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: GuardTokens.textSecondary.withValues(alpha: 0.6),
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
       ),
     );
   }

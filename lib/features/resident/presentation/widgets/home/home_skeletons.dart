@@ -287,7 +287,7 @@ class HomeRecentActivitySkeleton extends StatelessWidget {
                 ),
               ),
               if (i < rows - 1)
-                const Divider(height: 1, color: DesignColors.borderLight),
+                Divider(height: 1, color: DesignColors.borderLight),
             ],
           );
         }),

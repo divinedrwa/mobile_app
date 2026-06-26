@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -48,7 +50,7 @@ class _AdminInvitationsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -142,7 +144,7 @@ class _AdminInvitationsScreenState
             ),
           )
         else
-          ...filtered.map(_invitationCard),
+          ...filtered.asMap().entries.map((e) => _invitationCard(e.value, e.key)),
       ],
     );
   }
@@ -173,7 +175,7 @@ class _AdminInvitationsScreenState
     );
   }
 
-  Widget _invitationCard(Map<String, dynamic> inv) {
+  Widget _invitationCard(Map<String, dynamic> inv, [int index = 0]) {
     final role = inv['role']?.toString() ?? '';
     final email = inv['email']?.toString() ?? '';
     final phone = inv['phone']?.toString() ?? '';
@@ -259,7 +261,7 @@ class _AdminInvitationsScreenState
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showRevokeConfirm(String id) {

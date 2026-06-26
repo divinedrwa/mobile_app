@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/providers/emergency_contact_provider.dart';
 
 class AddEmergencyContactScreen extends ConsumerStatefulWidget {
@@ -33,7 +34,7 @@ class _AddEmergencyContactScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         backgroundColor: DesignColors.error,
         foregroundColor: Colors.white,
@@ -128,7 +129,7 @@ class _AddEmergencyContactScreenState
       setState(() => _isSubmitting = false);
       if (error == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Emergency contact added!'),
             backgroundColor: DesignColors.success,
           ),

@@ -87,7 +87,7 @@ class _SpecialProjectsScreenState
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.construction_rounded,
+                      Icon(Icons.construction_rounded,
                           size: 16, color: DesignColors.primary),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
@@ -245,7 +245,7 @@ class _SpecialProjectsScreenState
             ),
             // My Contribution
             if (contrib != null) ...[
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                 child: Divider(height: 1, color: DesignColors.divider),
               ),

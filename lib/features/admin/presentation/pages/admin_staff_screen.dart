@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -64,7 +66,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -170,7 +172,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
             ),
           )
         else
-          ...filtered.map(_staffCard),
+          ...filtered.asMap().entries.map((e) => _staffCard(e.value, e.key)),
       ],
     );
   }
@@ -200,7 +202,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
     );
   }
 
-  Widget _staffCard(Map<String, dynamic> staff) {
+  Widget _staffCard(Map<String, dynamic> staff, [int index = 0]) {
     final name = staff['name']?.toString() ?? '';
     final type = staff['type']?.toString() ?? '';
     final phone = staff['phone']?.toString() ?? '';
@@ -291,14 +293,14 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
                 margin: const EdgeInsets.only(left: 8),
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: DesignColors.textTertiary,
                   shape: BoxShape.circle,
                 ),
               ),
           ],
         ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showDetailSheet(Map<String, dynamic> staff) {
@@ -432,7 +434,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
   static Color _typeColor(String type) {
     switch (type) {
       case 'MAID':
-        return const Color(0xFF8B5CF6);
+        return DesignColors.primary;
       case 'COOK':
         return const Color(0xFFF97316);
       case 'DRIVER':

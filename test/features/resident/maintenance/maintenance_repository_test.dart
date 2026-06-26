@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:divine_app/core/network/dio_client.dart';
 import 'package:divine_app/features/resident/data/repositories/maintenance_repository.dart';
 
 class MockDio extends Mock implements Dio {}

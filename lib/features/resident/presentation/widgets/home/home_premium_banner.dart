@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/theme/design_tokens.dart';
 import 'home_shared.dart';
 
 /// Compact premium upsell strip.
@@ -17,10 +18,10 @@ class HomePremiumBanner extends StatelessWidget {
         onTap: onExplore,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: [Color(0xFF4C3D99), Color(0xFF6C5CE7)],
+              colors: [DesignColors.primaryDark, DesignColors.primary],
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: homeCardShadow(0.05),
@@ -70,7 +71,7 @@ class HomePremiumBanner extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
@@ -81,7 +82,7 @@ class HomePremiumBanner extends StatelessWidget {
                           color: kHomePurple,
                         ),
                       ),
-                      SizedBox(width: 2),
+                      const SizedBox(width: 2),
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 15,

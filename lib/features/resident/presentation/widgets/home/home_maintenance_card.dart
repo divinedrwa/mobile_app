@@ -249,7 +249,7 @@ class _MaintenanceNavRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,

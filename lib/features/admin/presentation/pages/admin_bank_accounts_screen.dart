@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -43,7 +45,7 @@ class _AdminBankAccountsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -110,7 +112,9 @@ class _AdminBankAccountsScreenState
   Widget _buildList(List<Map<String, dynamic>> accounts) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      children: accounts.map((a) {
+      children: accounts.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final a = entry.value;
         final accountName = a['accountHolderName']?.toString() ?? '';
         final bankName = a['bankName']?.toString() ?? '';
         final accountNumber = a['accountNumber']?.toString() ?? '';
@@ -169,7 +173,7 @@ class _AdminBankAccountsScreenState
               ),
             ],
           ),
-        );
+        ).animate(delay: DesignAnimations.staggerFor(idx)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
       }).toList(),
     );
   }
@@ -247,7 +251,7 @@ class _AdminBankAccountsScreenState
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: DesignColors.error,
-                              side: const BorderSide(color: DesignColors.error),
+                              side: BorderSide(color: DesignColors.error),
                             ),
                             child: const Text('Delete'),
                           ),
@@ -367,7 +371,7 @@ class _AdminBankAccountsScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -381,11 +385,11 @@ class _AdminBankAccountsScreenState
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.account_balance_outlined, color: DesignColors.error, size: 28)),
+                  child: Icon(Icons.account_balance_outlined, color: DesignColors.error, size: 28)),
               const SizedBox(height: 16),
-              const Text('Delete Bank Account?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Delete Bank Account?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('Are you sure you want to delete this bank account?',
+              Text('Are you sure you want to delete this bank account?',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),

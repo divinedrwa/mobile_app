@@ -13,6 +13,7 @@ import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../data/resident_home_prefetch.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/resident_data_refresh.dart';
+import 'maintenance/gateway_payment_recovery.dart';
 import '../providers/resident_tab_provider.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
@@ -33,6 +34,7 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       prefetchResidentHomeData(ref);
+      GatewayPaymentRecovery.tryRecover(context: context, ref: ref);
     });
   }
 

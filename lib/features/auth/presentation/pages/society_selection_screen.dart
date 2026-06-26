@@ -240,7 +240,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
           fit: BoxFit.contain,
         ),
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'GatePass+',
           style: TextStyle(
             fontSize: 22,
@@ -257,7 +257,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
   }
 
   Widget _buildTitleBlock() {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
@@ -271,7 +271,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
             height: 1.2,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           'Your account and data are scoped to one society.\nYou can change this before you sign in.',
           textAlign: TextAlign.center,
@@ -297,7 +297,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
           children: [
             Icon(Icons.cloud_off_rounded, size: 56, color: DesignColors.error.withValues(alpha: 0.85)),
             const SizedBox(height: AppSpacing.md),
-            const Text(
+            Text(
               'Could not load societies',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -310,7 +310,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
                 color: DesignColors.textSecondary,
@@ -368,7 +368,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: DesignColors.textPrimary,
@@ -378,7 +378,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                     Text(
                       detail,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: DesignColors.textSecondary,
@@ -441,7 +441,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
               fillColor: DesignColors.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: DesignColors.borderLight),
+                borderSide: BorderSide(color: DesignColors.borderLight),
               ),
             ),
           ),
@@ -453,7 +453,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
               alignment: Alignment.centerLeft,
               child: Text(
                 'Showing ${_societies.length} of $_total',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: DesignColors.textSecondary,
                 ),
@@ -576,7 +576,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                                       color: DesignColors.borderLight,
                                     ),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'Inactive',
                                     style: TextStyle(
                                       fontSize: 11,
@@ -593,7 +593,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                             s.id,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontFamily: 'monospace',
                               color: DesignColors.textTertiary,
@@ -643,7 +643,7 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
                       _selectableCount == _societies.length
                           ? '${_societies.length} ${_societies.length == 1 ? 'society' : 'societies'}'
                           : '$_selectableCount of ${_societies.length} available for sign-in',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: DesignColors.textTertiary,

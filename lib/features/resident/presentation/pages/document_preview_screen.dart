@@ -69,7 +69,7 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
         children: [
           WebViewWidget(controller: _controller),
           if (_loading)
-            const Center(child: CircularProgressIndicator(color: DesignColors.primary)),
+            Center(child: CircularProgressIndicator(color: DesignColors.primary)),
         ],
       ),
     );

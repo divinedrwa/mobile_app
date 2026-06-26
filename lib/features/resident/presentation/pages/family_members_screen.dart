@@ -193,7 +193,7 @@ class FamilyMembersScreen extends ConsumerWidget {
                     color: DesignColors.error.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_remove_outlined, color: DesignColors.error, size: 28),
+                  child: Icon(Icons.person_remove_outlined, color: DesignColors.error, size: 28),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -230,7 +230,7 @@ class FamilyMembersScreen extends ConsumerWidget {
                           if (member.id == null || member.id!.isEmpty) {
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 behavior: SnackBarBehavior.floating,
                                 content: Text('Unable to remove this member'),
                                 backgroundColor: DesignColors.error,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -75,7 +77,7 @@ class _AdminRoleManagementScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -153,7 +155,7 @@ class _AdminRoleManagementScreenState
             ),
           )
         else
-          ...users.map(_userCard),
+          ...users.asMap().entries.map((e) => _userCard(e.value, e.key)),
       ],
     );
   }
@@ -272,7 +274,7 @@ class _AdminRoleManagementScreenState
 
   // ── User card ───────────────────────────────────────────────────────
 
-  Widget _userCard(UserModel user) {
+  Widget _userCard(UserModel user, [int index = 0]) {
     final roleColor = _roleColor(user.role);
     final property = user.effectivePropertyDisplay ?? '';
     final inactive = !user.isActive;
@@ -386,7 +388,7 @@ class _AdminRoleManagementScreenState
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showChangeRoleSheet(UserModel user) {

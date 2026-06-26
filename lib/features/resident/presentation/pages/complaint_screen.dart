@@ -6,6 +6,7 @@ import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../data/providers/complaint_provider.dart' show
     complaintSubmitProvider, myComplaintsProvider;
 
@@ -37,22 +38,36 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
-        centerTitle: true,
-        title: Text(
-          'File complaint',
-          style: DesignTypography.headingM.copyWith(fontSize: 17),
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'File complaint',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Report an issue in your society',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             tooltip: 'My complaints',
             onPressed: () => context.push('/resident/my-complaints'),
-            icon: const Icon(Icons.format_list_bulleted_rounded),
+            icon: Icon(Icons.format_list_bulleted_rounded, color: context.text.secondary),
           ),
         ],
       ),
@@ -253,7 +268,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             behavior: SnackBarBehavior.floating,
             content: Text('Complaint submitted successfully'),
             backgroundColor: DesignColors.success,

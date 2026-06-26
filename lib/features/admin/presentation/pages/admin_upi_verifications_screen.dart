@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -33,7 +35,7 @@ class _AdminUpiVerificationsScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -49,11 +51,11 @@ class _AdminUpiVerificationsScreenState
                   decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: const Icon(Icons.currency_rupee_rounded, color: Color(0xFF16A34A), size: 28)),
               const SizedBox(height: 16),
-              const Text('Verify Payment?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Verify Payment?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Approve \u20B9${s.amount.toStringAsFixed(0)} from ${s.userName ?? 'Resident'} (Villa ${s.villaNumber ?? ''}) for ${s.month}/${s.year}? This will record the payment in the ledger.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: OutlinedButton(
@@ -103,7 +105,7 @@ class _AdminUpiVerificationsScreenState
       builder: (sheetCtx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: DesignColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
@@ -114,10 +116,10 @@ class _AdminUpiVerificationsScreenState
             children: [
               Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)))),
-              const Text('Reject Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Reject Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 4),
               Text('Reject \u20B9${s.amount.toStringAsFixed(0)} from ${s.userName ?? 'Resident'}?',
-                  style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary)),
+                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary)),
               const SizedBox(height: 16),
               TextField(
                 controller: reasonController,
@@ -195,7 +197,7 @@ class _AdminUpiVerificationsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -309,7 +311,7 @@ class _AdminUpiVerificationsScreenState
                       processing: _processingId == submissions[i].id,
                       onVerify: () => _verify(submissions[i]),
                       onReject: () => _reject(submissions[i]),
-                    ),
+                    ).animate(delay: DesignAnimations.staggerFor(i)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance),
                   );
                 },
               ),
@@ -458,7 +460,7 @@ class _SubmissionCard extends StatelessWidget {
                     label: const Text('Reject'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: DesignColors.error,
-                      side: const BorderSide(color: DesignColors.error),
+                      side: BorderSide(color: DesignColors.error),
                     ),
                   ),
                 ),

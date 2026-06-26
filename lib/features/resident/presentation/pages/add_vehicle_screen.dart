@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../data/models/vehicle_model.dart';
@@ -54,20 +55,20 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Text(
           widget.vehicle == null ? 'Add Vehicle' : 'Edit Vehicle',
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: DesignColors.textPrimary),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: context.text.primary),
         ),
       ),
       body: Form(
@@ -167,7 +168,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Unable to update this vehicle'),
           backgroundColor: DesignColors.error,
         ),

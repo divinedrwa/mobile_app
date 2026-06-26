@@ -7,26 +7,34 @@ import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/notification_model.dart';
 import '../../pages/notifications_center_screen.dart';
 import 'home_shared.dart';
-import 'home_skeletons.dart';
 
 class HomeRecentActivity extends StatelessWidget {
   const HomeRecentActivity({
     super.key,
     required this.notificationsState,
-    required this.onRetry,
   });
 
   final AsyncValue<List<NotificationModel>> notificationsState;
-  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final notifications = notificationsState.valueOrNull ??
-        const <NotificationModel>[];
+    final notifications = notificationsState.valueOrNull;
+    final isInitialLoad =
+        notificationsState.isLoading && notifications == null;
+
+    if (isInitialLoad ||
+        notificationsState.hasError ||
+        notifications == null ||
+        notifications.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final latest = notifications.take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: kHomeSectionGap),
         HomeSectionHeader(
           title: 'Recent Activity',
           onViewAll: () {
@@ -42,57 +50,41 @@ class HomeRecentActivity extends StatelessWidget {
             color: context.surface.defaultSurface,
           ),
           clipBehavior: Clip.antiAlias,
-          child: notificationsState.when(
-            loading: () => const HomeRecentActivitySkeleton(),
-            error: (_, _) => HomeEmptyBlock(
-              message: 'Could not load recent activity',
-              onRetry: onRetry,
-            ),
-            data: (_) {
-              if (notifications.isEmpty) {
-                return HomeEmptyBlock(
-                  message: 'No recent activity yet',
-                  onRetry: onRetry,
-                );
-              }
-              final latest = notifications.take(3).toList();
-              return Column(
-                children: [
-                  for (int i = 0; i < latest.length; i++) ...[
-                    _activityRow(
-                      context,
-                      icon: latest[i].type.icon,
-                      iconBg: latest[i]
-                          .type
-                          .color
-                          .withValues(alpha: 0.12),
-                      iconColor: latest[i].type.color,
-                      title: latest[i].title,
-                      subtitle:
-                          '${latest[i].message} • ${homeTimeAgo(latest[i].createdAt)}',
-                      status: latest[i].isRead
-                          ? 'Seen'
-                          : 'New',
-                      statusColor: latest[i].isRead
-                          ? context.text.secondary
-                          : kHomeGreen,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                residentNotificationsEntry,
-                          ),
-                        );
-                      },
-                    ),
-                    if (i != latest.length - 1)
-                      const Divider(
-                          height: 1,
-                          color: DesignColors.borderLight),
-                  ],
-                ],
-              );
-            },
+          child: Column(
+            children: [
+              for (int i = 0; i < latest.length; i++) ...[
+                _activityRow(
+                  context,
+                  icon: latest[i].type.icon,
+                  iconBg: latest[i]
+                      .type
+                      .color
+                      .withValues(alpha: 0.12),
+                  iconColor: latest[i].type.color,
+                  title: latest[i].title,
+                  subtitle:
+                      '${latest[i].message} • ${homeTimeAgo(latest[i].createdAt)}',
+                  status: latest[i].isRead
+                      ? 'Seen'
+                      : 'New',
+                  statusColor: latest[i].isRead
+                      ? context.text.secondary
+                      : kHomeGreen,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            residentNotificationsEntry,
+                      ),
+                    );
+                  },
+                ),
+                if (i != latest.length - 1)
+                  Divider(
+                      height: 1,
+                      color: DesignColors.borderLight),
+              ],
+            ],
           ),
         ),
       ],
@@ -144,7 +136,7 @@ class HomeRecentActivity extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: DesignColors.textPrimary,
@@ -196,7 +188,7 @@ class HomeRecentActivity extends StatelessWidget {
               ),
               if (onTap != null) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right,
+                Icon(Icons.chevron_right,
                     color: DesignColors.textTertiary,
                     size: 20),
               ],

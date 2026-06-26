@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
@@ -44,7 +46,7 @@ class _AdminGuardShiftsScreenState
           IconButton(
             tooltip: 'Refresh',
             icon:
-                const Icon(Icons.refresh, color: DesignColors.textSecondary),
+                Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -127,13 +129,13 @@ class _AdminGuardShiftsScreenState
               subtitle: '${entry.value.length} shift${entry.value.length == 1 ? '' : 's'}',
             ),
           ),
-          ...entry.value.map(_shiftCard),
+          ...entry.value.asMap().entries.map((e) => _shiftCard(e.value, e.key)),
         ];
       }).toList(),
     );
   }
 
-  Widget _shiftCard(Map<String, dynamic> shift) {
+  Widget _shiftCard(Map<String, dynamic> shift, [int index = 0]) {
     final id = shift['id']?.toString() ?? '';
     final guard = shift['guard'] as Map<String, dynamic>?;
     final guardName =
@@ -195,7 +197,7 @@ class _AdminGuardShiftsScreenState
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.access_time,
+                    Icon(Icons.access_time,
                         size: 12, color: DesignColors.textTertiary),
                     const SizedBox(width: 4),
                     Text(
@@ -205,7 +207,7 @@ class _AdminGuardShiftsScreenState
                     ),
                     if (isRecurring) ...[
                       const SizedBox(width: 8),
-                      const Icon(Icons.repeat,
+                      Icon(Icons.repeat,
                           size: 12, color: DesignColors.textTertiary),
                       const SizedBox(width: 2),
                       Text('Recurring',
@@ -218,7 +220,7 @@ class _AdminGuardShiftsScreenState
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert,
+            icon: Icon(Icons.more_vert,
                 size: 20, color: DesignColors.textTertiary),
             onSelected: (v) {
               if (v == 'edit') _showEditSheet(context, shift);
@@ -233,7 +235,7 @@ class _AdminGuardShiftsScreenState
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _confirmDelete(String id) {
@@ -241,7 +243,7 @@ class _AdminGuardShiftsScreenState
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: DesignColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -255,11 +257,11 @@ class _AdminGuardShiftsScreenState
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
+                  child: Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
               const SizedBox(height: 16),
-              const Text('Delete Shift?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+              Text('Delete Shift?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
-              const Text('Are you sure you want to delete this shift?',
+              Text('Are you sure you want to delete this shift?',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
               const SizedBox(height: 24),
@@ -276,7 +278,7 @@ class _AdminGuardShiftsScreenState
                       await ref.read(adminGuardShiftRepositoryProvider).deleteShift(id);
                       ref.invalidate(adminGuardShiftsProvider);
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text('Shift deleted'),
                           backgroundColor: DesignColors.primary,
                           behavior: SnackBarBehavior.floating,
@@ -324,19 +326,19 @@ class _AdminGuardShiftsScreenState
   static _ShiftType _shiftTypeConfig(String type) {
     switch (type.toUpperCase()) {
       case 'MORNING':
-        return const _ShiftType(
+        return _ShiftType(
             'Morning', Icons.wb_sunny_outlined, Color(0xFFF59E0B));
       case 'AFTERNOON':
-        return const _ShiftType(
+        return _ShiftType(
             'Afternoon', Icons.wb_sunny, Color(0xFFF97316));
       case 'EVENING':
-        return const _ShiftType(
-            'Evening', Icons.wb_twilight, Color(0xFF8B5CF6));
+        return _ShiftType(
+            'Evening', Icons.wb_twilight, DesignColors.primary);
       case 'NIGHT':
-        return const _ShiftType(
+        return _ShiftType(
             'Night', Icons.nights_stay_outlined, Color(0xFF3B82F6));
       default:
-        return const _ShiftType(
+        return _ShiftType(
             'Shift', Icons.schedule, Color(0xFF0EA5E9));
     }
   }
@@ -434,7 +436,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _submitting) return;
     if (_guardId == null || _gateId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Please select guard and gate'),
         backgroundColor: DesignColors.error,
         behavior: SnackBarBehavior.floating,
@@ -650,7 +652,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.access_time,
+            Icon(Icons.access_time,
                 size: 16, color: DesignColors.textTertiary),
             const SizedBox(width: 8),
             Column(

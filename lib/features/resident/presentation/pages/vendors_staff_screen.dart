@@ -87,7 +87,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
       case 'CARPENTER':
         return const Color(0xFF92400E);
       case 'PAINTER':
-        return const Color(0xFF7C3AED);
+        return DesignColors.primary;
       case 'SECURITY':
         return const Color(0xFFDC2626);
       case 'CLEANING':
@@ -300,7 +300,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
                           tooltip: 'Call vendor',
                           padding: EdgeInsets.zero,
                           onPressed: () => _makeCall(vendor.phone.trim()),
-                          icon: const Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
+                          icon: Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
                         ),
                       ),
                   ],
@@ -376,7 +376,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
                         borderRadius: BorderRadius.circular(context.radius.md),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(Icons.badge_outlined, color: DesignColors.primary, size: 22),
+                      child: Icon(Icons.badge_outlined, color: DesignColors.primary, size: 22),
                     ),
                     SizedBox(width: context.spacing.s12),
                     Expanded(
@@ -421,7 +421,7 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
                           tooltip: 'Call',
                           padding: EdgeInsets.zero,
                           onPressed: () => _makeCall(helper.phone.trim()),
-                          icon: const Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
+                          icon: Icon(Icons.call_rounded, color: DesignColors.success, size: 20),
                         ),
                       ),
                   ],

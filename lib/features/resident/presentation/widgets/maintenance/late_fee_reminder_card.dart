@@ -74,7 +74,7 @@ class _LateFeeReminderCardState extends State<LateFeeReminderCard> {
               color: DesignColors.warning.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.notifications_active_outlined,
+            child: Icon(Icons.notifications_active_outlined,
                 size: 18, color: DesignColors.warning),
           ),
           const SizedBox(width: AppSpacing.md),

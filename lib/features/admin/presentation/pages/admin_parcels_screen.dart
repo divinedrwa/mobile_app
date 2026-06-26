@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -77,7 +79,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -177,7 +179,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
             ),
           )
         else
-          ...filtered.map(_parcelCard),
+          ...filtered.asMap().entries.map((e) => _parcelCard(e.value, e.key)),
       ],
     );
   }
@@ -288,7 +290,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
 
   // ── Parcel card ─────────────────────────────────────────────────────
 
-  Widget _parcelCard(_AdminParcel parcel) {
+  Widget _parcelCard(_AdminParcel parcel, [int index = 0]) {
     final statusColor = _statusColor(parcel.status);
 
     return EnterprisePanel(
@@ -373,7 +375,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
           ),
         ],
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
   }
 
   void _showStatusSheet(_AdminParcel parcel) {

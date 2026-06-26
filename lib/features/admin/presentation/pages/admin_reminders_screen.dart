@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -318,7 +320,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh,
+            icon: Icon(Icons.refresh,
                 color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
@@ -419,7 +421,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
         value: filter.financialYearId,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        icon: const Icon(Icons.keyboard_arrow_down,
+        icon: Icon(Icons.keyboard_arrow_down,
             color: DesignColors.textSecondary),
         style: DesignTypography.bodyMedium.copyWith(
           color: DesignColors.textPrimary,
@@ -809,7 +811,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
                     ],
                   ),
                 ),
-              );
+              ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
             },
           ),
         ],

@@ -13,7 +13,7 @@ import '../../data/providers/maintenance_provider.dart';
 import 'amenity_booking_history_screen.dart';
 import 'parcel_management_screen.dart';
 
-const Color _kPageBg = DesignColors.background;
+final Color _kPageBg = DesignColors.background;
 const Color _kOverviewOrange = Color(0xFFF39C12); // Brand warning amber
 const Color _kCardBg = Colors.white;
 const Color _kBorderColor = Color(0xFFE8ECF0);
@@ -74,7 +74,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Overview',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
@@ -162,7 +162,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           'Detailed metrics',
                           style: TextStyle(
                             fontSize: 16,
@@ -193,7 +193,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                       const SizedBox(width: 6),
                       Text(
                         total > 0 ? 'Active' : 'Clear',
-                        style: const TextStyle(
+                        style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: DesignColors.textSecondary,
@@ -463,7 +463,7 @@ class _EnhancedHeroSummaryCard extends StatelessWidget {
                         children: [
                           Text(
                             headline,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.5,
@@ -600,7 +600,7 @@ class _StatPill extends StatelessWidget {
                     Flexible(
                       child: Text(
                         label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: DesignColors.textSecondary,
@@ -615,7 +615,7 @@ class _StatPill extends StatelessWidget {
                 const SizedBox(height: 4),
                 AnimatedCounter(
                   value: value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: DesignColors.textPrimary,
@@ -716,7 +716,7 @@ class _EnhancedMetricTile extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: DesignColors.textPrimary,
@@ -748,7 +748,7 @@ class _EnhancedMetricTile extends StatelessWidget {
                   children: [
                     AnimatedCounter(
                       value: value,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
                         color: DesignColors.textPrimary,
@@ -764,7 +764,7 @@ class _EnhancedMetricTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: _kBorderColor),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward_ios_rounded,
                         size: 14,
                         color: DesignColors.textTertiary,

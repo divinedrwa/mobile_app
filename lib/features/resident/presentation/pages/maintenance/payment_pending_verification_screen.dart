@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import 'gateway_payment_poll_actions.dart';
 
@@ -44,6 +47,31 @@ class _PaymentPendingVerificationScreenState
   bool _checking = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _persistFromRoute();
+      _checkAgain();
+    });
+  }
+
+  Future<void> _persistFromRoute() async {
+    if (widget.transactionId.isEmpty) return;
+    await GatewayPaymentPollActions.persistPendingGatewayPayment(
+      transactionId: widget.transactionId,
+      gateway: widget.gateway,
+      amount: widget.amount,
+      periodLabel: widget.periodLabel,
+      payAllPending: widget.payAllPending,
+      platformFee: widget.platformFee,
+      platformFeeGst: widget.platformFeeGst,
+      totalPaid: widget.totalPaid,
+      paymentMethod: widget.paymentMethod,
+    );
+  }
+
   Future<void> _checkAgain() async {
     if (_checking || widget.transactionId.isEmpty) return;
     setState(() {
@@ -62,6 +90,7 @@ class _PaymentPendingVerificationScreenState
       final handled = GatewayPaymentPollActions.handlePollResult(
         poll: poll,
         onSuccess: () {
+          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
           invalidateMaintenancePaymentProviders(ref);
           GatewayPaymentPollActions.navigateToPaymentSuccess(
             context,
@@ -76,6 +105,7 @@ class _PaymentPendingVerificationScreenState
           );
         },
         onFailed: (message) {
+          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
           setState(() => _error = message);
         },
         onGatewayUnavailable: (message) {
@@ -107,13 +137,20 @@ class _PaymentPendingVerificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+        ),
         title: Text(
           'Confirming payment',
-          style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
         ),
       ),
       body: SafeArea(

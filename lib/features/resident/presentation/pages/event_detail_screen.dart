@@ -34,7 +34,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: DesignColors.surface,
+        backgroundColor: context.surface.defaultSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0.5,
@@ -259,7 +259,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: DesignColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),

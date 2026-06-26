@@ -535,7 +535,7 @@ class HomeSocietyFundCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Understanding your fund balance',
               style: TextStyle(
                 fontSize: 16,

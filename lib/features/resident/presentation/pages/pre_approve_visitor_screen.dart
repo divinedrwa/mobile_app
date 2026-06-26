@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../theme/context_extensions.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
 import '../providers/visitor_provider.dart';
@@ -134,17 +136,31 @@ class _PreApproveVisitorScreenState
     final leadingLabel = _currentStep > 0 ? 'Back' : 'Cancel';
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: DesignColors.surface,
-        foregroundColor: DesignColors.textPrimary,
-        title: Text(
-          'Add visitor',
-          style: DesignTypography.headingM.copyWith(fontSize: 17),
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
+        leading: IconButton(
+          tooltip: 'Go back',
+          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
-        centerTitle: true,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Add visitor',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Create a pre-approved pass',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -342,7 +358,7 @@ class _PreApproveVisitorScreenState
             ),
             shape: RoundedRectangleBorder(
               borderRadius: DesignRadius.borderLG,
-              side: const BorderSide(color: DesignColors.borderLight),
+              side: BorderSide(color: DesignColors.borderLight),
             ),
             title: Text(
               'Frequent visitor',
@@ -396,7 +412,7 @@ class _PreApproveVisitorScreenState
             children: [
               Row(
                 children: [
-                  const Icon(Icons.fact_check_rounded, color: DesignColors.primary, size: 22),
+                  Icon(Icons.fact_check_rounded, color: DesignColors.primary, size: 22),
                   const SizedBox(width: DesignSpacing.sm),
                   Text(
                     'Summary',

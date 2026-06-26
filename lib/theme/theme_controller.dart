@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/network/dio_client_provider.dart';
+import '../core/theme/theme_repository.dart';
 import '../core/utils/storage_service.dart';
+import '../core/theme/app_colors_bridge.dart';
 import 'app_colors.dart';
 
 /// =========================================================================
@@ -100,18 +103,57 @@ class ThemeTokens {
 }
 
 class ThemeTokensNotifier extends StateNotifier<ThemeTokens> {
-  ThemeTokensNotifier() : super(ThemeTokens.defaults);
+  ThemeTokensNotifier() : super(ThemeTokens.defaults) {
+    AppColorBridge.applyPalette(ThemeTokens.defaults.light);
+  }
 
-  /// Replace the active light / dark palette (e.g., after loading from API).
   void set({AppColorPalette? light, AppColorPalette? dark}) {
-    state = state.copyWith(light: light, dark: dark);
+    if (light != null) {
+      state = state.copyWith(light: light);
+      AppColorBridge.applyPalette(light);
+    }
+    if (dark != null) {
+      state = state.copyWith(dark: dark);
+    }
   }
 
   /// Reset to the compile-time defaults.
-  void reset() => state = ThemeTokens.defaults;
+  void reset() {
+    state = ThemeTokens.defaults;
+    AppColorBridge.reset();
+  }
 }
 
 final themeTokensProvider =
     StateNotifierProvider<ThemeTokensNotifier, ThemeTokens>((ref) {
   return ThemeTokensNotifier();
+});
+
+// =========================================================================
+//  Remote theme providers
+// =========================================================================
+
+/// Provides a [ThemeRepository] backed by the shared [DioClient].
+final themeRepositoryProvider = Provider<ThemeRepository>((ref) {
+  return ThemeRepository(ref.watch(dioClientProvider));
+});
+
+/// Fetches the society's custom theme colors from the API and applies them
+/// to [themeTokensProvider] (light palette only).
+///
+/// This is a fire-and-forget [FutureProvider.autoDispose] — it silently
+/// no-ops when the user is not logged in (the API returns 401, which the
+/// repository catches and returns null). Watching it in [MaterialApp.builder]
+/// ensures it re-runs whenever the provider is invalidated (e.g., after login
+/// or a society switch).
+final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
+  final repo = ref.watch(themeRepositoryProvider);
+  final json = await repo.fetchThemeColors();
+  if (json == null) {
+    AppColorBridge.reset();
+    ref.read(themeTokensProvider.notifier).reset();
+    return;
+  }
+  final newLight = AppColorPalette.fromApiJson(json, AppColorPalette.light);
+  ref.read(themeTokensProvider.notifier).set(light: newLight);
 });

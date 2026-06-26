@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -88,7 +90,7 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -301,7 +303,9 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
         }
 
         return Column(
-          children: expenses.map<Widget>((expense) {
+          children: expenses.asMap().entries.map<Widget>((entry) {
+            final idx = entry.key;
+            final expense = entry.value;
             final title = expense.title as String;
             final amount = expense.amount as double;
             final paidTo = expense.paidTo as String;
@@ -388,7 +392,7 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
                   ],
                 ),
               ),
-            );
+            ).animate(delay: DesignAnimations.staggerFor(idx)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
           }).toList(),
         );
       },
@@ -400,7 +404,7 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
           context: context,
           backgroundColor: Colors.transparent,
           builder: (sheetCtx) => Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: DesignColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -414,13 +418,13 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
                       decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
                   Container(width: 56, height: 56,
                       decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
-                      child: const Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
+                      child: Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
                   const SizedBox(height: 16),
-                  const Text('Delete Expense?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                  Text('Delete Expense?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                   const SizedBox(height: 8),
                   Text('Delete "$title"? This cannot be undone.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
+                      style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4)),
                   const SizedBox(height: 24),
                   Row(children: [
                     Expanded(child: OutlinedButton(
@@ -744,7 +748,7 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
                           style: DesignTypography.body,
                         ),
                       ),
-                      const Icon(Icons.calendar_today,
+                      Icon(Icons.calendar_today,
                           size: 18, color: DesignColors.textSecondary),
                     ],
                   ),

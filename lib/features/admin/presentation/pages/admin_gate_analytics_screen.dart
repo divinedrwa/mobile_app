@@ -45,7 +45,7 @@ class _AdminGateAnalyticsScreenState
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, color: DesignColors.textSecondary),
+            icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
             onPressed: _refresh,
           ),
         ],
@@ -317,13 +317,11 @@ class _AdminGateAnalyticsScreenState
         [];
 
     if (hours.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'No peak hour data available',
-          style: DesignTypography.bodySmall
-              .copyWith(color: DesignColors.textSecondary),
-        ),
+      return EmptyStateWidget(
+        icon: Icons.schedule_outlined,
+        title: 'No peak hour data',
+        subtitle: 'Visitor peak hours will appear here once data is available.',
+        iconColor: const Color(0xFF0891B2),
       );
     }
 
@@ -400,13 +398,11 @@ class _AdminGateAnalyticsScreenState
         [];
 
     if (days.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'No trend data available',
-          style: DesignTypography.bodySmall
-              .copyWith(color: DesignColors.textSecondary),
-        ),
+      return EmptyStateWidget(
+        icon: Icons.show_chart_rounded,
+        title: 'No trend data',
+        subtitle: '7-day visitor trends will appear here once data is available.',
+        iconColor: const Color(0xFF10B981),
       );
     }
 

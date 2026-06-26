@@ -78,7 +78,7 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
       extendBodyBehindAppBar: false,
       appBar: AppBar(
         elevation: 0,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
         backgroundColor:
             Theme.of(context).brightness == Brightness.dark
                 ? GuardTokens.darkCard
@@ -113,11 +113,13 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
     final isInitialLoad = dashAsync.isLoading && data == null;
     final hasError = dashAsync.hasError && data == null;
 
-    if (isInitialLoad) return const GuardDashboardSkeleton();
-    if (hasError) return GuardDashboardError(
-      message: userFacingMessage(dashAsync.error!, 'Could not load dashboard.'),
-      onRetry: _refreshAll,
-    );
+    if (isInitialLoad) { return const GuardDashboardSkeleton(); }
+    if (hasError) {
+      return GuardDashboardError(
+        message: userFacingMessage(dashAsync.error!, 'Could not load dashboard.'),
+        onRetry: _refreshAll,
+      );
+    }
 
     return RefreshIndicator.adaptive(
       onRefresh: _refreshAll,

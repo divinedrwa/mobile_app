@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../theme/context_extensions.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../data/models/expense_breakdown_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
@@ -70,24 +71,30 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
     );
 
     return Scaffold(
-      backgroundColor: DesignColors.background,
+      backgroundColor: context.surface.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: DesignColors.background,
-        scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: context.surface.defaultSurface,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back, color: DesignColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
           onPressed: () => context.pop(),
         ),
-        title: Text(
-          cycle?.title.isNotEmpty == true
-              ? cycle!.title
-              : 'Cycle details',
-          style: DesignTypography.headingM.copyWith(
-            color: DesignColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              cycle?.title.isNotEmpty == true ? cycle!.title : 'Cycle details',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+            ),
+            Text(
+              'Billing cycle breakdown',
+              style: TextStyle(fontSize: 12, color: context.text.secondary, height: 1.2),
+            ),
+          ],
         ),
       ),
       body: RefreshIndicator(
@@ -121,7 +128,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
           ),
           child: Column(
             children: [
-              const Icon(
+              Icon(
                 Icons.search_off_outlined,
                 size: 32,
                 color: DesignColors.textTertiary,
@@ -227,7 +234,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                     : cycle.amount),
                 icon: Icons.receipt_outlined,
               ),
-              const Divider(height: 1, color: DesignColors.divider),
+              Divider(height: 1, color: DesignColors.divider),
               BreakdownRow(
                 label: paidRowLabel,
                 value: inr.format(cycle.cashPaidAmount),
@@ -237,7 +244,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                 icon: _paymentModeIcon(insight?.paymentMode),
               ),
               if (cycle.creditApplied > 0) ...[
-                const Divider(height: 1, color: DesignColors.divider),
+                Divider(height: 1, color: DesignColors.divider),
                 BreakdownRow(
                   label: 'Advance credit applied',
                   value: '+ ${inr.format(cycle.creditApplied)}',
@@ -246,7 +253,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                 ),
               ],
               if (cycle.previousDue > 0) ...[
-                const Divider(height: 1, color: DesignColors.divider),
+                Divider(height: 1, color: DesignColors.divider),
                 BreakdownRow(
                   label: 'Previous outstanding',
                   value: inr.format(cycle.previousDue),
@@ -254,7 +261,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                   icon: Icons.history_toggle_off,
                 ),
               ],
-              const Divider(height: 1, color: DesignColors.divider),
+              Divider(height: 1, color: DesignColors.divider),
               BreakdownRow(
                 label: isPaid ? 'Total paid' : 'Outstanding now',
                 value: inr.format(isPaid
@@ -303,7 +310,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: DesignColors.primary,
-                side: const BorderSide(color: DesignColors.primary),
+                side: BorderSide(color: DesignColors.primary),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(DesignRadius.md),
@@ -342,7 +349,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.info_outline, size: 18, color: DesignColors.primary),
+            Icon(Icons.info_outline, size: 18, color: DesignColors.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

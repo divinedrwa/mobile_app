@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/theme/design_animations.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -206,12 +208,20 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         appBar: AppBar(
+          elevation: 0,
+          scrolledUnderElevation: 0.5,
           leading: IconButton(
             tooltip: 'Close',
             icon: const Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
-          title: Text('Patrols', style: GuardTokens.headingStyle(context)),
+          title: Text(
+            'Patrols',
+            style: GuardTokens.headingStyle(context).copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
           centerTitle: false,
         ),
         body: Column(
@@ -330,8 +340,7 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
                         GuardTokens.g3,
                       ),
                       itemCount: rows.length,
-                      itemBuilder: (_, i) =>
-                          _PatrolCard(patrol: rows[i]),
+                      itemBuilder: (_, i) => _PatrolCard(patrol: rows[i], index: i),
                     ),
                   );
                 },
@@ -383,9 +392,10 @@ class _CheckpointInput {
 }
 
 class _PatrolCard extends StatelessWidget {
-  const _PatrolCard({required this.patrol});
+  const _PatrolCard({required this.patrol, this.index = 0});
 
   final GuardPatrolRow patrol;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +561,7 @@ class _PatrolCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
   }
 }
 
@@ -610,7 +620,7 @@ class _RecentHistoryState extends State<_RecentHistory> {
             ),
             itemCount: widget.patrols.length.clamp(0, 20),
             itemBuilder: (_, i) =>
-                _PatrolCard(patrol: widget.patrols[i]),
+                _PatrolCard(patrol: widget.patrols[i], index: i),
           ),
       ],
     );
