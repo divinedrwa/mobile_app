@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -84,6 +85,16 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Over-the-air splash logo: served from the API origin (/brand/app-logo.png).
+    // cached_network_image caches it to disk, so after the first launch it shows
+    // instantly from cache; the bundled asset is the first-launch / offline fallback.
+    final logoUrl =
+        '${AppConstants.baseUrl.replaceFirst(RegExp(r'/api/?$'), '')}/brand/app-logo.png';
+    Widget bundledLogo() => Image.asset(
+          'assets/branding/gp_logo.png',
+          fit: BoxFit.contain,
+        );
+
     // Gradient stops follow the active society theme (cached palette is applied
     // synchronously at startup, so this reflects the selected template).
     return Scaffold(
@@ -123,9 +134,12 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
                     ],
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    'assets/branding/gp_logo.png',
+                  child: CachedNetworkImage(
+                    imageUrl: logoUrl,
                     fit: BoxFit.contain,
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    placeholder: (_, _) => bundledLogo(),
+                    errorWidget: (_, _, _) => bundledLogo(),
                   ),
                 ),
                 const SizedBox(height: 24),
