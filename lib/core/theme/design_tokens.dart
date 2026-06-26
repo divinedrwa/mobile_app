@@ -6,10 +6,10 @@ import 'app_colors_bridge.dart';
 /// 🎨 GATEPASS+ - DESIGN TOKENS
 /// Centralized design system — professional brand palette.
 ///
-/// Brand colors from GatePass+ identity (green + navy):
-/// - Primary: Forest Green (#3D8361) — trust, approval, growth
-/// - Secondary: Navy Blue (#1B2B3A) — stability, professionalism
-/// - Accent: Light Green (#5BA878) — highlights, positive actions
+/// Brand colors from GatePass+ Play Store asset pack (teal-green + navy):
+/// - Primary: Deep Teal (#004D40) — brand, buttons, headers
+/// - Secondary: Teal (#00695C) — gradients, secondary actions
+/// - Accent: Vibrant Green (#00C853) — success, approve, highlights
 ///
 /// This file contains all design tokens used throughout the app:
 /// - Colors (Brand Green, Navy, Semantic, Neutral)

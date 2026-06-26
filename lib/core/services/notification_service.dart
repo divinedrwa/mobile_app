@@ -37,7 +37,7 @@ const String _androidNotificationIcon = '@drawable/ic_notification';
 
 /// Brand green; tints the silhouette + the accent line in the notification
 /// header. Mirrors `colors.xml/notification_brand` and `DesignColors.primary`.
-const Color _androidNotificationTint = Color(0xFF3D8361);
+const Color _androidNotificationTint = Color(0xFF004D40);
 
 /// VAPID key for web push (public key — safe to embed in client code).
 const String _webVapidKey =

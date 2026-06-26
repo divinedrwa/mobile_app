@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
-    "theme_color": "#3D8361",
+    "theme_color": "#004D40",
     "description": "Community living — maintenance, visitors, and everyday society tools",
     "orientation": "any",
     "prefer_related_applications": false,
