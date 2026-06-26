@@ -255,12 +255,11 @@ class _DivineAppState extends ConsumerState<DivineApp> {
 
     final tokens = ref.watch(gp_theme.themeTokensProvider);
 
-    // Trigger remote theme fetch on boot and re-fetch whenever auth changes.
-    // Silently no-ops when unauthenticated (API returns 401, caught by repo).
-    final authState = ref.watch(authProvider);
-    if (authState.isAuthenticated) {
-      ref.watch(gp_theme.applyRemoteThemeProvider);
-    }
+    // Fetch the society's theme + splash on boot and whenever auth changes.
+    // Resolves the society id from storage (logged-in or last-selected), so it
+    // applies even before login. No-ops when no society is known yet.
+    ref.watch(authProvider);
+    ref.watch(gp_theme.applyRemoteThemeProvider);
 
     return MaterialApp.router(
       title: AppConstants.appName,

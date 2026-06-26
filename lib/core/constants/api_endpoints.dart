@@ -10,6 +10,9 @@ class ApiEndpoints {
   static const String appVersionCheck = '/public/app-version';
   /// Society theme colors (`GET`). Returns `{ themeColors: {...} | null }`.
   static const String societyTheme = '/public/society-theme';
+  /// Society appearance (theme + splash) by id, no auth (`GET`). Used pre-login.
+  static String societyAppearance(String societyId) =>
+      '/public/society-appearance/$societyId';
 
   // Authentication
   static const String login = '/auth/login';

@@ -177,7 +177,18 @@ final themeRepositoryProvider = Provider<ThemeRepository>((ref) {
 /// or a society switch).
 final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
   final repo = ref.watch(themeRepositoryProvider);
-  final theme = await repo.fetchSocietyTheme();
+  // Resolve the society id from storage — the logged-in society, else the last
+  // selected one — so theme + splash apply even before the user signs in.
+  final sid = (StorageService.getSocietyId() ??
+          StorageService.getPreferredLoginSocietyId() ??
+          '')
+      .trim();
+  if (sid.isEmpty) return; // no society known yet — keep current cache/defaults
+  var theme = await repo.fetchSocietyAppearanceById(sid);
+  if (theme.colors == null && theme.splashUrl == null) {
+    // by-id endpoint may not be deployed yet — fall back to the authed endpoint.
+    theme = await repo.fetchSocietyTheme();
+  }
   // Splash image is independent of the palette — cache it (or clear) for the
   // next launch's splash screen regardless of whether colors are customized.
   await StorageService.setString(
