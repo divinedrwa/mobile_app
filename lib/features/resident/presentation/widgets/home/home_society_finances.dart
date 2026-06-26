@@ -579,7 +579,7 @@ class _FooterSummary extends StatelessWidget {
                 label: 'If all dues are cleared',
                 value: projected,
                 valueColor: projColor,
-                footnote: 'Includes pending dues & advance credit',
+                footnote: 'Includes pending dues; excludes advance credit',
               ),
             ),
           ],
