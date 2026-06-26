@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/image_url.dart';
 import '../../../../core/utils/storage_service.dart';
 
 /// Splash screen — a brand-gradient backdrop (driven by the active society theme
@@ -128,8 +129,9 @@ class _BrandedSplashScreenState extends State<BrandedSplashScreen>
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: cachedSplash,
+              imageUrl: optimizedCloudinaryUrl(cachedSplash),
               fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 150),
               placeholder: (_, _) =>
                   DecoratedBox(decoration: BoxDecoration(gradient: brandGradient)),
               errorWidget: (_, _, _) =>
