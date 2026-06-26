@@ -355,7 +355,11 @@ class _ProfileHeroHeader extends StatelessWidget {
     final society = user?.societyName?.trim();
     final completion = _profileCompletion(user);
     final completionPct = (completion * 100).round();
-    final accent = kHomePurple;
+
+    // Frosted-glass tints for chips/cards sitting on the brand gradient.
+    final glassBg = Colors.white.withValues(alpha: 0.16);
+    final glassBorder = Colors.white.withValues(alpha: 0.28);
+    final whiteSoft = Colors.white.withValues(alpha: 0.78);
 
     return SliverToBoxAdapter(
       child: Container(
@@ -365,177 +369,211 @@ class _ProfileHeroHeader extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              context.surface.defaultSurface,
-              accent.withValues(alpha: 0.06),
-              const Color(0xFFEEF2FF),
+              DesignColors.primaryDark,
+              DesignColors.primary,
+              DesignColors.secondary,
             ],
           ),
-          border: Border(
-            bottom: BorderSide(color: context.surface.border),
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(28),
           ),
-          boxShadow: homeCardShadow(0.03),
+          boxShadow: [
+            BoxShadow(
+              color: DesignColors.primary.withValues(alpha: 0.30),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            kHomePadH,
-            topInset + 10,
-            kHomePadH,
-            DesignSpacing.lg,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Profile',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: context.text.primary,
-                            letterSpacing: -0.5,
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Account & preferences',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
-                            color: context.text.secondary,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _ProfileEditButton(
-                    onTap: () {
-                      Navigator.push<void>(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const EditProfileScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Soft decorative orbs for depth.
+            Positioned(
+              top: -36,
+              right: -28,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            Positioned(
+              top: 34,
+              right: 70,
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                kHomePadH,
+                topInset + 10,
+                kHomePadH,
+                DesignSpacing.lg,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _ProfileAvatar(
-                    avatarUrl: avatarUrl,
-                    initials: _initialsFromName(user?.name),
-                    completionFraction: completion,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Profile',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Account & preferences',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: whiteSoft,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _ProfileEditButton(
+                        onTap: () {
+                          Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const EditProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  const SizedBox(height: 18),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProfileAvatar(
+                        avatarUrl: avatarUrl,
+                        initials: _initialsFromName(user?.name),
+                        completionFraction: completion,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                user?.name ?? 'User',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: context.text.primary,
-                                  letterSpacing: -0.4,
-                                  height: 1.15,
-                                ),
-                              ),
-                            ),
-                            if (completionPct >= 100) ...[
-                              const SizedBox(width: 6),
-                              _ProfileActivePill(),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            _ProfileInfoChip(
-                              label: _roleChipLabel(),
-                              icon: Icons.person_outline_rounded,
-                              background: kHomePurpleLight,
-                              foreground: accent,
-                              border: accent.withValues(alpha: 0.15),
-                            ),
-                            if (unitChip != null)
-                              _ProfileInfoChip(
-                                label: unitChip,
-                                icon: Icons.apartment_rounded,
-                                background: const Color(0xFFECFDF5),
-                                foreground: const Color(0xFF15803D),
-                                border: const Color(0xFF86EFAC)
-                                    .withValues(alpha: 0.45),
-                              ),
-                            if (completionPct < 100)
-                              _ProfileInfoChip(
-                                label: '$completionPct% complete',
-                                icon: Icons.auto_awesome_rounded,
-                                background: const Color(0xFFFFF7ED),
-                                foreground: const Color(0xFFEA580C),
-                                border: const Color(0xFFFDBA74)
-                                    .withValues(alpha: 0.45),
-                              ),
-                          ],
-                        ),
-                        if (hasEmail) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 1),
-                                child: Icon(
-                                  Icons.alternate_email_rounded,
-                                  size: 14,
-                                  color: context.text.tertiary,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  email,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: context.text.secondary,
-                                    height: 1.35,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    user?.name ?? 'User',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.4,
+                                      height: 1.15,
+                                    ),
                                   ),
                                 ),
+                                if (completionPct >= 100) ...[
+                                  const SizedBox(width: 6),
+                                  _ProfileActivePill(),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _ProfileInfoChip(
+                                  label: _roleChipLabel(),
+                                  icon: Icons.person_outline_rounded,
+                                  background: glassBg,
+                                  foreground: Colors.white,
+                                  border: glassBorder,
+                                ),
+                                if (unitChip != null)
+                                  _ProfileInfoChip(
+                                    label: unitChip,
+                                    icon: Icons.apartment_rounded,
+                                    background: glassBg,
+                                    foreground: Colors.white,
+                                    border: glassBorder,
+                                  ),
+                                if (completionPct < 100)
+                                  _ProfileInfoChip(
+                                    label: '$completionPct% complete',
+                                    icon: Icons.auto_awesome_rounded,
+                                    background: glassBg,
+                                    foreground: Colors.white,
+                                    border: glassBorder,
+                                  ),
+                              ],
+                            ),
+                            if (hasEmail) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 1),
+                                    child: Icon(
+                                      Icons.alternate_email_rounded,
+                                      size: 14,
+                                      color: whiteSoft,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      email,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: whiteSoft,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                  if (society != null && society.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _ProfileSocietyCard(societyName: society),
+                  ],
                 ],
               ),
-              if (society != null && society.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _ProfileSocietyCard(societyName: society),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ).animate().fadeIn(duration: 380.ms).slideY(
             begin: -0.03,
@@ -552,10 +590,10 @@ class _ProfileActivePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5),
+        color: Colors.white.withValues(alpha: 0.20),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF86EFAC).withValues(alpha: 0.5),
+          color: Colors.white.withValues(alpha: 0.30),
         ),
       ),
       child: const Row(
@@ -568,7 +606,7 @@ class _ProfileActivePill extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF16A34A),
+              color: Colors.white,
               height: 1,
             ),
           ),
@@ -587,7 +625,7 @@ class _ProfileGreenDot extends StatelessWidget {
       width: 5,
       height: 5,
       decoration: const BoxDecoration(
-        color: Color(0xFF16A34A),
+        color: Color(0xFF4ADE80),
         shape: BoxShape.circle,
       ),
     );
@@ -603,19 +641,12 @@ class _ProfileSocietyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => context.push('/resident/overview'),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              kHomePurple.withValues(alpha: 0.08),
-              const Color(0xFFEEF2FF),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kHomePurple.withValues(alpha: 0.12)),
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -625,22 +656,10 @@ class _ProfileSocietyCard extends StatelessWidget {
               top: 8,
               bottom: 8,
               child: IgnorePointer(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Icon(
-                      Icons.park_rounded,
-                      size: 28,
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.35),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.apartment_rounded,
-                      size: 42,
-                      color: kHomePurple.withValues(alpha: 0.18),
-                    ),
-                  ],
+                child: Icon(
+                  Icons.apartment_rounded,
+                  size: 44,
+                  color: Colors.white.withValues(alpha: 0.16),
                 ),
               ),
             ),
@@ -649,16 +668,16 @@ class _ProfileSocietyCard extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: kHomePurple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(9),
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.domain_rounded,
-                      size: 16,
-                      color: kHomePurple,
+                      size: 17,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -671,7 +690,7 @@ class _ProfileSocietyCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: context.text.secondary,
+                            color: Colors.white.withValues(alpha: 0.75),
                             height: 1,
                           ),
                         ),
@@ -683,10 +702,10 @@ class _ProfileSocietyCard extends StatelessWidget {
                                 societyName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
-                                  color: context.text.primary,
+                                  color: Colors.white,
                                   letterSpacing: -0.2,
                                 ),
                               ),
@@ -694,7 +713,7 @@ class _ProfileSocietyCard extends StatelessWidget {
                             Icon(
                               Icons.chevron_right_rounded,
                               size: 18,
-                              color: context.text.tertiary,
+                              color: Colors.white.withValues(alpha: 0.8),
                             ),
                           ],
                         ),
@@ -727,22 +746,21 @@ class _ProfileEditButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: context.surface.defaultSurface,
+            color: Colors.white.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.surface.border),
-            boxShadow: homeCardShadow(0.04),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.edit_outlined, size: 16, color: context.text.primary),
-              const SizedBox(width: 6),
+              Icon(Icons.edit_outlined, size: 16, color: Colors.white),
+              SizedBox(width: 6),
               Text(
                 'Edit',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: context.text.primary,
+                  color: Colors.white,
                   height: 1,
                 ),
               ),
@@ -999,6 +1017,13 @@ class _ProfileAvatar extends StatelessWidget {
     const ringWidth = 3.0;
     const outerSize = (radius + ringWidth) * 2;
 
+    final initialsStyle = TextStyle(
+      fontSize: 22,
+      fontWeight: FontWeight.w800,
+      color: DesignColors.primary,
+      letterSpacing: -0.5,
+    );
+
     return SizedBox(
       width: outerSize,
       height: outerSize,
@@ -1017,8 +1042,8 @@ class _ProfileAvatar extends StatelessWidget {
                   painter: _RingPainter(
                     progress: value,
                     ringWidth: ringWidth,
-                    activeColor: kHomePurple,
-                    trackColor: kHomePurple.withValues(alpha: 0.12),
+                    activeColor: Colors.white,
+                    trackColor: Colors.white.withValues(alpha: 0.30),
                   ),
                 ),
               );
@@ -1029,25 +1054,22 @@ class _ProfileAvatar extends StatelessWidget {
             height: radius * 2,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: kHomePurpleLight,
+              color: Colors.white,
               border: Border.all(
-                color: kHomePurple.withValues(alpha: 0.16),
-                width: 1.5,
+                color: Colors.white,
+                width: 2,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             clipBehavior: Clip.antiAlias,
             child: avatarUrl == null
-                ? Center(
-                    child: Text(
-                      initials,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: kHomePurple,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  )
+                ? Center(child: Text(initials, style: initialsStyle))
                 : CachedNetworkImage(
                     key: ValueKey(avatarUrl),
                     imageUrl: avatarUrl!,
@@ -1056,28 +1078,10 @@ class _ProfileAvatar extends StatelessWidget {
                     width: radius * 2,
                     height: radius * 2,
                     fadeInDuration: const Duration(milliseconds: 180),
-                    placeholder: (_, _) => Center(
-                      child: Text(
-                        initials,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: kHomePurple,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, _, _) => Center(
-                      child: Text(
-                        initials,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: kHomePurple,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
+                    placeholder: (_, _) =>
+                        Center(child: Text(initials, style: initialsStyle)),
+                    errorWidget: (_, _, _) =>
+                        Center(child: Text(initials, style: initialsStyle)),
                   ),
           ),
         ],
