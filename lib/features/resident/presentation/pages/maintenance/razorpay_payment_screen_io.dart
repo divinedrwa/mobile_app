@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
@@ -161,6 +162,13 @@ class _RazorpayPaymentScreenState
           ? 'Society maintenance · All outstanding dues'
           : 'Society maintenance · ${_monthName(widget.month)} ${widget.year}';
 
+      // App logo for the checkout, served from the API origin (strip the /api
+      // suffix off the base URL). Falls back to Razorpay's initial badge if the
+      // image can't be fetched.
+      final apiOrigin =
+          AppConstants.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+      final checkoutLogo = '$apiOrigin/brand/app-logo.png';
+
       final options = {
         'key': key,
         'amount': amountPaise,
@@ -168,6 +176,7 @@ class _RazorpayPaymentScreenState
         'order_id': orderId,
         'name': checkoutTitle,
         'description': checkoutDescription,
+        'image': checkoutLogo,
         'timeout': 300, // 5 minutes
         'method': {
           'upi': true,
