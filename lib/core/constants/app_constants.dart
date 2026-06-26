@@ -200,6 +200,10 @@ class AppConstants {
   /// Falls back to `system` when missing or unrecognized.
   static const String keyThemeMode = 'pref_theme_mode';
 
+  /// Cached society theme colors (raw API JSON) — applied synchronously at
+  /// startup so returning users don't see the default→society palette flash.
+  static const String keyCachedSocietyTheme = 'cached_society_theme';
+
   /// In-app legal documents (Markdown bundled via `pubspec.yaml` → `assets/legal/`).
   /// Keep in sync with `docs/legal/` in the monorepo when you update policy text.
   static const String privacyPolicyAsset = 'assets/legal/privacy_policy.md';

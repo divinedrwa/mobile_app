@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -103,8 +106,33 @@ class ThemeTokens {
 }
 
 class ThemeTokensNotifier extends StateNotifier<ThemeTokens> {
-  ThemeTokensNotifier() : super(ThemeTokens.defaults) {
-    AppColorBridge.applyPalette(ThemeTokens.defaults.light);
+  ThemeTokensNotifier() : super(_readInitialTokens()) {
+    // Seed the static bridge with the (possibly cached) initial light palette
+    // so DesignColors/AppColors resolve correctly on the very first frame.
+    AppColorBridge.applyPalette(state.light);
+  }
+
+  /// Initial tokens: the last society palette cached from a prior session
+  /// (applied synchronously so there's no default→society flash on launch),
+  /// falling back to the compile-time defaults.
+  static ThemeTokens _readInitialTokens() {
+    final cached = _readCachedLightPalette();
+    if (cached == null) return ThemeTokens.defaults;
+    return ThemeTokens.defaults.copyWith(light: cached);
+  }
+
+  static AppColorPalette? _readCachedLightPalette() {
+    final raw = StorageService.getString(AppConstants.keyCachedSocietyTheme);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return AppColorPalette.fromApiJson(decoded, AppColorPalette.light);
+      }
+    } catch (_) {
+      // Corrupt cache — ignore and fall back to defaults.
+    }
+    return null;
   }
 
   void set({AppColorPalette? light, AppColorPalette? dark}) {
@@ -117,10 +145,11 @@ class ThemeTokensNotifier extends StateNotifier<ThemeTokens> {
     }
   }
 
-  /// Reset to the compile-time defaults.
+  /// Reset to the compile-time defaults and drop the cached society palette.
   void reset() {
     state = ThemeTokens.defaults;
     AppColorBridge.reset();
+    unawaited(StorageService.setString(AppConstants.keyCachedSocietyTheme, ''));
   }
 }
 
@@ -150,10 +179,17 @@ final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
   final repo = ref.watch(themeRepositoryProvider);
   final json = await repo.fetchThemeColors();
   if (json == null) {
+    // reset() also clears the cached society palette.
     AppColorBridge.reset();
     ref.read(themeTokensProvider.notifier).reset();
     return;
   }
+  // Cache the raw palette so the next launch paints it on the first frame
+  // (no default→society flash) before this network fetch completes.
+  await StorageService.setString(
+    AppConstants.keyCachedSocietyTheme,
+    jsonEncode(json),
+  );
   final newLight = AppColorPalette.fromApiJson(json, AppColorPalette.light);
   ref.read(themeTokensProvider.notifier).set(light: newLight);
 });
