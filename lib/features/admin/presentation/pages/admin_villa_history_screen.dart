@@ -10,6 +10,25 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
+double _readDouble(dynamic value, [double fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? fallback;
+}
+
+double? _readDoubleOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+int? _readIntOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
 /// Payment history for a single villa — admin view.
 class AdminVillaHistoryScreen extends ConsumerWidget {
   const AdminVillaHistoryScreen({super.key, required this.villaId});
@@ -79,10 +98,9 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
     final ownerName = villa['ownerName']?.toString() ??
         data['ownerName']?.toString() ??
         'Unknown';
-    final monthlyAmount =
-        (villa['monthlyMaintenance'] as num?)?.toDouble() ??
-            (villa['maintenanceAmount'] as num?)?.toDouble() ??
-            (data['maintenanceAmount'] as num?)?.toDouble();
+    final monthlyAmount = _readDoubleOrNull(villa['monthlyMaintenance']) ??
+        _readDoubleOrNull(villa['maintenanceAmount']) ??
+        _readDoubleOrNull(data['maintenanceAmount']);
 
     final stats = (data['statistics'] as Map?) ?? const {};
     final history = ((data['history'] as List?) ??
@@ -92,10 +110,10 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
 
-    final totalPaid = (stats['totalPaid'] as num?)?.toDouble() ??
+    final totalPaid = _readDoubleOrNull(stats['totalPaid']) ??
         history.fold<double>(
           0,
-          (sum, row) => sum + ((row['paidAmount'] as num?)?.toDouble() ?? 0),
+          (sum, row) => sum + _readDouble(row['paidAmount']),
         );
 
     return ListView(
@@ -258,9 +276,9 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
     DateFormat dateFmt, [
     int index = 0,
   ]) {
-    final expected = (row['amount'] as num?)?.toDouble() ?? 0;
-    final paid = (row['paidAmount'] as num?)?.toDouble() ?? 0;
-    final remaining = (row['remainingDue'] as num?)?.toDouble() ??
+    final expected = _readDouble(row['amount']);
+    final paid = _readDouble(row['paidAmount']);
+    final remaining = _readDoubleOrNull(row['remainingDue']) ??
         (expected - paid).clamp(0, double.infinity);
     final status = (row['status']?.toString() ?? '').toUpperCase();
     final mode = row['paymentMode']?.toString() ?? '';
@@ -269,9 +287,9 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
     );
     final receiptNumber = row['receiptNumber']?.toString();
     final periodMonth =
-        (row['month'] as num?)?.toInt() ?? (row['periodMonth'] as num?)?.toInt();
+        _readIntOrNull(row['month']) ?? _readIntOrNull(row['periodMonth']);
     final periodYear =
-        (row['year'] as num?)?.toInt() ?? (row['periodYear'] as num?)?.toInt();
+        _readIntOrNull(row['year']) ?? _readIntOrNull(row['periodYear']);
     final cycleTitle = row['cycleTitle']?.toString();
     final periodLabel = periodMonth != null && periodYear != null
         ? DateFormat('MMM y').format(DateTime(periodYear, periodMonth))
