@@ -133,7 +133,7 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: _sending ? null : () => context.pop(),
           ),
           title: Text('Emergency', style: GuardTokens.headingStyle(context)),

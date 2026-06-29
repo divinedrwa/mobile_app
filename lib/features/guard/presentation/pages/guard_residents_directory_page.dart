@@ -79,7 +79,7 @@ class _GuardResidentsDirectoryPageState
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
           title: Text('Residents', style: GuardTokens.headingStyle(context)),
@@ -109,7 +109,7 @@ class _GuardResidentsDirectoryPageState
                     controller: _query,
                     decoration: InputDecoration(
                       hintText: 'e.g. A-101, Rahul',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: Icon(Icons.search_rounded),
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(
@@ -245,7 +245,7 @@ class _ResidentCard extends StatelessWidget {
                 foregroundColor: GuardTokens.guardAccentDeep,
                 child: Text(
                   initials,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: GuardTokens.title,
                   ),
@@ -323,7 +323,7 @@ class _ResidentCard extends StatelessWidget {
                         GuardRoutes.visitorApprovalWithQuery('dir', q),
                       );
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.verified_user_outlined,
                       color: GuardTokens.guardAccentDeep,
                     ),
@@ -370,7 +370,7 @@ class _ResidentCard extends StatelessWidget {
                         );
                       }
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.phone_outlined,
                       color: GuardTokens.guardAccentDeep,
                     ),

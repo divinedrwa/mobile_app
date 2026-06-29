@@ -12,7 +12,9 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/widgets/polished_button.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/auth_brand_logo.dart';
 import '../providers/auth_provider.dart';
+import '../../../../theme/theme_controller.dart';
 
 /// Ultra-Professional Login Screen
 class LoginScreen extends ConsumerStatefulWidget {
@@ -44,12 +46,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  void _refreshSocietyThemeAfterMount() {
+    final sid = _selectedSocietyId.trim();
+    if (sid.isEmpty) return;
+    syncSocietyThemeScope(ref, societyId: sid);
+  }
+
   @override
   void initState() {
     super.initState();
     _syncSocietyFromStorage();
     _loadRememberMe();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshSocietyThemeAfterMount();
       _refreshBiometricLoginUi();
       if (!mounted) return;
       // Only redirect if we're still on /login (avoid fighting with the
@@ -157,6 +166,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(themeTokensProvider);
+
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
@@ -173,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     if (!keyboardVisible) ...[
                       _buildLogo(),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.xl),
                     ],
 
                     _buildWelcomeText(),
@@ -212,29 +223,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildLogo() {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/splash/gp_logo.png',
-          width: 80,
-          height: 80,
-          fit: BoxFit.contain,
-        )
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .scale(begin: const Offset(0.85, 0.85), curve: Curves.easeOutCubic),
-        const SizedBox(height: 10),
-        Text(
-          'GatePass+',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: DesignColors.textPrimary,
-            letterSpacing: -0.4,
-          ),
-        ).animate().fadeIn(delay: DesignAnimations.sectionStaggerFor(1), duration: 500.ms),
-      ],
-    );
+    return const AuthBrandLogo(markWidth: 112)
+        .animate()
+        .fadeIn(duration: 500.ms)
+        .scale(begin: const Offset(0.92, 0.92), curve: Curves.easeOutCubic);
   }
 
   Widget _buildWelcomeText() {
@@ -255,12 +247,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .fadeIn(delay: DesignAnimations.sectionStaggerFor(2), duration: 500.ms)
             .slideY(begin: DesignAnimations.slideNormal, end: 0),
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Reside. Approve. Manage.',
-          style: TextStyle(
-            fontSize: 15,
-            color: DesignColors.textSecondary,
-            height: 1.5,
+        Text.rich(
+          TextSpan(
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.45,
+              letterSpacing: 0.15,
+              color: DesignColors.textSecondary,
+            ),
+            children: [
+              TextSpan(
+                text: 'Reside. ',
+                style: TextStyle(color: DesignColors.primary),
+              ),
+              TextSpan(
+                text: 'Approve. ',
+                style: TextStyle(color: DesignColors.success),
+              ),
+              TextSpan(
+                text: 'Manage.',
+                style: TextStyle(color: DesignColors.primary),
+              ),
+            ],
           ),
           textAlign: TextAlign.center,
         )
@@ -670,7 +679,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (hadCredentials && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Biometric login is now active. Use fingerprint next time!'),
+                content: Text('Biometric login is now active. Use fingerprint next time!'),
                 backgroundColor: DesignColors.success,
                 duration: const Duration(seconds: 3),
               ),

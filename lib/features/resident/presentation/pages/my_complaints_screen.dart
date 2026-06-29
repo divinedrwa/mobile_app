@@ -47,7 +47,7 @@ class _MyComplaintsScreenState extends ConsumerState<MyComplaintsScreen> {
       case 'RESOLVED':
         return DesignColors.success;
       case 'IN_PROGRESS':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'OPEN':
       default:
         return DesignColors.primary;

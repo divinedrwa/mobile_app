@@ -78,7 +78,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
       case 'CHECKED_IN':
         return const Color(0xFF00B37E);
       case 'CHECKED_OUT':
-        return const Color(0xFF0EA5E9);
+        return DesignColors.info;
       default:
         return DesignColors.primary;
     }

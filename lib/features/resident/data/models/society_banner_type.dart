@@ -41,7 +41,7 @@ enum SocietyBannerType {
   community(
     displayLabel: 'Community Activity',
     icon: Icons.groups_2_outlined,
-    accentColor: Color(0xFF00897B),
+    accentColor: Color(0xFF0D1B3D),
     allowsRegistration: true,
   );
 

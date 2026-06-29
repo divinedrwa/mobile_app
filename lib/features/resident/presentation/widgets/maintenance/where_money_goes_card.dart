@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/theme/chart_palette.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
@@ -35,14 +36,7 @@ import '../../../data/providers/maintenance_provider.dart';
 class WhereMoneyGoesCard extends ConsumerWidget {
   const WhereMoneyGoesCard({super.key});
 
-  static const _palette = <Color>[
-    Color(0xFF22C55E),
-    Color(0xFF3B82F6),
-    Color(0xFFF59E0B),
-    Color(0xFF8B5CF6),
-    Color(0xFFEC4899),
-    Color(0xFF14B8A6),
-  ];
+  static List<Color> get _palette => ChartPalette.fallbackSeries;
   static const _savingsColor = Color(0xFF94A3B8);
   static final _inr =
       NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);

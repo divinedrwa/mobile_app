@@ -263,7 +263,7 @@ class ResidentOverviewScreen extends ConsumerWidget {
                   const SizedBox(height: 14),
                   _EnhancedMetricTile(
                     icon: Icons.event_available_rounded,
-                    color: const Color(0xFF00897B),
+                    color: DesignColors.primary,
                     title: 'Bookings',
                     value: s.upcomingBookings,
                     subtitle: 'Upcoming amenity reservations',
@@ -423,7 +423,7 @@ class _EnhancedHeroSummaryCard extends StatelessWidget {
                 colors: [
                   DesignColors.primary,
                   DesignColors.primary.withValues(alpha: 0.7),
-                  const Color(0xFF00897B),
+                  DesignColors.primary,
                 ],
               ),
             ),
@@ -545,7 +545,7 @@ class _EnhancedHeroSummaryCard extends StatelessWidget {
                       child: _StatPill(
                         label: 'Bookings',
                         value: stats.upcomingBookings,
-                        color: const Color(0xFF00897B),
+                        color: DesignColors.primary,
                         icon: Icons.event_available_rounded,
                       ),
                     ),

@@ -589,15 +589,15 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+        gradient: LinearGradient(
+          colors: [DesignColors.warning, DesignColors.warning],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(DesignRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+            color: DesignColors.warning.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -847,9 +847,9 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
           ),
         ),
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFFF59E0B),
+          backgroundColor: DesignColors.warning,
           disabledBackgroundColor:
-              const Color(0xFFF59E0B).withValues(alpha: 0.4),
+              DesignColors.warning.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignRadius.md),

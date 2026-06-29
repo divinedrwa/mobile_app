@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/models/guard_models.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_error_banner.dart';
@@ -177,7 +178,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
                     padding: const EdgeInsets.all(GuardTokens.g2),
                     child: Row(
                       children: [
-                        const Icon(Icons.sync_problem_rounded, color: GuardTokens.warning),
+                        Icon(Icons.sync_problem_rounded, color: GuardTokens.warning),
                         const SizedBox(width: GuardTokens.g2),
                         Expanded(
                           child: Text(
@@ -255,7 +256,7 @@ class GuardTodaySummaryPage extends ConsumerWidget {
                     padding: const EdgeInsets.all(GuardTokens.g3),
                     child: Row(
                       children: [
-                        const Icon(Icons.history_toggle_off_rounded, color: GuardTokens.warning),
+                        Icon(Icons.history_toggle_off_rounded, color: GuardTokens.warning),
                         const SizedBox(width: GuardTokens.g2),
                         Expanded(
                           child: Text(
@@ -367,7 +368,7 @@ class _SummaryGrid extends StatelessWidget {
           label: 'Patrols',
           value: stats.patrols,
           icon: Icons.directions_walk_rounded,
-          accent: const Color(0xFF6366F1),
+          accent: DesignColors.secondary,
           isDark: isDark,
         ),
         _MetricCard(
@@ -568,7 +569,7 @@ class _PendingBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.check_circle_outline_rounded,
+            Icon(Icons.check_circle_outline_rounded,
                 color: GuardTokens.success, size: 20),
             const SizedBox(width: 10),
             Expanded(
@@ -615,7 +616,7 @@ class _PendingBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: const Icon(
+            child: Icon(
               Icons.pending_actions_rounded,
               color: GuardTokens.warning,
               size: 20,

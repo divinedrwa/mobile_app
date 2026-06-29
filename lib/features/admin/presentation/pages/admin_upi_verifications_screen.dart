@@ -45,12 +45,12 @@ class _AdminUpiVerificationsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
-                  decoration: BoxDecoration(color: const Color(0xFF16A34A).withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.currency_rupee_rounded, color: Color(0xFF16A34A), size: 28)),
-              const SizedBox(height: 16),
+                  decoration: BoxDecoration(color: DesignColors.accent.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(Icons.currency_rupee_rounded, color: DesignColors.accent, size: 28)),
+              SizedBox(height: 16),
               Text('Verify Payment?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Approve \u20B9${s.amount.toStringAsFixed(0)} from ${s.userName ?? 'Resident'} (Villa ${s.villaNumber ?? ''}) for ${s.month}/${s.year}? This will record the payment in the ledger.',
@@ -65,7 +65,7 @@ class _AdminUpiVerificationsScreenState
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.accent, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
@@ -114,7 +114,7 @@ class _AdminUpiVerificationsScreenState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Center(child: Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)))),
               Text('Reject Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 4),
@@ -143,7 +143,7 @@ class _AdminUpiVerificationsScreenState
                     }
                     Navigator.pop(sheetCtx, text);
                   },
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
             ],
@@ -222,10 +222,10 @@ class _AdminUpiVerificationsScreenState
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   child: Row(
                     children: [
-                      _StatChip('Pending', pending, const Color(0xFFF59E0B)),
-                      const SizedBox(width: 8),
-                      _StatChip('Verified', verified, const Color(0xFF16A34A)),
-                      const SizedBox(width: 8),
+                      _StatChip('Pending', pending, DesignColors.warning),
+                      SizedBox(width: 8),
+                      _StatChip('Verified', verified, DesignColors.accent),
+                      SizedBox(width: 8),
                       _StatChip('Rejected', rejected, DesignColors.error),
                     ],
                   ),
@@ -471,7 +471,7 @@ class _SubmissionCard extends StatelessWidget {
                     icon: const Icon(Icons.check, size: 18),
                     label: const Text('Verify'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
+                      backgroundColor: DesignColors.accent,
                     ),
                   ),
                 ),

@@ -11,8 +11,8 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 
-const Color _kWaterBlue = Color(0xFF0EA5E9);
-const Color _kGarbageGreen = Color(0xFF10B981);
+Color get _kWaterBlue => DesignColors.info;
+Color get _kGarbageGreen => DesignColors.success;
 
 /// Admin screen for gate utilities: water supply toggle + garbage pickup.
 class AdminGateUtilitiesScreen extends ConsumerStatefulWidget {
@@ -50,7 +50,7 @@ class _AdminGateUtilitiesScreenState
       message:
           'This will send a notification to all residents in the society.',
       confirmLabel: turnOn ? 'Yes, turn ON' : 'Yes, turn OFF',
-      confirmColor: turnOn ? _kWaterBlue : const Color(0xFFEF4444),
+      confirmColor: turnOn ? _kWaterBlue : DesignColors.error,
     );
     if (!confirmed || !mounted) return;
 
@@ -105,7 +105,7 @@ class _AdminGateUtilitiesScreenState
       title: 'Log garbage collector departure?',
       message: 'This marks that the garbage collector has left the gate.',
       confirmLabel: 'Yes, log exit',
-      confirmColor: const Color(0xFFEF4444),
+      confirmColor: DesignColors.error,
     );
     if (!confirmed || !mounted) return;
 
@@ -154,7 +154,7 @@ class _AdminGateUtilitiesScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: confirmColor.withValues(alpha: 0.12), shape: BoxShape.circle),
@@ -200,7 +200,7 @@ class _AdminGateUtilitiesScreenState
           : 'The resident will be notified that their water request was declined.',
       confirmLabel: status == 'FULFILLED' ? 'Fulfill' : 'Reject',
       confirmColor:
-          status == 'FULFILLED' ? _kWaterBlue : const Color(0xFFEF4444),
+          status == 'FULFILLED' ? _kWaterBlue : DesignColors.error,
     );
     if (!confirmed || !mounted) return;
 
@@ -464,9 +464,9 @@ class _AdminGateUtilitiesScreenState
                                         status: 'REJECTED',
                                       ),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFFEF4444),
-                                side: const BorderSide(
-                                  color: Color(0xFFEF4444),
+                                foregroundColor: DesignColors.error,
+                                side: BorderSide(
+                                  color: DesignColors.error,
                                 ),
                               ),
                               child: isResolving
@@ -643,7 +643,7 @@ class _AdminGateUtilitiesScreenState
                   child: _toggleButton(
                     label: 'Turn OFF',
                     icon: Icons.power_off_rounded,
-                    color: const Color(0xFFEF4444),
+                    color: DesignColors.error,
                     isActive: !isOn,
                     isLoading: _togglingWater,
                     onTap: () => _toggleWater(false),
@@ -1085,7 +1085,7 @@ class _AdminGateUtilitiesScreenState
                   Expanded(
                     child: Container(
                       width: 1.5,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      margin: EdgeInsets.symmetric(vertical: 4),
                       color: DesignColors.borderLight,
                     ),
                   ),

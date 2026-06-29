@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+
+import '../../../../../core/branding/razorpay_checkout_logo.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../../core/constants/app_constants.dart';
@@ -162,12 +164,8 @@ class _RazorpayPaymentScreenState
           ? 'Society maintenance · All outstanding dues'
           : 'Society maintenance · ${_monthName(widget.month)} ${widget.year}';
 
-      // App logo for the checkout, served from the API origin (strip the /api
-      // suffix off the base URL). Falls back to Razorpay's initial badge if the
-      // image can't be fetched.
-      final apiOrigin =
-          AppConstants.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
-      final checkoutLogo = '$apiOrigin/brand/app-logo.png';
+      // Latest bundled app icon (base64) — Razorpay also accepts HTTPS from /brand/.
+      final checkoutLogo = await resolveRazorpayCheckoutLogo(AppConstants.baseUrl);
 
       final options = {
         'key': key,
@@ -574,6 +572,16 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              kRazorpayCheckoutLogoAsset,
+              width: 72,
+              height: 72,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 20),
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(

@@ -176,8 +176,8 @@ class StorageService {
   // Clear all data (logout). Preserves device-level settings (API base URL,
   // biometric/notification toggles) and the preferred login society so the
   // user lands on the login screen (not society-select) after logout or
-  // password change. The stale X-Society-Id concern is mitigated by
-  // DioClient.reset() which clears the interceptor cache during logout.
+  // password change. Society theme + splash cache are also preserved so the
+  // login screen keeps the admin palette instead of reverting to green.
   static Future<void> clearAll() async {
     final apiBase = prefs.getString(AppConstants.keyApiBaseUrl);
     final biometricPref = prefs.getBool(AppConstants.keyBiometricLoginEnabled);
@@ -186,6 +186,7 @@ class StorageService {
     final preferredSocietyId = prefs.getString(AppConstants.keyPreferredLoginSocietyId);
     final preferredSocietyName = prefs.getString(AppConstants.keyPreferredLoginSocietyName);
     final rememberMe = prefs.getBool(AppConstants.keyRememberMe);
+    final appearanceBackup = _backupSocietyAppearance(preferredSocietyId);
     await prefs.clear();
     // The JWT and refresh token live in secure storage; prefs.clear() doesn't reach them.
     await _secure.delete(key: AppConstants.keyToken);
@@ -211,6 +212,30 @@ class StorageService {
     if (rememberMe == true) {
       await prefs.setBool(AppConstants.keyRememberMe, true);
     }
+    for (final entry in appearanceBackup.entries) {
+      await prefs.setString(entry.key, entry.value);
+    }
+  }
+
+  /// Society theme JSON + splash URL/path — kept across logout.
+  static Map<String, String> _backupSocietyAppearance(String? societyId) {
+    final backup = <String, String>{};
+    void keep(String key) {
+      final value = prefs.getString(key);
+      if (value != null && value.isNotEmpty) {
+        backup[key] = value;
+      }
+    }
+
+    final sid = societyId?.trim();
+    if (sid != null && sid.isNotEmpty) {
+      keep(AppConstants.societyThemeCacheKey(sid));
+      keep(AppConstants.societySplashCacheKey(sid));
+      keep(AppConstants.societySplashFileCacheKey(sid));
+    }
+    keep(AppConstants.keyCachedSocietyTheme);
+    keep(AppConstants.keyCachedSplashUrl);
+    return backup;
   }
 
   // Generic methods

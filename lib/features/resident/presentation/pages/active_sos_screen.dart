@@ -110,7 +110,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
                     children: [
                       Container(
                         width: 40, height: 4,
-                        margin: const EdgeInsets.only(bottom: 20),
+                        margin: EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
                       ),
                       Container(
@@ -118,7 +118,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
                         decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                         child: Icon(Icons.cancel_outlined, color: DesignColors.error, size: 28),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text('Cancel SOS?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                       const SizedBox(height: 8),
                       Text(
@@ -146,7 +146,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
                           Expanded(
                             child: FilledButton(
                               onPressed: () => Navigator.pop(sheetCtx, true),
-                              style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                              style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                               child: const Text('Cancel SOS', style: TextStyle(fontWeight: FontWeight.w600)),
                             ),
                           ),
@@ -203,7 +203,7 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFFFF5F5),
       appBar: AppBar(
-        title: const Text('Active SOS'),
+        title: Text('Active SOS'),
         backgroundColor: DesignColors.error,
         foregroundColor: Colors.white,
       ),

@@ -140,13 +140,14 @@ class DivineApp extends ConsumerStatefulWidget {
   ConsumerState<DivineApp> createState() => _DivineAppState();
 }
 
-class _DivineAppState extends ConsumerState<DivineApp> {
+class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserver {
   final _routerRefresh = RouterRefreshNotifier();
   GoRouter? _router;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().flushPendingNavigation();
       AccountDeactivatedHandler.register(() async {
@@ -228,7 +229,15 @@ class _DivineAppState extends ConsumerState<DivineApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      gp_theme.refreshSocietyThemeFromServer(ref);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _router?.dispose();
     _routerRefresh.dispose();
     super.dispose();
@@ -246,10 +255,9 @@ class _DivineAppState extends ConsumerState<DivineApp> {
         _routerRefresh.notify();
       }
       if (wasAuth && !nowAuth) {
-        ref.read(gp_theme.themeTokensProvider.notifier).reset();
-        ref.invalidate(gp_theme.applyRemoteThemeProvider);
+        gp_theme.handleAuthLogoutTheme(ref);
       } else if (!wasAuth && nowAuth) {
-        ref.invalidate(gp_theme.applyRemoteThemeProvider);
+        gp_theme.refreshSocietyThemeFromServer(ref);
       }
     });
 

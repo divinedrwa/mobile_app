@@ -26,7 +26,8 @@ class HomeBillingStripe extends StatelessWidget {
     final total = cycle.totalDue ?? cycle.amount ?? 0;
     final availableCredit = cycle.availableCredit ?? 0;
     final remainingDue = cycle.remainingDue ?? total;
-    final isPayableNow = cycle.status?.isOpen == true;
+    final canPay = remainingDue > 0.005;
+    final isOpenWindow = cycle.status?.isOpen == true;
     final isClosed = cycle.status?.isClosed == true;
     final statusLabel = cycle.status?.isOpen == true
         ? 'OPEN'
@@ -36,7 +37,8 @@ class HomeBillingStripe extends StatelessWidget {
                 ? 'CLOSED'
                 : 'BILLING';
 
-    if (!isPayableNow &&
+    if (!canPay &&
+        !isOpenWindow &&
         cycle.status?.isUpcoming != true &&
         !isClosed) {
       return const SizedBox.shrink();
@@ -46,7 +48,7 @@ class HomeBillingStripe extends StatelessWidget {
     final IconData accentIcon;
     final String amountLine;
 
-    if (isPayableNow) {
+    if (isOpenWindow) {
       accentColor = kHomeOrange;
       accentIcon = Icons.event_available_rounded;
       final windowEnd = cycle.dueDateUtc ?? cycle.paymentEndUtc;
@@ -174,7 +176,7 @@ class HomeBillingStripe extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (isPayableNow)
+              if (canPay)
                 FilledButton(
                   onPressed: () =>
                       context.push('/resident/maintenance'),

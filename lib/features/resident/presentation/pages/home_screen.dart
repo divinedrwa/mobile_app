@@ -19,7 +19,7 @@ import '../providers/visitor_provider.dart';
 import '../widgets/home/home_banner_carousel.dart';
 import '../widgets/home/home_gate_visitor_requests.dart';
 import '../widgets/home/home_header.dart';
-import '../widgets/home/home_hero_quick_actions.dart';
+import '../widgets/home/home_quick_actions.dart';
 import '../widgets/home/home_important_notices.dart';
 import '../widgets/home/home_maintenance_card.dart';
 import '../widgets/home/home_recent_activity.dart';
@@ -136,8 +136,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const HomeUtilityStatusStrip().animateSection(0),
                     // Urgent gate approvals (hidden when no pending)
                     const HomeGateVisitorRequests().animateSection(1),
-                    // Mock: Quick Actions hero + icon grid
-                    const HomeHeroQuickActions().animateSection(2),
+                    // Quick Actions — GatePass+ hero + 5-slot icon rows
+                    const HomeQuickActions().animateSection(2),
                     const SizedBox(height: kHomeSectionGap),
                     // Society banners (hidden when empty)
                     const HomeBannerCarousel().animateSection(3),

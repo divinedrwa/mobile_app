@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/chart_palette.dart';
+import '../../../../core/theme/semantic_colors.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -1185,11 +1187,8 @@ class _MaintenancePaymentScreenState
             (totalExpected - totalCollected).clamp(0.0, double.infinity);
         final collectionRate =
             totalExpected > 0 ? (totalCollected / totalExpected * 100) : 0.0;
-        final rateColor = collectionRate >= 80
-            ? DesignColors.success
-            : collectionRate >= 50
-                ? DesignColors.warning
-                : DesignColors.error;
+        final rateColor =
+            PaymentStatusColors.forCollectionRate(collectionRate);
 
         return _wrapTabWithRefresh(
           ListView(
@@ -1304,7 +1303,7 @@ class _MaintenancePaymentScreenState
                                     ),
                                     _collectionStatRow(
                                       icon: Icons.south_rounded,
-                                      color: const Color(0xFF3B82F6),
+                                      color: DesignColors.info,
                                       label: 'Expenses',
                                       value: inr.format(totalExpense),
                                       valueColor: context.text.primary,
@@ -1373,7 +1372,7 @@ class _MaintenancePaymentScreenState
                   final mExpense = (row['totalExpense'] as num?)?.toDouble() ?? 0;
                   final mNet = mColl - mExpense;
                   final mNetColor =
-                      mNet >= 0 ? DesignColors.success : DesignColors.error;
+                      mNet >= 0 ? PaymentStatusColors.forNetBalance(mNet) : DesignColors.error;
                   final paidC = (row['paidCount'] as num?)?.toInt() ?? 0;
                   final unpaidC = (row['unpaidCount'] as num?)?.toInt() ?? 0;
                   final mRate = mExp > 0 ? (mColl / mExp * 100) : 0.0;
@@ -1470,7 +1469,7 @@ class _MaintenancePaymentScreenState
                                   _cycleReviewStat(
                                       'Pending', inr.format(mPending), DesignColors.error),
                                   _cycleReviewStat(
-                                      'Expenses', inr.format(mExpense), const Color(0xFF546E7A)),
+                                      'Expenses', inr.format(mExpense), SemanticColors.metaLabel),
                                 ],
                               ),
                               const SizedBox(height: 10),
@@ -1606,43 +1605,12 @@ class _MaintenancePaymentScreenState
     'Software Subscription': Icons.computer_rounded,
   };
 
-  static const _categoryColors = <String, Color>{
-    'Electricity': Color(0xFFF59E0B),
-    'Water': Color(0xFF3B82F6),
-    'Garbage Collection': Color(0xFF10B981),
-    'Security Salary': Color(0xFF8B5CF6),
-    'Housekeeping Salary': Color(0xFFEC4899),
-    'Maintenance Staff': Color(0xFF6366F1),
-    'Gardening': Color(0xFF22C55E),
-    'Pest Control': Color(0xFFEF4444),
-    'Lift Maintenance': Color(0xFF14B8A6),
-    'Generator Maintenance': Color(0xFFF97316),
-    'Pump Maintenance': Color(0xFF06B6D4),
-    'Common Area Repair': Color(0xFF78716C),
-    'Legal Fees': Color(0xFF64748B),
-    'Insurance': Color(0xFF0EA5E9),
-    'Taxes': Color(0xFFA855F7),
-    'Bank Charges': Color(0xFF84CC16),
-    'Software Subscription': Color(0xFF2563EB),
-  };
-
-  static const _fallbackColors = [
-    Color(0xFF6366F1),
-    Color(0xFFF59E0B),
-    Color(0xFF10B981),
-    Color(0xFFEF4444),
-    Color(0xFF8B5CF6),
-    Color(0xFF06B6D4),
-    Color(0xFFF97316),
-    Color(0xFFEC4899),
-  ];
-
-  /// Palette color for an expense category (stable per name, falls back to the
-  /// rotating palette; the synthetic "Other" bucket is neutral grey).
   Color _expenseColor(String category, int index) {
-    if (category == 'Other') return context.text.tertiary;
-    return _categoryColors[category] ??
-        _fallbackColors[index % _fallbackColors.length];
+    return ChartPalette.expense(
+      category,
+      index,
+      neutral: context.text.tertiary,
+    );
   }
 
   /// Donut of the expense breakdown ("where your money goes") with the period
@@ -1737,12 +1705,12 @@ class _MaintenancePaymentScreenState
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF546E7A).withValues(alpha: 0.1),
+                      color: SemanticColors.metaLabelBg(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.receipt_long_rounded,
-                      color: Color(0xFF546E7A),
+                      color: SemanticColors.metaLabel,
                       size: 20,
                     ),
                   ),
@@ -1770,14 +1738,14 @@ class _MaintenancePaymentScreenState
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF546E7A).withValues(alpha: 0.08),
+                      color: SemanticColors.metaLabelBg(0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       inr.format(totalExpense),
                       style: DesignTypography.bodySmall.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF546E7A),
+                        color: SemanticColors.metaLabel,
                       ),
                     ),
                   ),
@@ -1818,8 +1786,7 @@ class _MaintenancePaymentScreenState
                       totalExpense > 0 ? (amount / totalExpense * 100) : 0.0;
                   final icon = _categoryIcons[cat] ??
                       Icons.category_rounded;
-                  final color = _categoryColors[cat] ??
-                      _fallbackColors[idx % _fallbackColors.length];
+                  final color = _expenseColor(cat, idx);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -2174,7 +2141,7 @@ class _MaintenancePaymentScreenState
                             padding:
                                 const EdgeInsets.fromLTRB(18, 14, 18, 12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB)
+                              color: DesignColors.info
                                   .withValues(alpha: 0.06),
                               borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(18)),
@@ -2184,13 +2151,13 @@ class _MaintenancePaymentScreenState
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2563EB)
+                                    color: DesignColors.info
                                         .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.trending_up_rounded,
-                                    color: Color(0xFF2563EB),
+                                    color: DesignColors.info,
                                     size: 18,
                                   ),
                                 ),
@@ -2214,7 +2181,7 @@ class _MaintenancePaymentScreenState
                                         style: DesignTypography.headingM
                                             .copyWith(
                                           fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF2563EB),
+                                          color: DesignColors.info,
                                           letterSpacing: -0.3,
                                         ),
                                       ),
@@ -2225,7 +2192,7 @@ class _MaintenancePaymentScreenState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2563EB)
+                                    color: DesignColors.info
                                         .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
@@ -2233,7 +2200,7 @@ class _MaintenancePaymentScreenState
                                     '${advanceResidents.length}',
                                     style: DesignTypography.labelSmall
                                         .copyWith(
-                                      color: const Color(0xFF2563EB),
+                                      color: DesignColors.info,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -2272,7 +2239,7 @@ class _MaintenancePaymentScreenState
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2563EB)
+                                      color: DesignColors.info
                                           .withValues(alpha: 0.08),
                                       borderRadius:
                                           BorderRadius.circular(10),
@@ -2283,7 +2250,7 @@ class _MaintenancePaymentScreenState
                                       style: DesignTypography.labelSmall
                                           .copyWith(
                                         fontWeight: FontWeight.w800,
-                                        color: const Color(0xFF2563EB),
+                                        color: DesignColors.info,
                                         fontSize: 10,
                                       ),
                                       textAlign: TextAlign.center,
@@ -2796,7 +2763,7 @@ class _MaintenancePaymentScreenState
                                   ),
                                   _collectionStatRow(
                                     icon: Icons.south_rounded,
-                                    color: const Color(0xFF3B82F6),
+                                    color: DesignColors.info,
                                     label: 'Expenses',
                                     value: inr.format(totalExpense),
                                     valueColor: context.text.primary,
@@ -2939,7 +2906,7 @@ class _MaintenancePaymentScreenState
   /// Contextual footer banner — celebrates a surplus or flags a shortfall.
   Widget _collectionsBanner(double net, NumberFormat inr) {
     final ahead = net >= -0.005;
-    final color = ahead ? DesignColors.success : DesignColors.warning;
+    final color = PaymentStatusColors.forAdvanceBalance(ahead: ahead);
     return Container(
       width: double.infinity,
       color: color.withValues(alpha: 0.10),
@@ -3715,7 +3682,7 @@ class _MaintenancePaymentScreenState
     final remainingDue = (cycle['remainingDue'] as num?)?.toDouble() ?? 0;
     final isOverdue = cycle['isOverdue'] == true;
     final status = cycle['status']?.toString() ?? '';
-    final accent = isOverdue ? DesignColors.error : DesignColors.warning;
+    final accent = PaymentStatusColors.forOverdueAccent(isOverdue: isOverdue);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -3998,7 +3965,7 @@ class _MaintenancePaymentScreenState
     required NumberFormat inr,
   }) {
     final hasDeficit = deficitCount > 0;
-    final heroColor = hasDeficit ? DesignColors.warning : DesignColors.success;
+    final heroColor = PaymentStatusColors.forDeficitHero(hasDeficit: hasDeficit);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Container(
@@ -4098,7 +4065,7 @@ class _MaintenancePaymentScreenState
               ),
               _collectionStatRow(
                 icon: Icons.south_rounded,
-                color: const Color(0xFF3B82F6),
+                color: DesignColors.info,
                 label: 'Expenses',
                 value: inr.format(totalExpense),
                 valueColor: context.text.primary,
@@ -4172,13 +4139,13 @@ class _MaintenancePaymentScreenState
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEA580C).withValues(alpha: 0.1),
+                            color: SemanticColors.warningSurface(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '−${inr.format(shortfall)}',
                             style: DesignTypography.bodySmall.copyWith(
-                              color: const Color(0xFFDC2626), fontWeight: FontWeight.w800, fontSize: 13,
+                              color: DesignColors.error, fontWeight: FontWeight.w800, fontSize: 13,
                             ),
                           ),
                         ),
@@ -4232,17 +4199,17 @@ class _MaintenancePaymentScreenState
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+                        color: SemanticColors.warningSurface(0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Shortfall (admin paid)', style: DesignTypography.bodySmall.copyWith(
-                            color: const Color(0xFF9A3412), fontWeight: FontWeight.w700,
+                            color: DesignColors.warning, fontWeight: FontWeight.w700,
                           )),
                           Text(inr.format(shortfall), style: DesignTypography.bodySmall.copyWith(
-                            color: const Color(0xFF9A3412), fontWeight: FontWeight.w800,
+                            color: DesignColors.warning, fontWeight: FontWeight.w800,
                           )),
                         ],
                       ),

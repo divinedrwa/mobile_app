@@ -190,12 +190,12 @@ class _IncidentCard extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.check_circle_outline_rounded, color: DesignColors.primary, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Mark as resolved?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('This incident will be marked resolved for your records.',
@@ -210,7 +210,7 @@ class _IncidentCard extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Resolve', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
@@ -257,13 +257,13 @@ class _IncidentCard extends ConsumerWidget {
     final IconData sevIcon;
     switch (severity) {
       case 'CRITICAL':
-        sevColor = const Color(0xFFDC2626);
+        sevColor = DesignColors.error;
         sevIcon = Icons.error_rounded;
       case 'HIGH':
         sevColor = const Color(0xFFEA580C);
         sevIcon = Icons.warning_rounded;
       case 'LOW':
-        sevColor = const Color(0xFF16A34A);
+        sevColor = DesignColors.accent;
         sevIcon = Icons.info_rounded;
       default:
         sevColor = const Color(0xFFCA8A04);
@@ -387,10 +387,10 @@ class _IncidentCard extends ConsumerWidget {
                     ),
                     if (resolved) ...[
                       const SizedBox(width: 6),
-                      const Icon(
+                      Icon(
                         Icons.check_circle_outline,
                         size: 16,
-                        color: Color(0xFF16A34A),
+                        color: DesignColors.accent,
                       ),
                     ] else ...[
                       const SizedBox(width: 6),

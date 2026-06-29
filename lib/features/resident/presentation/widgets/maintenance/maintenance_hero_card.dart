@@ -377,8 +377,8 @@ _HeroPalette _palette(MaintenanceHeroKind kind) {
         icon: Icons.warning_amber_rounded,
       );
     case MaintenanceHeroKind.upcoming:
-      return const _HeroPalette(
-        gradient: [Color(0xFF64748B), Color(0xFF475569)],
+      return _HeroPalette(
+        gradient: [DesignColors.textTertiary, DesignColors.textSecondary],
         icon: Icons.event_available_outlined,
       );
     case MaintenanceHeroKind.excluded:

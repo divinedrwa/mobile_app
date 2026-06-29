@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/theme/semantic_colors.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/maintenance_due_model.dart';
@@ -12,53 +13,45 @@ import '../../../data/providers/maintenance_provider.dart';
 import 'home_shared.dart';
 import 'home_skeletons.dart';
 
-const Color _kMintTop = Color(0xFFDDF3E7);
-const Color _kMintBottom = Color(0xFFF0FAF5);
-const Color _kGreenDark = Color(0xFF166534);
-const Color _kGreenMid = Color(0xFF15803D);
-const Color _kGreenIconBg = Color(0xFFCDEFD9);
-const Color _kNavIconGreen = Color(0xFF22A55B);
-const Color _kAlertPeach = Color(0xFFFFF1F0);
-const Color _kAlertOrange = Color(0xFFB45309);
-const Color _kInnerBorder = Color(0xFFE4EBF0);
-
-/// Inset around the nested white panel (matches mock card-within-card spacing).
 const EdgeInsets _kInnerPanelMargin = EdgeInsets.fromLTRB(14, 12, 14, 14);
 const double _kInnerPanelRadius = 14;
 
 enum _MaintenanceDueState { caughtUp, dueSoon, overdue }
 
+DueVisualState _toVisualState(_MaintenanceDueState state) {
+  switch (state) {
+    case _MaintenanceDueState.overdue:
+      return DueVisualState.overdue;
+    case _MaintenanceDueState.dueSoon:
+      return DueVisualState.dueSoon;
+    case _MaintenanceDueState.caughtUp:
+      return DueVisualState.caughtUp;
+  }
+}
+
 class _MaintenanceShellStyle {
   const _MaintenanceShellStyle({
     required this.dueState,
-    required this.shellGradientTop,
-    required this.shellBorder,
+    required this.palette,
   });
 
   final _MaintenanceDueState dueState;
-
-  /// The saturated gradient colour at the very top of the outer card shell.
-  /// It fades to white by mid-card, giving the header colour a "glow" effect
-  /// that surrounds the inner panel — exactly like the mock.
-  final Color shellGradientTop;
-  final Color shellBorder;
+  final DueStatePalette palette;
 }
 
 _MaintenanceShellStyle _resolveShellStyle(List<MaintenanceDueModel>? pending) {
   if (pending == null || pending.isEmpty) {
-    return const _MaintenanceShellStyle(
+    return _MaintenanceShellStyle(
       dueState: _MaintenanceDueState.caughtUp,
-      shellGradientTop: Color(0xFFDDF3E7), // mint green
-      shellBorder: Color(0xFFCFE8D9),
+      palette: DueStatePalette.of(DueVisualState.caughtUp),
     );
   }
 
   final totalDue = pending.fold<double>(0, (sum, m) => sum + m.remainingDue);
   if (totalDue <= 0) {
-    return const _MaintenanceShellStyle(
+    return _MaintenanceShellStyle(
       dueState: _MaintenanceDueState.caughtUp,
-      shellGradientTop: Color(0xFFDDF3E7),
-      shellBorder: Color(0xFFCFE8D9),
+      palette: DueStatePalette.of(DueVisualState.caughtUp),
     );
   }
 
@@ -70,17 +63,15 @@ _MaintenanceShellStyle _resolveShellStyle(List<MaintenanceDueModel>? pending) {
   }
 
   if (earliestDue != null && earliestDue.isBefore(DateTime.now())) {
-    return const _MaintenanceShellStyle(
+    return _MaintenanceShellStyle(
       dueState: _MaintenanceDueState.overdue,
-      shellGradientTop: Color(0xFFFEE2E2), // soft red
-      shellBorder: Color(0xFFFECACA),
+      palette: DueStatePalette.of(DueVisualState.overdue),
     );
   }
 
-  return const _MaintenanceShellStyle(
+  return _MaintenanceShellStyle(
     dueState: _MaintenanceDueState.dueSoon,
-    shellGradientTop: Color(0xFFFFEDD5), // soft orange
-    shellBorder: Color(0xFFFED7AA),
+    palette: DueStatePalette.of(DueVisualState.dueSoon),
   );
 }
 
@@ -100,21 +91,17 @@ class HomeMaintenanceCard extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        // Shell gradient: header colour at top → pure white at bottom.
-        // This gives the "colour bleeds softly behind the inner card" look.
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            shell.shellGradientTop,
+            shell.palette.shellTop,
             Colors.white,
           ],
-          // Colour fades to white roughly 55 % of the way down so the inner
-          // panel always sits on a clean white background.
           stops: const [0.0, 0.55],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: shell.shellBorder.withValues(alpha: 0.8)),
+        border: Border.all(color: shell.palette.shellBorder.withValues(alpha: 0.8)),
         boxShadow: homeCardShadow(0.045),
       ),
       clipBehavior: Clip.antiAlias,
@@ -125,10 +112,9 @@ class HomeMaintenanceCard extends ConsumerWidget {
             pendingAsync: pendingAsync,
             dueState: shell.dueState,
           ),
-          // Transparent so the outer shell gradient shows through the gap
-          // between header and inner panel — intentional for the mock look.
           _MaintenanceInnerPanel(
             outstandingAsync: outstandingAsync,
+            navIconColor: shell.palette.navIcon,
           ),
         ],
       ),
@@ -136,11 +122,14 @@ class HomeMaintenanceCard extends ConsumerWidget {
   }
 }
 
-/// Nested white container for dues navigation + society outstanding summary.
 class _MaintenanceInnerPanel extends StatelessWidget {
-  const _MaintenanceInnerPanel({required this.outstandingAsync});
+  const _MaintenanceInnerPanel({
+    required this.outstandingAsync,
+    required this.navIconColor,
+  });
 
   final AsyncValue<Map<String, dynamic>> outstandingAsync;
+  final Color navIconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +140,7 @@ class _MaintenanceInnerPanel extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(_kInnerPanelRadius),
           border: Border.all(
-            color: _kInnerBorder.withValues(alpha: 0.95),
+            color: DesignColors.border.withValues(alpha: 0.95),
           ),
           boxShadow: [
             BoxShadow(
@@ -171,6 +160,7 @@ class _MaintenanceInnerPanel extends StatelessWidget {
                 icon: Icons.account_balance_wallet_outlined,
                 title: 'Dues & history',
                 subtitle: 'Bills, payments and credit balance',
+                iconColor: navIconColor,
                 onTap: () => context.push('/resident/maintenance'),
               ),
               const _MaintenanceNavDivider(),
@@ -178,6 +168,7 @@ class _MaintenanceInnerPanel extends StatelessWidget {
                 icon: Icons.show_chart_rounded,
                 title: 'Trends & expenses',
                 subtitle: 'Month-wise breakdowns & society spend',
+                iconColor: navIconColor,
                 onTap: () => context.push('/resident/maintenance-payment'),
               ),
               _MaintenanceOutstandingFooter(outstandingAsync: outstandingAsync),
@@ -210,12 +201,14 @@ class _MaintenanceNavRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.iconColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Color iconColor;
   final VoidCallback onTap;
 
   @override
@@ -236,10 +229,10 @@ class _MaintenanceNavRow extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _kNavIconGreen.withValues(alpha: 0.12),
+                  color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: _kNavIconGreen, size: 21),
+                child: Icon(icon, color: iconColor, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -292,10 +285,12 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final warn = DueStatePalette.of(DueVisualState.dueSoon);
+
     return outstandingAsync.when(
-      loading: () => const ColoredBox(
-        color: _kAlertPeach,
-        child: Padding(
+      loading: () => ColoredBox(
+        color: warn.alertSurface,
+        child: const Padding(
           padding: EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: ShimmerWrap(
             child: ShimmerBox(height: 16, borderRadius: DesignRadius.md),
@@ -332,7 +327,7 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
               ),
             ),
             Material(
-              color: _kAlertPeach,
+              color: warn.alertSurface,
               child: InkWell(
                 onTap: () {
                   DesignHaptics.selection();
@@ -346,7 +341,7 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
                       Icon(
                         Icons.groups_2_outlined,
                         size: 18,
-                        color: _kAlertOrange.withValues(alpha: 0.9),
+                        color: warn.accent.withValues(alpha: 0.9),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -362,21 +357,21 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
                                     '$villasCount villa${villasCount != 1 ? 's' : ''} ',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  color: _kAlertOrange.withValues(alpha: 0.95),
+                                  color: warn.accent.withValues(alpha: 0.95),
                                 ),
                               ),
                               TextSpan(
                                 text: 'with outstanding dues \u2022 ',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: _kAlertOrange.withValues(alpha: 0.78),
+                                  color: warn.accent.withValues(alpha: 0.78),
                                 ),
                               ),
                               TextSpan(
                                 text: inr.format(totalOutstanding),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  color: _kAlertOrange.withValues(alpha: 0.95),
+                                  color: warn.accent.withValues(alpha: 0.95),
                                 ),
                               ),
                             ],
@@ -388,7 +383,7 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 20,
-                        color: _kAlertOrange.withValues(alpha: 0.55),
+                        color: warn.accent.withValues(alpha: 0.55),
                       ),
                     ],
                   ),
@@ -435,14 +430,16 @@ class _CaughtUpHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DueStatePalette.of(DueVisualState.caughtUp);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 16, 10, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [_kMintTop, _kMintBottom],
+          colors: [palette.gradientTop, palette.gradientBottom],
         ),
       ),
       child: Row(
@@ -452,15 +449,15 @@ class _CaughtUpHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: _kGreenIconBg,
+              color: palette.iconBg,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.shield_rounded,
-                  color: _kGreenMid,
+                  color: palette.accent,
                   size: 26,
                 ),
                 Positioned(
@@ -473,10 +470,10 @@ class _CaughtUpHeader extends StatelessWidget {
                       color: Colors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_rounded,
                       size: 10,
-                      color: _kGreenMid,
+                      color: palette.accent,
                     ),
                   ),
                 ),
@@ -488,12 +485,12 @@ class _CaughtUpHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'You\u2019re all caught up!',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: _kGreenDark,
+                    color: palette.accent,
                     letterSpacing: -0.35,
                     height: 1.1,
                   ),
@@ -504,7 +501,7 @@ class _CaughtUpHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
-                    color: _kGreenDark.withValues(alpha: 0.58),
+                    color: palette.accent.withValues(alpha: 0.58),
                     height: 1.3,
                   ),
                 ),
@@ -515,7 +512,7 @@ class _CaughtUpHeader extends StatelessWidget {
           Icon(
             Icons.assignment_turned_in_rounded,
             size: 48,
-            color: _kGreenMid.withValues(alpha: 0.2),
+            color: palette.accent.withValues(alpha: 0.2),
           ),
         ],
       ),
@@ -551,35 +548,12 @@ class _DueHeader extends StatelessWidget {
     final now = DateTime.now();
     final count = pending.length;
 
-    late final String statusLabel;
-    late final Color accent;
-    late final Color gradientTop;
-    late final Color gradientBottom;
-    late final Color iconBg;
-
-    switch (dueState) {
-      case _MaintenanceDueState.overdue:
-        statusLabel = 'Overdue';
-        accent = const Color(0xFFB91C1C);
-        gradientTop = const Color(0xFFFEE2E2);
-        gradientBottom = const Color(0xFFFFF1F2);
-        iconBg = const Color(0xFFFECACA);
-        break;
-      case _MaintenanceDueState.dueSoon:
-        statusLabel = 'Due soon';
-        accent = const Color(0xFFC2410C);
-        gradientTop = const Color(0xFFFFEDD5);
-        gradientBottom = const Color(0xFFFFF7ED);
-        iconBg = const Color(0xFFFED7AA);
-        break;
-      case _MaintenanceDueState.caughtUp:
-        statusLabel = 'Due';
-        accent = _kGreenMid;
-        gradientTop = _kMintTop;
-        gradientBottom = _kMintBottom;
-        iconBg = _kGreenIconBg;
-        break;
-    }
+    final palette = DueStatePalette.of(_toVisualState(dueState));
+    final statusLabel = switch (dueState) {
+      _MaintenanceDueState.overdue => 'Overdue',
+      _MaintenanceDueState.dueSoon => 'Due soon',
+      _MaintenanceDueState.caughtUp => 'Due',
+    };
 
     final String scheduleLine;
     if (earliestDue == null) {
@@ -608,7 +582,7 @@ class _DueHeader extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [gradientTop, gradientBottom],
+              colors: [palette.gradientTop, palette.gradientBottom],
             ),
           ),
           child: Row(
@@ -618,14 +592,14 @@ class _DueHeader extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: iconBg,
+                  color: palette.iconBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   dueState == _MaintenanceDueState.overdue
                       ? Icons.warning_amber_rounded
                       : Icons.account_balance_wallet_outlined,
-                  color: accent,
+                  color: palette.accent,
                   size: 23,
                 ),
               ),
@@ -644,7 +618,7 @@ class _DueHeader extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: accent,
+                              color: palette.accent,
                               letterSpacing: -0.45,
                               height: 1.05,
                             ),
@@ -665,7 +639,7 @@ class _DueHeader extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
-                              color: accent,
+                              color: palette.accent,
                               height: 1,
                             ),
                           ),
@@ -690,7 +664,7 @@ class _DueHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Material(
-                color: accent,
+                color: palette.accent,
                 borderRadius: BorderRadius.circular(20),
                 elevation: 0,
                 child: InkWell(

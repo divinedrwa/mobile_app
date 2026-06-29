@@ -49,7 +49,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       fillColor: DesignColors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       prefixIcon: Padding(
-        padding: const EdgeInsets.only(left: 8),
+        padding: EdgeInsets.only(left: 8),
         child: Icon(icon, color: DesignColors.primary, size: 22),
       ),
       prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -121,7 +121,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               centerTitle: true,
               bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1),
+                preferredSize: Size.fromHeight(1),
                 child: Container(height: 1, color: DesignColors.borderLight),
               ),
             ),
@@ -202,7 +202,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       children: [
                         _readOnlyRow(
                           icon: Icons.home_work_outlined,
-                          iconBg: const Color(0xFFE8F0FE),
+                          iconBg: Color(0xFFE8F0FE),
                           iconColor: DesignColors.primary,
                           label: 'Property',
                           value: user?.effectivePropertyDisplay?.trim().isNotEmpty == true
@@ -210,12 +210,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               : '—',
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm),
+                          padding: EdgeInsets.symmetric(vertical: DesignSpacing.sm),
                           child: Divider(height: 1, color: DesignColors.borderLight.withValues(alpha: 0.9)),
                         ),
                         _readOnlyRow(
                           icon: Icons.layers_outlined,
-                          iconBg: const Color(0xFFF3E8FF),
+                          iconBg: Color(0xFFF3E8FF),
                           iconColor: DesignColors.primary,
                           label: 'Unit / floor',
                           value: user?.effectiveUnitDisplay?.trim().isNotEmpty == true
@@ -223,26 +223,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               : '—',
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm),
+                          padding: EdgeInsets.symmetric(vertical: DesignSpacing.sm),
                           child: Divider(height: 1, color: DesignColors.borderLight.withValues(alpha: 0.9)),
                         ),
                         _readOnlyRow(
                           icon: Icons.badge_outlined,
-                          iconBg: const Color(0xFFE0F2FE),
-                          iconColor: const Color(0xFF0284C7),
+                          iconBg: Color(0xFFE0F2FE),
+                          iconColor: DesignColors.info,
                           label: 'Occupant type',
                           value: user?.effectiveOccupantDisplay?.trim().isNotEmpty == true
                               ? user!.effectiveOccupantDisplay!.trim()
                               : '—',
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm),
+                          padding: EdgeInsets.symmetric(vertical: DesignSpacing.sm),
                           child: Divider(height: 1, color: DesignColors.borderLight.withValues(alpha: 0.9)),
                         ),
                         _readOnlyRow(
                           icon: Icons.apartment_rounded,
-                          iconBg: const Color(0xFFF0FDF4),
-                          iconColor: const Color(0xFF16A34A),
+                          iconBg: Color(0xFFF0FDF4),
+                          iconColor: DesignColors.accent,
                           label: 'Society',
                           value: user?.societyName?.trim().isNotEmpty == true
                               ? user!.societyName!.trim()

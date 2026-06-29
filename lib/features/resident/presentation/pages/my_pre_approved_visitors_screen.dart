@@ -180,7 +180,7 @@ class _MyPreApprovedVisitorsScreenState
               children: [
                 Container(
                   width: 40, height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
+                  margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
                 ),
                 Container(
@@ -188,7 +188,7 @@ class _MyPreApprovedVisitorsScreenState
                   decoration: BoxDecoration(color: DesignColors.warning.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.no_meeting_room_outlined, color: DesignColors.warning, size: 28),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text('Remove pre-approval?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                 const SizedBox(height: 8),
                 Text(
@@ -210,7 +210,7 @@ class _MyPreApprovedVisitorsScreenState
                     Expanded(
                       child: FilledButton(
                         onPressed: () => Navigator.pop(sheetCtx, true),
-                        style: FilledButton.styleFrom(backgroundColor: DesignColors.warning, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                        style: FilledButton.styleFrom(backgroundColor: DesignColors.warning, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                         child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),

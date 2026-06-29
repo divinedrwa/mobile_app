@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../../core/branding/razorpay_checkout_logo.dart';
+import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/payments/razorpay_web_interop.dart';
 import '../../../../../core/theme/design_tokens.dart';
@@ -158,6 +160,8 @@ class _RazorpayPaymentScreenState
         _loading = false;
       });
 
+      final checkoutLogo = await resolveRazorpayCheckoutLogo(AppConstants.baseUrl);
+
       // Open Razorpay Checkout.js popup via JS interop.
       openRazorpayCheckout(
         options: {
@@ -165,7 +169,8 @@ class _RazorpayPaymentScreenState
           'amount': amountPaise,
           'currency': currency,
           'order_id': orderId,
-          'name': 'Society Maintenance',
+          'name': AppConstants.appName,
+          'image': checkoutLogo,
           'description': widget.payAllPending
               ? 'Pay all outstanding maintenance'
               : 'Maintenance for ${_monthName(widget.month)} ${widget.year}',
@@ -490,6 +495,16 @@ class _RazorpayPaymentScreenState
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              kRazorpayCheckoutLogoAsset,
+              width: 72,
+              height: 72,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 20),
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text(

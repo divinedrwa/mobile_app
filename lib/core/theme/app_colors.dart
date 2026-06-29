@@ -96,8 +96,8 @@ class AppColors {
   static Color get moduleParcelIcon => secondary;
   static Color get moduleNoticeBg => const Color(0xFFF3E8FF);
   static Color get moduleNoticeIcon => const Color(0xFF8B5CF6);
-  static Color get moduleBookingBg => const Color(0xFFE6FAFA);
-  static Color get moduleBookingIcon => const Color(0xFF0D9488);
+  static Color get moduleBookingBg => _c.primaryLight.withValues(alpha: 0.35);
+  static Color get moduleBookingIcon => _c.secondary;
   static Color get moduleCommunityBg => const Color(0xFFE0F2FE);
   static Color get moduleCommunityIcon => const Color(0xFF0284C7);
   static Color get moduleVehicleBg => primaryContainer;
@@ -163,7 +163,7 @@ class AppColors {
         warning,
         const Color(0xFF8B5CF6),
         error,
-        const Color(0xFF0D9488),
+        secondary,
         primaryDark,
       ];
 }

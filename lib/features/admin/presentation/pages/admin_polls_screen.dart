@@ -331,12 +331,12 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.lock_outline_rounded, color: DesignColors.error, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Close Poll?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Close "$title"? This cannot be undone.',
@@ -372,7 +372,7 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
                       }
                     }
                   },
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Close Poll', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),

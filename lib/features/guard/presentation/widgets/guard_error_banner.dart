@@ -28,7 +28,7 @@ class GuardInlineErrorBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
+              Icon(Icons.error_outline_rounded, color: GuardTokens.warning),
               const SizedBox(width: GuardTokens.g2),
               Expanded(child: Text(message)),
             ],
@@ -39,7 +39,7 @@ class GuardInlineErrorBanner extends StatelessWidget {
             child: TextButton.icon(
               onPressed: onRetry,
               style: GuardTokens.textLink(context),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              icon: Icon(Icons.refresh_rounded, size: 20),
               label: const Text('Retry'),
             ),
           ),
@@ -83,7 +83,7 @@ class GuardCenteredError extends StatelessWidget {
             const SizedBox(height: GuardTokens.g2),
             FilledButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
               style: GuardTokens.primaryFilled(context),
             ),

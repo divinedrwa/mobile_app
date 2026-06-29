@@ -46,4 +46,28 @@ class PaymentMethodModel {
 
   /// Account type, if BANK_TRANSFER.
   String? get accountType => type == 'BANK_TRANSFER' ? config['accountType'] as String? : null;
+
+  /// Platform fee % on maintenance (RAZORPAY / optional PHONEPE config).
+  double? get feePercent {
+    if (type != 'RAZORPAY' && type != 'PHONEPE') return null;
+    final v = config['feePercent'];
+    if (v is num) return v.toDouble();
+    return double.tryParse(v?.toString() ?? '');
+  }
+
+  /// GST % applied to the platform fee (defaults to 18 when unset).
+  double get feeGstPercent {
+    final v = config['feeGstPercent'];
+    if (v is num) return v.toDouble();
+    return double.tryParse(v?.toString() ?? '') ?? 18;
+  }
+
+  /// Human-readable gateway surcharge label, e.g. `~2% platform fee + GST`.
+  String get gatewayFeeSummaryLabel {
+    final configured = feePercent;
+    final pct = configured ?? 2;
+    final pctText = pct % 1 == 0 ? '${pct.toInt()}' : pct.toStringAsFixed(1);
+    final prefix = configured == null ? '~' : '';
+    return '$prefix$pctText% platform fee + GST';
+  }
 }

@@ -35,7 +35,7 @@ class AdminSearchField extends StatelessWidget {
           builder: (_, value, __) => value.text.isEmpty
               ? const SizedBox.shrink()
               : IconButton(
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: Icon(Icons.close, size: 18),
                   color: DesignColors.textTertiary,
                   onPressed: () {
                     controller.clear();

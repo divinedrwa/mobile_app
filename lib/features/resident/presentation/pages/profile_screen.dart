@@ -121,7 +121,7 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.people_outline_rounded,
                       title: 'Vendors',
                       subtitle: 'Manage domestic staff',
-                      iconColor: const Color(0xFF0D9488),
+                      iconColor: DesignColors.primary,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute<void>(builder: (_) => const VendorsStaffScreen()),
@@ -139,7 +139,7 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.receipt_long_outlined,
                         title: 'Payment History',
                         subtitle: 'View all transactions',
-                        iconColor: const Color(0xFF16A34A),
+                        iconColor: DesignColors.accent,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute<void>(builder: (_) => const PaymentHistoryScreen()),
@@ -162,7 +162,7 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.event_available_outlined,
                       title: 'Amenity bookings',
                       subtitle: 'Upcoming and past bookings',
-                      iconColor: const Color(0xFF0284C7),
+                      iconColor: DesignColors.info,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute<void>(

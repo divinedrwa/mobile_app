@@ -323,7 +323,7 @@ class GuardProfilePage extends ConsumerWidget {
                   color: GuardTokens.dangerBrand.withValues(alpha: 0.10),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.logout_rounded,
                   color: GuardTokens.dangerBrand,
                   size: 28,

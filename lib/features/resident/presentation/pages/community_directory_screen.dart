@@ -359,12 +359,12 @@ String _initials(String name) {
 
 Color _avatarColor(String name) {
   final palette = [
-    const Color(0xFF004D40),
-    const Color(0xFF2563EB),
+    Color(0xFF004D40),
+    DesignColors.info,
     DesignColors.primary,
-    const Color(0xFFE53935),
-    const Color(0xFFF39C12),
-    const Color(0xFF00897B),
+    DesignColors.error,
+    Color(0xFFF39C12),
+    DesignColors.primary,
     DesignColors.primary,
     const Color(0xFFDB2777),
   ];

@@ -207,6 +207,16 @@ class AppConstants {
   /// Cached society splash image URL — shown on the splash on the next launch.
   static const String keyCachedSplashUrl = 'cached_society_splash_url';
 
+  /// Per-society appearance cache keys (survive logout — see [StorageService.clearAll]).
+  static String societyThemeCacheKey(String societyId) =>
+      'cached_society_theme_v2_${societyId.trim()}';
+
+  static String societySplashCacheKey(String societyId) =>
+      'cached_society_splash_v2_${societyId.trim()}';
+
+  static String societySplashFileCacheKey(String societyId) =>
+      'cached_society_splash_file_v2_${societyId.trim()}';
+
   /// In-app legal documents (Markdown bundled via `pubspec.yaml` → `assets/legal/`).
   /// Keep in sync with `docs/legal/` in the monorepo when you update policy text.
   static const String privacyPolicyAsset = 'assets/legal/privacy_policy.md';

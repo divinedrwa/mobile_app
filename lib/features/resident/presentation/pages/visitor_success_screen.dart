@@ -496,7 +496,7 @@ class _InfoStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = warning ? const Color(0xFFFFF7ED) : const Color(0xFFEFF6FF);
+    final bg = warning ? Color(0xFFFFF7ED) : Color(0xFFEFF6FF);
     final fg = warning ? DesignColors.warning : DesignColors.primary;
 
     return Container(

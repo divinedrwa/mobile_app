@@ -235,7 +235,7 @@ class _GuardVisitorApprovalPageState
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
           title: Text(
@@ -279,7 +279,7 @@ class _GuardVisitorApprovalPageState
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.schedule_rounded,
                                     color: GuardTokens.warning,
                                   ),
@@ -310,7 +310,7 @@ class _GuardVisitorApprovalPageState
                     TextField(
                       controller: _name,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Visitor name',
                         prefixIcon: Icon(
                           Icons.badge_outlined,
@@ -331,7 +331,7 @@ class _GuardVisitorApprovalPageState
                         fontWeight: FontWeight.w600,
                         fontSize: 17,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Visitor phone',
                         prefixIcon: Icon(
                           Icons.phone_android_rounded,
@@ -351,7 +351,7 @@ class _GuardVisitorApprovalPageState
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: 'Block, flat, or name…',
-                        prefixIcon: const Icon(Icons.search_rounded),
+                        prefixIcon: Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(
@@ -381,7 +381,7 @@ class _GuardVisitorApprovalPageState
                             OutlinedButton.icon(
                               onPressed: () =>
                                   ref.invalidate(guardVillasProvider),
-                              icon: const Icon(Icons.refresh_rounded),
+                              icon: Icon(Icons.refresh_rounded),
                               label: const Text('Retry loading flats'),
                             ),
                           ],
@@ -492,7 +492,7 @@ class _GuardVisitorApprovalPageState
                                               ),
                                             ),
                                             if (sel)
-                                              const Icon(
+                                              Icon(
                                                 Icons.done_rounded,
                                                 size: 20,
                                                 color: GuardTokens
@@ -526,7 +526,7 @@ class _GuardVisitorApprovalPageState
                                 ? null
                                 : _notifyResident,
                             icon: _submittingNotify
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
@@ -534,7 +534,7 @@ class _GuardVisitorApprovalPageState
                                       color: GuardTokens.guardAccent,
                                     ),
                                   )
-                                : const Icon(
+                                : Icon(
                                     Icons.notifications_active_rounded,
                                   ),
                             label: Text(
@@ -549,7 +549,7 @@ class _GuardVisitorApprovalPageState
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _callResident,
-                            icon: const Icon(Icons.call_rounded),
+                            icon: Icon(Icons.call_rounded),
                             label: const Text(
                               'Call',
                               style: TextStyle(fontWeight: FontWeight.w600),
@@ -747,7 +747,7 @@ class _GuardVisitorApprovalPageState
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.event_available_rounded,
                     color: GuardTokens.success,
                     size: 22,

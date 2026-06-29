@@ -534,7 +534,7 @@ class _AdminSpecialProjectDetailScreenState
           : DismissDirection.none,
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
+        padding: EdgeInsets.only(right: AppSpacing.lg),
         color: DesignColors.error.withValues(alpha: 0.1),
         child: Icon(Icons.delete_rounded, color: DesignColors.error),
       ),

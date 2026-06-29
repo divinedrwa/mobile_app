@@ -168,7 +168,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
               subtitle: _typeFilter != null
                   ? 'No staff match the selected filter.'
                   : 'Staff members will appear here once added.',
-              iconColor: const Color(0xFF059669),
+              iconColor: DesignColors.success,
             ),
           )
         else
@@ -183,7 +183,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
       label: Text('$label ($count)'),
       selected: isSelected,
       onSelected: (_) => setState(() => _typeFilter = type),
-      selectedColor: const Color(0xFF059669),
+      selectedColor: DesignColors.success,
       backgroundColor: DesignColors.surfaceSoft,
       labelStyle: DesignTypography.labelSmall.copyWith(
         color: isSelected ? Colors.white : DesignColors.textSecondary,
@@ -191,7 +191,7 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
       ),
       side: BorderSide(
         color: isSelected
-            ? const Color(0xFF059669)
+            ? DesignColors.success
             : DesignColors.borderLight,
       ),
       shape: RoundedRectangleBorder(
@@ -438,19 +438,19 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
       case 'COOK':
         return const Color(0xFFF97316);
       case 'DRIVER':
-        return const Color(0xFF3B82F6);
+        return DesignColors.info;
       case 'NANNY':
         return const Color(0xFFEC4899);
       case 'GARDENER':
-        return const Color(0xFF10B981);
+        return DesignColors.success;
       case 'PLUMBER':
-        return const Color(0xFF0EA5E9);
+        return DesignColors.info;
       case 'ELECTRICIAN':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'SECURITY':
-        return const Color(0xFF6366F1);
+        return DesignColors.secondary;
       default:
-        return const Color(0xFF059669);
+        return DesignColors.success;
     }
   }
 }

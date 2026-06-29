@@ -147,20 +147,33 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(DesignRadius.lg),
             border: Border.all(color: DesignColors.borderLight),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.currency_rupee, size: 20, color: DesignColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Amount to pay: ',
-                style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+              Row(
+                children: [
+                  Icon(Icons.currency_rupee, size: 20, color: DesignColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Maintenance due: ',
+                    style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
+                  ),
+                  Text(
+                    '\u20B9${amount.toStringAsFixed(0)}',
+                    style: DesignTypography.headingM.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: DesignColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                '\u20B9${amount.toStringAsFixed(0)}',
-                style: DesignTypography.headingM.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: DesignColors.textPrimary,
-                ),
+              const SizedBox(height: 8),
+              const _InstructionBullet(
+                text: 'UPI: pay maintenance only — no platform fee or GST.',
+              ),
+              const SizedBox(height: 4),
+              const _InstructionBullet(
+                text: 'Razorpay / PhonePe: maintenance + approx. 2% platform fee + GST at checkout.',
               ),
             ],
           ),
@@ -180,6 +193,7 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: _MethodTile(
                 method: m,
+                maintenanceAmount: amount,
                 onTap: () => _onMethodSelected(context, m),
               ),
             )),
@@ -261,9 +275,14 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
 // ── Method Tile ──────────────────────────────────────────────────────
 
 class _MethodTile extends StatelessWidget {
-  const _MethodTile({required this.method, required this.onTap});
+  const _MethodTile({
+    required this.method,
+    required this.maintenanceAmount,
+    required this.onTap,
+  });
 
   final PaymentMethodModel method;
+  final double maintenanceAmount;
   final VoidCallback onTap;
 
   IconData get _icon {
@@ -302,28 +321,67 @@ class _MethodTile extends StatelessWidget {
     }
   }
 
-  String get _helperText {
+  String? get _chargeLine {
+    final inr = maintenanceAmount.toStringAsFixed(0);
     if (_isUpi) {
-      return 'Pay in your UPI app, then tap I\'ve paid on the next screen. '
-          'Admin will verify once payment is received — maintenance shows as paid after confirmation.';
+      return 'You pay \u20B9$inr — maintenance only';
     }
-    if (method.type == 'RAZORPAY') {
-      return 'Instant online payment. A platform fee and GST are added at checkout on top of your maintenance amount.';
-    }
-    if (method.type == 'PHONEPE') {
-      return 'Instant online payment. Platform fee and GST may apply at checkout.';
+    if (method.type == 'RAZORPAY' || method.type == 'PHONEPE') {
+      return 'You pay: Maintenance + ${method.gatewayFeeSummaryLabel}';
     }
     if (method.type == 'BANK_TRANSFER') {
-      return 'Transfer the amount and share the receipt with your admin for verification.';
+      return 'You pay \u20B9$inr — maintenance only';
     }
-    return '';
+    return null;
+  }
+
+  List<String> get _instructionBullets {
+    final inr = maintenanceAmount.toStringAsFixed(0);
+    final gstLabel = method.feeGstPercent % 1 == 0
+        ? '${method.feeGstPercent.toInt()}'
+        : method.feeGstPercent.toString();
+
+    if (_isUpi) {
+      return [
+        'No platform fee or GST — pay only \u20B9$inr (maintenance).',
+        'Complete the payment in any UPI app using the VPA or QR on the next screen.',
+        'After payment, return to the app and tap I\'ve completed the payment to submit to admin.',
+        'Admin will check your payment and approve it before it shows as paid.',
+      ];
+    }
+    if (method.type == 'RAZORPAY') {
+      return [
+        'Instant online payment — card, net banking, UPI, or wallet.',
+        'Checkout total = maintenance (\u20B9$inr) + ${method.gatewayFeeSummaryLabel}.',
+        'GST on platform fee is $gstLabel% — exact rupee amounts shown before you confirm.',
+        'Payment is credited instantly after successful checkout.',
+      ];
+    }
+    if (method.type == 'PHONEPE') {
+      return [
+        'Instant online payment via the PhonePe app.',
+        'Checkout total = maintenance (\u20B9$inr) + ${method.gatewayFeeSummaryLabel}.',
+        'Exact rupee amounts are shown before you confirm payment.',
+        'Payment is credited instantly after successful checkout.',
+      ];
+    }
+    if (method.type == 'BANK_TRANSFER') {
+      return [
+        'Transfer only \u20B9$inr — maintenance amount, no platform fee or GST.',
+        'Use the bank account details shown after you select this option.',
+        'Share the payment receipt or UTR with your admin for verification.',
+        'Admin will approve it before it shows as paid in your account.',
+      ];
+    }
+    return const [];
   }
 
   @override
   Widget build(BuildContext context) {
     final isRecommended = _isUpi;
     final detail = _detailLine;
-    final helper = _helperText;
+    final chargeLine = _chargeLine;
+    final bullets = _instructionBullets;
 
     return Material(
       color: DesignColors.surface,
@@ -376,13 +434,13 @@ class _MethodTile extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                              color: DesignColors.accent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(DesignRadius.sm),
                             ),
                             child: Text(
                               'Recommended',
                               style: DesignTypography.captionSmall.copyWith(
-                                color: const Color(0xFF16A34A),
+                                color: DesignColors.accent,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -399,13 +457,43 @@ class _MethodTile extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (helper.isNotEmpty) ...[
+                    if (chargeLine != null && chargeLine.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isUpi
+                              ? DesignColors.accent.withValues(alpha: 0.08)
+                              : DesignColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(DesignRadius.sm),
+                          border: Border.all(
+                            color: _isUpi
+                                ? DesignColors.accent.withValues(alpha: 0.22)
+                                : DesignColors.primary.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Text(
+                          chargeLine,
+                          style: DesignTypography.captionSmall.copyWith(
+                            color: _isUpi
+                                ? DesignColors.accent
+                                : DesignColors.primary,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (bullets.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Text(
-                        helper,
-                        style: DesignTypography.captionSmall.copyWith(
-                          color: DesignColors.textSecondary,
-                          height: 1.35,
+                      ...bullets.map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _InstructionBullet(text: line),
                         ),
                       ),
                     ],
@@ -424,6 +512,39 @@ class _MethodTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _InstructionBullet extends StatelessWidget {
+  const _InstructionBullet({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '•',
+          style: DesignTypography.captionSmall.copyWith(
+            color: DesignColors.textSecondary,
+            fontWeight: FontWeight.w700,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: DesignTypography.captionSmall.copyWith(
+              color: DesignColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

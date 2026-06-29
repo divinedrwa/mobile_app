@@ -9,10 +9,13 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/society_theme_cache.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../core/widgets/polished_button.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../providers/auth_provider.dart';
+import '../../../../theme/theme_controller.dart';
+import '../widgets/auth_brand_logo.dart';
 
 /// First step of login: pick a society; id/name are persisted for the login screen and API context.
 class SocietySelectionScreen extends ConsumerStatefulWidget {
@@ -141,6 +144,9 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
         }
         _loading = false;
       });
+      if (pick != null) {
+        syncSocietyThemeScope(ref, societyId: pick);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -208,6 +214,12 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
     }
     final name = row?.name ?? _selectedName ?? id;
     await StorageService.savePreferredLoginSociety(id: id, name: name);
+    if (SocietyThemeCache.readPalette(id) != null) {
+      syncSocietyThemeScope(ref, societyId: id);
+      refreshSocietyThemeFromServer(ref, societyId: id);
+    } else {
+      await prefetchSocietyAppearance(ref, id);
+    }
     if (!mounted) return;
     context.go('/login');
   }
@@ -228,32 +240,17 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
       _selectedId = s.id;
       _selectedName = s.name;
     });
+    syncSocietyThemeScope(ref, societyId: s.id);
   }
 
   Widget _buildBrandHeader() {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/splash/gp_logo.png',
-          width: 80,
-          height: 80,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'GatePass+',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: DesignColors.textPrimary,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ],
+    return const Align(
+      alignment: Alignment.center,
+      child: AuthBrandLogo(markWidth: 96, compact: true),
     )
         .animate()
         .fadeIn(duration: 350.ms)
-        .slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
+        .slideY(begin: -0.05, end: 0, curve: Curves.easeOutCubic);
   }
 
   Widget _buildTitleBlock() {
@@ -623,6 +620,9 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild when the remote society palette is applied (DesignColors reads bridge).
+    ref.watch(themeTokensProvider);
+
     return Scaffold(
       backgroundColor: DesignColors.background,
       body: SafeArea(
@@ -631,9 +631,9 @@ class _SocietySelectionScreenState extends ConsumerState<SocietySelectionScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 _buildBrandHeader(),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
                 _buildTitleBlock(),
                 if (!_loading && _error == null && _societies.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.lg),

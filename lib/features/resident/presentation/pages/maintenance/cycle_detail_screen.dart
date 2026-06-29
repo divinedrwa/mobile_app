@@ -374,7 +374,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
         ),
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF16A34A),
+          backgroundColor: DesignColors.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -432,10 +432,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
   Widget _buildBreakup(ExpenseBreakdown b, NumberFormat inr) {
     final members = b.memberCount;
     final hasSplit = members > 0;
-    const palette = <Color>[
-      Color(0xFF22C55E),
-      Color(0xFF3B82F6),
-      Color(0xFFF59E0B),
+    final palette = <Color>[
+      DesignColors.success,
+      DesignColors.info,
+      DesignColors.warning,
       Color(0xFF8B5CF6),
       Color(0xFFEC4899),
       Color(0xFF14B8A6),

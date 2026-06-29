@@ -87,7 +87,7 @@ class _GuardPreApprovedListPageState
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           tooltip: 'Go back',
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: _handleBack,
         ),
         title: Text(

@@ -114,8 +114,8 @@ class _AdminComplaintAnalyticsScreenState
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+            gradient: LinearGradient(
+              colors: [DesignColors.error, DesignColors.error],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -291,9 +291,9 @@ class _AdminComplaintAnalyticsScreenState
                     value: fraction,
                     minHeight: 8,
                     backgroundColor:
-                        const Color(0xFFEF4444).withValues(alpha: 0.08),
+                        DesignColors.error.withValues(alpha: 0.08),
                     valueColor:
-                        const AlwaysStoppedAnimation(Color(0xFFEF4444)),
+                        AlwaysStoppedAnimation(DesignColors.error),
                   ),
                 ),
               ],
@@ -351,9 +351,9 @@ class _AdminComplaintAnalyticsScreenState
                       value: fraction,
                       minHeight: 14,
                       backgroundColor:
-                          const Color(0xFFEF4444).withValues(alpha: 0.08),
+                          DesignColors.error.withValues(alpha: 0.08),
                       valueColor:
-                          const AlwaysStoppedAnimation(Color(0xFFEF4444)),
+                          AlwaysStoppedAnimation(DesignColors.error),
                     ),
                   ),
                 ),
@@ -382,10 +382,10 @@ class _AdminComplaintAnalyticsScreenState
     final priority = c['priority']?.toString().toUpperCase() ?? '';
 
     final prioColor = priority == 'HIGH' || priority == 'URGENT'
-        ? const Color(0xFFEF4444)
+        ? DesignColors.error
         : priority == 'MEDIUM'
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFF3B82F6);
+            ? DesignColors.warning
+            : DesignColors.info;
 
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 6),

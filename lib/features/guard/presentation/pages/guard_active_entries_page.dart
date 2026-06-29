@@ -520,7 +520,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
                   color: Colors.white,
                 ),
               )
-            : const Icon(Icons.verified_user_outlined, size: 18),
+            : Icon(Icons.verified_user_outlined, size: 18),
         label: Text(
           busy ? 'Admitting…' : 'Admit at gate',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
@@ -546,14 +546,8 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
         ),
         onPressed: busy ? null : () => _checkout(context, v),
         icon: busy
-            ? const SizedBox.square(
-                dimension: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: GuardTokens.guardAccentDeep,
-                ),
-              )
-            : const Icon(Icons.logout_rounded, size: 18),
+            ? SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2, color: GuardTokens.guardAccentDeep,))
+            : Icon(Icons.logout_rounded, size: 18),
         label: Text(
           busy ? 'Marking…' : 'Mark exit',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
@@ -979,7 +973,7 @@ class _DeliveryCard extends StatelessWidget {
                         ),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.inventory_2_outlined,
                         size: 20,
                         color: GuardTokens.guardAccent,
@@ -1320,7 +1314,7 @@ class _FetchWarningBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: GuardTokens.warning),
+          Icon(Icons.warning_amber_rounded, color: GuardTokens.warning),
           const SizedBox(width: GuardTokens.g2),
           Expanded(
             child: Text(

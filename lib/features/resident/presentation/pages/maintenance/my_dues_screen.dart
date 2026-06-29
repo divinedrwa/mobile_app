@@ -191,7 +191,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF16A34A),
+                    backgroundColor: DesignColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -295,7 +295,7 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
   }) {
     final inr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final gradient = hasOverdue
-        ? const [Color(0xFFEF4444), Color(0xFFB91C1C)]
+        ? [DesignColors.error, Color(0xFFB91C1C)]
         : const [Color(0xFFF97316), Color(0xFFC2410C)];
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -617,7 +617,7 @@ class _DueCard extends StatelessWidget {
                                 child: FilledButton(
                                   onPressed: onPay,
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF16A34A),
+                                    backgroundColor: DesignColors.accent,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(horizontal: 14),
                                     shape: RoundedRectangleBorder(

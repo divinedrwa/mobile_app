@@ -23,7 +23,7 @@ class GuardSosStrip extends ConsumerWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.crisis_alert_rounded, color: GuardTokens.dangerBrand, size: 22),
+            Icon(Icons.crisis_alert_rounded, color: GuardTokens.dangerBrand, size: 22),
             const SizedBox(width: 8),
             Text(
               'Emergency (SOS)',

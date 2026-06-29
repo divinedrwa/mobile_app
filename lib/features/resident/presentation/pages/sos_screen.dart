@@ -161,7 +161,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                   children: [
                     Container(
                       width: 40, height: 4,
-                      margin: const EdgeInsets.only(bottom: 20),
+                      margin: EdgeInsets.only(bottom: 20),
                       decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
                     ),
                     Container(
@@ -169,7 +169,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                       decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                       child: Icon(Icons.warning_amber_rounded, color: DesignColors.error, size: 28),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text('Active SOS exists', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
                     const SizedBox(height: 8),
                     Text(
@@ -194,7 +194,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
                               Navigator.pop(sheetCtx);
                               context.go('/resident/sos/active');
                             },
-                            style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                            style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                             child: const Text('View SOS', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
@@ -271,7 +271,7 @@ class _SOSScreenState extends ConsumerState<SOSScreen>
             message: 'Guards and admins are notified immediately. Misuse may affect your account.',
             tone: EnterpriseTone.warning,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Icon(Icons.emergency_rounded, size: 72, color: DesignColors.error)
               .animate()
               .shake(duration: 600.ms),
@@ -569,7 +569,7 @@ class _CountdownDialogState extends State<_CountdownDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('Confirm SOS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
             const SizedBox(height: 8),
             Text(
@@ -583,7 +583,7 @@ class _CountdownDialogState extends State<_CountdownDialog> {
               child: OutlinedButton(
                 onPressed: widget.onCancel,
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: 14),
                   side: BorderSide(color: DesignColors.error),
                   foregroundColor: DesignColors.error,
                   shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),

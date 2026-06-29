@@ -237,7 +237,7 @@ class _AdminGateAnalyticsScreenState
                 _statChip(
                   _formatVisitorType(topTypes.first.key),
                   topTypes.first.value,
-                  const Color(0xFF10B981),
+                  DesignColors.success,
                 ),
               ],
               if (topTypes.length > 1) ...[
@@ -245,7 +245,7 @@ class _AdminGateAnalyticsScreenState
                 _statChip(
                   _formatVisitorType(topTypes[1].key),
                   topTypes[1].value,
-                  const Color(0xFFF59E0B),
+                  DesignColors.warning,
                 ),
               ],
               if (topTypes.length > 2) ...[
@@ -402,7 +402,7 @@ class _AdminGateAnalyticsScreenState
         icon: Icons.show_chart_rounded,
         title: 'No trend data',
         subtitle: '7-day visitor trends will appear here once data is available.',
-        iconColor: const Color(0xFF10B981),
+        iconColor: DesignColors.success,
       );
     }
 
@@ -441,9 +441,9 @@ class _AdminGateAnalyticsScreenState
                       value: fraction,
                       minHeight: 14,
                       backgroundColor:
-                          const Color(0xFF10B981).withValues(alpha: 0.08),
-                      valueColor: const AlwaysStoppedAnimation(
-                          Color(0xFF10B981)),
+                          DesignColors.success.withValues(alpha: 0.08),
+                      valueColor: AlwaysStoppedAnimation(
+                          DesignColors.success),
                     ),
                   ),
                 ),

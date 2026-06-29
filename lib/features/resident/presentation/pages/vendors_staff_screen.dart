@@ -81,15 +81,15 @@ class _VendorsStaffScreenState extends ConsumerState<VendorsStaffScreen>
     final key = raw.trim().toUpperCase();
     switch (key) {
       case 'PLUMBER':
-        return const Color(0xFF0284C7);
+        return DesignColors.info;
       case 'ELECTRICIAN':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'CARPENTER':
         return const Color(0xFF92400E);
       case 'PAINTER':
         return DesignColors.primary;
       case 'SECURITY':
-        return const Color(0xFFDC2626);
+        return DesignColors.error;
       case 'CLEANING':
         return const Color(0xFF0891B2);
       default:

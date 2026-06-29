@@ -151,7 +151,7 @@ class _GuardLogsPageState extends ConsumerState<GuardLogsPage>
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'Search name, flat, courier, reg…',
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.search_rounded,
                         color: GuardTokens.guardAccent,
                       ),
@@ -338,7 +338,7 @@ class _VisitorLogs extends ConsumerWidget {
                                 alignment: Alignment.center,
                                 child: Text(
                                   v.name.trim().isNotEmpty ? v.name.trim()[0].toUpperCase() : '?',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: GuardTokens.guardAccentDeep,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 15,
@@ -500,7 +500,7 @@ class _DeliveryLogs extends ConsumerWidget {
                                   ),
                                 ),
                                 alignment: Alignment.center,
-                                child: const Icon(
+                                child: Icon(
                                   Icons.inventory_2_outlined,
                                   size: 19,
                                   color: GuardTokens.warning,

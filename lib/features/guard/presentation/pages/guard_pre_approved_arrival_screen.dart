@@ -78,7 +78,7 @@ class _GuardPreApprovedArrivalScreenState
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: GuardTokens.guardAccent,
           width: 1.6,
         ),
@@ -209,7 +209,7 @@ class _GuardPreApprovedArrivalScreenState
           scrolledUnderElevation: 0,
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
           title: Text(
@@ -260,7 +260,7 @@ class _GuardPreApprovedArrivalScreenState
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Icon(
+                                              Icon(
                                                 Icons.schedule_rounded,
                                                 color: GuardTokens.warning,
                                               ),
@@ -300,7 +300,7 @@ class _GuardPreApprovedArrivalScreenState
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.verified_outlined,
                                       color: GuardTokens.guardAccentDeep,
                                       size: 22,
@@ -410,7 +410,7 @@ class _GuardPreApprovedArrivalScreenState
                                         context,
                                         label: 'Mobile number',
                                         hint: '10+ digits',
-                                        prefix: const Icon(
+                                        prefix: Icon(
                                           Icons.phone_android_rounded,
                                           color: GuardTokens.guardAccent,
                                         ),
@@ -434,7 +434,7 @@ class _GuardPreApprovedArrivalScreenState
                                       decoration: _fieldDecoration(
                                         context,
                                         label: 'Full name',
-                                        prefix: const Icon(
+                                        prefix: Icon(
                                           Icons.badge_outlined,
                                           color: GuardTokens.guardAccent,
                                         ),
@@ -495,7 +495,7 @@ class _GuardPreApprovedArrivalScreenState
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.home_work_outlined,
                                             color: GuardTokens.guardAccent,
                                             size: 22,

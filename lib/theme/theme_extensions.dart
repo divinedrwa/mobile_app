@@ -14,11 +14,10 @@ class BrandColors extends ThemeExtension<BrandColors> {
     required this.danger,
   });
 
-  /// Slate (`#0F172A` light / `#F1F5F9` dark).
+  /// Deep navy (`#0D1B3D` light / lifted blue dark).
   final Color primary;
 
-  /// Emerald (`#10B981` light / `#34D399` dark). Matches the green `+`
-  /// badge in the app icon. Used for primary actions ("Allow entry").
+  /// Emerald green (`#16A34A`). Success / approve actions.
   final Color accent;
 
   /// Red (`#EF4444` light / `#F87171` dark). Matches the barrier stripes

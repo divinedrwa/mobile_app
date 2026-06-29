@@ -130,8 +130,8 @@ class _AdminSocietySettingsScreenState
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF64748B), Color(0xFF475569)],
+            gradient: LinearGradient(
+              colors: [DesignColors.textTertiary, DesignColors.textSecondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

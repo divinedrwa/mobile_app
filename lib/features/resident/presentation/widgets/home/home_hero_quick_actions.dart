@@ -8,195 +8,90 @@ import '../../providers/visitor_provider.dart';
 import 'home_quick_action_navigation.dart';
 import 'home_shared.dart';
 
-/// Quick Actions — Visitor Entry (50%) + SOS + Complaint in one row.
-class HomeHeroQuickActions extends ConsumerStatefulWidget {
-  const HomeHeroQuickActions({super.key});
+/// GatePass+ hero row — Visitor hub + SOS + Complaint (no icon grid).
+class HomeQuickActionsHeroRow extends ConsumerWidget {
+  const HomeQuickActionsHeroRow({super.key});
 
   @override
-  ConsumerState<HomeHeroQuickActions> createState() =>
-      _HomeHeroQuickActionsState();
-}
-
-class _HomeHeroQuickActionsState extends ConsumerState<HomeHeroQuickActions> {
-  bool _moreExpanded = false;
-
-  void _toggleMore() {
-    DesignHaptics.selection();
-    setState(() => _moreExpanded = !_moreExpanded);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final pendingAsync = ref.watch(visitorApprovalRequestsProvider('pending'));
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
-    final primarySecondary = residentHomeSecondaryActionsGrid
-        .where((a) => a.id != 'more')
-        .toList();
-    final overflowActions = residentQuickActionsMoreSheet();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Quick Actions',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: DesignColors.textPrimary,
-                letterSpacing: -0.3,
-                height: 1.2,
-              ),
+    return SizedBox(
+      height: kHomeHeroRowHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 2,
+            child: _VisitorEntryCard(
+              pendingCount: pendingCount,
+              onTap: () {
+                DesignHaptics.selection();
+                HomeQuickActionNavigation.open(
+                  context,
+                  ref,
+                  residentHomeVisitorEntryAction,
+                );
+              },
             ),
-            SizedBox(width: 6),
-            Text(
-              '· Most used features',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: DesignColors.textSecondary,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: kHomeHeroRowHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 2,
-                child: _VisitorEntryCard(
-                  pendingCount: pendingCount,
-                  onTap: () {
-                    DesignHaptics.selection();
-                    HomeQuickActionNavigation.open(
-                      context,
-                      ref,
-                      residentHomeVisitorEntryAction,
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _CompactHeroCard(
-                  background: const Color(0xFFFFF8F8),
-                  borderColor: const Color(0xFFFECACA),
-                  iconBg: const Color(0xFFFEE2E2),
-                  iconColor: DesignColors.error,
-                  icon: Icons.phone_in_talk_rounded,
-                  title: 'SOS',
-                  subtitle: 'Emergency assistance',
-                  arrowColor: DesignColors.error,
-                  onTap: () {
-                    DesignHaptics.selection();
-                    HomeQuickActionNavigation.open(
-                      context,
-                      ref,
-                      const QuickAction(
-                        id: 'sos',
-                        label: 'SOS',
-                        icon: Icons.emergency,
-                        color: Color(0xFFE53935),
-                        route: '/resident/sos',
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _CompactHeroCard(
-                  background: const Color(0xFFFFFBF5),
-                  borderColor: const Color(0xFFFED7AA),
-                  iconBg: const Color(0xFFFFEDD5),
-                  iconColor: DesignColors.warning,
-                  icon: Icons.warning_amber_rounded,
-                  title: 'Complaint',
-                  subtitle: 'Raise a complaint instantly',
-                  arrowColor: DesignColors.warning,
-                  onTap: () {
-                    DesignHaptics.selection();
-                    HomeQuickActionNavigation.open(
-                      context,
-                      ref,
-                      const QuickAction(
-                        id: 'complaint',
-                        label: 'Complaint',
-                        icon: Icons.report_problem_outlined,
-                        color: Color(0xFFFF9800),
-                        route: '/resident/complaint',
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (var i = 0; i < primarySecondary.length; i++) ...[
-              if (i > 0) const SizedBox(width: 4),
-              Expanded(
-                child: _SecondaryIconTile(
-                  action: primarySecondary[i],
-                  onTap: () {
-                    DesignHaptics.selection();
-                    HomeQuickActionNavigation.open(
-                      context,
-                      ref,
-                      primarySecondary[i],
-                    );
-                  },
-                ),
-              ),
-            ],
-            const SizedBox(width: 4),
-            Expanded(
-              child: _MoreExpandTile(
-                expanded: _moreExpanded,
-                onTap: _toggleMore,
-              ),
-            ),
-          ],
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: _moreExpanded
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < overflowActions.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 4),
-                        Expanded(
-                          child: _SecondaryIconTile(
-                            action: overflowActions[i],
-                            onTap: () {
-                              DesignHaptics.selection();
-                              HomeQuickActionNavigation.open(
-                                context,
-                                ref,
-                                overflowActions[i],
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: _CompactHeroCard(
+              background: const Color(0xFFFFF8F8),
+              borderColor: const Color(0xFFFECACA),
+              iconBg: Color(0xFFFEE2E2),
+              iconColor: DesignColors.error,
+              icon: Icons.phone_in_talk_rounded,
+              title: 'SOS',
+              subtitle: 'Emergency assistance',
+              arrowColor: DesignColors.error,
+              onTap: () {
+                DesignHaptics.selection();
+                HomeQuickActionNavigation.open(
+                  context,
+                  ref,
+                  QuickAction(
+                    id: 'sos',
+                    label: 'SOS',
+                    icon: Icons.emergency,
+                    color: DesignColors.error,
+                    route: '/resident/sos',
                   ),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _CompactHeroCard(
+              background: const Color(0xFFFFFBF5),
+              borderColor: const Color(0xFFFED7AA),
+              iconBg: Color(0xFFFFEDD5),
+              iconColor: DesignColors.warning,
+              icon: Icons.warning_amber_rounded,
+              title: 'Complaint',
+              subtitle: 'Raise a complaint instantly',
+              arrowColor: DesignColors.warning,
+              onTap: () {
+                DesignHaptics.selection();
+                HomeQuickActionNavigation.open(
+                  context,
+                  ref,
+                  const QuickAction(
+                    id: 'complaint',
+                    label: 'Complaint',
+                    icon: Icons.report_problem_outlined,
+                    color: Color(0xFFFF9800),
+                    route: '/resident/complaint',
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -544,8 +439,9 @@ class _CompactHeroCard extends StatelessWidget {
   }
 }
 
-class _MoreExpandTile extends StatelessWidget {
-  const _MoreExpandTile({
+class HomeMoreExpandTile extends StatelessWidget {
+  const HomeMoreExpandTile({
+    super.key,
     required this.expanded,
     required this.onTap,
   });
@@ -561,13 +457,14 @@ class _MoreExpandTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                height: kHomeQuickActionIconBoxHeight,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: moreQuickAction.color.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(12),
@@ -584,18 +481,18 @@ class _MoreExpandTile extends StatelessWidget {
                   child: Icon(
                     Icons.expand_more_rounded,
                     color: expanded ? kHomePurple : moreQuickAction.color,
-                    size: 22,
+                    size: kHomeQuickActionIconSize + 1,
                   ),
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               Text(
                 'More',
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: kHomeQuickActionLabelSize,
                   fontWeight: FontWeight.w600,
                   color: expanded ? kHomePurple : DesignColors.textPrimary,
                   height: 1.15,
@@ -609,8 +506,9 @@ class _MoreExpandTile extends StatelessWidget {
   }
 }
 
-class _SecondaryIconTile extends StatelessWidget {
-  const _SecondaryIconTile({
+class HomeQuickActionIconTile extends StatelessWidget {
+  const HomeQuickActionIconTile({
+    super.key,
     required this.action,
     required this.onTap,
   });
@@ -626,13 +524,14 @@ class _SecondaryIconTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                height: kHomeQuickActionIconBoxHeight,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: action.color.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(12),
@@ -640,16 +539,20 @@ class _SecondaryIconTile extends StatelessWidget {
                     color: action.color.withValues(alpha: 0.12),
                   ),
                 ),
-                child: Icon(action.icon, color: action.color, size: 19),
+                child: Icon(
+                  action.icon,
+                  color: action.color,
+                  size: kHomeQuickActionIconSize,
+                ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               Text(
                 action.label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: kHomeQuickActionLabelSize,
                   fontWeight: FontWeight.w600,
                   color: DesignColors.textPrimary,
                   height: 1.15,

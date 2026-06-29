@@ -130,7 +130,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 if (notice.publishedBy != null) ...[
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Icon(Icons.person, size: 16, color: DesignColors.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(

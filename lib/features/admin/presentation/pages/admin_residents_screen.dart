@@ -102,8 +102,8 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0D9488), Color(0xFF115E59)],
+            gradient: LinearGradient(
+              colors: [DesignColors.primary, Color(0xFF115E59)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -263,7 +263,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                   subtitle: _statusFilter != null
                       ? 'No residents match the selected filter.'
                       : 'Residents will appear here once added.',
-                  iconColor: const Color(0xFF0D9488),
+                  iconColor: DesignColors.primary,
                 ),
               )
             else
@@ -280,14 +280,14 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
       label: Text('$label ($count)'),
       selected: isSelected,
       onSelected: (_) => setState(() => _statusFilter = value),
-      selectedColor: const Color(0xFF0D9488),
+      selectedColor: DesignColors.primary,
       backgroundColor: DesignColors.surfaceSoft,
       labelStyle: DesignTypography.labelSmall.copyWith(
         color: isSelected ? Colors.white : DesignColors.textSecondary,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
       ),
       side: BorderSide(
-        color: isSelected ? const Color(0xFF0D9488) : DesignColors.borderLight,
+        color: isSelected ? DesignColors.primary : DesignColors.borderLight,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(DesignRadius.full),
@@ -307,7 +307,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
     final isActive = r['isActive'] == true;
 
     final roleColor = role.toUpperCase().contains('TENANT')
-        ? const Color(0xFF0EA5E9)
+        ? DesignColors.info
         : DesignColors.primary;
 
     return EnterprisePanel(
@@ -321,13 +321,13 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+              color: DesignColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: const TextStyle(
-                color: Color(0xFF0D9488),
+              style: TextStyle(
+                color: DesignColors.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
               ),
@@ -518,12 +518,12 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.logout_rounded, color: DesignColors.error, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Confirm move-out?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('This resident will be marked as moved out and lose access.',
@@ -538,7 +538,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Move out', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
@@ -583,12 +583,12 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.refresh_rounded, color: DesignColors.primary, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Reactivate resident?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('This will restore the resident\'s access to the society app.',
@@ -603,7 +603,7 @@ class _AdminResidentsScreenState extends ConsumerState<AdminResidentsScreen> {
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Reactivate', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash background — matches Flutter splash (#F8FAFC) for seamless transition -->
-    <color name="splash_primary">#FFF8FAFC</color>
-    <!-- GatePass+ adaptive icon background (#fafafa — matches new icon spec) -->
-    <color name="ic_launcher_background">#FFFAFAFA</color>
+    <!-- Splash background — white to match GatePass+ splash art -->
+    <color name="splash_primary">#FFFFFFFF</color>
+    <!-- GatePass+ adaptive icon background — matches finished icon art -->
+    <color name="ic_launcher_background">#FFFFFFFF</color>
     <!-- Brand green: tints the small notification icon + accent line in the
          status bar (Android 5+). Matches Flutter [DesignColors.primary]. -->
-    <color name="notification_brand">#FF004D40</color>
+    <color name="notification_brand">#FF0D1B3D</color>
 </resources>

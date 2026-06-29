@@ -124,7 +124,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
           title: Text(
@@ -165,7 +165,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                       ),
                       decoration: InputDecoration(
                         hintText: 'e.g. KA01 AB 1234',
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.pin_rounded,
                           color: GuardTokens.guardAccent,
                         ),
@@ -226,7 +226,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: 'Block, flat, or name…',
-                        prefixIcon: const Icon(Icons.search_rounded),
+                        prefixIcon: Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(
@@ -367,7 +367,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                                                   ),
                                                 ),
                                                 if (sel)
-                                                  const Icon(
+                                                  Icon(
                                                     Icons.done_rounded,
                                                     size: 20,
                                                     color: GuardTokens
@@ -423,7 +423,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                       onPressed: _submitting ? null : _submit,
                       icon: _submitting
                           ? const SizedBox.shrink()
-                          : const Icon(Icons.save_alt_rounded),
+                          : Icon(Icons.save_alt_rounded),
                       label: _submitting
                           ? const SizedBox(
                               height: 24,

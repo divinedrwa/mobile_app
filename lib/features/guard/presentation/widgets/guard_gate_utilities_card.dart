@@ -617,7 +617,7 @@ class _PremiumGarbageArrivalButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: loading
-                ? const Center(
+                ? Center(
                     child: SizedBox(
                       width: 26,
                       height: 26,

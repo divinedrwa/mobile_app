@@ -52,7 +52,7 @@ class _AdminGuardShiftsScreenState
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF0EA5E9),
+        backgroundColor: DesignColors.info,
         onPressed: () => _showCreateSheet(context),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -104,7 +104,7 @@ class _AdminGuardShiftsScreenState
             icon: Icons.schedule_rounded,
             title: 'No shifts configured',
             subtitle: 'Tap + to create a new shift for your guards.',
-            iconColor: const Color(0xFF0EA5E9),
+            iconColor: DesignColors.info,
           ),
         ),
       ]);
@@ -253,12 +253,12 @@ class _AdminGuardShiftsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.delete_outline_rounded, color: DesignColors.error, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Delete Shift?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Are you sure you want to delete this shift?',
@@ -294,7 +294,7 @@ class _AdminGuardShiftsScreenState
                       }
                     }
                   },
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
@@ -327,7 +327,7 @@ class _AdminGuardShiftsScreenState
     switch (type.toUpperCase()) {
       case 'MORNING':
         return _ShiftType(
-            'Morning', Icons.wb_sunny_outlined, Color(0xFFF59E0B));
+            'Morning', Icons.wb_sunny_outlined, DesignColors.warning);
       case 'AFTERNOON':
         return _ShiftType(
             'Afternoon', Icons.wb_sunny, Color(0xFFF97316));
@@ -336,10 +336,10 @@ class _AdminGuardShiftsScreenState
             'Evening', Icons.wb_twilight, DesignColors.primary);
       case 'NIGHT':
         return _ShiftType(
-            'Night', Icons.nights_stay_outlined, Color(0xFF3B82F6));
+            'Night', Icons.nights_stay_outlined, DesignColors.info);
       default:
         return _ShiftType(
-            'Shift', Icons.schedule, Color(0xFF0EA5E9));
+            'Shift', Icons.schedule, DesignColors.info);
     }
   }
 
@@ -579,7 +579,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                             selected: _shiftType == t,
                             onSelected: (_) =>
                                 setState(() => _shiftType = t),
-                            selectedColor: const Color(0xFF0EA5E9),
+                            selectedColor: DesignColors.info,
                             labelStyle: TextStyle(
                               color: _shiftType == t
                                   ? Colors.white
@@ -614,7 +614,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                   title: Text('Recurring', style: DesignTypography.label),
                   value: _isRecurring,
                   onChanged: (v) => setState(() => _isRecurring = v),
-                  activeTrackColor: const Color(0xFF0EA5E9),
+                  activeTrackColor: DesignColors.info,
                 ),
                 const SizedBox(height: 20),
 
@@ -622,7 +622,7 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF0EA5E9),
+                      backgroundColor: DesignColors.info,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD),
                     ),

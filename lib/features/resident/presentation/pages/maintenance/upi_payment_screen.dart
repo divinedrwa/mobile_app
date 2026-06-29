@@ -371,7 +371,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
       ),
       child: Row(
         children: [
-          const Icon(Icons.receipt_long, size: 18, color: Color(0xFF16A34A)),
+          Icon(Icons.receipt_long, size: 18, color: DesignColors.accent),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -489,7 +489,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
                   : const Icon(Icons.check_circle_outline, size: 20),
               label: const Text("I've completed the payment"),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF16A34A),
+                backgroundColor: DesignColors.accent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -514,8 +514,8 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
       ),
       child: Column(
         children: [
-          const Icon(Icons.check_circle_rounded,
-              color: Color(0xFFD97706), size: 48),
+          Icon(Icons.check_circle_rounded,
+              color: DesignColors.warning, size: 48),
           const SizedBox(height: 12),
           Text(
             'Did your payment go through?',
@@ -564,7 +564,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
                       : const Icon(Icons.check, size: 20),
                   label: const Text('Yes, I paid'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF16A34A),
+                    backgroundColor: DesignColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -642,11 +642,11 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                color: DesignColors.accent.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded,
-                  color: Color(0xFF16A34A), size: 48),
+              child: Icon(Icons.check_circle_rounded,
+                  color: DesignColors.accent, size: 48),
             ),
             const SizedBox(height: 20),
             Text('Payment Submitted',
@@ -727,11 +727,11 @@ class _SubmissionTile extends StatelessWidget {
   Color get _statusColor {
     switch (submission.status) {
       case 'VERIFIED':
-        return const Color(0xFF16A34A);
+        return DesignColors.accent;
       case 'REJECTED':
         return DesignColors.error;
       default:
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
     }
   }
 

@@ -212,7 +212,7 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
           scrolledUnderElevation: 0.5,
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
           title: Text(
@@ -249,7 +249,7 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: _busy ? null : _startPatrol,
-                          icon: const Icon(Icons.play_arrow_rounded),
+                          icon: Icon(Icons.play_arrow_rounded),
                           label: const Text('Start patrol'),
                         ),
                       ),
@@ -257,7 +257,7 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
                       Expanded(
                         child: FilledButton.tonalIcon(
                           onPressed: _busy ? null : _logCheckpoint,
-                          icon: const Icon(Icons.pin_drop_rounded),
+                          icon: Icon(Icons.pin_drop_rounded),
                           label: const Text('Checkpoint'),
                         ),
                       ),
@@ -489,7 +489,7 @@ class _PatrolCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.place_outlined,
                               size: 13,
                               color: GuardTokens.textSecondary,

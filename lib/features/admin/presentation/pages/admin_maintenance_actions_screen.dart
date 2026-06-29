@@ -38,7 +38,7 @@ class AdminMaintenanceActionsScreen extends ConsumerWidget {
         children: [
           _ActionCard(
             icon: Icons.payments_outlined,
-            color: const Color(0xFF16A34A),
+            color: DesignColors.accent,
             title: 'Maintenance hub',
             subtitle:
                 'Mark payments, add/deduct credit, edit amounts, apply advance credit — all per-villa actions',
@@ -50,7 +50,7 @@ class AdminMaintenanceActionsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           _ActionCard(
             icon: Icons.money_off_rounded,
-            color: const Color(0xFFDC2626),
+            color: DesignColors.error,
             title: 'Outstanding dues',
             subtitle:
                 'Cross-cycle view of all villas with unpaid maintenance dues',

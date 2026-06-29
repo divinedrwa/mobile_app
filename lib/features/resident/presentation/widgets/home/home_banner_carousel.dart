@@ -86,8 +86,8 @@ class _BannerCarouselWidgetState extends State<_BannerCarouselWidget> {
     return switch (type.toUpperCase()) {
       'EMERGENCY' => DesignColors.error,
       'MAINTENANCE' => DesignColors.warning,
-      'EVENT' || 'FESTIVAL' => const Color(0xFF7C3AED),
-      'OFFER' => const Color(0xFF2563EB),
+      'EVENT' || 'FESTIVAL' => Color(0xFF7C3AED),
+      'OFFER' => DesignColors.info,
       'COMMUNITY' => DesignColors.primary,
       _ => DesignColors.info,
     };

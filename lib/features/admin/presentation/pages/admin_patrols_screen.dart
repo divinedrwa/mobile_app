@@ -223,7 +223,7 @@ class _PatrolCard extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Align(
                 alignment: Alignment.centerLeft,
@@ -240,7 +240,7 @@ class _PatrolCard extends ConsumerWidget {
                       Container(width: 36, height: 36,
                           decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                           child: Icon(Icons.shield_outlined, color: DesignColors.primary, size: 18)),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(child: Text(e.value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary))),
                       Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
                     ],
@@ -300,10 +300,10 @@ class _PatrolCard extends ConsumerWidget {
         statusColor = DesignColors.primary;
         statusIcon = Icons.directions_walk_rounded;
       case 'COMPLETED':
-        statusColor = const Color(0xFF16A34A);
+        statusColor = DesignColors.accent;
         statusIcon = Icons.check_circle_rounded;
       case 'MISSED':
-        statusColor = const Color(0xFFDC2626);
+        statusColor = DesignColors.error;
         statusIcon = Icons.cancel_rounded;
       default:
         statusColor = DesignColors.textSecondary;

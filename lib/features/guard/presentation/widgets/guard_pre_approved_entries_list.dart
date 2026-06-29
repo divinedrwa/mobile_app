@@ -127,7 +127,7 @@ class _GuardPreApprovedEntriesListContentState
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.notifications_active_rounded,
                       color: GuardTokens.guardAccentDeep,
                       size: 22,
@@ -204,7 +204,7 @@ class _GuardPreApprovedEntriesListContentState
                                   Container(
                                     width: 44,
                                     height: 44,
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       gradient: LinearGradient(
                                         colors: [
@@ -296,7 +296,7 @@ class _GuardPreApprovedEntriesListContentState
                                 const SizedBox(height: 10),
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.touch_app_rounded,
                                       size: 16,
                                       color: GuardTokens.textSecondary,
@@ -337,7 +337,7 @@ class _GuardPreApprovedEntriesListContentState
                                 ),
                               ),
                             ),
-                            icon: const Icon(Icons.verified_user_outlined, size: 22),
+                            icon: Icon(Icons.verified_user_outlined, size: 22),
                             label: const Text(
                               'Visitor arrived',
                               style: TextStyle(

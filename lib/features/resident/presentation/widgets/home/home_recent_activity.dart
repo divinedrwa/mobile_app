@@ -104,7 +104,7 @@ class HomeRecentActivity extends StatelessWidget {
   }) {
     final isSeen = status == 'Seen';
     final chipColor = isSeen ? DesignColors.textTertiary : (statusColor ?? kHomeGreen);
-    final chipBg = isSeen ? DesignColors.surfaceSoft : const Color(0xFFE8F5E9);
+    final chipBg = isSeen ? DesignColors.surfaceSoft : Color(0xFFE8F5E9);
     return Material(
       color: Colors.transparent,
       child: InkWell(

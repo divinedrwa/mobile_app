@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/action_colors.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../core/widgets/animated_counter.dart';
@@ -18,11 +19,7 @@ import '../../../resident/presentation/widgets/home/home_society_finances.dart';
 import '../../data/models/admin_dashboard_model.dart';
 import '../../data/providers/admin_providers.dart';
 
-// ── Design tokens ────────────────────────────────────────────────────
-const Color _kAdminGradientStart = Color(0xFF1B3A2D);
-const Color _kAdminGradientEnd = Color(0xFF2D5A47);
-const Color _kTextSecondary = Color(0xFF64748B);
-const Color _kGreen = Color(0xFF16A34A);
+// ── Design tokens (theme-aware) ─────────────────────────────────────
 const double _kPadH = 18;
 const double _kSectionGap = 20;
 const double _kRadiusLg = 16;
@@ -129,12 +126,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(14, top + 12, 8, 14),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_kAdminGradientStart, _kAdminGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+      decoration: BoxDecoration(
+        gradient: DesignColors.primaryGradient,
       ),
       child: Stack(
         children: [
@@ -349,10 +342,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                 vertical: 1,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE53935),
+                                color: DesignColors.error,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: _kAdminGradientEnd, width: 1.25),
+                                    color: DesignColors.primaryDark, width: 1.25),
                               ),
                               constraints:
                                   const BoxConstraints(minHeight: 15),
@@ -462,7 +455,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(_kRadiusMd),
-                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                border: Border.all(color: DesignColors.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -470,11 +463,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      color: DesignColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.currency_rupee_rounded,
-                        color: Color(0xFFF59E0B), size: 18),
+                    child: Icon(Icons.currency_rupee_rounded,
+                        color: DesignColors.warning, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -559,7 +552,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           _maintenanceRow(
             ctx,
             icon: Icons.warning_amber_rounded,
-            iconColor: const Color(0xFFDC2626),
+            iconColor: DesignColors.error,
             title: 'Outstanding dues',
             subtitle: 'All pending payments across villas',
             onTap: () => ctx.push('/resident/admin-outstanding-dues'),
@@ -618,10 +611,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
-                        color: _kTextSecondary,
+                        color: DesignColors.textSecondary,
                         height: 1.3,
                       ),
                       maxLines: 2,
@@ -640,10 +633,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   ),
                   child: Text(
                     '$trailingBadge',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFFDC2626),
+                      color: DesignColors.error,
                     ),
                   ),
                 ),
@@ -721,7 +714,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                             label: 'Parcels',
                             value: d.pendingParcels,
                             icon: Icons.inventory_2_outlined,
-                            accent: const Color(0xFFF59E0B),
+                            accent: DesignColors.warning,
                           ),
                         ),
                       ],
@@ -740,7 +733,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                             label: 'Complaints',
                             value: d.openComplaints,
                             icon: Icons.report_problem_outlined,
-                            accent: const Color(0xFFEF4444),
+                            accent: DesignColors.error,
                           ),
                         ),
                         _VLine(color: borderColor),
@@ -749,7 +742,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                             label: 'Unread',
                             value: unreadCount,
                             icon: Icons.notifications_active_outlined,
-                            accent: const Color(0xFF6366F1),
+                            accent: DesignColors.secondary,
                           ),
                         ),
                       ],
@@ -805,10 +798,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
-                    color: _kTextSecondary,
+                    color: DesignColors.textSecondary,
                   ),
                 ),
               ],
@@ -835,21 +828,21 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           subtitle: 'Day-to-day management',
           items: [
             _QA(Icons.account_balance_wallet, 'Maintenance Actions',
-                Color(0xFF0D9488), '/resident/admin-maintenance-actions'),
-            _QA(Icons.report_problem_outlined, 'Complaints', Color(0xFFEF4444),
+                ActionColors.brand, '/resident/admin-maintenance-actions'),
+            _QA(Icons.report_problem_outlined, 'Complaints', ActionColors.danger,
                 '/resident/admin-complaints'),
             _QA(Icons.notifications_active_outlined, 'Reminders',
-                Color(0xFFF59E0B), '/resident/admin-reminders'),
+                ActionColors.warning, '/resident/admin-reminders'),
             _QA(Icons.account_balance_wallet_outlined, 'Expenses',
-                DesignColors.primary, '/resident/admin-expenses'),
-            _QA(Icons.campaign_outlined, 'Notices', Color(0xFF3B82F6),
+                ActionColors.brand, '/resident/admin-expenses'),
+            _QA(Icons.campaign_outlined, 'Notices', ActionColors.info,
                 '/resident/admin-notices'),
-            _QA(Icons.inventory_2_outlined, 'Parcels', Color(0xFF06B6D4),
+            _QA(Icons.inventory_2_outlined, 'Parcels', ActionColors.secondary,
                 '/resident/admin-parcels'),
             _QA(Icons.currency_rupee_rounded, 'UPI Verifications',
-                Color(0xFF16A34A), '/resident/admin-upi-verifications'),
+                ActionColors.accent, '/resident/admin-upi-verifications'),
             _QA(Icons.construction_rounded, 'Special Projects',
-                DesignColors.primary, '/resident/admin-special-projects'),
+                ActionColors.brand, '/resident/admin-special-projects'),
           ],
         ),
         const SizedBox(height: 14),
@@ -858,21 +851,21 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           title: 'People & Property',
           subtitle: 'Users, units, and configuration',
           items: [
-            _QA(Icons.people_outlined, 'Residents', Color(0xFF0D9488),
+            _QA(Icons.people_outlined, 'Residents', ActionColors.brand,
                 '/resident/admin-residents'),
-            _QA(Icons.home_work_outlined, 'Properties', DesignColors.primary,
+            _QA(Icons.home_work_outlined, 'Properties', ActionColors.secondary,
                 '/resident/admin-villas'),
-            _QA(Icons.person_add_outlined, 'Invite Users', Color(0xFFEC4899),
+            _QA(Icons.person_add_outlined, 'Invite Users', ActionColors.accent,
                 '/resident/admin-invitations'),
-            _QA(Icons.badge_outlined, 'Staff', Color(0xFF059669),
+            _QA(Icons.badge_outlined, 'Staff', ActionColors.success,
                 '/resident/admin-staff'),
-            _QA(Icons.manage_accounts_outlined, 'Roles', Color(0xFF6366F1),
+            _QA(Icons.manage_accounts_outlined, 'Roles', ActionColors.info,
                 '/resident/admin-roles'),
-            _QA(Icons.schedule_rounded, 'Guard Shifts', Color(0xFF0EA5E9),
+            _QA(Icons.schedule_rounded, 'Guard Shifts', ActionColors.secondary,
                 '/resident/admin-guard-shifts'),
-            _QA(Icons.shield_rounded, 'Patrols', Color(0xFF0891B2),
+            _QA(Icons.shield_rounded, 'Patrols', ActionColors.brand,
                 '/resident/admin-patrols'),
-            _QA(Icons.report_outlined, 'Incidents', Color(0xFFDC2626),
+            _QA(Icons.report_outlined, 'Incidents', ActionColors.danger,
                 '/resident/admin-incidents'),
           ],
         ),
@@ -882,17 +875,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           title: 'Insights & Analytics',
           subtitle: 'Reports and data views',
           items: [
-            _QA(Icons.analytics_outlined, 'Gate Analytics', Color(0xFF0891B2),
+            _QA(Icons.analytics_outlined, 'Gate Analytics', ActionColors.info,
                 '/resident/admin-gate-analytics'),
             _QA(Icons.bar_chart_rounded, 'Complaint Analytics',
-                Color(0xFFE11D48), '/resident/admin-complaint-analytics'),
+                ActionColors.danger, '/resident/admin-complaint-analytics'),
             _QA(Icons.account_balance_outlined, 'Reconciliation',
-                Color(0xFF059669), '/resident/admin-reconciliation'),
-            _QA(Icons.local_parking, 'Parking', Color(0xFF6366F1),
+                ActionColors.success, '/resident/admin-reconciliation'),
+            _QA(Icons.local_parking, 'Parking', ActionColors.secondary,
                 '/resident/admin-parking'),
-            _QA(Icons.water_outlined, 'Water Analytics', Color(0xFF0284C7),
+            _QA(Icons.water_outlined, 'Water Analytics', ActionColors.info,
                 '/resident/admin-water-analytics'),
-            _QA(Icons.upload_file_outlined, 'Data Tools', Color(0xFF78716C),
+            _QA(Icons.upload_file_outlined, 'Data Tools', ActionColors.neutral,
                 '/resident/admin-data-tools'),
           ],
         ),
@@ -902,17 +895,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           title: 'More Tools',
           subtitle: 'Additional utilities',
           items: [
-            _QA(Icons.water_drop_outlined, 'Gate Utilities', Color(0xFF10B981),
+            _QA(Icons.water_drop_outlined, 'Gate Utilities', ActionColors.success,
                 '/resident/admin-gate-utilities'),
-            _QA(Icons.sos_rounded, 'SOS Alerts', Color(0xFFDC2626),
+            _QA(Icons.sos_rounded, 'SOS Alerts', ActionColors.danger,
                 '/resident/admin-sos'),
-            _QA(Icons.how_to_vote_outlined, 'Polls', DesignColors.primary,
+            _QA(Icons.how_to_vote_outlined, 'Polls', ActionColors.brand,
                 '/resident/admin-polls'),
-            _QA(Icons.fitness_center_outlined, 'Amenities', Color(0xFFF59E0B),
+            _QA(Icons.fitness_center_outlined, 'Amenities', ActionColors.warning,
                 '/resident/admin-amenities'),
             _QA(Icons.account_balance_wallet_outlined, 'Bank Accounts',
-                Color(0xFF0EA5E9), '/resident/admin-bank-accounts'),
-            _QA(Icons.settings_outlined, 'Settings', Color(0xFF64748B),
+                ActionColors.info, '/resident/admin-bank-accounts'),
+            _QA(Icons.settings_outlined, 'Settings', ActionColors.neutral,
                 '/resident/admin-settings'),
           ],
         ),
@@ -941,10 +934,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         const SizedBox(height: 2),
         Text(
           subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: _kTextSecondary,
+            color: DesignColors.textSecondary,
           ),
         ),
         const SizedBox(height: 10),
@@ -1111,7 +1104,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                           '${latest[i].message} \u00b7 ${_timeAgo(latest[i].createdAt)}',
                       status: latest[i].isRead ? 'Seen' : 'New',
                       statusColor:
-                          latest[i].isRead ? _kTextSecondary : _kGreen,
+                          latest[i].isRead ? DesignColors.textSecondary : ActionColors.accent,
                       onTap: () {
                         Navigator.of(ctx).push(
                           MaterialPageRoute<void>(
@@ -1143,7 +1136,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     Color? statusColor,
     VoidCallback? onTap,
   }) {
-    final chipColor = statusColor ?? _kGreen;
+    final chipColor = statusColor ?? ActionColors.accent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1182,10 +1175,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: _kTextSecondary,
+                        color: DesignColors.textSecondary,
                         height: 1.35,
                       ),
                     ),
@@ -1228,15 +1221,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           Icon(
             Icons.inbox_rounded,
             size: 36,
-            color: _kTextSecondary.withValues(alpha: 0.4),
+            color: DesignColors.textSecondary.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 8),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: _kTextSecondary,
+              color: DesignColors.textSecondary,
             ),
           ),
           if (onRetry != null) ...[

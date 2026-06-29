@@ -12,6 +12,7 @@ import '../core/logging/fcm_log.dart';
 import '../core/network/dio_client.dart';
 import '../core/services/notification_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/society_theme_cache.dart';
 import '../core/utils/storage_service.dart';
 import '../firebase_options.dart';
 import 'firebase_background.dart' as fb;
@@ -67,6 +68,9 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
     debugPrint('$st');
     AppConstants.setRuntimeBaseUrlOverride(null);
   }
+
+  // Paint cached society theme before the first widget frame (no green flash).
+  SocietyThemeCache.seedBridgeFromStorage();
 
   if (platform_info.isAndroid) {
     try {

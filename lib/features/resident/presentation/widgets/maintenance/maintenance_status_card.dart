@@ -192,8 +192,8 @@ class _Palette {
 _Palette _palette(MaintenanceStatusKind kind) {
   switch (kind) {
     case MaintenanceStatusKind.paid:
-      return const _Palette(
-        gradient: [Color(0xFF22C55E), Color(0xFF15803D)],
+      return _Palette(
+        gradient: [DesignColors.success, Color(0xFF15803D)],
         icon: Icons.check_circle_outline,
       );
     case MaintenanceStatusKind.due:
@@ -207,8 +207,8 @@ _Palette _palette(MaintenanceStatusKind kind) {
         icon: Icons.warning_amber_rounded,
       );
     case MaintenanceStatusKind.upcoming:
-      return const _Palette(
-        gradient: [Color(0xFF94A3B8), Color(0xFF475569)],
+      return _Palette(
+        gradient: [Color(0xFF94A3B8), DesignColors.textSecondary],
         icon: Icons.event_available_outlined,
       );
     case MaintenanceStatusKind.excluded:

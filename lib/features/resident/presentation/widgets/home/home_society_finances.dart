@@ -383,7 +383,7 @@ class HomeSocietyFinances extends StatelessWidget {
   Widget _verticalDivider() {
     return Container(
       width: 1,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: EdgeInsets.symmetric(vertical: 4),
       color: DesignColors.borderLight,
     );
   }

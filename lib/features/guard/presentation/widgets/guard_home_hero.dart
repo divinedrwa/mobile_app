@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/design_tokens.dart';
 import '../../ui/guard_tokens.dart';
 
 /// Compact gate header — greeting, gate line, on-duty chip, notifications,
@@ -54,7 +55,7 @@ class GuardHomeHero extends StatelessWidget {
                   ]
                 : [
                     GuardTokens.guardAccentDeep,
-                    const Color(0xFF2563EB),
+                    DesignColors.info,
                     GuardTokens.guardAccent,
                   ],
           ),
@@ -120,7 +121,7 @@ class GuardHomeHero extends StatelessWidget {
                       radius: 21,
                       backgroundColor:
                           Colors.white.withValues(alpha: isDark ? 0.12 : 0.2),
-                      child: const Icon(
+                      child: Icon(
                         Icons.shield_moon_rounded,
                         color: Colors.white,
                         size: 22,

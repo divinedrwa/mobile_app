@@ -112,7 +112,7 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen>
                               foregroundColor: Colors.white,
                             ),
                             onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close_rounded),
+                            icon: Icon(Icons.close_rounded),
                           ),
                           const Expanded(
                             child: Text(
@@ -180,7 +180,7 @@ class _GuardQrScanScreenState extends State<GuardQrScanScreen>
                             ),
                           ),
                         ),
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icon(Icons.close_rounded),
                         label: const Text('Close scanner'),
                       ),
                     ],
@@ -288,7 +288,7 @@ class _SuccessOverlay extends StatelessWidget {
         ),
         color: GuardTokens.success.withValues(alpha: 0.12),
       ),
-      child: const Center(
+      child: Center(
         child: Icon(
           Icons.check_circle_rounded,
           size: 64,

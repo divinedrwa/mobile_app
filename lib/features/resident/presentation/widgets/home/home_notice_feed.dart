@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/notice_model.dart';
 import 'home_shared.dart';
 
@@ -129,7 +130,7 @@ NoticeVisualStyle resolveNoticeVisualStyle(NoticeModel notice) {
       return NoticeVisualStyle(
         tier: tier,
         statusLabel: 'LOW',
-        foreground: const Color(0xFF64748B),
+        foreground: DesignColors.textTertiary,
         background: const Color(0xFFE2E8F0),
         icon: icon,
       );
@@ -137,7 +138,7 @@ NoticeVisualStyle resolveNoticeVisualStyle(NoticeModel notice) {
       return NoticeVisualStyle(
         tier: tier,
         statusLabel: _categoryLabel(notice.category),
-        foreground: const Color(0xFF2563EB),
+        foreground: DesignColors.info,
         background: const Color(0xFFDBEAFE),
         icon: icon,
       );

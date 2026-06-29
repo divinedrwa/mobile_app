@@ -118,8 +118,8 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+            gradient: LinearGradient(
+              colors: [DesignColors.secondary, Color(0xFF4F46E5)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -278,7 +278,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
               icon: Icons.directions_car_outlined,
               title: 'No vehicles',
               subtitle: 'No vehicles registered yet.',
-              iconColor: const Color(0xFF6366F1),
+              iconColor: DesignColors.secondary,
             ),
           )
         else
@@ -293,7 +293,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
       label: Text('$label ($count)'),
       selected: isSelected,
       onSelected: (_) => setState(() => _typeFilter = type),
-      selectedColor: const Color(0xFF6366F1),
+      selectedColor: DesignColors.secondary,
       backgroundColor: DesignColors.surfaceSoft,
       labelStyle: DesignTypography.labelSmall.copyWith(
         color: isSelected ? Colors.white : DesignColors.textSecondary,
@@ -301,7 +301,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
       ),
       side: BorderSide(
         color: isSelected
-            ? const Color(0xFF6366F1)
+            ? DesignColors.secondary
             : DesignColors.borderLight,
       ),
       shape: RoundedRectangleBorder(
@@ -335,12 +335,12 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
             height: 36,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+              color: DesignColors.secondary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               _vehicleIcon(type.toUpperCase()),
-              color: const Color(0xFF6366F1),
+              color: DesignColors.secondary,
               size: 18,
             ),
           ),

@@ -101,15 +101,15 @@ class AdminOutstandingDuesScreen extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFDC2626), Color(0xFF991B1B)],
+            gradient: LinearGradient(
+              colors: [DesignColors.error, Color(0xFF991B1B)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(DesignRadius.xl),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFDC2626).withValues(alpha: 0.25),
+                color: DesignColors.error.withValues(alpha: 0.25),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),

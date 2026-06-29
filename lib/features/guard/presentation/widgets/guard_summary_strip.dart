@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/design_tokens.dart';
+
 import '../../../../core/widgets/animated_counter.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -101,7 +103,7 @@ class GuardSummaryStrip extends StatelessWidget {
                         label: 'Patrols',
                         value: stats.patrols,
                         icon: Icons.directions_walk_rounded,
-                        accent: const Color(0xFF6366F1),
+                        accent: DesignColors.secondary,
                         isDark: isDark,
                       ),
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/action_colors.dart';
 import '../../../../core/theme/design_tokens.dart';
 
 /// Model for quick action cards on home screen
@@ -19,116 +20,134 @@ class QuickAction {
   });
 }
 
-// —— Home grid (2×5). 10 items displayed; “More” tile at position 9. ——
+// —— Home layout: hero (3) + row 1 (4 + More = 5 slots) + row 2 (5). ——
 
-final residentHomeQuickActionsGrid = [
-  // Row 1
-  const QuickAction(
-    id: 'visitor_history',
-    label: 'Visitor entry',
-    icon: Icons.person_add_alt_1_rounded,
-    color: Color(0xFF00897B),
-    route: '/resident/pre-approve-visitor',
-  ),
-  const QuickAction(
-    id: 'complaint',
-    label: 'Complaint',
-    icon: Icons.report_problem_outlined,
-    color: Color(0xFFFF9800),
-    route: '/resident/complaint',
-  ),
-  QuickAction(
-    id: 'daily_help',
-    label: 'Vendors',
-    icon: Icons.cleaning_services,
-    color: DesignColors.primary,
-    route: '/resident/daily-help',
-  ),
-  const QuickAction(
-    id: 'amenities',
-    label: 'Amenity booking',
-    icon: Icons.pool,
-    color: Color(0xFF43A047),
-    route: '/resident/amenities',
-  ),
-  const QuickAction(
-    id: 'sos',
-    label: 'SOS',
-    icon: Icons.emergency,
-    color: Color(0xFFE53935),
-    route: '/resident/sos',
-  ),
-  // Row 2
-  const QuickAction(
-    id: 'parcels',
-    label: 'Parcel',
-    icon: Icons.inventory_2_outlined,
-    color: Color(0xFF2563EB),
-    route: '/resident/parcels',
-  ),
-  const QuickAction(
-    id: 'amenity_bookings',
-    label: 'Facility booking',
-    icon: Icons.event_note_outlined,
-    color: Color(0xFF7E57C2),
-    route: '/resident/amenity-bookings',
-  ),
-  const QuickAction(
-    id: 'community',
-    label: 'Society notices',
-    icon: Icons.campaign_outlined,
-    color: Color(0xFFFF6D00),
-    route: '',
-  ),
-  QuickAction(
-    id: 'special_projects',
-    label: 'Projects',
-    icon: Icons.construction_rounded,
-    color: DesignColors.primary,
-    route: '/resident/special-projects',
-  ),
-];
+const int kHomeQuickActionsRow1Count = 4;
+const int kHomeQuickActionsRow2Count = 5;
+
+/// Row 1 under hero — exactly 4 shortcuts; More is the 5th slot in the UI.
+List<QuickAction> get residentHomeIconRowBelowHero {
+  final items = residentHomeSecondaryActionsGrid
+      .where((a) => a.id != 'more')
+      .toList(growable: false);
+  assert(items.length >= kHomeQuickActionsRow1Count);
+  return items.sublist(0, kHomeQuickActionsRow1Count);
+}
+
+/// Row 2 when More is expanded — exactly 5 shortcuts.
+List<QuickAction> get residentHomeIconRowExpand {
+  final notices = residentHomeSecondaryActionsGrid
+      .firstWhere((a) => a.id == 'community');
+  final row = [
+    notices,
+    ...residentHomeHeroOverflowActions,
+    ...residentQuickActionsOverflow,
+  ];
+  assert(row.length == kHomeQuickActionsRow2Count);
+  return row;
+}
+
+// —— Full catalog (legacy grid reference). ——
+
+List<QuickAction> get residentHomeQuickActionsGrid => [
+      QuickAction(
+        id: 'visitor_history',
+        label: 'Visitor entry',
+        icon: Icons.person_add_alt_1_rounded,
+        color: ActionColors.brand,
+        route: '/resident/pre-approve-visitor',
+      ),
+      QuickAction(
+        id: 'complaint',
+        label: 'Complaint',
+        icon: Icons.report_problem_outlined,
+        color: ActionColors.warning,
+        route: '/resident/complaint',
+      ),
+      QuickAction(
+        id: 'daily_help',
+        label: 'Vendors',
+        icon: Icons.cleaning_services,
+        color: ActionColors.brand,
+        route: '/resident/daily-help',
+      ),
+      QuickAction(
+        id: 'amenities',
+        label: 'Amenity booking',
+        icon: Icons.pool,
+        color: ActionColors.success,
+        route: '/resident/amenities',
+      ),
+      QuickAction(
+        id: 'sos',
+        label: 'SOS',
+        icon: Icons.emergency,
+        color: ActionColors.danger,
+        route: '/resident/sos',
+      ),
+      QuickAction(
+        id: 'parcels',
+        label: 'Parcel',
+        icon: Icons.inventory_2_outlined,
+        color: ActionColors.secondary,
+        route: '/resident/parcels',
+      ),
+      QuickAction(
+        id: 'amenity_bookings',
+        label: 'Facility booking',
+        icon: Icons.event_note_outlined,
+        color: ActionColors.info,
+        route: '/resident/amenity-bookings',
+      ),
+      QuickAction(
+        id: 'community',
+        label: 'Society notices',
+        icon: Icons.campaign_outlined,
+        color: ActionColors.accent,
+        route: '',
+      ),
+      QuickAction(
+        id: 'special_projects',
+        label: 'Projects',
+        icon: Icons.construction_rounded,
+        color: ActionColors.brand,
+        route: '/resident/special-projects',
+      ),
+    ];
 
 /// Overflow actions shown in the “More” bottom sheet.
-/// Maintenance is excluded here — owners reach it via the home maintenance card.
-final residentQuickActionsOverflow = [
-  const QuickAction(
-    id: 'utilities',
-    label: 'Utilities',
-    icon: Icons.water_drop_outlined,
-    color: Color(0xFF0288D1),
-    route: '/resident/utilities',
-  ),
-  const QuickAction(
-    id: 'directory',
-    label: 'Directory',
-    icon: Icons.people_outline_rounded,
-    color: Color(0xFF00897B),
-    route: '/resident/directory',
-  ),
-  // 'Incidents' intentionally omitted for residents: the society incident log
-  // is GUARD/ADMIN-only on the backend (GET /incidents → 403 for residents).
-  // Admin-like users manage incidents via the dedicated admin incidents screen.
-  const QuickAction(
-    id: 'vehicle_log',
-    label: 'Vehicle Log',
-    icon: Icons.directions_car_outlined,
-    color: Color(0xFF5C6BC0),
-    route: '/resident/vehicle-log',
-  ),
-];
+List<QuickAction> get residentQuickActionsOverflow => [
+      QuickAction(
+        id: 'utilities',
+        label: 'Utilities',
+        icon: Icons.water_drop_outlined,
+        color: ActionColors.info,
+        route: '/resident/utilities',
+      ),
+      QuickAction(
+        id: 'directory',
+        label: 'Directory',
+        icon: Icons.people_outline_rounded,
+        color: ActionColors.brand,
+        route: '/resident/directory',
+      ),
+      QuickAction(
+        id: 'vehicle_log',
+        label: 'Vehicle Log',
+        icon: Icons.directions_car_outlined,
+        color: ActionColors.secondary,
+        route: '/resident/vehicle-log',
+      ),
+    ];
 
-/// “More” tile — keep for future use; omit from [residentHomeQuickActionsGrid] until needed.
-const moreQuickAction = QuickAction(
-  id: 'more',
-  label: 'More',
-  icon: Icons.more_horiz,
-  color: Color(0xFF78909C),
-  route: '/resident/more',
-);
+QuickAction get moreQuickAction => QuickAction(
+      id: 'more',
+      label: 'More',
+      icon: Icons.more_horiz,
+      color: ActionColors.neutral,
+      route: '/resident/more',
+    );
 
-/// Hero card — Visitor Entry (left card in quick-actions row).
-/// Uses dynamic primary so it adopts the society's brand colour.
 QuickAction get residentHomeVisitorEntryAction => QuickAction(
       id: 'visitor_entry',
       label: 'GatePass+',
@@ -137,58 +156,55 @@ QuickAction get residentHomeVisitorEntryAction => QuickAction(
       route: '/resident/visitor-hub',
     );
 
-/// Hero row overflow (not shown as separate tiles on the new home layout).
-final residentHomeHeroOverflowActions = [
-  QuickAction(
-    id: 'special_projects',
-    label: 'Projects',
-    icon: Icons.construction_rounded,
-    color: DesignColors.primary,
-    route: '/resident/special-projects',
-  ),
-];
+List<QuickAction> get residentHomeHeroOverflowActions => [
+      QuickAction(
+        id: 'special_projects',
+        label: 'Projects',
+        icon: Icons.construction_rounded,
+        color: DesignColors.primary,
+        route: '/resident/special-projects',
+      ),
+    ];
 
-/// Secondary icon row under hero cards (mock: Parcel … More).
-final residentHomeSecondaryActionsGrid = [
-  QuickAction(
-    id: 'parcels',
-    label: 'Parcel',
-    icon: Icons.inventory_2_outlined,
-    color: DesignColors.success,
-    route: '/resident/parcels',
-  ),
-  QuickAction(
-    id: 'amenity_bookings',
-    label: 'Facility Booking',
-    icon: Icons.event_note_outlined,
-    color: DesignColors.primary,
-    route: '/resident/amenity-bookings',
-  ),
-  QuickAction(
-    id: 'daily_help',
-    label: 'Vendors',
-    icon: Icons.badge_outlined,
-    color: DesignColors.info,
-    route: '/resident/daily-help',
-  ),
-  QuickAction(
-    id: 'amenities',
-    label: 'Amenity Booking',
-    icon: Icons.pool_rounded,
-    color: DesignColors.success,
-    route: '/resident/amenities',
-  ),
-  QuickAction(
-    id: 'community',
-    label: 'Notices',
-    icon: Icons.campaign_outlined,
-    color: DesignColors.primary,
-    route: '',
-  ),
-  moreQuickAction,
-];
+List<QuickAction> get residentHomeSecondaryActionsGrid => [
+      QuickAction(
+        id: 'parcels',
+        label: 'Parcel',
+        icon: Icons.inventory_2_outlined,
+        color: DesignColors.success,
+        route: '/resident/parcels',
+      ),
+      QuickAction(
+        id: 'amenity_bookings',
+        label: 'Facility Booking',
+        icon: Icons.event_note_outlined,
+        color: DesignColors.primary,
+        route: '/resident/amenity-bookings',
+      ),
+      QuickAction(
+        id: 'daily_help',
+        label: 'Vendors',
+        icon: Icons.badge_outlined,
+        color: DesignColors.info,
+        route: '/resident/daily-help',
+      ),
+      QuickAction(
+        id: 'amenities',
+        label: 'Amenity Booking',
+        icon: Icons.pool_rounded,
+        color: DesignColors.success,
+        route: '/resident/amenities',
+      ),
+      QuickAction(
+        id: 'community',
+        label: 'Notices',
+        icon: Icons.campaign_outlined,
+        color: DesignColors.primary,
+        route: '',
+      ),
+      moreQuickAction,
+    ];
 
-/// Action ids pinned on the home quick-actions section (hero row + icon row).
 const Set<String> residentHomeOnScreenQuickActionIds = {
   'visitor_entry',
   'sos',
@@ -198,10 +214,13 @@ const Set<String> residentHomeOnScreenQuickActionIds = {
   'daily_help',
   'amenities',
   'community',
+  'special_projects',
+  'utilities',
+  'directory',
+  'vehicle_log',
 };
 
-/// Full resident shortcut catalog (deduped by id).
-final List<QuickAction> residentQuickActionsCatalog = () {
+List<QuickAction> get residentQuickActionsCatalog {
   final seen = <String>{};
   final out = <QuickAction>[];
   void add(QuickAction a) {
@@ -222,15 +241,13 @@ final List<QuickAction> residentQuickActionsCatalog = () {
     add(a);
   }
   return out;
-}();
+}
 
-/// Shortcuts not pinned on the home quick-actions UI (for View All sheet).
 List<QuickAction> residentQuickActionsOffHomeSection() => [
       for (final a in residentQuickActionsCatalog)
         if (!residentHomeOnScreenQuickActionIds.contains(a.id)) a,
     ];
 
-/// Overflow shortcuts for the “More” tile (not on hero or icon row).
 List<QuickAction> residentQuickActionsMoreSheet() {
   final seen = <String>{};
   final out = <QuickAction>[];

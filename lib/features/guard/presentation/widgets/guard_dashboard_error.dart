@@ -45,7 +45,7 @@ class GuardDashboardError extends StatelessWidget {
                     const SizedBox(height: GuardTokens.sectionGap),
                     FilledButton.icon(
                       onPressed: onRetry,
-                      icon: const Icon(Icons.refresh_rounded),
+                      icon: Icon(Icons.refresh_rounded),
                       label: const Text('Try again'),
                       style: GuardTokens.primaryFilled(context),
                     ),

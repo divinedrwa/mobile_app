@@ -126,7 +126,7 @@ class GuardNavigationShell extends ConsumerWidget {
                               unread > 99 ? '99+' : '$unread',
                               style: const TextStyle(fontSize: 10),
                             ),
-                            child: const Icon(
+                            child: Icon(
                                 Icons.person_outline_rounded),
                           ),
                           selectedIcon: Badge(
@@ -136,7 +136,7 @@ class GuardNavigationShell extends ConsumerWidget {
                               style: const TextStyle(fontSize: 10),
                             ),
                             child:
-                                const Icon(Icons.person_rounded),
+                                Icon(Icons.person_rounded),
                           ),
                           label: 'Profile',
                         ),
@@ -164,19 +164,17 @@ class GuardNavigationShell extends ConsumerWidget {
       },
       labelType: NavigationRailLabelType.all,
       backgroundColor: barBg,
-      selectedIconTheme:
-          const IconThemeData(color: GuardTokens.guardAccentDeep),
-      unselectedIconTheme:
-          const IconThemeData(color: GuardTokens.textSecondary),
-      selectedLabelTextStyle: const TextStyle(
+      selectedIconTheme: IconThemeData(color: GuardTokens.themedAccentDeep),
+      unselectedIconTheme: IconThemeData(color: GuardTokens.themedAccent),
+      selectedLabelTextStyle: TextStyle(
         fontSize: GuardTokens.caption,
         fontWeight: FontWeight.w700,
-        color: GuardTokens.guardAccentDeep,
+        color: GuardTokens.themedAccentDeep,
       ),
-      unselectedLabelTextStyle: const TextStyle(
+      unselectedLabelTextStyle: TextStyle(
         fontSize: GuardTokens.caption,
         fontWeight: FontWeight.w500,
-        color: GuardTokens.textSecondary,
+        color: GuardTokens.themedAccent,
       ),
       destinations: [
         const NavigationRailDestination(
@@ -201,7 +199,7 @@ class GuardNavigationShell extends ConsumerWidget {
               unread > 99 ? '99+' : '$unread',
               style: const TextStyle(fontSize: 10),
             ),
-            child: const Icon(Icons.person_outline_rounded),
+            child: Icon(Icons.person_outline_rounded),
           ),
           selectedIcon: Badge(
             isLabelVisible: unread > 0,
@@ -209,7 +207,7 @@ class GuardNavigationShell extends ConsumerWidget {
               unread > 99 ? '99+' : '$unread',
               style: const TextStyle(fontSize: 10),
             ),
-            child: const Icon(Icons.person_rounded),
+            child: Icon(Icons.person_rounded),
           ),
           label: const Text('Profile'),
         ),
@@ -238,7 +236,7 @@ class _OfflineSyncStrip extends ConsumerWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              const Icon(Icons.cloud_upload_outlined, size: 18, color: GuardTokens.warning),
+              Icon(Icons.cloud_upload_outlined, size: 18, color: GuardTokens.warning),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -251,12 +249,12 @@ class _OfflineSyncStrip extends ConsumerWidget {
             if (!sync.syncing)
               GestureDetector(
                 onTap: () => ref.read(offlineSyncProvider.notifier).syncAll(),
-                child: const Text(
+                child: Text(
                   'Sync now',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: GuardTokens.guardAccentDeep,
+                    color: GuardTokens.themedAccentDeep,
                   ),
                 ),
               ),

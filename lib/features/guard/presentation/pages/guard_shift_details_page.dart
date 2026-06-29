@@ -26,7 +26,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: () => context.pop(),
           ),
           title: Text('Shift roster', style: GuardTokens.headingStyle(context)),
@@ -199,7 +199,7 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                                             color: GuardTokens.success.withValues(alpha: 0.35),
                                           ),
                                         ),
-                                        child: const Text(
+                                        child: Text(
                                           'Active',
                                           style: TextStyle(
                                             color: GuardTokens.success,

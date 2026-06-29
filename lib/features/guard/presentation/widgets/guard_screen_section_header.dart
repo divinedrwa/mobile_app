@@ -46,13 +46,13 @@ class GuardScreenSectionHeader extends StatelessWidget {
                   children: [
                     Text(
                       actionLabel!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: GuardTokens.guardAccentDeep,
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right_rounded,
                       size: 16,
                       color: GuardTokens.guardAccentDeep,

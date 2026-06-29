@@ -470,10 +470,10 @@ class HomeSocietyFundCard extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                        color: DesignColors.textTertiary,
                         letterSpacing: 0.1,
                       ),
                     ),

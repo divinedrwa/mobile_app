@@ -145,8 +145,8 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
+        gradient: LinearGradient(
+          colors: [DesignColors.error, DesignColors.error],
         ),
         borderRadius: BorderRadius.circular(DesignRadius.xl),
         boxShadow: DesignElevation.md,
@@ -211,7 +211,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
               setState(() => _statusFilter = entry.key);
               ref.invalidate(adminSosAlertsProvider(entry.key));
             },
-            selectedColor: const Color(0xFFDC2626),
+            selectedColor: DesignColors.error,
             backgroundColor: DesignColors.surfaceSoft,
             labelStyle: DesignTypography.labelSmall.copyWith(
               color: isSelected ? Colors.white : DesignColors.textSecondary,
@@ -219,7 +219,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
             ),
             side: BorderSide(
               color: isSelected
-                  ? const Color(0xFFDC2626)
+                  ? DesignColors.error
                   : DesignColors.borderLight,
             ),
             shape: RoundedRectangleBorder(
@@ -242,7 +242,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
           icon: Icons.sos_rounded,
           title: 'No SOS alerts found',
           subtitle: 'All clear! There are no alerts matching the current filter.',
-          iconColor: const Color(0xFFDC2626),
+          iconColor: DesignColors.error,
         ),
       );
     }
@@ -355,7 +355,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (status == 'CREATED')
-                  _actionButton('Acknowledge', const Color(0xFF3B82F6), () {
+                  _actionButton('Acknowledge', DesignColors.info, () {
                     _doAction(id, 'acknowledged',
                         ref.read(adminSosRepositoryProvider).acknowledgeSos);
                   }),
@@ -396,9 +396,9 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
   static Color _statusColor(String status) {
     switch (status) {
       case 'CREATED':
-        return const Color(0xFFDC2626);
+        return DesignColors.error;
       case 'ACKNOWLEDGED':
-        return const Color(0xFF3B82F6);
+        return DesignColors.info;
       case 'IN_PROGRESS':
         return DesignColors.warning;
       case 'RESOLVED':
@@ -430,20 +430,20 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
   static _EmergencyType _emergencyTypeConfig(String type) {
     switch (type) {
       case 'MEDICAL':
-        return const _EmergencyType(
-            'Medical', Icons.medical_services_rounded, Color(0xFFDC2626));
+        return _EmergencyType(
+            'Medical', Icons.medical_services_rounded, DesignColors.error);
       case 'FIRE':
         return const _EmergencyType(
             'Fire', Icons.local_fire_department_rounded, Color(0xFFF97316));
       case 'SECURITY':
-        return const _EmergencyType(
-            'Security', Icons.shield_rounded, Color(0xFF3B82F6));
+        return _EmergencyType(
+            'Security', Icons.shield_rounded, DesignColors.info);
       case 'ACCIDENT':
-        return const _EmergencyType(
-            'Accident', Icons.car_crash_rounded, Color(0xFFF59E0B));
+        return _EmergencyType(
+            'Accident', Icons.car_crash_rounded, DesignColors.warning);
       default:
-        return const _EmergencyType(
-            'Emergency', Icons.warning_amber_rounded, Color(0xFFDC2626));
+        return _EmergencyType(
+            'Emergency', Icons.warning_amber_rounded, DesignColors.error);
     }
   }
 

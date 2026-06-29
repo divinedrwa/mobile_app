@@ -16,9 +16,9 @@ import '../providers/visitor_provider.dart';
 // ─── design accents ──────────────────────────────────────────────────────────
 // Dynamic: resolves to the society's primary brand colour at runtime.
 Color get _kPurple => DesignColors.primary;
-const _kGreen = Color(0xFF00B37E);
-const _kGreenLight = Color(0xFFE6FAF5);
-const _kBlue = Color(0xFF0EA5E9);
+Color get _kGreen => DesignColors.success;
+Color get _kGreenLight => DesignColors.successLight;
+Color get _kBlue => DesignColors.info;
 
 // ─── hub screen ──────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ class _HubAppBar extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       expandedHeight: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         color: DesignColors.textPrimary,
         onPressed: () => context.pop(),
       ),
@@ -171,8 +171,8 @@ class _HubAppBar extends StatelessWidget {
                 child: Container(
                   width: 17,
                   height: 17,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
+                  decoration: BoxDecoration(
+                    color: DesignColors.error,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -587,7 +587,7 @@ class _QuickActionsRow extends StatelessWidget {
               title: 'Gate Requests',
               subtitle: 'Approve visitors',
               badge: pendingCount > 0 ? pendingCount : null,
-              badgeColor: const Color(0xFFEF4444),
+              badgeColor: DesignColors.error,
               onTap: () => context.push('/resident/visitor-requests'),
             ),
           ],
@@ -913,7 +913,7 @@ class _LiveVisitorRow extends StatelessWidget {
                         Container(
                           width: 7,
                           height: 7,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: _kGreen,
                             shape: BoxShape.circle,
                           ),
@@ -921,7 +921,7 @@ class _LiveVisitorRow extends StatelessWidget {
                         const SizedBox(width: 5),
                         Text(
                           timeFmt,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w600,
                             color: _kGreen,
@@ -1274,7 +1274,7 @@ class _PendingApprovalsSection extends StatelessWidget {
               border: Border.all(color: const Color(0xFFFDBA74).withValues(alpha: 0.5)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                  color: DesignColors.warning.withValues(alpha: 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -1348,7 +1348,7 @@ class _PendingApprovalRow extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                color: DesignColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(11),
               ),
               alignment: Alignment.center,
@@ -1566,8 +1566,9 @@ Widget _sectionHeader(
   String? actionLabel,
   VoidCallback? onAction, {
   String? badge,
-  Color badgeColor = _kGreen,
+  Color? badgeColor,
 }) {
+  final resolvedBadgeColor = badgeColor ?? _kGreen;
   final isLiveBadge = badge != null && badge.contains('Inside');
   return Row(
     children: [
@@ -1586,7 +1587,7 @@ Widget _sectionHeader(
           width: 7,
           height: 7,
           decoration: BoxDecoration(
-            color: badgeColor,
+            color: resolvedBadgeColor,
             shape: BoxShape.circle,
           ),
         ),
@@ -1596,7 +1597,7 @@ Widget _sectionHeader(
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w600,
-            color: badgeColor,
+            color: resolvedBadgeColor,
             height: 1,
           ),
         ),

@@ -506,7 +506,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                             ? Icons.star_rounded
                             : Icons.star_outline_rounded,
                         size: 14,
-                        color: const Color(0xFFF59E0B),
+                        color: DesignColors.warning,
                       ),
                   ],
                 ),
@@ -529,8 +529,8 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
             Container(
               width: 40,
               height: 40,
-              decoration: const BoxDecoration(
-                color: Color(0xFF16A34A),
+              decoration: BoxDecoration(
+                color: DesignColors.accent,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.workspace_premium_rounded,
@@ -559,7 +559,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
               ),
             ),
             if (badgeIcon != null)
-              Icon(badgeIcon, size: 22, color: const Color(0xFF16A34A)),
+              Icon(badgeIcon, size: 22, color: DesignColors.accent),
           ],
         ),
           ),
@@ -698,7 +698,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
       decoration: BoxDecoration(
         color: const Color(0xFFF0F9FF),
         borderRadius: BorderRadius.circular(DesignRadius.lg),
-        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.18)),
+        border: Border.all(color: DesignColors.info.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -706,11 +706,11 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+              color: DesignColors.info.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.verified_user_outlined,
-                size: 18, color: Color(0xFF2563EB)),
+            child: Icon(Icons.verified_user_outlined,
+                size: 18, color: DesignColors.info),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -804,9 +804,9 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
       List<MaintenanceDueModel> actionable, double payableTotal) {
     if (payableTotal <= 0.5 || !_hasPaymentMethods) return null;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF16A34A), Color(0xFF15803D)],
+          colors: [DesignColors.accent, Color(0xFF15803D)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),

@@ -395,11 +395,11 @@ class _AdminReconciliationScreenState
   static Color _healthColor(String status) {
     switch (status) {
       case 'HEALTHY':
-        return const Color(0xFF10B981);
+        return DesignColors.success;
       case 'WARNING':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'CRITICAL':
-        return const Color(0xFFEF4444);
+        return DesignColors.error;
       default:
         return DesignColors.textSecondary;
     }
@@ -435,13 +435,13 @@ class _AdminReconciliationScreenState
     switch (severity) {
       case 'HIGH':
       case 'CRITICAL':
-        return const Color(0xFFEF4444);
+        return DesignColors.error;
       case 'MEDIUM':
       case 'WARNING':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'LOW':
       case 'INFO':
-        return const Color(0xFF3B82F6);
+        return DesignColors.info;
       default:
         return DesignColors.textSecondary;
     }

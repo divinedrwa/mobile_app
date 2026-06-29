@@ -6,10 +6,10 @@ import 'app_colors_bridge.dart';
 /// 🎨 GATEPASS+ - DESIGN TOKENS
 /// Centralized design system — professional brand palette.
 ///
-/// Brand colors from GatePass+ Play Store asset pack (teal-green + navy):
-/// - Primary: Deep Teal (#004D40) — brand, buttons, headers
-/// - Secondary: Teal (#00695C) — gradients, secondary actions
-/// - Accent: Vibrant Green (#00C853) — success, approve, highlights
+/// Brand colors from GatePass+ identity board (navy / blue / green):
+/// - Primary: Deep Navy (#0D1B3D) — brand, buttons, headers
+/// - Secondary: Royal Blue (#2563EB) — gradients, links, secondary actions
+/// - Accent: Emerald Green (#16A34A) — success, approve, highlights
 ///
 /// This file contains all design tokens used throughout the app:
 /// - Colors (Brand Green, Navy, Semantic, Neutral)
@@ -66,9 +66,11 @@ class DesignColors {
   static Color get success      => _c.success;
   static Color get successLight => _c.successLight;
   static Color get warning      => _c.warning;
+  static Color get warningLight => _c.warningLight;
   static Color get error        => _c.error;
   static Color get errorLight   => _c.errorLight;
   static Color get info         => _c.info;
+  static Color get infoLight    => _c.infoLight;
 
   // ── SOCIAL (brand-fixed, never themed) ─────────────────────────────────────
   static const Color google = Color(0xFFDB4437);
@@ -112,11 +114,12 @@ class DesignColors {
 class DesignTypography {
   DesignTypography._();
 
-  /// Inter family name registered by Google Fonts (same metrics on iOS and Android).
-  static String get fontFamily => GoogleFonts.inter().fontFamily ?? 'Inter';
+  /// Plus Jakarta Sans family name registered by Google Fonts (same metrics on iOS and Android).
+  static String get fontFamily =>
+      GoogleFonts.plusJakartaSans().fontFamily ?? 'Plus Jakarta Sans';
 
   /// Heading XL - 28/Bold/36 (Size/Weight/Line Height)
-  static TextStyle get headingXL => GoogleFonts.inter(
+  static TextStyle get headingXL => GoogleFonts.plusJakartaSans(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         height: 36 / 28,
@@ -125,7 +128,7 @@ class DesignTypography {
       );
 
   /// Heading L - 22/Semibold/30 (for section titles)
-  static TextStyle get headingL => GoogleFonts.inter(
+  static TextStyle get headingL => GoogleFonts.plusJakartaSans(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         height: 30 / 22,
@@ -134,7 +137,7 @@ class DesignTypography {
       );
 
   /// Heading M - 18/Semibold/24 (for card headers)
-  static TextStyle get headingM => GoogleFonts.inter(
+  static TextStyle get headingM => GoogleFonts.plusJakartaSans(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         height: 24 / 18,
@@ -143,7 +146,7 @@ class DesignTypography {
       );
 
   /// Body - 16/Regular/24 (main content)
-  static TextStyle get body => GoogleFonts.inter(
+  static TextStyle get body => GoogleFonts.plusJakartaSans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 24 / 16,
@@ -152,7 +155,7 @@ class DesignTypography {
       );
 
   /// Body Medium - 16/Medium/24 (emphasized content)
-  static TextStyle get bodyMedium => GoogleFonts.inter(
+  static TextStyle get bodyMedium => GoogleFonts.plusJakartaSans(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         height: 24 / 16,
@@ -161,7 +164,7 @@ class DesignTypography {
       );
 
   /// Body Small - 14/Regular/20 (secondary content)
-  static TextStyle get bodySmall => GoogleFonts.inter(
+  static TextStyle get bodySmall => GoogleFonts.plusJakartaSans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 20 / 14,
@@ -170,7 +173,7 @@ class DesignTypography {
       );
 
   /// Label - 14/Medium/20 (form labels, buttons)
-  static TextStyle get label => GoogleFonts.inter(
+  static TextStyle get label => GoogleFonts.plusJakartaSans(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         height: 20 / 14,
@@ -179,7 +182,7 @@ class DesignTypography {
       );
 
   /// Label Small - 12/Medium/16 (small labels, tags)
-  static TextStyle get labelSmall => GoogleFonts.inter(
+  static TextStyle get labelSmall => GoogleFonts.plusJakartaSans(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         height: 16 / 12,
@@ -188,7 +191,7 @@ class DesignTypography {
       );
 
   /// Caption - 12/Regular/16 (helper text, timestamps)
-  static TextStyle get caption => GoogleFonts.inter(
+  static TextStyle get caption => GoogleFonts.plusJakartaSans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         height: 16 / 12,
@@ -197,7 +200,7 @@ class DesignTypography {
       );
 
   /// Caption Small - 10/Regular/14 (very small text)
-  static TextStyle get captionSmall => GoogleFonts.inter(
+  static TextStyle get captionSmall => GoogleFonts.plusJakartaSans(
         fontSize: 10,
         fontWeight: FontWeight.w400,
         height: 14 / 10,
@@ -206,7 +209,7 @@ class DesignTypography {
       );
 
   /// Button text style - 16/Medium
-  static TextStyle get button => GoogleFonts.inter(
+  static TextStyle get button => GoogleFonts.plusJakartaSans(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         height: 1.0,
@@ -214,7 +217,7 @@ class DesignTypography {
       );
 
   /// Button Small text style - 14/Medium
-  static TextStyle get buttonSmall => GoogleFonts.inter(
+  static TextStyle get buttonSmall => GoogleFonts.plusJakartaSans(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         height: 1.0,

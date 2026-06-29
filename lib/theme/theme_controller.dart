@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants/app_constants.dart';
 import '../core/network/dio_client_provider.dart';
+import '../core/network/interceptors/society_context_interceptor.dart';
+import '../core/theme/society_theme_cache.dart';
 import '../core/theme/theme_repository.dart';
 import '../core/utils/storage_service.dart';
 import '../core/theme/app_colors_bridge.dart';
@@ -13,14 +14,6 @@ import 'app_colors.dart';
 
 /// =========================================================================
 ///  Theme-mode controller
-///
-///  Persists the user's Light / Dark / System preference in
-///  [SharedPreferences] under [AppConstants.keyThemeMode]. Defaults to
-///  [ThemeMode.system] so the OS setting wins until the user picks.
-///
-///  This is the same persistence key as the legacy `themeModeProvider` in
-///  `lib/core/theme/theme_mode_provider.dart`, so both controllers can
-///  co-exist during the gradual migration of existing screens.
 /// =========================================================================
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   ThemeModeNotifier() : super(_readInitial());
@@ -58,34 +51,11 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-/// Riverpod entry point. Widgets:
-/// ```dart
-/// final mode = ref.watch(themeModeProvider);
-/// ref.read(themeModeProvider.notifier).setMode(ThemeMode.dark);
-/// ```
 final themeModeProvider =
     StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   return ThemeModeNotifier();
 });
 
-/// =========================================================================
-///  Theme-tokens controller
-///
-///  Holds the active [AppColorPalette] for each brightness. **Today**
-///  these are the compile-time defaults. **Tomorrow**, when you wire an
-///  API endpoint such as `GET /api/theme`, do:
-///
-///  ```dart
-///  ref.read(themeTokensProvider.notifier).set(
-///    light: paletteFromApiLight,
-///    dark: paletteFromApiDark,
-///  );
-///  ```
-///
-///  `MaterialApp` will rebuild because it watches this provider, and every
-///  widget that reads `context.brand` / `context.surface` / `context.text`
-///  / `context.state` will reflect the new values atomically.
-/// =========================================================================
 @immutable
 class ThemeTokens {
   const ThemeTokens({required this.light, required this.dark});
@@ -107,32 +77,19 @@ class ThemeTokens {
 
 class ThemeTokensNotifier extends StateNotifier<ThemeTokens> {
   ThemeTokensNotifier() : super(_readInitialTokens()) {
-    // Seed the static bridge with the (possibly cached) initial light palette
-    // so DesignColors/AppColors resolve correctly on the very first frame.
     AppColorBridge.applyPalette(state.light);
   }
 
-  /// Initial tokens: the last society palette cached from a prior session
-  /// (applied synchronously so there's no default→society flash on launch),
-  /// falling back to the compile-time defaults.
   static ThemeTokens _readInitialTokens() {
-    final cached = _readCachedLightPalette();
+    final boot = SocietyThemeCache.peekBootstrapPalette();
+    if (boot != null) {
+      return ThemeTokens.defaults.copyWith(light: boot);
+    }
+    final sid = SocietyThemeCache.activeSocietyId();
+    if (sid == null) return ThemeTokens.defaults;
+    final cached = SocietyThemeCache.readPalette(sid);
     if (cached == null) return ThemeTokens.defaults;
     return ThemeTokens.defaults.copyWith(light: cached);
-  }
-
-  static AppColorPalette? _readCachedLightPalette() {
-    final raw = StorageService.getString(AppConstants.keyCachedSocietyTheme);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic>) {
-        return AppColorPalette.fromApiJson(decoded, AppColorPalette.light);
-      }
-    } catch (_) {
-      // Corrupt cache — ignore and fall back to defaults.
-    }
-    return null;
   }
 
   void set({AppColorPalette? light, AppColorPalette? dark}) {
@@ -145,11 +102,26 @@ class ThemeTokensNotifier extends StateNotifier<ThemeTokens> {
     }
   }
 
-  /// Reset to the compile-time defaults and drop the cached society palette.
-  void reset() {
+  /// Logout / explicit default: re-apply cached palette for the last picked
+  /// society when available — avoids a green flash on the login screen.
+  void resetToCachedOrDefaults({String? societyId}) {
+    final sid = societyId?.trim() ??
+        SocietyThemeCache.activeSocietyId();
+    final cached =
+        sid != null && sid.isNotEmpty ? SocietyThemeCache.readPalette(sid) : null;
+    if (cached != null) {
+      state = ThemeTokens.defaults.copyWith(light: cached);
+      AppColorBridge.applyPalette(cached);
+      return;
+    }
     state = ThemeTokens.defaults;
     AppColorBridge.reset();
-    unawaited(StorageService.setString(AppConstants.keyCachedSocietyTheme, ''));
+  }
+
+  /// Society uses platform defaults (null theme in DB).
+  Future<void> clearSocietyTheme(String societyId) async {
+    await SocietyThemeCache.clearTheme(societyId);
+    resetToCachedOrDefaults(societyId: societyId);
   }
 }
 
@@ -158,55 +130,184 @@ final themeTokensProvider =
   return ThemeTokensNotifier();
 });
 
-// =========================================================================
-//  Remote theme providers
-// =========================================================================
+final societyThemeScopeIdProvider = StateProvider<String?>((ref) {
+  return SocietyThemeCache.activeSocietyId();
+});
 
-/// Provides a [ThemeRepository] backed by the shared [DioClient].
+/// Bumped on each refresh so stale in-flight fetches cannot overwrite the palette.
+final _themeFetchGenerationProvider = StateProvider<int>((ref) => 0);
+
+/// Apply the on-disk palette for [societyId] immediately (no network).
+void applyCachedSocietyTheme(WidgetRef ref, String societyId) {
+  final palette = SocietyThemeCache.readPalette(societyId);
+  if (palette != null) {
+    ref.read(themeTokensProvider.notifier).set(light: palette);
+  }
+}
+
+void applyCachedSocietyThemeFromRef(Ref ref, String societyId) {
+  final palette = SocietyThemeCache.readPalette(societyId);
+  if (palette != null) {
+    ref.read(themeTokensProvider.notifier).set(light: palette);
+  }
+}
+
+/// Apply cached palette + update scope id (instant, no network).
+void syncSocietyThemeScope(WidgetRef ref, {String? societyId}) {
+  final sid = societyId?.trim() ??
+      StorageService.getSocietyId()?.trim() ??
+      StorageService.getPreferredLoginSocietyId()?.trim();
+  ref.read(societyThemeScopeIdProvider.notifier).state =
+      (sid == null || sid.isEmpty) ? null : sid;
+  if (sid != null && sid.isNotEmpty) {
+    applyCachedSocietyTheme(ref, sid);
+  }
+}
+
+void syncSocietyThemeScopeFromRef(Ref ref, {String? societyId}) {
+  final sid = societyId?.trim() ??
+      StorageService.getSocietyId()?.trim() ??
+      StorageService.getPreferredLoginSocietyId()?.trim();
+  ref.read(societyThemeScopeIdProvider.notifier).state =
+      (sid == null || sid.isEmpty) ? null : sid;
+  if (sid != null && sid.isNotEmpty) {
+    applyCachedSocietyThemeFromRef(ref, sid);
+  }
+}
+
 final themeRepositoryProvider = Provider<ThemeRepository>((ref) {
   return ThemeRepository(ref.watch(dioClientProvider));
 });
 
-/// Fetches the society's custom theme colors from the API and applies them
-/// to [themeTokensProvider] (light palette only).
-///
-/// This is a fire-and-forget [FutureProvider.autoDispose] — it silently
-/// no-ops when the user is not logged in (the API returns 401, which the
-/// repository catches and returns null). Watching it in [MaterialApp.builder]
-/// ensures it re-runs whenever the provider is invalidated (e.g., after login
-/// or a society switch).
-final applyRemoteThemeProvider = FutureProvider.autoDispose<void>((ref) async {
-  final repo = ref.watch(themeRepositoryProvider);
-  // Resolve the society id from storage — the logged-in society, else the last
-  // selected one — so theme + splash apply even before the user signs in.
-  final sid = (StorageService.getSocietyId() ??
-          StorageService.getPreferredLoginSocietyId() ??
+/// Fetch society appearance from the API and apply when still current.
+/// Always paints disk cache before the first await.
+Future<void> _fetchAndApplySocietyTheme(
+  T Function<T>(ProviderListenable<T> provider) read, {
+  String? societyId,
+  int? generation,
+}) async {
+  final sid = (societyId?.trim() ??
+          read(societyThemeScopeIdProvider)?.trim() ??
+          SocietyThemeCache.activeSocietyId()?.trim() ??
           '')
       .trim();
-  if (sid.isEmpty) return; // no society known yet — keep current cache/defaults
-  var theme = await repo.fetchSocietyAppearanceById(sid);
-  if (theme.colors == null && theme.splashUrl == null) {
-    // by-id endpoint may not be deployed yet — fall back to the authed endpoint.
-    theme = await repo.fetchSocietyTheme();
+  if (sid.isEmpty) return;
+
+  final gen = generation ?? read(_themeFetchGenerationProvider);
+  final palette = SocietyThemeCache.readPalette(sid);
+  if (palette != null) {
+    read(themeTokensProvider.notifier).set(light: palette);
   }
-  // Splash image is independent of the palette — cache it (or clear) for the
-  // next launch's splash screen regardless of whether colors are customized.
-  await StorageService.setString(
-    AppConstants.keyCachedSplashUrl,
-    theme.splashUrl ?? '',
-  );
-  if (theme.colors == null) {
-    // reset() also clears the cached society palette.
-    AppColorBridge.reset();
-    ref.read(themeTokensProvider.notifier).reset();
+
+  bool stale() => read(_themeFetchGenerationProvider) != gen;
+
+  final cachedJson = SocietyThemeCache.readThemeJson(sid);
+  final repo = read(themeRepositoryProvider);
+
+  SocietyAppearance appearance =
+      await repo.fetchSocietyAppearanceById(sid);
+  if (stale()) return;
+
+  if (!appearance.ok) {
+    appearance = await repo.fetchSocietyTheme();
+  }
+  if (stale()) return;
+
+  if (!appearance.ok) {
+    final cached = SocietyThemeCache.readPalette(sid);
+    if (cached != null) {
+      read(themeTokensProvider.notifier).set(light: cached);
+    }
     return;
   }
-  // Cache the raw palette so the next launch paints it on the first frame
-  // (no default→society flash) before this network fetch completes.
-  await StorageService.setString(
-    AppConstants.keyCachedSocietyTheme,
-    jsonEncode(theme.colors),
+
+  final splashUrl = appearance.splashUrl?.trim();
+  if (splashUrl != null && splashUrl.isNotEmpty) {
+    await SocietyThemeCache.ensureSplashFile(sid, splashUrl);
+  } else {
+    await SocietyThemeCache.clearSplashFile(sid);
+  }
+  if (stale()) return;
+
+  final colors = appearance.themeColors;
+  if (colors == null || colors.isEmpty) {
+    await read(themeTokensProvider.notifier).clearSocietyTheme(sid);
+    return;
+  }
+
+  if (SocietyThemeCache.themeJsonEquals(cachedJson, colors)) {
+    final cached = SocietyThemeCache.readPalette(sid);
+    if (cached != null) {
+      read(themeTokensProvider.notifier).set(light: cached);
+    }
+    return;
+  }
+
+  await SocietyThemeCache.writeThemeJson(sid, colors);
+  if (stale()) return;
+  final newLight = AppColorPalette.fromApiJson(colors, AppColorPalette.light);
+  read(themeTokensProvider.notifier).set(light: newLight);
+}
+
+void _bumpThemeFetchGeneration(
+  T Function<T>(ProviderListenable<T> provider) read,
+) {
+  read(_themeFetchGenerationProvider.notifier).update((g) => g + 1);
+}
+
+int _currentThemeFetchGeneration(
+  T Function<T>(ProviderListenable<T> provider) read,
+) =>
+    read(_themeFetchGenerationProvider);
+
+/// Re-apply cached palette after logout (cache survives [StorageService.clearAll]).
+void handleAuthLogoutTheme(WidgetRef ref) {
+  _bumpThemeFetchGeneration(ref.read);
+  syncSocietyThemeScope(ref);
+  ref.read(themeTokensProvider.notifier).resetToCachedOrDefaults();
+  refreshSocietyThemeFromServer(ref);
+}
+
+/// Sync cache, then refresh from server without invalidating providers
+/// (avoids a green flash from stale/racing FutureProvider rebuilds).
+void refreshSocietyThemeFromServer(WidgetRef ref, {String? societyId}) {
+  syncSocietyThemeScope(ref, societyId: societyId);
+  SocietyContextInterceptor.clearCache();
+  _bumpThemeFetchGeneration(ref.read);
+  final gen = _currentThemeFetchGeneration(ref.read);
+  unawaited(
+    _fetchAndApplySocietyTheme(ref.read, societyId: societyId, generation: gen),
   );
-  final newLight = AppColorPalette.fromApiJson(theme.colors!, AppColorPalette.light);
-  ref.read(themeTokensProvider.notifier).set(light: newLight);
+}
+
+void refreshSocietyThemeFromServerRef(Ref ref, {String? societyId}) {
+  syncSocietyThemeScopeFromRef(ref, societyId: societyId);
+  SocietyContextInterceptor.clearCache();
+  _bumpThemeFetchGeneration(ref.read);
+  final gen = _currentThemeFetchGeneration(ref.read);
+  unawaited(
+    _fetchAndApplySocietyTheme(ref.read, societyId: societyId, generation: gen),
+  );
+}
+
+/// Fetch + cache before navigating to login (after society pick).
+Future<void> prefetchSocietyAppearance(WidgetRef ref, String societyId) async {
+  syncSocietyThemeScope(ref, societyId: societyId);
+  SocietyContextInterceptor.clearCache();
+  _bumpThemeFetchGeneration(ref.read);
+  final gen = _currentThemeFetchGeneration(ref.read);
+  try {
+    await _fetchAndApplySocietyTheme(ref.read, societyId: societyId, generation: gen);
+  } catch (_) {
+    applyCachedSocietyTheme(ref, societyId);
+  }
+}
+
+/// One-shot boot refresh — never invalidated so palette is not reset mid-flight.
+final applyRemoteThemeProvider = FutureProvider<void>((ref) async {
+  syncSocietyThemeScopeFromRef(ref);
+  final sid = (ref.read(societyThemeScopeIdProvider) ?? '').trim();
+  if (sid.isEmpty) return;
+  final gen = ref.read(_themeFetchGenerationProvider);
+  await _fetchAndApplySocietyTheme(ref.read, societyId: sid, generation: gen);
 });

@@ -126,8 +126,8 @@ class _AdminWaterAnalyticsScreenState
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+            gradient: LinearGradient(
+              colors: [DesignColors.info, DesignColors.info],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -214,7 +214,7 @@ class _AdminWaterAnalyticsScreenState
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => _setPeriod(days),
-      selectedColor: const Color(0xFF0EA5E9),
+      selectedColor: DesignColors.info,
       labelStyle: TextStyle(
         color: isSelected ? Colors.white : DesignColors.textSecondary,
         fontWeight: FontWeight.w600,
@@ -300,9 +300,9 @@ class _AdminWaterAnalyticsScreenState
                           value: fraction,
                           minHeight: 14,
                           backgroundColor:
-                              const Color(0xFF0EA5E9).withValues(alpha: 0.08),
-                          valueColor: const AlwaysStoppedAnimation(
-                            Color(0xFF0EA5E9),
+                              DesignColors.info.withValues(alpha: 0.08),
+                          valueColor: AlwaysStoppedAnimation(
+                            DesignColors.info,
                           ),
                         ),
                       ),
@@ -378,9 +378,9 @@ class _AdminWaterAnalyticsScreenState
                       value: fraction,
                       minHeight: 14,
                       backgroundColor:
-                          const Color(0xFF6366F1).withValues(alpha: 0.08),
-                      valueColor: const AlwaysStoppedAnimation(
-                        Color(0xFF6366F1),
+                          DesignColors.secondary.withValues(alpha: 0.08),
+                      valueColor: AlwaysStoppedAnimation(
+                        DesignColors.secondary,
                       ),
                     ),
                   ),
@@ -426,8 +426,8 @@ class _AdminWaterAnalyticsScreenState
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.door_sliding_outlined,
-                    size: 16, color: Color(0xFF0EA5E9)),
+                Icon(Icons.door_sliding_outlined,
+                    size: 16, color: DesignColors.info),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -460,7 +460,7 @@ class _AdminWaterAnalyticsScreenState
       icon: Icons.water_drop_outlined,
       title: 'No data',
       subtitle: message,
-      iconColor: const Color(0xFF0EA5E9),
+      iconColor: DesignColors.info,
     );
   }
 

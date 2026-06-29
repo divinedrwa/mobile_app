@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/design_tokens.dart';
+
 /// Guard-only UI tokens (8px grid). Does not alter global [AppTheme].
 /// Apply via [GuardThemeScope] under `/guard/*`.
 abstract final class GuardTokens {
@@ -24,11 +26,21 @@ abstract final class GuardTokens {
   static const double body = 15; // 14–16
   static const double caption = 12.5; // 12–13
 
-  // —— Outdoor-readable contrast ——
-  static const Color guardAccent = Color(0xFF6B7280);
-  static const Color guardAccentDeep = Color(0xFF374151);
+  // —— Brand ——
+  /// Primary CTA fill — reads society theme at runtime (not for `const` widgets).
+  static Color get guardPrimary => DesignColors.primary;
+
+  /// Muted accent for icons/borders — compile-time GP default (safe in `const`).
+  /// For society-themed chrome in `build()`, use [themedAccent] / [themedAccentDeep].
+  static const Color guardAccent = Color(0xFF64748B);
+  static const Color guardAccentDeep = Color(0xFF0D1B3D);
+
+  /// Society-themed accents — runtime only, never inside `const`.
+  static Color get themedAccent => DesignColors.textSecondary;
+  static Color get themedAccentDeep => DesignColors.primaryDark;
+
   static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textSecondary = Color(0xFF64748B);
   static const Color surfaceCard = Color(0xFFFFFFFF);
   static const Color borderSubtle = Color(0xFFE5E7EB);
 
@@ -36,12 +48,14 @@ abstract final class GuardTokens {
   static const Color darkCard = Color(0xFF252B3A);
   static const Color darkBorder = Color(0xFF334155);
 
-  /// Semantic accents (premium guard UI — dark mode uses softer variants inline).
+  /// Semantic accents — [success] / [dangerBrand] are const-safe; use [themedSuccess] for live theme.
   static const Color success = Color(0xFF16A34A);
-  static const Color successMuted = Color(0xFFD1FAE5);
+  static Color get themedSuccess => DesignColors.accent;
+  static const Color successMuted = Color(0xFFDCFCE7);
   static const Color warning = Color(0xFFF97316);
   static const Color warningMuted = Color(0xFFFFEDD5);
   static const Color dangerBrand = Color(0xFFDC2626);
+  static Color get themedDanger => DesignColors.error;
   static const Color dangerMuted = Color(0xFFFEE2E2);
 
   static const double radiusLg = 16;
@@ -68,8 +82,9 @@ abstract final class GuardTokens {
         borderRadius: BorderRadius.circular(radiusButton),
       ),
       foregroundColor: Colors.white,
-      backgroundColor:
-          isDark ? guardAccent : guardAccentDeep,
+      backgroundColor: isDark
+          ? guardPrimary.withValues(alpha: 0.88)
+          : guardPrimary,
     );
   }
 
@@ -87,7 +102,7 @@ abstract final class GuardTokens {
   static ButtonStyle textLink(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextButton.styleFrom(
-      foregroundColor: isDark ? guardAccent : guardAccentDeep,
+      foregroundColor: isDark ? guardAccent : guardPrimary,
       padding: const EdgeInsets.symmetric(horizontal: g1, vertical: 4),
       minimumSize: Size.zero,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -100,7 +115,7 @@ abstract final class GuardTokens {
         color: Theme.of(context).colorScheme.onSurface,
       );
 
-  static TextStyle _fallbackBody() => const TextStyle(
+  static TextStyle _fallbackBody() => TextStyle(
         fontSize: body,
         color: textSecondary,
       );

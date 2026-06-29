@@ -36,7 +36,7 @@ class DarkTheme {
         scrolledUnderElevation: 0.5,
         centerTitle: false,
         shadowColor: AppColors.shadowMedium,
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: Colors.white,
@@ -59,7 +59,7 @@ class DarkTheme {
         backgroundColor: const Color(0xFF141B2D),
         indicatorColor: AppColors.primary.withValues(alpha: 0.2),
         labelTextStyle: WidgetStateProperty.all(
-          GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+          GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white70),
         ),
       ),
 
@@ -89,7 +89,7 @@ class DarkTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -101,74 +101,74 @@ class DarkTheme {
 
       // Text Theme — Inter on dark surfaces (parity with light / Android)
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.inter(
+        displayLarge: GoogleFonts.plusJakartaSans(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        displayMedium: GoogleFonts.inter(
+        displayMedium: GoogleFonts.plusJakartaSans(
           fontSize: 28,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        displaySmall: GoogleFonts.inter(
+        displaySmall: GoogleFonts.plusJakartaSans(
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        headlineLarge: GoogleFonts.inter(
+        headlineLarge: GoogleFonts.plusJakartaSans(
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        headlineMedium: GoogleFonts.inter(
+        headlineMedium: GoogleFonts.plusJakartaSans(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        headlineSmall: GoogleFonts.inter(
+        headlineSmall: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        titleLarge: GoogleFonts.inter(
+        titleLarge: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        titleMedium: GoogleFonts.inter(
+        titleMedium: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: Colors.white,
         ),
-        titleSmall: GoogleFonts.inter(
+        titleSmall: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: Colors.white70,
         ),
-        bodyLarge: GoogleFonts.inter(
+        bodyLarge: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           color: Colors.white70,
         ),
-        bodyMedium: GoogleFonts.inter(
+        bodyMedium: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           color: Colors.white70,
         ),
-        bodySmall: GoogleFonts.inter(
+        bodySmall: GoogleFonts.plusJakartaSans(
           fontSize: 12,
           color: Colors.white60,
         ),
-        labelLarge: GoogleFonts.inter(
+        labelLarge: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: Colors.white,
         ),
-        labelMedium: GoogleFonts.inter(
+        labelMedium: GoogleFonts.plusJakartaSans(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: Colors.white70,
         ),
-        labelSmall: GoogleFonts.inter(
+        labelSmall: GoogleFonts.plusJakartaSans(
           fontSize: 10,
           fontWeight: FontWeight.w500,
           color: Colors.white60,

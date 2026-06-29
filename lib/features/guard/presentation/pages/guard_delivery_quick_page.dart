@@ -73,7 +73,7 @@ class _GuardDeliveryQuickPageState
         appBar: AppBar(
           leading: IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded),
+            icon: Icon(Icons.close_rounded),
             onPressed: _submitting ? null : () => context.pop(),
           ),
           title: Text(
@@ -210,7 +210,7 @@ class _GuardDeliveryQuickPageState
                       enabled: !_submitting,
                       decoration: InputDecoration(
                         hintText: 'Block, flat, or name…',
-                        prefixIcon: const Icon(Icons.search_rounded),
+                        prefixIcon: Icon(Icons.search_rounded),
                         filled: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(
@@ -235,7 +235,7 @@ class _GuardDeliveryQuickPageState
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline_rounded,
                               color: GuardTokens.warning,
                             ),
@@ -357,7 +357,7 @@ class _GuardDeliveryQuickPageState
                                               ),
                                             ),
                                             if (sel)
-                                              const Icon(
+                                              Icon(
                                                 Icons.done_rounded,
                                                 size: 20,
                                                 color: GuardTokens.success,

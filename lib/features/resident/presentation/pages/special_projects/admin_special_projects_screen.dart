@@ -173,9 +173,9 @@ class _AdminSpecialProjectsScreenState
           Row(
             children: [
               _heroPill('Active', active, DesignColors.surface),
-              const SizedBox(width: AppSpacing.sm),
+              SizedBox(width: AppSpacing.sm),
               _heroPill('Completed', completed, DesignColors.surface),
-              const SizedBox(width: AppSpacing.sm),
+              SizedBox(width: AppSpacing.sm),
               _heroPill('Cancelled', cancelled, DesignColors.surface),
             ],
           ),

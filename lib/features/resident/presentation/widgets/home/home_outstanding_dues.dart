@@ -104,7 +104,7 @@ class HomeOutstandingDues extends StatelessWidget {
           badgeFg = const Color(0xFFB91C1C);
         } else {
           statusLabel = 'Due soon';
-          accent = const Color(0xFFD97706);
+          accent = DesignColors.warning;
           badgeBg = const Color(0xFFFEF3C7);
           badgeFg = const Color(0xFFB45309);
         }

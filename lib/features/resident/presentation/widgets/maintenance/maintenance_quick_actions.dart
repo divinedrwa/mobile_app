@@ -40,7 +40,7 @@ class MaintenanceQuickActions extends StatelessWidget {
               Container(
                 width: 1,
                 height: 56,
-                margin: const EdgeInsets.symmetric(vertical: 8),
+                margin: EdgeInsets.symmetric(vertical: 8),
                 color: DesignColors.borderLight,
               ),
           ],

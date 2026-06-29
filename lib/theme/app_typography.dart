@@ -3,13 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Typography tokens for the GatePass+ theme system.
 ///
-/// Font family is **Inter** (per brand kit), loaded via Google Fonts.
+/// Font family is **Plus Jakarta Sans** (GatePass+ brand), loaded via Google Fonts.
 /// Sizes match the spec: 12, 14, 16, 18, 22, 28, 36, 48.
 /// Weights: 400 (regular), 500 (medium), 600 (semibold), 700 (bold).
 class AppTypography {
   AppTypography._();
 
-  static const String fontFamily = 'Inter';
+  static const String fontFamily = 'Plus Jakarta Sans';
 
   // Sizes
   static const double fs12 = 12;
@@ -30,14 +30,14 @@ class AppTypography {
   /// Material 3 [TextTheme] populated with our scale.
   /// Used by [AppTheme] to wire `Theme.of(context).textTheme.*`.
   static TextTheme textTheme(Color onSurface) {
-    final base = GoogleFonts.interTextTheme();
+    final base = GoogleFonts.plusJakartaSansTextTheme();
     TextStyle style(double size, FontWeight w, {double? height}) =>
         base.bodyMedium!.copyWith(
           fontSize: size,
           fontWeight: w,
           color: onSurface,
           height: height,
-          fontFamilyFallback: const ['Inter'],
+          fontFamilyFallback: const ['Plus Jakarta Sans'],
         );
 
     return TextTheme(

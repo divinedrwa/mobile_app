@@ -155,7 +155,7 @@ class _AdminInvitationsScreenState
       label: Text('$label ($count)'),
       selected: isSelected,
       onSelected: (_) => setState(() => _statusFilter = status),
-      selectedColor: const Color(0xFFEC4899),
+      selectedColor: Color(0xFFEC4899),
       backgroundColor: DesignColors.surfaceSoft,
       labelStyle: DesignTypography.labelSmall.copyWith(
         color: isSelected ? Colors.white : DesignColors.textSecondary,
@@ -163,7 +163,7 @@ class _AdminInvitationsScreenState
       ),
       side: BorderSide(
         color: isSelected
-            ? const Color(0xFFEC4899)
+            ? Color(0xFFEC4899)
             : DesignColors.borderLight,
       ),
       shape: RoundedRectangleBorder(
@@ -383,7 +383,7 @@ class _AdminInvitationsScreenState
                           selected: sel,
                           onSelected: (_) =>
                               setSheetState(() => selectedRole = r),
-                          selectedColor: const Color(0xFFEC4899),
+                          selectedColor: Color(0xFFEC4899),
                           backgroundColor: DesignColors.surfaceSoft,
                           labelStyle: TextStyle(
                             color: sel
@@ -519,11 +519,11 @@ class _AdminInvitationsScreenState
   static Color _statusColor(String status) {
     switch (status) {
       case 'PENDING':
-        return const Color(0xFFF59E0B);
+        return DesignColors.warning;
       case 'ACCEPTED':
-        return const Color(0xFF10B981);
+        return DesignColors.success;
       case 'REVOKED':
-        return const Color(0xFFEF4444);
+        return DesignColors.error;
       case 'EXPIRED':
         return DesignColors.textTertiary;
       default:

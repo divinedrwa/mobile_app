@@ -27,45 +27,45 @@ abstract final class VisitorMgmtStatus {
   static VisitorMgmtStatusStyle style(String raw) {
     switch (normalize(raw)) {
       case 'APPROVED':
-        return const VisitorMgmtStatusStyle(
+        return VisitorMgmtStatusStyle(
           label: 'Approved',
-          foreground: Color(0xFF15803D),
-          background: Color(0xFFF0FDF4),
-          border: Color(0xFF86EFAC),
+          foreground: DesignColors.success,
+          background: DesignColors.successLight,
+          border: DesignColors.accent.withValues(alpha: 0.45),
           icon: Icons.verified_rounded,
         );
       case 'CHECKED_IN':
-        return const VisitorMgmtStatusStyle(
+        return VisitorMgmtStatusStyle(
           label: 'Checked in',
-          foreground: Color(0xFF1D4ED8),
-          background: Color(0xFFEFF6FF),
-          border: Color(0xFF93C5FD),
+          foreground: DesignColors.info,
+          background: DesignColors.infoLight,
+          border: DesignColors.info.withValues(alpha: 0.35),
           icon: Icons.home_work_rounded,
         );
       case 'CHECKED_OUT':
-        return const VisitorMgmtStatusStyle(
+        return VisitorMgmtStatusStyle(
           label: 'Checked out',
-          foreground: Color(0xFF475569),
+          foreground: DesignColors.textSecondary,
           background: Color(0xFFF1F5F9),
           border: Color(0xFFCBD5E1),
           icon: Icons.logout_rounded,
         );
       case 'REJECTED':
       case 'DENIED':
-        return const VisitorMgmtStatusStyle(
+        return VisitorMgmtStatusStyle(
           label: 'Declined',
-          foreground: Color(0xFFB91C1C),
-          background: Color(0xFFFEF2F2),
-          border: Color(0xFFFECACA),
+          foreground: DesignColors.error,
+          background: DesignColors.errorLight,
+          border: DesignColors.error.withValues(alpha: 0.35),
           icon: Icons.cancel_rounded,
         );
       case 'PENDING':
       case 'PENDING_APPROVAL':
-        return const VisitorMgmtStatusStyle(
+        return VisitorMgmtStatusStyle(
           label: 'Awaiting approval',
-          foreground: Color(0xFFC2410C),
-          background: Color(0xFFFFF7ED),
-          border: Color(0xFFFDBA74),
+          foreground: DesignColors.warning,
+          background: DesignColors.warningLight,
+          border: DesignColors.warning.withValues(alpha: 0.4),
           icon: Icons.pending_actions_rounded,
         );
       default:

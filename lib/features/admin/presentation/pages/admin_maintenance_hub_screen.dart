@@ -668,12 +668,12 @@ class _AdminMaintenanceHubScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.notifications_active_outlined, color: DesignColors.primary, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Send Reminders?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text(
@@ -692,7 +692,7 @@ class _AdminMaintenanceHubScreenState
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.primary, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Send', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
@@ -978,17 +978,17 @@ class _AdminMaintenanceHubScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Villa $villaNumber', style: DesignTypography.headingM.copyWith(fontWeight: FontWeight.w700)),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _sheetAction(ctx, icon: Icons.edit_outlined, color: DesignColors.primary, label: 'Edit amounts',
                   onTap: () { Navigator.pop(ctx); _openEditVillaRowSheet(resident); }),
-              const Divider(height: 1),
-              _sheetAction(ctx, icon: Icons.history_rounded, color: const Color(0xFF6366F1), label: 'Payment history',
+              Divider(height: 1),
+              _sheetAction(ctx, icon: Icons.history_rounded, color: DesignColors.secondary, label: 'Payment history',
                   onTap: () { Navigator.pop(ctx); if (villaId.isNotEmpty) context.go('/resident/admin-villa-history/$villaId'); }),
               const SizedBox(height: 8),
             ],
@@ -1008,9 +1008,9 @@ class _AdminMaintenanceHubScreenState
           children: [
             Container(width: 36, height: 36, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, color: color, size: 20)),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: DesignColors.textPrimary)),
-            const Spacer(),
+            Spacer(),
             Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary, size: 20),
           ],
         ),
@@ -1118,7 +1118,7 @@ class _CollapsibleGroupState extends State<_CollapsibleGroup> {
                   const Spacer(),
                   AnimatedRotation(
                     turns: _open ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 180),
+                    duration: Duration(milliseconds: 180),
                     child: Icon(Icons.keyboard_arrow_down, color: DesignColors.textTertiary),
                   ),
                 ],

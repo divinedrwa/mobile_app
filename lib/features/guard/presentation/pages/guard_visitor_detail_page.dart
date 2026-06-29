@@ -107,7 +107,7 @@ class _GuardVisitorDetailPageState
           scrolledUnderElevation: 0,
           leading: IconButton(
             tooltip: 'Go back',
-            icon: const Icon(Icons.arrow_back_rounded),
+            icon: Icon(Icons.arrow_back_rounded),
             onPressed: () => context.pop(),
           ),
           title: Text(
@@ -164,7 +164,7 @@ class _GuardVisitorDetailPageState
                             height: 52,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 colors: [
                                   GuardTokens.guardAccent,
                                   GuardTokens.guardAccentDeep,
@@ -246,7 +246,7 @@ class _GuardVisitorDetailPageState
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.info_outline_rounded,
                               color: GuardTokens.warning,
                               size: 20,
@@ -341,7 +341,7 @@ class _GuardVisitorDetailPageState
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.phone_android_rounded,
                                 size: 20,
                                 color: GuardTokens.guardAccent,
@@ -426,7 +426,7 @@ class _GuardVisitorDetailPageState
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.logout_rounded),
+                              : Icon(Icons.logout_rounded),
                           label: Text(
                             _exiting ? 'Marking exit…' : 'Mark exit',
                             style: const TextStyle(
@@ -466,11 +466,11 @@ class _GuardVisitorDetailPageState
                               );
                             }
                           },
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.phone_outlined,
                             color: GuardTokens.guardAccentDeep,
                           ),
-                          label: const Text(
+                          label: Text(
                             'Call visitor',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
@@ -498,7 +498,7 @@ class _GuardVisitorDetailPageState
                               );
                             }
                           },
-                          icon: const Icon(Icons.phone_outlined),
+                          icon: Icon(Icons.phone_outlined),
                           label: const Text(
                             'Call visitor',
                             style: TextStyle(
@@ -527,7 +527,7 @@ class _GuardVisitorDetailPageState
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.verified_user_outlined),
+                              : Icon(Icons.verified_user_outlined),
                           label: Text(
                             _admitting ? 'Admitting…' : 'Confirm guest entered',
                             style: const TextStyle(

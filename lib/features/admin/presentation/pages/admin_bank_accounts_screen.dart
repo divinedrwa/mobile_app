@@ -52,7 +52,7 @@ class _AdminBankAccountsScreenState
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(),
-        backgroundColor: const Color(0xFF0EA5E9),
+        backgroundColor: DesignColors.info,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Account', style: TextStyle(color: Colors.white)),
       ),
@@ -96,7 +96,7 @@ class _AdminBankAccountsScreenState
                       icon: Icons.account_balance_outlined,
                       title: 'No bank accounts',
                       subtitle: 'Tap + to add your first bank account.',
-                      iconColor: const Color(0xFF0EA5E9),
+                      iconColor: DesignColors.info,
                     ),
                   ),
                 ],
@@ -137,11 +137,11 @@ class _AdminBankAccountsScreenState
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
+                  color: DesignColors.info.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.account_balance_outlined,
-                    color: Color(0xFF0EA5E9), size: 20),
+                child: Icon(Icons.account_balance_outlined,
+                    color: DesignColors.info, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -278,7 +278,7 @@ class _AdminBankAccountsScreenState
                             }
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF0EA5E9),
+                            backgroundColor: DesignColors.info,
                           ),
                           child: Text(isEdit ? 'Update' : 'Create'),
                         ),
@@ -381,12 +381,12 @@ class _AdminBankAccountsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20),
+              Container(width: 40, height: 4, margin: EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2))),
               Container(width: 56, height: 56,
                   decoration: BoxDecoration(color: DesignColors.error.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(Icons.account_balance_outlined, color: DesignColors.error, size: 28)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text('Delete Bank Account?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
               const SizedBox(height: 8),
               Text('Are you sure you want to delete this bank account?',
@@ -401,7 +401,7 @@ class _AdminBankAccountsScreenState
                 const SizedBox(width: 12),
                 Expanded(child: FilledButton(
                   onPressed: () => Navigator.pop(sheetCtx, true),
-                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                  style: FilledButton.styleFrom(backgroundColor: DesignColors.error, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
                   child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w600)))),
               ]),
               const SizedBox(height: 16),
