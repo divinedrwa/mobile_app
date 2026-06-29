@@ -80,17 +80,23 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
         data['ownerName']?.toString() ??
         'Unknown';
     final monthlyAmount =
-        (villa['maintenanceAmount'] as num?)?.toDouble() ??
+        (villa['monthlyMaintenance'] as num?)?.toDouble() ??
+            (villa['maintenanceAmount'] as num?)?.toDouble() ??
             (data['maintenanceAmount'] as num?)?.toDouble();
 
-    final payments = ((data['payments'] as List?) ?? const [])
+    final stats = (data['statistics'] as Map?) ?? const {};
+    final history = ((data['history'] as List?) ??
+            (data['payments'] as List?) ??
+            const [])
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
 
-    final totalPaid = (data['totalPaid'] as num?)?.toDouble() ??
-        payments.fold<double>(
-            0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
+    final totalPaid = (stats['totalPaid'] as num?)?.toDouble() ??
+        history.fold<double>(
+          0,
+          (sum, row) => sum + ((row['paidAmount'] as num?)?.toDouble() ?? 0),
+        );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -170,8 +176,8 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
                     ),
                   const SizedBox(width: AppSpacing.md),
                   _statBadge(
-                    label: 'Payments',
-                    value: '${payments.length}',
+                    label: 'Cycles',
+                    value: '${history.length}',
                     color: DesignColors.textSecondary,
                   ),
                 ],
@@ -182,7 +188,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
         const SizedBox(height: AppSpacing.xl),
         // History list
         Text(
-          'Payment history',
+          'Billing history',
           style: DesignTypography.headingM.copyWith(
             color: DesignColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -190,15 +196,16 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        if (payments.isEmpty)
+        if (history.isEmpty)
           const EmptyStateWidget(
             icon: Icons.receipt_long_outlined,
-            title: 'No payments yet',
-            subtitle: 'Payment history will appear here once payments are recorded.',
+            title: 'No billing history',
+            subtitle:
+                'Maintenance cycles and payments for this villa will appear here once billing is generated.',
           )
         else
-          for (var i = 0; i < payments.length; i++) ...[
-            _paymentTile(payments[i], inr, dateFmt, i),
+          for (var i = 0; i < history.length; i++) ...[
+            _historyTile(history[i], inr, dateFmt, i),
             const SizedBox(height: AppSpacing.sm),
           ],
       ],
@@ -245,24 +252,57 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _paymentTile(
-    Map<String, dynamic> p,
+  Widget _historyTile(
+    Map<String, dynamic> row,
     NumberFormat inr,
     DateFormat dateFmt, [
     int index = 0,
   ]) {
-    final amount = (p['amount'] as num?)?.toDouble() ?? 0;
-    final status = (p['status']?.toString() ?? '').toUpperCase();
-    final mode = p['paymentMode']?.toString() ?? '';
-    final paidAt = DateTime.tryParse(p['paidAt']?.toString() ?? '');
-    final receiptNumber = p['receiptNumber']?.toString();
-    final periodMonth = (p['periodMonth'] as num?)?.toInt();
-    final periodYear = (p['periodYear'] as num?)?.toInt();
+    final expected = (row['amount'] as num?)?.toDouble() ?? 0;
+    final paid = (row['paidAmount'] as num?)?.toDouble() ?? 0;
+    final remaining = (row['remainingDue'] as num?)?.toDouble() ??
+        (expected - paid).clamp(0, double.infinity);
+    final status = (row['status']?.toString() ?? '').toUpperCase();
+    final mode = row['paymentMode']?.toString() ?? '';
+    final paidAt = DateTime.tryParse(
+      row['paymentDate']?.toString() ?? row['paidAt']?.toString() ?? '',
+    );
+    final receiptNumber = row['receiptNumber']?.toString();
+    final periodMonth =
+        (row['month'] as num?)?.toInt() ?? (row['periodMonth'] as num?)?.toInt();
+    final periodYear =
+        (row['year'] as num?)?.toInt() ?? (row['periodYear'] as num?)?.toInt();
+    final cycleTitle = row['cycleTitle']?.toString();
     final periodLabel = periodMonth != null && periodYear != null
         ? DateFormat('MMM y').format(DateTime(periodYear, periodMonth))
-        : null;
+        : cycleTitle ?? 'Cycle';
 
-    final isPaid = status == 'PAID' || status == 'COMPLETED';
+    final isPaid = status == 'PAID' || status == 'COMPLETED' || status == 'WAIVED';
+    final isPartial = status == 'PARTIAL' ||
+        (!isPaid && paid > 0.005 && remaining > 0.005);
+    final isOverdue = status == 'OVERDUE';
+
+    final Color statusColor;
+    final IconData statusIcon;
+    if (isPaid) {
+      statusColor = DesignColors.success;
+      statusIcon = Icons.check_circle;
+    } else if (isOverdue) {
+      statusColor = DesignColors.error;
+      statusIcon = Icons.warning_amber_rounded;
+    } else if (isPartial) {
+      statusColor = DesignColors.warning;
+      statusIcon = Icons.pie_chart_outline;
+    } else {
+      statusColor = DesignColors.textTertiary;
+      statusIcon = Icons.schedule;
+    }
+
+    final amountLabel = isPaid
+        ? inr.format(paid > 0 ? paid : expected)
+        : isPartial
+            ? '${inr.format(paid)} / ${inr.format(expected)}'
+            : inr.format(expected);
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -280,17 +320,11 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: isPaid
-                  ? DesignColors.success.withValues(alpha: 0.12)
-                  : DesignColors.warning.withValues(alpha: 0.12),
+              color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(DesignRadius.md),
             ),
             alignment: Alignment.center,
-            child: Icon(
-              isPaid ? Icons.check_circle : Icons.schedule,
-              size: 18,
-              color: isPaid ? DesignColors.success : DesignColors.warning,
-            ),
+            child: Icon(statusIcon, size: 18, color: statusColor),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -298,7 +332,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  periodLabel ?? 'Payment',
+                  periodLabel,
                   style: DesignTypography.bodyMedium.copyWith(
                     color: DesignColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -307,6 +341,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   [
+                    status.replaceAll('_', ' '),
                     if (mode.isNotEmpty) mode,
                     if (paidAt != null) dateFmt.format(paidAt),
                     if (receiptNumber != null) '#$receiptNumber',
@@ -314,16 +349,20 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
                   style: DesignTypography.caption.copyWith(
                     color: DesignColors.textTertiary,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
           Text(
-            inr.format(amount),
+            amountLabel,
             style: DesignTypography.bodyMedium.copyWith(
-              color: isPaid ? DesignColors.success : DesignColors.textPrimary,
+              color: isPaid
+                  ? DesignColors.success
+                  : isOverdue
+                      ? DesignColors.error
+                      : DesignColors.textPrimary,
               fontWeight: FontWeight.w700,
             ),
           ),
