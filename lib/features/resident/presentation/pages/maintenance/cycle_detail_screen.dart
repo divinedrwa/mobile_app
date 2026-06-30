@@ -430,8 +430,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
   /// Compact "where your money goes" breakup for this cycle (per-home share of
   /// each society expense), mirroring the hub card.
   Widget _buildBreakup(ExpenseBreakdown b, NumberFormat inr) {
-    final members = b.memberCount;
-    final hasSplit = members > 0;
+    // Mirror the hub card / invoice PDF: split each society expense across
+    // billed homes (expenseDivisor), falling back to memberCount.
+    final homes = b.expenseDivisor > 0 ? b.expenseDivisor : b.memberCount;
+    final hasSplit = homes > 0;
     final palette = <Color>[
       DesignColors.success,
       DesignColors.info,
@@ -460,7 +462,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
           const SizedBox(height: 2),
           Text(
             hasSplit
-                ? 'Your per-home share of society expenses this cycle (each expense ÷ $members homes).'
+                ? 'Your per-home share of society expenses this cycle (each expense ÷ $homes homes).'
                 : 'Society expenses this cycle.',
             style: DesignTypography.caption
                 .copyWith(color: DesignColors.textSecondary),
@@ -488,7 +490,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                 ),
                 Text(
                   inr.format(hasSplit
-                      ? b.categories[i].perMember(members)
+                      ? b.shareOfCategory(b.categories[i])
                       : b.categories[i].amount),
                   style: DesignTypography.bodySmall.copyWith(
                     color: DesignColors.textPrimary,

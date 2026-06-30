@@ -1,0 +1,43 @@
+GatePass+ is the all-in-one society management app for residents, security guards, and housing society committees in India.
+
+Whether you live in a gated community, apartment complex, or RWA-managed housing society, GatePass+ helps you approve visitors, pay maintenance, raise complaints, and stay connected — from one premium, easy-to-use app.
+
+━━ FOR RESIDENTS ━━
+• Pre-approve guests with OTP or QR — no more waiting at the gate
+• Approve or reject walk-in visitors from your phone
+• Pay society maintenance online (UPI, Razorpay, PhonePe) or track dues
+• See where your maintenance money goes — transparent expense breakdown
+• Raise and track complaints
+• Read society notices, polls, events & documents
+• Book amenities, manage parcels, log vehicles
+• SOS alerts for medical, fire & security emergencies
+• Community directory & daily help staff
+
+━━ FOR SECURITY GUARDS ━━
+• Dedicated guard mode: QR scan, walk-in check-in, delivery & vehicle entry
+• Pre-approved visitor list & instant admit
+• Patrol logs, incident reports & shift details
+• Works even with weak connectivity — offline queue syncs when back online
+• Resident directory at the gate
+
+━━ FOR SOCIETY ADMINS (on mobile + web) ━━
+Committee members with admin access can manage operations from the Admin tab — while residents use the same app for daily life.
+
+Your society can also use the GatePass+ admin dashboard (web) for billing cycles, expense tracking, gate analytics, UPI verification, reconciliation, and more.
+
+━━ WHY SOCIETIES CHOOSE GATEPASS+ ━━
+✓ Built for Indian housing societies & RWAs
+✓ Resident + Guard + Admin in one platform
+✓ Per-society branding — your society, your look
+✓ Secure, role-based access
+✓ Transparent maintenance & society finances
+
+━━ GET STARTED ━━
+1. Select your society
+2. Log in with credentials from your admin
+3. Start approving visitors and managing your home
+
+GatePass+ — Reside. Approve. Manage.
+
+Support: divine.drwa@gmail.com
+Privacy & Terms: https://divinedrwa.github.io/GatePass-Legal/

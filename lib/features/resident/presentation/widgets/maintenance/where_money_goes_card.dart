@@ -136,36 +136,32 @@ class WhereMoneyGoesCard extends ConsumerWidget {
   }
 
   List<Widget> _content(ExpenseBreakdown data, NumberFormat inr) {
-    final members = data.memberCount;
-    final hasSplit = members > 0;
-    final perExpenses = data.perMemberTotal; // expenses ÷ homes
-    final perHome = data.perHomeExpected; // maintenance you pay ÷ homes
-    final hasMaint = hasSplit && perHome > 0;
-    final net = perHome - perExpenses; // + surplus to reserves / − from reserves
+    final homes = data.expenseDivisor > 0 ? data.expenseDivisor : data.memberCount;
+    final hasSplit = homes > 0;
+    final perHome = data.perHomeExpected;
+    final perExpenses = data.perMemberTotal;
+    final hasMaint = perHome > 0;
+    final net = perHome - perExpenses;
     final surplus = hasMaint && net > 0.5;
     final deficit = hasMaint && net < -0.5;
 
-    // In surplus the donut shows your full maintenance (expenses + a reserve
-    // slice); otherwise it shows the expense split only.
     final showSavings = surplus;
-    final pieBasis = showSavings ? data.totalExpected : data.categoriesTotal;
-    final centerValue =
-        showSavings ? perHome : (hasSplit ? perExpenses : data.total);
-    final centerLabel = showSavings
-        ? 'You pay'
-        : (hasMaint ? 'Cost / home' : (hasSplit ? 'Your share' : 'Total'));
-    final savingsSlice = data.totalExpected - data.categoriesTotal;
+    final pieBasis = hasMaint ? perHome : (hasSplit ? perExpenses : data.total);
+    final centerValue = hasMaint ? perHome : (hasSplit ? perExpenses : data.total);
+    final centerLabel = hasMaint ? 'You pay' : (hasSplit ? 'Cost / home' : 'Total');
     final categories = data.categories;
 
     return [
       Text(
-        surplus
-            ? 'Your ${inr.format(perHome)} maintenance this cycle — where it goes.'
-            : hasMaint
-                ? 'Society spent ${inr.format(data.categoriesTotal)} this cycle across $members homes.'
-                : hasSplit
-                    ? 'Your share of ${inr.format(data.categoriesTotal)} spent this cycle, split across $members homes.'
-                    : 'Society spending this cycle.',
+        hasMaint
+            ? surplus
+                ? 'Your ${inr.format(perHome)} maintenance — expenses split across $homes homes, remainder to reserve.'
+                : deficit
+                    ? 'Your ${inr.format(perHome)} maintenance — expenses were ${inr.format(data.perHomeDeficit)} more than your share, covered from reserves.'
+                    : 'Your ${inr.format(perHome)} maintenance — fully allocated to this cycle\'s expenses.'
+            : hasSplit
+                ? 'Society spent ${inr.format(data.categoriesTotal)} this cycle, split across $homes homes.'
+                : 'Society spending this cycle.',
         style: DesignTypography.caption
             .copyWith(color: DesignColors.textSecondary),
       ),
@@ -186,14 +182,14 @@ class WhereMoneyGoesCard extends ConsumerWidget {
                     sections: [
                       for (var i = 0; i < categories.length; i++)
                         PieChartSectionData(
-                          value: categories[i].amount,
+                          value: data.shareOfCategory(categories[i]),
                           color: _palette[i % _palette.length],
                           radius: 18,
                           showTitle: false,
                         ),
-                      if (showSavings && savingsSlice > 0)
+                      if (showSavings && net > 0.5)
                         PieChartSectionData(
-                          value: savingsSlice,
+                          value: net,
                           color: _savingsColor,
                           radius: 18,
                           showTitle: false,
@@ -231,10 +227,10 @@ class WhereMoneyGoesCard extends ConsumerWidget {
                   _LegendRow(
                     color: _palette[i % _palette.length],
                     label: categories[i].name,
-                    amount: inr.format(hasSplit
-                        ? categories[i].perMember(members)
-                        : categories[i].amount),
-                    percent: categories[i].percentOf(pieBasis),
+                    amount: inr.format(data.shareOfCategory(categories[i])),
+                    percent: pieBasis > 0
+                        ? (data.shareOfCategory(categories[i]) / pieBasis) * 100
+                        : 0,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
@@ -243,23 +239,28 @@ class WhereMoneyGoesCard extends ConsumerWidget {
                     color: _savingsColor,
                     label: 'Saved to reserve',
                     amount: inr.format(net),
-                    percent: pieBasis > 0 ? (savingsSlice / pieBasis) * 100 : 0,
+                    percent: pieBasis > 0 ? (net / pieBasis) * 100 : 0,
                   ),
               ],
             ),
           ),
         ],
       ),
-      if (hasSplit) ...[
+      if (hasSplit && hasMaint) ...[
         const SizedBox(height: AppSpacing.sm),
         Text(
           surplus
-              ? 'You pay ${inr.format(perHome)} · ${inr.format(net)} saved to society reserves.'
+              ? 'From your ${inr.format(perHome)}: ${inr.format(perExpenses)} on expenses · ${inr.format(net)} to reserve.'
               : deficit
-                  ? 'You pay ${inr.format(perHome)} · expenses were ${inr.format(-net)}/home more, covered by reserves.'
-                  : hasMaint
-                      ? 'You pay ${inr.format(perHome)} — fully used by this cycle\'s expenses.'
-                      : 'Each expense ÷ $members homes.',
+                  ? 'From your ${inr.format(perHome)}: ${inr.format(perExpenses)} on expenses · ${inr.format(data.perHomeDeficit)} from society reserve.'
+                  : 'From your ${inr.format(perHome)}: fully used by recorded expenses.',
+          style: DesignTypography.captionSmall
+              .copyWith(color: DesignColors.textTertiary),
+        ),
+      ] else if (hasSplit) ...[
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Each society expense ÷ $homes billed homes.',
           style: DesignTypography.captionSmall
               .copyWith(color: DesignColors.textTertiary),
         ),

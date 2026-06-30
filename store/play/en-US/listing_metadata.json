@@ -1,0 +1,20 @@
+{
+  "packageName": "com.app.gatepass",
+  "appName": "GatePass+",
+  "locale": "en-US",
+  "playStoreUrl": "https://play.google.com/store/apps/details?id=com.app.gatepass",
+  "recommendedCategory": "HOUSE_AND_HOME",
+  "contentRatingNotes": "Complete Play questionnaire; declare payments if Razorpay/PhonePe enabled for your release.",
+  "legal": {
+    "privacyPolicyUrl": "https://divinedrwa.github.io/GatePass-Legal/privacy_policy.html",
+    "termsUrl": "https://divinedrwa.github.io/GatePass-Legal/terms_condition.html",
+    "accountDeletionUrl": "https://divinedrwa.github.io/GatePass-Legal/account_deletion.html"
+  },
+  "contactEmail": "divine.drwa@gmail.com",
+  "files": {
+    "title": "title.txt",
+    "shortDescription": "short_description.txt",
+    "fullDescription": "full_description.txt",
+    "promotionalText": "promotional_text.txt"
+  }
+}

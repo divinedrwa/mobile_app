@@ -1,0 +1,7 @@
+What's new in GatePass+ {version}
+
+• {Feature 1 — user benefit}
+• {Feature 2 — user benefit}
+• Performance and stability improvements
+
+Questions? divine.drwa@gmail.com

@@ -251,15 +251,14 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   // to the billed total. The invoice prints whole rupees, so we round every row
   // and make the reserve the exact integer "plug" — the printed rows then ALWAYS
   // sum to the printed Total (no per-category rounding drift).
-  final members = breakdown?.memberCount ?? 0;
-  final hasSplit = breakdown != null && breakdown.hasData && members > 0;
+  final hasSplit = breakdown != null && breakdown.hasData && breakdown.hasMemberSplit;
   final totalRupees = billedTotal.round();
   final rows = <_Row>[];
   if (hasSplit) {
     var categoryRupees = 0;
     for (var i = 0; i < breakdown.categories.length; i++) {
       final c = breakdown.categories[i];
-      final share = c.perMember(members).round();
+      final share = breakdown.shareOfCategory(c).round();
       categoryRupees += share;
       rows.add(_Row(
         color: _catPalette[i % _catPalette.length],

@@ -109,6 +109,40 @@ class _RazorpayPaymentScreenState
       final currency = result['currency'] as String? ?? 'INR';
       final autoSettledFromCredit = result['autoSettledFromCredit'] == true;
       final autoSettled = result['autoSettled'] == true;
+      final verifying = result['verifying'] == true;
+
+      // Server captured the payment at the gateway but could not yet sync the
+      // ledger. The payment is real — route into the pending/poll flow (which
+      // retries verification) instead of reopening checkout or showing an error.
+      if (verifying && orderId != null && orderId.isNotEmpty) {
+        _razorpayOrderId = orderId;
+        _maintenanceDue = _readAmount(result['maintenanceAmount']) ??
+            _readAmount(result['totalDue']) ??
+            widget.amount;
+        _platformFee = _readAmount(result['platformFee']) ?? 0;
+        _platformFeeGst = _readAmount(result['platformFeeGst']) ?? 0;
+        _totalPayable = _readAmount(result['totalPayable']) ??
+            (_maintenanceDue + _platformFee + _platformFeeGst);
+        invalidateMaintenancePaymentProviders(ref);
+        if (!mounted) return;
+        setState(() => _loading = false);
+        final period = widget.payAllPending
+            ? 'All outstanding'
+            : '${_monthName(widget.month)} ${widget.year}';
+        GatewayPaymentPollActions.navigateToPaymentPending(
+          context,
+          transactionId: orderId,
+          paymentMethod: 'Razorpay',
+          gateway: 'razorpay',
+          amount: _maintenanceDue,
+          periodLabel: period,
+          payAllPending: widget.payAllPending,
+          platformFee: _platformFee,
+          platformFeeGst: _platformFeeGst,
+          totalPaid: _totalPayable,
+        );
+        return;
+      }
 
       if (autoSettledFromCredit || autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
         unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
