@@ -744,7 +744,7 @@ class NotificationService {
             type == 'MAINTENANCE_LEDGER_UPDATED' ||
             type == 'billing_payment_failed' ||
             type == 'billing_payment_success') {
-          requestResidentDataRefresh();
+          requestResidentDataRefresh(force: true);
           router.push('/resident/maintenance');
           return true;
         }
@@ -899,7 +899,7 @@ class NotificationService {
         residentContentTypes.contains(type) ||
         visitorTypes.contains(type) ||
         type.startsWith('VISITOR_')) {
-      requestResidentDataRefresh();
+      requestResidentDataRefresh(force: true);
     }
     if (visitorTypes.contains(type) || type.startsWith('VISITOR_')) {
       requestGuardDataRefresh();

@@ -14,6 +14,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../widgets/list_skeleton.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/providers/expense_provider.dart';
 import '../../data/providers/maintenance_provider.dart';
 
 /// Some gateways or proxies wrap JSON as `{ "data": { ... } }` — normalize for the UI.
@@ -68,6 +69,21 @@ String? _pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
   final mo = int.tryParse(m.group(2)!);
   if (y == null || mo == null || mo < 1 || mo > 12) return null;
   return (month: mo, year: y);
+}
+
+({int month, int year}) _resolvedDashboardPeriod(
+  Map<String, dynamic> root,
+  MaintenanceDashboardFilter filter,
+) {
+  final raw = root['filter'];
+  if (raw is Map) {
+    final mo = (raw['month'] as num?)?.toInt();
+    final yr = (raw['year'] as num?)?.toInt();
+    if (mo != null && yr != null && mo >= 1 && mo <= 12) {
+      return (month: mo, year: yr);
+    }
+  }
+  return (month: filter.month, year: filter.year);
 }
 
 /// Maintenance Financial Dashboard Screen
@@ -523,6 +539,7 @@ class _MaintenancePaymentScreenState
             final expenses = Map<String, dynamic>.from(
               (root['monthlyExpenseBreakdown'] ?? const {}) as Map,
             );
+            final dashPeriod = _resolvedDashboardPeriod(root, filter);
             // When FY mode is active but no billing cycle is selected,
             // show a prompt instead of default/empty data.
             final hasFyWithoutCycle = filter.financialYearId != null &&
@@ -582,6 +599,8 @@ class _MaintenancePaymentScreenState
                   expenses,
                   residents,
                   periodLabel,
+                  dashPeriod.month,
+                  dashPeriod.year,
                 ),
 
               // Year review tab
@@ -1921,6 +1940,8 @@ class _MaintenancePaymentScreenState
     Map<String, dynamic> expenses,
     List<Map<String, dynamic>> residents,
     String periodLabel,
+    int periodMonth,
+    int periodYear,
   ) {
     final inr = NumberFormat.currency(
       locale: 'en_IN',
@@ -2085,6 +2106,8 @@ class _MaintenancePaymentScreenState
             unpaidCount: unpaidCount,
             overdueCount: overdueCount,
             inr: inr,
+            onExpensesTap: () =>
+                _openSocietyExpenses(month: periodMonth, year: periodYear),
           ),
 
           // ── Advance payments ──
@@ -2453,10 +2476,8 @@ class _MaintenancePaymentScreenState
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: InkWell(
-                        onTap: () {
-                          final f = ref.read(maintenanceDashboardFilterProvider);
-                          context.push('/resident/expenses?month=${f.month}&year=${f.year}');
-                        },
+                        onTap: () => _openSocietyExpenses(
+                            month: periodMonth, year: periodYear),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -2646,6 +2667,7 @@ class _MaintenancePaymentScreenState
     required int unpaidCount,
     required int overdueCount,
     required NumberFormat inr,
+    VoidCallback? onExpensesTap,
   }) {
     final rate =
         totalExpected > 0 ? (totalCollected / totalExpected * 100) : 0.0;
@@ -2767,7 +2789,7 @@ class _MaintenancePaymentScreenState
                                     label: 'Expenses',
                                     value: inr.format(totalExpense),
                                     valueColor: context.text.primary,
-                                    onTap: _openExpenses,
+                                    onTap: onExpensesTap ?? _openExpenses,
                                   ),
                                   Divider(
                                     height: 1,
@@ -2787,7 +2809,7 @@ class _MaintenancePaymentScreenState
                                     valueColor: net >= 0
                                         ? DesignColors.success
                                         : DesignColors.error,
-                                    onTap: _openExpenses,
+                                    onTap: onExpensesTap ?? _openExpenses,
                                   ),
                                 ],
                               ),
@@ -2944,9 +2966,15 @@ class _MaintenancePaymentScreenState
     );
   }
 
+  void _openSocietyExpenses({required int month, required int year}) {
+    ref.read(expenseFilterProvider.notifier).state =
+        ExpenseFilter(month: month, year: year);
+    context.push('/resident/expenses?month=$month&year=$year');
+  }
+
   void _openExpenses() {
     final f = ref.read(maintenanceDashboardFilterProvider);
-    context.push('/resident/expenses?month=${f.month}&year=${f.year}');
+    _openSocietyExpenses(month: f.month, year: f.year);
   }
 
   Widget _collectionRing(double rate, Color color) {

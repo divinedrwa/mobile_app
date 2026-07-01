@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/utils/provider_cache.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../repositories/expense_repository.dart';
@@ -9,6 +10,8 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>(
 
 final expenseCategoriesProvider =
     FutureProvider.autoDispose<List<ExpenseCategoryModel>>((ref) async {
+  // Categories are config-like — cache to avoid re-downloading on every visit.
+  cacheFor(ref, const Duration(minutes: 10));
   return ref.watch(expenseRepositoryProvider).getCategories();
 });
 
@@ -42,6 +45,28 @@ class ExpenseFilter {
 final expenseFilterProvider = StateProvider<ExpenseFilter>(
   (ref) => const ExpenseFilter(),
 );
+
+/// Fetches expenses for a route period (`?month=&year=`). Route params take
+/// precedence over [expenseFilterProvider] month/year so billing-cycle changes
+/// always match the list on screen.
+final societyExpensesListProvider = FutureProvider.autoDispose
+    .family<List<ExpenseModel>, (int?, int?)>((ref, routeKey) async {
+  // Cache per (month, year) so re-opening a cycle's expenses is instant and
+  // switching back and forth between months doesn't re-hit the network.
+  cacheFor(ref, const Duration(minutes: 2));
+  final (routeMonth, routeYear) = routeKey;
+  final filter = ref.watch(expenseFilterProvider);
+  final month = routeMonth ?? filter.month;
+  final year = routeYear ?? filter.year;
+  final result = await ref.watch(expenseRepositoryProvider).getExpenses(
+        categoryId: filter.categoryId,
+        month: month,
+        year: year,
+        search: filter.search,
+        limit: 50,
+      );
+  return result.expenses;
+});
 
 final expensesProvider =
     FutureProvider.autoDispose<List<ExpenseModel>>((ref) async {

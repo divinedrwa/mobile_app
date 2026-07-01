@@ -8,6 +8,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/models/billing_cycle_current_model.dart';
 import '../../../data/models/maintenance_due_model.dart';
+import '../../../data/providers/expense_provider.dart';
 import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 import '../../../data/providers/upi_payment_provider.dart';
@@ -428,7 +429,15 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
               label: 'Society expenses',
               tone: DesignColors.primary,
               subLabel: 'View reports',
-              onTap: () => context.push('/resident/expenses'),
+              onTap: () {
+                // Hub "Society expenses" is the all-time report — no month
+                // filter. (The Maintenance & Payment screen is where expenses
+                // are scoped to a specific billing month.) Reset the shared
+                // filter so a previously-selected month doesn't leak in.
+                ref.read(expenseFilterProvider.notifier).state =
+                    const ExpenseFilter();
+                context.push('/resident/expenses');
+              },
             ),
           ],
         ),

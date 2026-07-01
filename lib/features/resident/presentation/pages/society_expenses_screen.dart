@@ -30,7 +30,6 @@ class _SocietyExpensesScreenState
   final _searchController = TextEditingController();
   Timer? _debounce;
   bool _showSearch = false;
-  bool _didInit = false;
 
   @override
   void dispose() {
@@ -64,27 +63,16 @@ class _SocietyExpensesScreenState
 
   Future<void> _refresh() async {
     ref.invalidate(expenseCategoriesProvider);
-    ref.invalidate(expensesProvider);
-    await ref.read(expensesProvider.future).catchError((_) => <ExpenseModel>[]);
+    ref.invalidate(
+      societyExpensesListProvider((widget.initialMonth, widget.initialYear)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Seed the filter with initial month/year on first build.
-    if (!_didInit) {
-      _didInit = true;
-      if (widget.initialMonth != null || widget.initialYear != null) {
-        Future.microtask(() {
-          ref.read(expenseFilterProvider.notifier).state = ExpenseFilter(
-            month: widget.initialMonth,
-            year: widget.initialYear,
-          );
-        });
-      }
-    }
-
+    final routeKey = (widget.initialMonth, widget.initialYear);
     final categoriesAsync = ref.watch(expenseCategoriesProvider);
-    final expensesAsync = ref.watch(expensesProvider);
+    final expensesAsync = ref.watch(societyExpensesListProvider(routeKey));
     final filter = ref.watch(expenseFilterProvider);
     final inr = NumberFormat.currency(
       locale: 'en_IN',
@@ -93,9 +81,11 @@ class _SocietyExpensesScreenState
     );
     final dateFmt = DateFormat('dd MMM yyyy');
 
-    final hasMonthFilter = filter.month != null && filter.year != null;
+    final displayMonth = widget.initialMonth ?? filter.month;
+    final displayYear = widget.initialYear ?? filter.year;
+    final hasMonthFilter = displayMonth != null && displayYear != null;
     final titleText = hasMonthFilter
-        ? 'Expenses \u2022 ${DateFormat('MMM yyyy').format(DateTime(filter.year!, filter.month!))}'
+        ? 'Expenses \u2022 ${DateFormat('MMM yyyy').format(DateTime(displayYear, displayMonth))}'
         : 'Society Expenses';
 
     return Scaffold(
@@ -174,6 +164,7 @@ class _SocietyExpensesScreenState
         color: DesignColors.primary,
         onRefresh: _refresh,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             context.spacing.s16,
             context.spacing.s4,
@@ -257,7 +248,16 @@ class _SocietyExpensesScreenState
 
             // Expenses list
             expensesAsync.when(
-              loading: () => const ListSkeleton(itemHeight: 96),
+              // ListSkeleton builds its own (non-scrolling) ListView. Nested
+              // directly inside this outer ListView it gets an unbounded height
+              // constraint and throws a layout error — the screen renders black
+              // for the whole fetch (only visible when the data isn't cached,
+              // e.g. after switching to a different billing cycle). A bounded
+              // SizedBox gives the skeleton a finite height and avoids the crash.
+              loading: () => const SizedBox(
+                height: 520,
+                child: ListSkeleton(itemHeight: 96),
+              ),
               error: (e, _) => EnterpriseInfoBanner(
                 icon: Icons.receipt_long_outlined,
                 title: 'Could not load expenses',
@@ -268,13 +268,16 @@ class _SocietyExpensesScreenState
               ),
               data: (expenses) {
                 if (expenses.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: 60),
+                  return SizedBox(
+                    height: MediaQuery.sizeOf(context).height * 0.55,
                     child: EmptyStateWidget(
                       icon: Icons.receipt_long_outlined,
-                      title: 'No expenses found',
-                      subtitle:
-                          'There are no approved expenses matching your filters.',
+                      title: hasMonthFilter
+                          ? 'No expenses for ${DateFormat('MMM yyyy').format(DateTime(displayYear, displayMonth))}'
+                          : 'No expenses found',
+                      subtitle: hasMonthFilter
+                          ? 'There are no approved expenses recorded for this month.'
+                          : 'There are no approved expenses matching your filters.',
                     ),
                   );
                 }

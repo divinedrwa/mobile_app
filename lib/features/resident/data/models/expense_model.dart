@@ -62,6 +62,14 @@ class ExpenseModel {
     return null;
   }
 
+  static int? _toIntOrNull(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
+
   factory ExpenseModel.fromJson(Map<String, dynamic> json) {
     final rawAttachments = json['attachments'] as List<dynamic>?;
     final attachments = rawAttachments
@@ -95,8 +103,8 @@ class ExpenseModel {
       paymentRef: json['paymentRef'] as String?,
       paidTo: json['paidTo'] as String? ?? '',
       paidToContact: json['paidToContact'] as String?,
-      month: json['month'] as int?,
-      year: json['year'] as int?,
+      month: _toIntOrNull(json['month']),
+      year: _toIntOrNull(json['year']),
       notes: json['notes'] as String?,
       tags: tags,
       status: json['status'] as String? ?? '',

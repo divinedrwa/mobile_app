@@ -52,7 +52,10 @@ final cycleInsightProvider = FutureProvider.autoDispose
 
 final outstandingDuesProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-      cacheFor(ref, const Duration(seconds: 5));
+      // Billing data changes rarely and is explicitly invalidated after a
+      // payment (invalidateMaintenancePaymentProviders) — so a short TTL just
+      // forced needless re-fetches (and skeletons) on every back-navigation.
+      cacheFor(ref, const Duration(minutes: 3));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return {};
       return ref.watch(maintenanceRepositoryProvider).getOutstandingDues();
@@ -66,7 +69,7 @@ final pendingMaintenanceProvider =
           (s) => '${s.user?.id}:${s.user?.villaId}:${s.user?.maintenanceBillingRole}',
         ),
       );
-      cacheFor(ref, const Duration(seconds: 5));
+      cacheFor(ref, const Duration(minutes: 3));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return [];
       return ref.watch(maintenanceRepositoryProvider).getPendingMaintenance();
@@ -75,7 +78,7 @@ final pendingMaintenanceProvider =
 final maintenanceHistoryProvider =
     FutureProvider.autoDispose<List<MaintenanceDueModel>>((ref) async {
       ref.watch(authProvider.select((s) => s.user?.id));
-      cacheFor(ref, const Duration(seconds: 5));
+      cacheFor(ref, const Duration(minutes: 3));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return [];
       return ref.watch(maintenanceRepositoryProvider).getMaintenanceHistory();
@@ -89,7 +92,7 @@ final residentBillingCycleProvider =
           (s) => '${s.user?.id}:${s.user?.villaId}:${s.user?.maintenanceBillingRole}',
         ),
       );
-      cacheFor(ref, const Duration(seconds: 5));
+      cacheFor(ref, const Duration(minutes: 3));
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) {
         return BillingCycleCurrent.fromJson(const {});
