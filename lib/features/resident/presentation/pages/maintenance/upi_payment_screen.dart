@@ -335,6 +335,23 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
                 ),
               ),
               const SizedBox(height: 12),
+              // Debug-only diagnostic: copy the exact upi:// link this screen
+              // launches, to inspect it / open it elsewhere. Hidden in release.
+              if (kDebugMode) ...[
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: upiUri));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Payment link copied')),
+                      );
+                    },
+                    icon: const Icon(Icons.link, size: 18),
+                    label: const Text('Copy payment link'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
             // Show QR only for manual UPI VPA — bank QR flow never shows scan UI.
             if (!widget.bankQr) ...[
