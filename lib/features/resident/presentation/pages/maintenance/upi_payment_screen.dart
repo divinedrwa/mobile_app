@@ -104,13 +104,20 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
     return 'Maintenance $month/$year';
   }
 
-  String _buildUpiUri(String vpa, String payeeName, double amount) {
+  String _buildUpiUri(
+    String vpa,
+    String payeeName,
+    double amount, {
+    String? upiPayUri,
+  }) {
     return UpiIntentHelper.buildPaymentIntent(
       vpa: vpa,
       payeeName: payeeName,
       amount: amount,
       remark: _paymentRemark,
-      upiPayUri: widget.upiPayUri,
+      // Prefer the signed URI passed via the route; fall back to the one from
+      // upi-config so the direct-nav paths still launch a P2M intent.
+      upiPayUri: widget.upiPayUri ?? upiPayUri,
     );
   }
 
@@ -242,6 +249,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
           final payeeName =
               widget.payeeName ?? config['payeeName']?.toString() ?? 'Society';
           final qrImageUrl = widget.qrCodeUrl ?? config['upiQrCodeUrl']?.toString();
+          final configUpiPayUri = config['upiPayUri']?.toString();
           if (vpa.isEmpty) {
             return const Center(
               child: Padding(
@@ -254,17 +262,21 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
               ),
             );
           }
-          return _buildPaymentBody(vpa, payeeName, qrImageUrl: qrImageUrl);
+          return _buildPaymentBody(vpa, payeeName,
+              qrImageUrl: qrImageUrl, upiPayUri: configUpiPayUri);
         },
       ),
     );
   }
 
-  Widget _buildPaymentBody(String vpa, String payeeName, {String? qrImageUrl}) {
+  Widget _buildPaymentBody(String vpa, String payeeName,
+      {String? qrImageUrl, String? upiPayUri}) {
     if (_submitted) return _buildSuccessState();
 
     final amount = double.tryParse(_amountController.text.trim()) ?? 0;
-    final upiUri = amount > 0 ? _buildUpiUri(vpa, payeeName, amount) : '';
+    final upiUri = amount > 0
+        ? _buildUpiUri(vpa, payeeName, amount, upiPayUri: upiPayUri)
+        : '';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
