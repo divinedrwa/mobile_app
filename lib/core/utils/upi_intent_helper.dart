@@ -1,23 +1,24 @@
 /// Builds NPCI UPI intent URIs for opening PhonePe / GPay / Paytm.
 ///
-/// The intent is a **plain person-to-person (P2P) request** — only `pa`, `pn`,
-/// `am`, `cu` and `tn`. Merchant fields carried by a scanned bank QR (`mc`,
-/// `tid`, `mode`, `sign`, `orgid`, `purpose`, `url`…) are deliberately dropped.
+/// For a **bank/merchant QR** the original signed payload is replayed
+/// *verbatim* — every field (`pa`, `pn`, `mc`, `mode`, `sign`, `orgid`, `tid`…)
+/// is kept byte-for-byte and only `am`/`cu`/`tn` are set. This is essential:
 ///
-/// Why: an intent that carries `mc` is treated by GPay/PhonePe/Paytm as a
-/// verified-merchant (P2M) payment and is refused unless it also carries the
-/// original merchant signature (`sign`). A URI we rebuild from a decoded QR
-/// cannot reproduce that signature, so the app opens but the payment fails.
-/// Stripping the merchant fields makes the intent behave exactly like manually
-/// typing the VPA — which is known to work for this account.
+///  * The transaction must stay **person-to-merchant (P2M)**. Dropping `mc`/
+///    `sign` downgrades it to person-to-person (P2P), which hits NPCI's
+///    per-payee "maximum payments in 24 hours" inbound cap — fine for a
+///    resident, fatal for a society VPA collecting from everyone.
+///  * The `sign` is base64 (`+`, `/`, `=`). Decoding then re-encoding it — e.g.
+///    via `Uri(queryParameters:)` — corrupts it, and the payment app then
+///    can't verify the merchant. So we never parse/rebuild the query; we edit
+///    the raw string.
+///
+/// A manual UPI VPA (`UPI_VPA`, a personal address with no signed payload)
+/// falls back to a plain P2P intent, which is correct for that case.
 class UpiIntentHelper {
   static const int _maxTnLength = 50;
 
-  /// Build `upi://pay?...` as a clean P2P intent.
-  ///
-  /// The exact `pa`/`pn` are taken from [upiPayUri] (the decoded bank QR) when
-  /// present, because the separately-parsed [vpa] can be truncated for unusual
-  /// merchant VPAs. Everything else on that URI is discarded.
+  /// Build `upi://pay?...` for launching a UPI app.
   static String buildPaymentIntent({
     required String vpa,
     required double amount,
@@ -25,33 +26,48 @@ class UpiIntentHelper {
     String? payeeName,
     String? upiPayUri,
   }) {
-    var pa = vpa.trim();
-    var pn = payeeName?.trim() ?? '';
-
-    if (upiPayUri != null && upiPayUri.trim().isNotEmpty) {
-      final base = Uri.tryParse(upiPayUri.trim());
-      if (base != null && base.scheme == 'upi' && base.host == 'pay') {
-        final qp = base.queryParameters;
-        final qpPa = qp['pa']?.trim();
-        if (qpPa != null && qpPa.isNotEmpty) pa = qpPa;
-        final qpPn = qp['pn']?.trim();
-        if (pn.isEmpty && qpPn != null && qpPn.isNotEmpty) pn = qpPn;
-      }
-    }
-
     final tn = _sanitizeRemark(remark);
     final amountStr = amount.toStringAsFixed(2);
 
-    // Build the query manually so spaces encode as %20 (Dart's
-    // Uri(queryParameters:) form-encodes them as '+', which some UPI apps
-    // render/parse literally). VPA characters are all URL-safe, so `pa` is
-    // written verbatim.
-    final buf = StringBuffer('upi://pay?pa=$pa');
+    final raw = upiPayUri?.trim();
+    if (raw != null &&
+        raw.toLowerCase().startsWith('upi://pay') &&
+        raw.contains('?')) {
+      return _withTransactionFields(raw, amountStr, tn);
+    }
+
+    // Manual UPI VPA (personal) → plain P2P intent.
+    final buf = StringBuffer('upi://pay?pa=${vpa.trim()}');
+    final pn = payeeName?.trim() ?? '';
     if (pn.isNotEmpty) buf.write('&pn=${Uri.encodeComponent(pn)}');
     buf.write('&am=$amountStr');
     buf.write('&cu=INR');
     if (tn.isNotEmpty) buf.write('&tn=${Uri.encodeComponent(tn)}');
     return buf.toString();
+  }
+
+  /// Keep every param from [uri] byte-for-byte, replacing only am/cu/tn so the
+  /// merchant identity and signature are preserved exactly as scanned.
+  static String _withTransactionFields(String uri, String amount, String tn) {
+    final noFragment = uri.split('#').first;
+    final qIndex = noFragment.indexOf('?');
+    final path = noFragment.substring(0, qIndex);
+    final query = noFragment.substring(qIndex + 1);
+
+    final kept = query
+        .split('&')
+        .where((p) => p.isNotEmpty)
+        .where((p) {
+          final key = p.split('=').first.toLowerCase();
+          return key != 'am' && key != 'cu' && key != 'tn';
+        })
+        .toList();
+
+    kept.add('am=$amount');
+    kept.add('cu=INR');
+    if (tn.isNotEmpty) kept.add('tn=${Uri.encodeComponent(tn)}');
+
+    return '$path?${kept.join('&')}';
   }
 
   static String _sanitizeRemark(String remark) {
