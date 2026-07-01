@@ -24,8 +24,20 @@ class PaymentMethodModel {
     );
   }
 
-  /// UPI VPA address, if this is a UPI_VPA type.
-  String? get vpa => type == 'UPI_VPA' ? config['vpa'] as String? : null;
+  /// UPI VPA address (UPI_VPA type, or decoded from UPI_QR bank QR).
+  String? get vpa {
+    if (type == 'UPI_VPA') return config['vpa'] as String?;
+    if (type == 'UPI_QR') return config['vpa'] as String?;
+    return null;
+  }
+
+  /// Payee name decoded from bank UPI QR (UPI_QR type).
+  String? get payeeName =>
+      type == 'UPI_QR' ? config['payeeName'] as String? : null;
+
+  /// Canonical upi://pay URI from bank QR (includes mc etc.) for UPI intent.
+  String? get upiPayUri =>
+      type == 'UPI_QR' ? config['upiPayUri'] as String? : null;
 
   /// QR code image URL, if this is a UPI_QR type.
   String? get qrCodeUrl => type == 'UPI_QR' ? config['qrCodeUrl'] as String? : null;

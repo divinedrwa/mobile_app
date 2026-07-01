@@ -247,6 +247,9 @@ class AppRouter {
                       remark: q['remark'],
                       vpa: q['vpa'],
                       qrCodeUrl: q['qrCodeUrl'],
+                      payeeName: q['payeeName'],
+                      upiPayUri: q['upiPayUri'],
+                      bankQr: q['bankQr'] == 'true',
                     );
                   },
                 ),

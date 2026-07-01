@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../../core/utils/upi_intent_helper.dart';
 import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/enterprise_ui.dart';
@@ -33,6 +34,9 @@ class UpiPaymentScreen extends ConsumerStatefulWidget {
     this.remark,
     this.vpa,
     this.qrCodeUrl,
+    this.payeeName,
+    this.upiPayUri,
+    this.bankQr = false,
   });
 
   final double? amount;
@@ -44,6 +48,12 @@ class UpiPaymentScreen extends ConsumerStatefulWidget {
   final String? vpa;
   /// Pre-filled QR code URL from payment method selection.
   final String? qrCodeUrl;
+  /// Payee name from decoded bank QR (UPI_QR flow).
+  final String? payeeName;
+  /// Bank `upi://pay?...` with merchant fields (mc) from decoded QR.
+  final String? upiPayUri;
+  /// Bank UPI QR method — no scan UI; user taps Pay via UPI App to open PhonePe/GPay/etc.
+  final bool bankQr;
 
   @override
   ConsumerState<UpiPaymentScreen> createState() => _UpiPaymentScreenState();
@@ -58,6 +68,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
   bool _showQr = false;
   bool _returnedFromUpi = false;
   bool _showUtrField = false;
+  bool _launchingUpi = false;
 
   @override
   void initState() {
@@ -94,24 +105,46 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
   }
 
   String _buildUpiUri(String vpa, String payeeName, double amount) {
-    return 'upi://pay?pa=${Uri.encodeComponent(vpa)}'
-        '&pn=${Uri.encodeComponent(payeeName)}'
-        '&am=${amount.toStringAsFixed(2)}'
-        '&tn=${Uri.encodeComponent(_paymentRemark)}'
-        '&cu=INR';
+    return UpiIntentHelper.buildPaymentIntent(
+      vpa: vpa,
+      payeeName: payeeName,
+      amount: amount,
+      remark: _paymentRemark,
+      upiPayUri: widget.upiPayUri,
+    );
   }
 
   Future<void> _launchUpiApp(String upiUri) async {
     final uri = Uri.parse(upiUri);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    setState(() => _launchingUpi = true);
+    try {
+      var launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalNonBrowserApplication,
+      );
+      if (!launched) {
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open a UPI app. Install PhonePe, GPay, or Paytm and try again.',
+            ),
+          ),
+        );
+        if (!widget.bankQr) {
+          setState(() => _showQr = true);
+        }
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No UPI app found. Use QR code instead.')),
+          SnackBar(content: Text('Failed to open UPI app: $e')),
         );
-        setState(() => _showQr = true);
       }
+    } finally {
+      if (mounted) setState(() => _launchingUpi = false);
     }
   }
 
@@ -206,7 +239,8 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
         data: (config) {
           // Use pre-filled params from payment method selection, or fall back to config
           final vpa = widget.vpa ?? config['upiVpa']?.toString() ?? '';
-          final payeeName = config['payeeName']?.toString() ?? 'Society';
+          final payeeName =
+              widget.payeeName ?? config['payeeName']?.toString() ?? 'Society';
           final qrImageUrl = widget.qrCodeUrl ?? config['upiQrCodeUrl']?.toString();
           if (vpa.isEmpty) {
             return const Center(
@@ -214,7 +248,7 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
                 padding: EdgeInsets.all(24),
                 child: Text(
                   'UPI payments are not configured for your society. '
-                  'Please ask your admin to set up a UPI VPA.',
+                  'Please ask your admin to upload a valid bank UPI QR code.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -264,13 +298,21 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
         if (amount > 0) ...[
           // ── STEP 1: Pay via UPI App or QR ──
           if (!_returnedFromUpi) ...[
-            // "Pay via UPI App" uses Android/iOS intent — hidden on web.
             if (!kIsWeb) ...[
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _launchUpiApp(upiUri),
-                  icon: const Icon(Icons.open_in_new),
+                  onPressed: _launchingUpi ? null : () => _launchUpiApp(upiUri),
+                  icon: _launchingUpi
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.open_in_new),
                   label: const Text('Pay via UPI App'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -282,23 +324,26 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
               ),
               const SizedBox(height: 12),
             ],
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() => _showQr = !_showQr),
-                icon: Icon(_showQr ? Icons.qr_code_2 : Icons.qr_code),
-                label: Text(_showQr ? 'Hide QR Code' : 'Show QR Code'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DesignRadius.md),
+            // Show QR only for manual UPI VPA — bank QR flow never shows scan UI.
+            if (!widget.bankQr) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _showQr = !_showQr),
+                  icon: Icon(_showQr ? Icons.qr_code_2 : Icons.qr_code),
+                  label: Text(_showQr ? 'Hide QR Code' : 'Show QR Code'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DesignRadius.md),
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (_showQr) ...[
-              const SizedBox(height: 20),
-              _buildQrSection(upiUri, qrImageUrl),
+              if (_showQr) ...[
+                const SizedBox(height: 20),
+                _buildQrSection(upiUri, qrImageUrl),
+              ],
             ],
             const SizedBox(height: 20),
             // Direct submit option for QR/manual payers
@@ -467,7 +512,9 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'After paying via UPI app or scanning QR, tap the button below to notify your admin.',
+            widget.bankQr
+                ? 'After paying in your UPI app, tap the button below to notify your admin.'
+                : 'After paying via UPI app or scanning QR, tap the button below to notify your admin.',
             style: DesignTypography.captionSmall
                 .copyWith(color: DesignColors.textSecondary),
           ),

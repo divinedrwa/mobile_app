@@ -213,9 +213,15 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
         };
         if (cycleId != null && cycleId!.isNotEmpty) params['cycleId'] = cycleId!;
         if (remark != null && remark!.isNotEmpty) params['remark'] = remark!;
-        // Pass VPA and QR URL as query params so UPI screen uses them
         if (method.vpa != null) params['vpa'] = method.vpa!;
         if (method.qrCodeUrl != null) params['qrCodeUrl'] = method.qrCodeUrl!;
+        if (method.payeeName != null && method.payeeName!.isNotEmpty) {
+          params['payeeName'] = method.payeeName!;
+        }
+        if (method.upiPayUri != null && method.upiPayUri!.isNotEmpty) {
+          params['upiPayUri'] = method.upiPayUri!;
+        }
+        if (method.type == 'UPI_QR') params['bankQr'] = 'true';
         final query = '?${Uri(queryParameters: params).query}';
         context.push('/resident/maintenance/upi-pay$query');
 
@@ -309,7 +315,7 @@ class _MethodTile extends StatelessWidget {
       case 'UPI_VPA':
         return method.vpa;
       case 'UPI_QR':
-        return 'Scan QR code in any UPI app';
+        return 'Tap Pay via UPI App — PhonePe, GPay, Paytm';
       case 'RAZORPAY':
         return 'Card · Net banking · Wallets';
       case 'BANK_TRANSFER':
@@ -342,9 +348,13 @@ class _MethodTile extends StatelessWidget {
         : method.feeGstPercent.toString();
 
     if (_isUpi) {
+      final isQr = method.type == 'UPI_QR';
       return [
         'No platform fee or GST — pay only \u20B9$inr (maintenance).',
-        'Complete the payment in any UPI app using the VPA or QR on the next screen.',
+        if (isQr)
+          'Tap Pay via UPI App on the next screen — opens PhonePe, GPay, or Paytm with your amount.'
+        else
+          'Complete the payment in any UPI app using the VPA on the next screen.',
         'After payment, return to the app and tap I\'ve completed the payment to submit to admin.',
         'Admin will check your payment and approve it before it shows as paid.',
       ];
