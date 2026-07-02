@@ -26,24 +26,22 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
   final _notes = TextEditingController();
 
   bool _isResident = false;
-  // Optional single flat association — grid single-select (same picker as
-  // "Add visitor", one flat at a time).
-  String? _villaId;
-  String? _flatLabel;
-  Set<String> _selectedUserIds = {};
+  // Optional flat association — multi-select (same block-grid picker as Add
+  // Visitor); one gate entry logged per flat, or a single entry with no flat
+  // when none is chosen.
+  final Map<String, GuardFlatSelection> _selectedFlats = {}; // villaId -> flat
   bool _submitting = false;
+
+  Set<String> get _selectedUserIds =>
+      {for (final f in _selectedFlats.values) ...f.userIds};
 
   void _onFlatTapped(GuardFlatSelection flat) {
     if (_submitting) return;
     setState(() {
-      if (_villaId == flat.villaId) {
-        _villaId = null;
-        _flatLabel = null;
-        _selectedUserIds = {};
+      if (_selectedFlats.containsKey(flat.villaId)) {
+        _selectedFlats.remove(flat.villaId);
       } else {
-        _villaId = flat.villaId;
-        _flatLabel = flat.label;
-        _selectedUserIds = flat.userIds.toSet();
+        _selectedFlats[flat.villaId] = flat;
       }
     });
   }
@@ -68,11 +66,17 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
       return;
     }
     FocusScope.of(context).unfocus();
+    final flats = _selectedFlats.values.toList();
+    final flatSuffix = flats.isEmpty
+        ? ''
+        : ' for ${flats.length} flat${flats.length == 1 ? '' : 's'}';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Log vehicle entry'),
-        content: Text('Record $reg (${_isResident ? "Resident" : "Visitor"})?'),
+        content: Text(
+          'Record $reg (${_isResident ? "Resident" : "Visitor"})$flatSuffix?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -88,15 +92,21 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
     if (confirmed != true || !mounted) return;
     setState(() => _submitting = true);
     final span = GuardFlowTelemetry.start('guard_vehicle_entry');
+    final kind = _isResident ? 'RESIDENT' : 'VISITOR';
+    final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
     try {
-      await ref
-          .read(guardRepositoryProvider)
-          .logGateVehicleEntry(
-            registrationNumber: reg,
-            kind: _isResident ? 'RESIDENT' : 'VISITOR',
-            villaId: _villaId,
-            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-          );
+      // One gate entry per selected flat; a single unassociated entry if none.
+      final villaIds = flats.isEmpty
+          ? <String?>[null]
+          : flats.map((f) => f.villaId).toList();
+      for (final villaId in villaIds) {
+        await ref.read(guardRepositoryProvider).logGateVehicleEntry(
+              registrationNumber: reg,
+              kind: kind,
+              villaId: villaId,
+              notes: notes,
+            );
+      }
       span.complete();
       if (!mounted) return;
       ref.invalidate(guardGateVehicleTodayProvider);
@@ -218,9 +228,9 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
                       icon: Icons.apartment_rounded,
-                      title: 'Visiting flat (optional)',
+                      title: 'Visiting flats (optional)',
                       subtitle:
-                          'Helps lookups if tenant or visitor disputes arise',
+                          'Tap any flats this vehicle is visiting — helps dispute lookups',
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     ref
@@ -250,9 +260,14 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                             );
                           },
                         ),
-                    if (_flatLabel != null) ...[
+                    if (_selectedFlats.isNotEmpty) ...[
                       const SizedBox(height: GuardTokens.g2),
-                      _SelectedFlatBanner(label: _flatLabel!),
+                      GuardSelectedFlatsBanner(
+                        verb: 'Vehicle for',
+                        labels: _selectedFlats.values
+                            .map((f) => f.label)
+                            .toList(),
+                      ),
                     ],
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
@@ -316,42 +331,6 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Confirmation of the flat chosen in the grid — the tapped tile can scroll out
-/// of view once the list is long or filtered, so restate it near the actions.
-class _SelectedFlatBanner extends StatelessWidget {
-  const _SelectedFlatBanner({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: GuardTokens.g2,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
-        color: GuardTokens.guardAccent.withValues(alpha: 0.10),
-        border: Border.all(color: GuardTokens.guardAccent),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.check_circle_rounded,
-              size: 18, color: GuardTokens.guardAccentDeep),
-          const SizedBox(width: GuardTokens.g2),
-          Text('Flat ', style: GuardTokens.bodyStyle(context)),
-          Text(
-            label,
-            style: GuardTokens.bodyStyle(context)
-                .copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
       ),
     );
   }

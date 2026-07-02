@@ -316,3 +316,75 @@ class _FlatTile extends StatelessWidget {
     );
   }
 }
+
+/// Restates the flats chosen in [GuardFlatPicker] as labelled chips near the
+/// submit actions — the tapped tiles can scroll out of view once the grid is
+/// long or filtered. Used by delivery / vehicle multi-select flows.
+class GuardSelectedFlatsBanner extends StatelessWidget {
+  const GuardSelectedFlatsBanner({
+    super.key,
+    required this.verb,
+    required this.labels,
+  });
+
+  final String verb;
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: GuardTokens.guardAccent.withValues(alpha: 0.10),
+        border: Border.all(color: GuardTokens.guardAccent),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              size: 18, color: GuardTokens.guardAccentDeep),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$verb ${labels.length == 1 ? '1 flat' : '${labels.length} flats'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: GuardTokens.guardAccentDeep,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final l in labels)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: GuardTokens.guardAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          l,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            color: GuardTokens.guardAccentDeep,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

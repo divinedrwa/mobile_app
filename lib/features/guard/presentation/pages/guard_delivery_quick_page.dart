@@ -35,12 +35,13 @@ class _GuardDeliveryQuickPageState
   final _description = TextEditingController();
 
   String _brand = 'Zomato';
-  // A parcel goes to a single flat — grid single-select (same picker as
-  // "Add visitor", but one flat at a time).
-  String? _villaId;
-  String? _flatLabel;
-  Set<String> _selectedUserIds = {};
+  // A courier can hand over parcels for several flats at once — multi-select
+  // (same block-grid picker as Add Visitor); one parcel is logged per flat.
+  final Map<String, GuardFlatSelection> _selectedFlats = {}; // villaId -> flat
   bool _submitting = false;
+
+  Set<String> get _selectedUserIds =>
+      {for (final f in _selectedFlats.values) ...f.userIds};
 
   @override
   void dispose() {
@@ -53,14 +54,10 @@ class _GuardDeliveryQuickPageState
   void _onFlatTapped(GuardFlatSelection flat) {
     if (_submitting) return;
     setState(() {
-      if (_villaId == flat.villaId) {
-        _villaId = null;
-        _flatLabel = null;
-        _selectedUserIds = {};
+      if (_selectedFlats.containsKey(flat.villaId)) {
+        _selectedFlats.remove(flat.villaId);
       } else {
-        _villaId = flat.villaId;
-        _flatLabel = flat.label;
-        _selectedUserIds = flat.userIds.toSet();
+        _selectedFlats[flat.villaId] = flat;
       }
     });
   }
@@ -204,8 +201,8 @@ class _GuardDeliveryQuickPageState
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
                       icon: Icons.people_rounded,
-                      title: 'Deliver to flat',
-                      subtitle: 'Search or pick a block, then tap the flat',
+                      title: 'Deliver to flats',
+                      subtitle: 'Tap every flat this drop is for',
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     residentsAsync.when(
@@ -251,9 +248,14 @@ class _GuardDeliveryQuickPageState
                         );
                       },
                     ),
-                    if (_flatLabel != null) ...[
+                    if (_selectedFlats.isNotEmpty) ...[
                       const SizedBox(height: GuardTokens.g2),
-                      _SelectedFlatBanner(label: _flatLabel!),
+                      GuardSelectedFlatsBanner(
+                        verb: 'Delivering to',
+                        labels: _selectedFlats.values
+                            .map((f) => f.label)
+                            .toList(),
+                      ),
                     ],
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
@@ -372,97 +374,74 @@ class _GuardDeliveryQuickPageState
   }
 
   Future<void> _submit(bool leftAtGate) async {
-    final villaId = _villaId;
-    if (villaId == null) {
+    if (_selectedFlats.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Select a flat before submitting'),
+          content: Text('Select at least one flat before submitting'),
         ),
       );
       return;
     }
+    final flats = _selectedFlats.values.toList();
 
     setState(() => _submitting = true);
+    final noteParts = <String>[
+      if (leftAtGate) 'Left at gate',
+      if (_description.text.trim().isNotEmpty) _description.text.trim(),
+    ];
+    final trackingNumber =
+        _tracking.text.trim().isEmpty ? null : _tracking.text.trim();
+    final senderName =
+        _sender.text.trim().isEmpty ? null : _sender.text.trim();
+    final description = noteParts.isEmpty ? null : noteParts.join(' | ');
+
+    // One parcel per selected flat — the courier dropped a parcel for each.
+    var logged = 0;
     try {
-      final noteParts = <String>[
-        if (leftAtGate) 'Left at gate',
-        if (_description.text.trim().isNotEmpty) _description.text.trim(),
-      ];
-      await ref.read(guardDeliverySubmitProvider)(
-        GuardDeliverySubmitParams(
-          villaId: villaId,
-          deliveryService: _brand,
-          trackingNumber: _tracking.text.trim().isEmpty
-              ? null
-              : _tracking.text.trim(),
-          senderName: _sender.text.trim().isEmpty ? null : _sender.text.trim(),
-          description: noteParts.isEmpty ? null : noteParts.join(' | '),
-        ),
-      );
+      for (final flat in flats) {
+        await ref.read(guardDeliverySubmitProvider)(
+          GuardDeliverySubmitParams(
+            villaId: flat.villaId,
+            deliveryService: _brand,
+            trackingNumber: trackingNumber,
+            senderName: senderName,
+            description: description,
+          ),
+        );
+        logged++;
+      }
       ref.invalidate(guardPendingParcelsProvider);
       ref.invalidate(guardTodayParcelsProvider);
       ref.invalidate(guardDashboardProvider);
       if (mounted) {
         context.pop();
+        final noun = logged == 1 ? 'Parcel' : '$logged parcels';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
             content: Text(
               leftAtGate
-                  ? 'Parcel logged · left at gate'
-                  : 'Parcel logged · delivered',
+                  ? '$noun logged · left at gate'
+                  : '$noun logged · delivered',
             ),
           ),
         );
       }
     } catch (e) {
+      ref.invalidate(guardPendingParcelsProvider);
+      ref.invalidate(guardTodayParcelsProvider);
+      ref.invalidate(guardDashboardProvider);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(guardCommandErrorMessage(e))));
+        // Report partial progress so the guard knows which flats still need it.
+        final prefix =
+            logged > 0 ? '$logged of ${flats.length} logged — ' : '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$prefix${guardCommandErrorMessage(e)}')),
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-}
-
-/// Confirmation of the flat chosen in the grid — the tapped tile can scroll out
-/// of view once the list is long or filtered, so restate it near the actions.
-class _SelectedFlatBanner extends StatelessWidget {
-  const _SelectedFlatBanner({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: GuardTokens.g2,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
-        color: GuardTokens.guardAccent.withValues(alpha: 0.10),
-        border: Border.all(color: GuardTokens.guardAccent),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.check_circle_rounded,
-              size: 18, color: GuardTokens.guardAccentDeep),
-          const SizedBox(width: GuardTokens.g2),
-          Text(
-            'Delivering to ',
-            style: GuardTokens.bodyStyle(context),
-          ),
-          Text(
-            label,
-            style: GuardTokens.bodyStyle(context)
-                .copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
-    );
   }
 }
