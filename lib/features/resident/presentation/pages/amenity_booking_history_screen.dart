@@ -126,13 +126,18 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
           }
 
           final now = DateTime.now();
+          // A future booking that's confirmed OR still pending approval is
+          // "upcoming" — pending mobile bookings must not fall into "past".
+          bool isActive(AmenityBookingModel b) =>
+              b.status == BookingStatus.confirmed ||
+              b.status == BookingStatus.pending;
           final upcomingBookings = bookings
-              .where((b) => b.bookingDate.isAfter(now) && b.status == BookingStatus.confirmed)
+              .where((b) => b.bookingDate.isAfter(now) && isActive(b))
               .toList()
             ..sort((a, b) => a.bookingDate.compareTo(b.bookingDate));
 
           final pastBookings = bookings
-              .where((b) => b.bookingDate.isBefore(now) || b.status != BookingStatus.confirmed)
+              .where((b) => b.bookingDate.isBefore(now) || !isActive(b))
               .toList()
             ..sort((a, b) => b.bookingDate.compareTo(a.bookingDate));
 
@@ -354,8 +359,10 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
             ),
           ),
           
-          // Cancel button (only for upcoming confirmed bookings)
-          if (isUpcoming && booking.status == BookingStatus.confirmed) ...[
+          // Cancel button — upcoming confirmed OR pending-approval bookings.
+          if (isUpcoming &&
+              (booking.status == BookingStatus.confirmed ||
+                  booking.status == BookingStatus.pending)) ...[
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(DesignSpacing.md),

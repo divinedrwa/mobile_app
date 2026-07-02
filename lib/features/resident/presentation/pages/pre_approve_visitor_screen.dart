@@ -320,9 +320,9 @@ class _PreApproveVisitorScreenState
       children: [
         DivinePickerRow(
           icon: Icons.calendar_today_rounded,
-          label: 'Visit date',
+          label: 'Valid until',
           value: DateFormat('EEE, d MMM yyyy').format(_selectedDate),
-          helper: 'Pass validity is based on this date',
+          helper: 'The pass works now and expires on this date',
           onTap: () async {
             final date = await showDatePicker(
               context: context,
@@ -336,9 +336,9 @@ class _PreApproveVisitorScreenState
         const SizedBox(height: DesignSpacing.md),
         DivinePickerRow(
           icon: Icons.schedule_rounded,
-          label: 'Expected time (optional)',
+          label: 'Expiry time',
           value: _selectedTime.format(context),
-          helper: 'Helps guards anticipate arrival',
+          helper: 'Time on the valid-until date when the pass stops working',
           onTap: () async {
             final time = await showTimePicker(
               context: context,
@@ -433,12 +433,9 @@ class _PreApproveVisitorScreenState
                   value: _purposeController.text.trim(),
                 ),
               DivineSummaryRow(
-                label: 'Date',
-                value: DateFormat('EEE, d MMM yyyy').format(_selectedDate),
-              ),
-              DivineSummaryRow(
-                label: 'Time',
-                value: _selectedTime.format(context),
+                label: 'Valid until',
+                value:
+                    '${DateFormat('EEE, d MMM yyyy').format(_selectedDate)} · ${_selectedTime.format(context)}',
               ),
               DivineSummaryRow(
                 label: 'Frequent',

@@ -172,6 +172,19 @@ class GuardSosRow {
   }
 }
 
+/// Per-flat approval on a multi-villa visit (surfaced so a guard directs the
+/// visitor only to flats that approved and never to one that declined).
+class GuardVillaApproval {
+  const GuardVillaApproval({required this.villaLabel, required this.status});
+
+  final String villaLabel;
+  final String status; // APPROVED | REJECTED | PENDING (per-villa)
+
+  bool get approved => status.trim().toUpperCase() == 'APPROVED';
+  bool get rejected => status.trim().toUpperCase() == 'REJECTED';
+  bool get pending => !approved && !rejected;
+}
+
 /// Visitor row from guard visitor APIs (nested `villaVisits`).
 class GuardVisitorRow {
   GuardVisitorRow({
@@ -184,6 +197,7 @@ class GuardVisitorRow {
     this.checkOutTime,
     this.villaLabel,
     this.visitorType,
+    this.villaApprovals = const [],
   });
 
   final String id;
@@ -195,6 +209,19 @@ class GuardVisitorRow {
   final DateTime? checkOutTime;
   final String? villaLabel;
   final String? visitorType;
+
+  /// Per-flat approval breakdown (one entry per villa on the visit).
+  final List<GuardVillaApproval> villaApprovals;
+
+  /// True when this visit targets more than one flat.
+  bool get isMultiVilla => villaApprovals.length > 1;
+
+  /// Multi-villa visit where flats disagree (some approved, some declined/
+  /// pending) — the guard must direct the visitor only to approving flats.
+  bool get hasSplitFlatDecision =>
+      isMultiVilla &&
+      villaApprovals.any((v) => v.approved) &&
+      villaApprovals.any((v) => !v.approved);
 
   bool get awaitingCheckout => checkOutTime == null;
 
@@ -233,11 +260,21 @@ class GuardVisitorRow {
             ? [vvRaw]
             : null;
     final nums = <String>[];
+    final approvals = <GuardVillaApproval>[];
     if (vv != null) {
       for (final e in vv) {
-        if (e is Map && e['villa'] is Map) {
-          final n = (e['villa'] as Map)['villaNumber']?.toString();
-          if (n != null && n.isNotEmpty) nums.add(n);
+        if (e is! Map) continue;
+        final villa = e['villa'];
+        final n = villa is Map ? villa['villaNumber']?.toString() : null;
+        final block = villa is Map ? villa['block']?.toString() : null;
+        final label = [
+          if (block != null && block.trim().isNotEmpty) block.trim(),
+          if (n != null && n.trim().isNotEmpty) n.trim(),
+        ].join('-');
+        if (n != null && n.isNotEmpty) nums.add(n);
+        final st = e['approvalStatus']?.toString();
+        if (label.isNotEmpty && st != null && st.isNotEmpty) {
+          approvals.add(GuardVillaApproval(villaLabel: label, status: st));
         }
       }
     }
@@ -263,6 +300,7 @@ class GuardVisitorRow {
       checkOutTime: parseDt(json['checkOutTime']) ?? parseDt(json['checkOutAt']),
       villaLabel: nums.isEmpty ? null : nums.join(', '),
       visitorType: json['visitorType']?.toString(),
+      villaApprovals: approvals,
     );
   }
 }

@@ -26,7 +26,10 @@ class VisitorApprovalRequestsScreen extends ConsumerStatefulWidget {
 class _VisitorApprovalRequestsScreenState
     extends ConsumerState<VisitorApprovalRequestsScreen> {
   String _filter = 'pending';
-  bool _acting = false;
+  // Visitor ids with a decision in flight. Per-id (not a single flag) so acting
+  // on one request doesn't freeze the others and errors can't attach to the
+  // wrong card.
+  final Set<String> _actingIds = <String>{};
   Timer? _poll;
 
   @override
@@ -45,6 +48,9 @@ class _VisitorApprovalRequestsScreenState
     if (_filter == 'pending') {
       _poll ??= Timer.periodic(const Duration(seconds: 5), (_) {
         if (!mounted) return;
+        // Don't reload the list from under a decision that's in flight — it can
+        // re-order/remove the card the user is acting on.
+        if (_actingIds.isNotEmpty) return;
         ref.invalidate(visitorApprovalRequestsProvider('pending'));
       });
     } else {
@@ -62,8 +68,8 @@ class _VisitorApprovalRequestsScreenState
     required String visitorId,
     required bool approve,
   }) async {
-    if (_acting) return;
-    setState(() => _acting = true);
+    if (_actingIds.contains(visitorId)) return;
+    setState(() => _actingIds.add(visitorId));
     try {
       final repo = ref.read(visitorRepositoryProvider);
       if (approve) {
@@ -91,7 +97,7 @@ class _VisitorApprovalRequestsScreenState
         ),
       );
     } finally {
-      if (mounted) setState(() => _acting = false);
+      if (mounted) setState(() => _actingIds.remove(visitorId));
     }
   }
 
@@ -238,10 +244,11 @@ class _VisitorApprovalRequestsScreenState
                         separatorBuilder: (_, _) =>
                             SizedBox(height: context.spacing.s12),
                         itemBuilder: (_, i) {
+                          final rowId = rows[i]['id'] as String? ?? '';
                           return _RequestCard(
                             data: rows[i],
                             onTap: (id) => context.push('/resident/visitor-requests/$id'),
-                            actionBusy: _acting,
+                            actionBusy: _actingIds.contains(rowId),
                             onApprove: (id) => _applyDecision(visitorId: id, approve: true),
                             onReject: (id) => _applyDecision(visitorId: id, approve: false),
                           );

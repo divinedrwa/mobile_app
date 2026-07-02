@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../widgets/guard_dashboard_skeleton.dart';
 import '../widgets/guard_home_hero.dart';
 import '../widgets/guard_gate_utilities_card.dart';
 import '../widgets/guard_premium_quick_actions.dart';
+import '../widgets/guard_admit_by_otp_sheet.dart';
 import '../widgets/guard_sos_strip.dart';
 import '../widgets/guard_summary_strip.dart';
 import '../widgets/guard_view_visitors_cta.dart';
@@ -28,9 +30,26 @@ class GuardDashboardPage extends ConsumerStatefulWidget {
 
 class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
   final ScrollController _scroll = ScrollController();
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // Refresh the visitor-facing sections on an interval so a guard learns of a
+    // resident's approve/reject decision (and new pre-approvals) even when the
+    // FCM push is delayed or dropped — the back-channel push is best-effort.
+    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      ref.invalidate(guardDashboardProvider);
+      ref.invalidate(guardPendingVisitorsProvider);
+      ref.invalidate(guardActiveVisitorsTabProvider);
+      ref.invalidate(guardPreApprovedEntriesProvider);
+    });
+  }
 
   @override
   void dispose() {
+    _poll?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -226,6 +245,30 @@ class _DashboardContent extends ConsumerWidget {
         const SizedBox(height: GuardTokens.sectionGap),
         GuardViewVisitorsCta(
           onTap: () => context.go(GuardRoutes.entries),
+        ),
+        const SizedBox(height: GuardTokens.sectionGap),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: GuardTokens.guardAccentDeep,
+              minimumSize: const Size.fromHeight(48),
+            ),
+            onPressed: () async {
+              final admitted = await showAdmitByOtpSheet(context);
+              if (admitted && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Visitor admitted.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                onRefreshInvalidate();
+              }
+            },
+            icon: const Icon(Icons.password_rounded, size: 18),
+            label: const Text('Admit by OTP'),
+          ),
         ),
         const SizedBox(height: GuardTokens.sectionGap),
         GuardPremiumQuickActions(

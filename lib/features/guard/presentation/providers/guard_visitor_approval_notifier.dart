@@ -76,15 +76,6 @@ class VisitorApprovalFormNotifier
     );
   }
 
-  Future<ResidentPickerItem?> firstResident() async {
-    try {
-      final list = await _ref.read(guardResidentsPickerProvider.future);
-      return list.isEmpty ? null : list.first;
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Verifies OTP for the selected resident's villa.
   /// [fallbackVillaId] is used when no resident is selected (e.g. from QR scan payload).
   /// Returns an [ApprovalActionResult].
@@ -134,7 +125,9 @@ class VisitorApprovalFormNotifier
     required String visitorName,
     required String visitorPhone,
   }) async {
-    final resident = state.resident ?? await firstResident();
+    // Require an explicit selection — never fall back to "the first resident in
+    // the society", which would ping an arbitrary unrelated household.
+    final resident = state.resident;
     if (resident == null) {
       return const ApprovalActionResult(
         success: false,

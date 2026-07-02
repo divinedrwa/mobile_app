@@ -715,8 +715,14 @@ class NotificationService {
           router.go('/resident/sos/active');
           return true;
         }
-        if (type == 'VISITOR_PRE_APPROVED_ARRIVED') {
-          router.push('/resident/visitor-requests');
+        // "Already happened" visitor events — the visitor is admitted/checked
+        // and needs no approval, so route to the visitor hub, NOT the
+        // approve/reject inbox (which would be an empty dead-end).
+        if (type == 'VISITOR_PRE_APPROVED_ARRIVED' ||
+            type == 'VISITOR_CHECKED_IN' ||
+            type == 'VISITOR_CHECKED_OUT' ||
+            type == 'VISITOR_REJECTED') {
+          router.push('/resident/visitor-hub');
           return true;
         }
         if (type == 'VISITOR_VILLA_RESPONSE') {

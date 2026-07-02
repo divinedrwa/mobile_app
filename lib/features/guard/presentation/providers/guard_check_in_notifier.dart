@@ -78,6 +78,22 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
     state = state.copyWith(selectedUserIds: ids, clearError: true);
   }
 
+  /// Select/deselect a whole flat: toggles all of the flat's resident user ids
+  /// together. Selecting a flat targets every occupant (they all get notified).
+  /// Toggles OFF only when every occupant is already selected, otherwise ON.
+  void toggleFlat(Iterable<String> flatUserIds) {
+    final flat = flatUserIds.toSet();
+    if (flat.isEmpty) return;
+    final ids = Set<String>.from(state.selectedUserIds);
+    final allSelected = flat.every(ids.contains);
+    if (allSelected) {
+      ids.removeAll(flat);
+    } else {
+      ids.addAll(flat);
+    }
+    state = state.copyWith(selectedUserIds: ids, clearError: true);
+  }
+
   void clearResidents() {
     state = state.copyWith(selectedUserIds: const {});
   }
@@ -152,10 +168,15 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
     try {
       final allResidents =
           _ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
-      final targets = allResidents
-          .where((r) => state.selectedUserIds.contains(r.userId))
-          .map((r) => VisitTarget.fromResident(r))
-          .toList();
+      // One target per selected FLAT (villa), not per resident. The flat picker
+      // selects whole flats, so collapse to the villa: this avoids the
+      // VisitorVilla @@unique([visitorId,villaId,unitId]) collision when
+      // occupants share a unit, and targets the whole flat (the backend
+      // resolves the default unit and notifies every occupant).
+      final targets = <String>{
+        for (final r in allResidents)
+          if (state.selectedUserIds.contains(r.userId)) r.villaId,
+      }.map((vid) => VisitTarget(villaId: vid)).toList();
 
       final params = GuardCheckInSubmitParams(
         name: name,
@@ -207,10 +228,11 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
       if (e is NetworkException) {
         final allResidents =
             _ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
-        final targets = allResidents
-            .where((r) => state.selectedUserIds.contains(r.userId))
-            .map((r) => VisitTarget.fromResident(r).toJson())
-            .toList();
+        // Same whole-flat collapse as the online path (one target per villa).
+        final targets = <String>{
+          for (final r in allResidents)
+            if (state.selectedUserIds.contains(r.userId)) r.villaId,
+        }.map((vid) => VisitTarget(villaId: vid).toJson()).toList();
         final mutation = OfflineMutation(
           id: 'checkin_${DateTime.now().millisecondsSinceEpoch}',
           type: OfflineMutationType.visitorCheckIn,

@@ -14,6 +14,35 @@ import '../widgets/guard_keep_alive_tab.dart';
 import '../widgets/guard_pre_approved_entries_list.dart';
 import '../widgets/guard_empty_placeholder.dart';
 import '../widgets/guard_skeletons.dart';
+import '../widgets/guard_admit_by_otp_sheet.dart';
+
+/// Prominent entry to the OTP-only admit flow (type OTP → resolve → admit),
+/// so a guard never has to hunt a visitor in a long pre-approved list.
+class _AdmitByOtpButton extends StatelessWidget {
+  const _AdmitByOtpButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.tonalIcon(
+        onPressed: () async {
+          final admitted = await showAdmitByOtpSheet(context);
+          if (admitted && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Visitor admitted.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+        icon: const Icon(Icons.password_rounded, size: 18),
+        label: const Text('Admit by OTP'),
+      ),
+    );
+  }
+}
 
 List<BoxShadow> _visitorsListCardShadow(BuildContext context) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -337,6 +366,13 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
                                     '${v.purpose != null && v.purpose!.trim().isNotEmpty ? ' · ${v.purpose!.trim()}' : ''}',
                                 muted: true,
                               ),
+                              if (v.isMultiVilla) ...[
+                                const SizedBox(height: 8),
+                                _FlatApprovalBreakdown(
+                                  approvals: v.villaApprovals,
+                                  showHint: v.hasSplitFlatDecision,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -438,6 +474,10 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
                           ref.invalidate(guardActiveVisitorsTabProvider),
                     ),
                   ),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: _AdmitByOtpButton(),
+                ),
                 GuardEmptyPlaceholder(
                   icon: Icons.groups_outlined,
                   title: ve != null ? 'Nothing to show yet' : 'No visitors',
@@ -453,39 +493,48 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
           );
         }
 
+        // Fixed header widgets, then one lazily-built card per on-site visitor
+        // (ListView.builder so a large gate doesn't build every row up-front).
+        final headers = <Widget>[
+          if (ve != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: GuardTokens.g2),
+              child: _FetchWarningBanner(
+                message: userFacingMessage(
+                  ve,
+                  'Gate visitor list could not be loaded.',
+                ),
+                onRetry: () => ref.invalidate(guardActiveVisitorsTabProvider),
+              ),
+            ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: _AdmitByOtpButton(),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _SummaryBanner(
+              icon: Icons.people_alt_rounded,
+              label:
+                  '${rows.length} visitor${rows.length == 1 ? '' : 's'} on-site',
+              tone: GuardTokens.success,
+            ),
+          ),
+        ];
+
         return SizedBox.expand(
           child: RefreshIndicator(
             color: GuardTokens.guardAccentDeep,
             onRefresh: onRefresh,
-            child: ListView(
+            child: ListView.builder(
               controller: widget.scrollController,
               primary: false,
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(GuardTokens.padScreen),
-              children: [
-                if (ve != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: GuardTokens.g2),
-                    child: _FetchWarningBanner(
-                      message: userFacingMessage(
-                        ve,
-                        'Gate visitor list could not be loaded.',
-                      ),
-                      onRetry: () =>
-                          ref.invalidate(guardActiveVisitorsTabProvider),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _SummaryBanner(
-                    icon: Icons.people_alt_rounded,
-                    label:
-                        '${rows.length} visitor${rows.length == 1 ? '' : 's'} on-site',
-                    tone: GuardTokens.success,
-                  ),
-                ),
-                ...rows.map((v) => _visitorCard(context, v)),
-              ],
+              itemCount: headers.length + (rows.length as int),
+              itemBuilder: (context, i) => i < headers.length
+                  ? headers[i]
+                  : _visitorCard(context, rows[i - headers.length]),
             ),
           ),
         );
@@ -1286,6 +1335,87 @@ class _VisitorMetaLine extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Per-flat approval chips for a multi-villa visit, so the guard directs the
+/// visitor only to flats that approved (and never to one that declined).
+class _FlatApprovalBreakdown extends StatelessWidget {
+  const _FlatApprovalBreakdown({required this.approvals, this.showHint = false});
+
+  final List<GuardVillaApproval> approvals;
+  final bool showHint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: approvals.map((a) {
+            final Color tone;
+            final IconData icon;
+            if (a.approved) {
+              tone = GuardTokens.guardAccentDeep;
+              icon = Icons.check_circle_rounded;
+            } else if (a.rejected) {
+              tone = GuardTokens.dangerBrand;
+              icon = Icons.cancel_rounded;
+            } else {
+              tone = GuardTokens.warning;
+              icon = Icons.hourglass_bottom_rounded;
+            }
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: tone.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: tone.withValues(alpha: 0.30)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 13, color: tone),
+                  const SizedBox(width: 4),
+                  Text(
+                    a.villaLabel,
+                    style: GuardTokens.captionStyle(context).copyWith(
+                      color: tone,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        if (showHint) ...[
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline_rounded,
+                  size: 13, color: GuardTokens.warning),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  'Flats disagree — send the visitor only to approved flats.',
+                  style: GuardTokens.captionStyle(context).copyWith(
+                    color: GuardTokens.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

@@ -140,9 +140,8 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
             ),
           ),
         );
-        if (!widget.bankQr) {
-          setState(() => _showQr = true);
-        }
+        // Fall back to the scannable QR (bank QR image or generated code).
+        setState(() => _showQr = true);
       }
     } catch (e) {
       if (mounted) {
@@ -353,14 +352,17 @@ class _UpiPaymentScreenState extends ConsumerState<UpiPaymentScreen>
                 const SizedBox(height: 8),
               ],
             ],
-            // Show QR only for manual UPI VPA — bank QR flow never shows scan UI.
-            if (!widget.bankQr) ...[
+            // Scan fallback: for manual VPA always; for the bank QR flow show
+            // the original uploaded QR image — if a payment app declines the
+            // intent, scanning the society QR directly always works.
+            if (!widget.bankQr ||
+                (qrImageUrl != null && qrImageUrl.isNotEmpty)) ...[
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => setState(() => _showQr = !_showQr),
                   icon: Icon(_showQr ? Icons.qr_code_2 : Icons.qr_code),
-                  label: Text(_showQr ? 'Hide QR Code' : 'Show QR Code'),
+                  label: Text(_showQr ? 'Hide QR Code' : 'Scan QR Instead'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

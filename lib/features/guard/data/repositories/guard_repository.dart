@@ -754,12 +754,17 @@ class GuardRepository {
 
   Future<Map<String, dynamic>> verifyVisitorOtp({
     required String otp,
-    required String villaId,
+    String? villaId,
   }) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.guardVisitorOtpVerify,
-        data: {'otp': otp, 'villaId': villaId},
+        data: {
+          'otp': otp,
+          // Omit villaId for OTP-only arrivals — the backend resolves the flat
+          // from the OTP and returns it.
+          if (villaId != null && villaId.trim().isNotEmpty) 'villaId': villaId,
+        },
       );
       final data = response.data;
       return data is Map<String, dynamic> ? data : {};
@@ -781,7 +786,7 @@ class GuardRepository {
 
   Future<Map<String, dynamic>> approveVisitorEntry({
     required String otp,
-    required String villaId,
+    String? villaId,
     String? visitorName,
     String? visitorPhone,
     String? purpose,
@@ -792,7 +797,8 @@ class GuardRepository {
         ApiEndpoints.guardVisitorApproveEntry,
         data: {
           'otp': otp,
-          'villaId': villaId,
+          // Optional — admission resolves the flat from the OTP.
+          if (villaId != null && villaId.trim().isNotEmpty) 'villaId': villaId,
           if (visitorName != null && visitorName.trim().isNotEmpty)
             'visitorName': visitorName.trim(),
           if (visitorPhone != null && visitorPhone.trim().isNotEmpty)

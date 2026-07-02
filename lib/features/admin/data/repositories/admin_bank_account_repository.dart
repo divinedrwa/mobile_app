@@ -64,6 +64,7 @@ class AdminBankAccountRepository {
     String? bankName,
     String? ifscCode,
     String? accountType,
+    bool? isActive,
   }) async {
     try {
       final res = await _dio.patch<Map<String, dynamic>>(
@@ -73,6 +74,7 @@ class AdminBankAccountRepository {
           if (bankName != null) 'bankName': bankName,
           if (ifscCode != null) 'ifscCode': ifscCode,
           if (accountType != null) 'accountType': accountType,
+          if (isActive != null) 'isActive': isActive,
         },
       );
       return res.data ?? {};

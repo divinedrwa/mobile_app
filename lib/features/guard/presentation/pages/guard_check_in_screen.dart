@@ -1,4 +1,3 @@
-import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +16,7 @@ import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../../utils/shift_active_helper.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_flat_picker.dart';
 
 /// Premium **Add visitor** — card sections, large inputs, searchable flats, optional vehicle & photo.
 class GuardCheckInScreen extends ConsumerStatefulWidget {
@@ -31,17 +31,13 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _vehicle = TextEditingController();
-  final _villaQuery = TextEditingController();
 
-  static const _maxFlatRowsVisible = 8;
-  static const _flatRowHeight = 68.0;
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
     _vehicle.dispose();
-    _villaQuery.dispose();
     super.dispose();
   }
 
@@ -118,19 +114,6 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     }
   }
 
-  List<ResidentPickerItem> _filterResidents(List<ResidentPickerItem> all) {
-    final q = _villaQuery.text.trim().toLowerCase();
-    if (q.isEmpty) return all;
-    return all.where((r) {
-      final block = (r.block ?? '').toLowerCase();
-      final num = r.villaNumber.toLowerCase();
-      final name = r.name.toLowerCase();
-      return block.contains(q) ||
-          num.contains(q) ||
-          '$block $num'.contains(q) ||
-          name.contains(q);
-    }).toList();
-  }
 
   InputDecoration _fieldDecoration(
     BuildContext context, {
@@ -458,21 +441,6 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     ],
                                   ),
                                 ),
-                              TextField(
-                                controller: _villaQuery,
-                                enabled: !_submitting,
-                                onChanged: (_) => setState(() {}),
-                                decoration: _fieldDecoration(
-                                  context,
-                                  label: 'Search residents',
-                                  hint: 'Name, flat number, or block…',
-                                  prefix: Icon(
-                                    Icons.search_rounded,
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: GuardTokens.g2),
                               residentsAsync.when(
                                 loading: () => const Padding(
                                   padding: EdgeInsets.symmetric(
@@ -537,198 +505,11 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                       ),
                                     );
                                   }
-                                  final filtered = _filterResidents(list);
-                                  if (_villaQuery.text.trim().isNotEmpty &&
-                                      filtered.isEmpty) {
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      child: Text(
-                                        'No matches — try another search.',
-                                        style: GuardTokens.bodyStyle(context),
-                                      ),
-                                    );
-                                  }
-                                  final display = filtered
-                                      .take(_maxFlatRowsVisible)
-                                      .toList();
-                                  final listHeight = min(
-                                    filtered.length * _flatRowHeight + 8,
-                                    _maxFlatRowsVisible * _flatRowHeight + 8,
-                                  );
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            GuardTokens.radiusCard,
-                                          ),
-                                          border: Border.all(
-                                            color: isDark
-                                                ? GuardTokens.darkBorder
-                                                : GuardTokens.borderSubtle,
-                                          ),
-                                          color: isDark
-                                              ? GuardTokens.darkSurface
-                                                    .withValues(alpha: 0.4)
-                                              : GuardTokens.surfaceCard,
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            GuardTokens.radiusCard,
-                                          ),
-                                          child: SizedBox(
-                                            height: listHeight,
-                                            child: ListView.separated(
-                                              physics:
-                                                  const ClampingScrollPhysics(),
-                                              itemCount: display.length,
-                                              separatorBuilder: (_, _) =>
-                                                  Divider(
-                                                    height: 1,
-                                                    indent: GuardTokens.g2,
-                                                    endIndent: GuardTokens.g2,
-                                                    color: GuardTokens
-                                                        .borderSubtle
-                                                        .withValues(alpha: 0.7),
-                                                  ),
-                                              itemBuilder: (_, i) {
-                                                final r = display[i];
-                                                final selected =
-                                                    _selectedUserIds
-                                                        .contains(r.userId);
-                                                return Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    onTap: _submitting
-                                                        ? null
-                                                        : () {
-                                                            setState(() {
-                                                              if (selected) {
-                                                                _selectedUserIds
-                                                                    .remove(
-                                                                      r.userId,
-                                                                    );
-                                                              } else {
-                                                                _selectedUserIds
-                                                                    .add(
-                                                                      r.userId,
-                                                                    );
-                                                              }
-                                                            });
-                                                          },
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal:
-                                                                GuardTokens.g2,
-                                                            vertical: 10,
-                                                          ),
-                                                      child: Row(
-                                                        children: [
-                                                          SizedBox(
-                                                            width: 24,
-                                                            height: 24,
-                                                            child: Checkbox(
-                                                              value: selected,
-                                                              activeColor:
-                                                                  GuardTokens
-                                                                      .success,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      4,
-                                                                    ),
-                                                              ),
-                                                              onChanged:
-                                                                  _submitting
-                                                                  ? null
-                                                                  : (_) {
-                                                                      formNotifier.toggleResident(r.userId);
-                                                                    },
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            width:
-                                                                GuardTokens.g2,
-                                                          ),
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                Text(
-                                                                  r.name,
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontWeight:
-                                                                        selected
-                                                                            ? FontWeight
-                                                                                .w700
-                                                                            : FontWeight
-                                                                                .w500,
-                                                                    fontSize:
-                                                                        GuardTokens
-                                                                            .body,
-                                                                  ),
-                                                                ),
-                                                                Text(
-                                                                  r.tag.isNotEmpty
-                                                                      ? '${r.flatLabel} · ${r.tag}'
-                                                                      : r.flatLabel,
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        12,
-                                                                    color: Theme.of(
-                                                                            context)
-                                                                        .colorScheme
-                                                                        .onSurface
-                                                                        .withValues(
-                                                                          alpha:
-                                                                              0.6,
-                                                                        ),
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                          if (selected)
-                                                            Icon(
-                                                              Icons
-                                                                  .done_rounded,
-                                                              size: 20,
-                                                              color: GuardTokens
-                                                                  .success,
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (filtered.length > display.length) ...[
-                                        const SizedBox(height: GuardTokens.g2),
-                                        Text(
-                                          'Showing first $_maxFlatRowsVisible results. Narrow your search to see more.',
-                                          style: GuardTokens.captionStyle(
-                                            context,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                  return GuardFlatPicker(
+                                    residents: list,
+                                    selectedUserIds: _selectedUserIds,
+                                    onToggleFlat: (ids) =>
+                                        formNotifier.toggleFlat(ids),
                                   );
                                 },
                               ),

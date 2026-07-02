@@ -120,6 +120,7 @@ class _AdminBankAccountsScreenState
         final accountNumber = a['accountNumber']?.toString() ?? '';
         final ifsc = a['ifscCode']?.toString() ?? '';
         final accountType = a['accountType']?.toString() ?? '';
+        final isActive = a['isActive'] as bool? ?? true;
 
         // Mask account number
         final masked = accountNumber.length > 4
@@ -148,12 +149,37 @@ class _AdminBankAccountsScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      accountName.isNotEmpty ? accountName : bankName,
-                      style: DesignTypography.label
-                          .copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            accountName.isNotEmpty ? accountName : bankName,
+                            style: DesignTypography.label
+                                .copyWith(fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (!isActive) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: DesignColors.textSecondary
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Inactive',
+                              style: DesignTypography.captionSmall.copyWith(
+                                color: DesignColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -191,6 +217,9 @@ class _AdminBankAccountsScreenState
         text: existing?['ifscCode']?.toString() ?? '');
     final typeCtrl = TextEditingController(
         text: existing?['accountType']?.toString() ?? '');
+    // Active state — the graceful alternative to Delete, which the backend
+    // refuses for accounts that already have payment records.
+    final isActive = ValueNotifier<bool>(existing?['isActive'] as bool? ?? true);
 
     showModalBottomSheet<void>(
       context: context,
@@ -239,6 +268,24 @@ class _AdminBankAccountsScreenState
                   ),
                   _field('IFSC Code *', ifscCtrl, required: true),
                   _field('Account Type *', typeCtrl, required: true),
+                  if (isEdit)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: isActive,
+                      builder: (_, active, __) => SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: DesignColors.info,
+                        title: const Text('Active'),
+                        subtitle: Text(
+                          active
+                              ? 'Shown to residents for payments'
+                              : 'Deactivated — hidden from residents',
+                          style: DesignTypography.captionSmall
+                              .copyWith(color: DesignColors.textSecondary),
+                        ),
+                        value: active,
+                        onChanged: (v) => isActive.value = v,
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -271,6 +318,7 @@ class _AdminBankAccountsScreenState
                                 numberCtrl.text,
                                 ifscCtrl.text,
                                 typeCtrl.text,
+                                isActive.value,
                               );
                             } else {
                               _handleCreate(nameCtrl.text, bankCtrl.text,
@@ -342,7 +390,7 @@ class _AdminBankAccountsScreenState
   }
 
   Future<void> _handleUpdate(String id, String name, String bank,
-      String number, String ifsc, String type) async {
+      String number, String ifsc, String type, bool isActive) async {
     try {
       await ref.read(adminBankAccountRepositoryProvider).updateBankAccount(
             id,
@@ -350,6 +398,7 @@ class _AdminBankAccountsScreenState
             bankName: bank.trim().isNotEmpty ? bank.trim() : null,
             ifscCode: ifsc.trim().isNotEmpty ? ifsc.trim() : null,
             accountType: type.trim().isNotEmpty ? type.trim() : null,
+            isActive: isActive,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

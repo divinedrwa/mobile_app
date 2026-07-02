@@ -13,6 +13,27 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
   (ref) => MaintenanceRepository(),
 );
 
+/// Single cached source for the (heavy) financial-dashboard endpoint, keyed by
+/// period + cycle. All dashboard-consuming providers derive from this so the
+/// hub card, cycle-detail and year-review screens share one fetch instead of
+/// each re-downloading the same payload.
+final financialDashboardProvider = FutureProvider.autoDispose.family<
+    Map<String, dynamic>,
+    ({
+      int month,
+      int year,
+      String? billingCycleId,
+      String? collectionCycleId,
+    })>((ref, key) async {
+  cacheFor(ref, const Duration(minutes: 2));
+  return ref.watch(maintenanceRepositoryProvider).getFinancialDashboard(
+        month: key.month,
+        year: key.year,
+        billingCycleId: key.billingCycleId,
+        maintenanceCollectionCycleId: key.collectionCycleId,
+      );
+});
+
 /// Refresh all resident maintenance billing providers after a payment settles
 /// or admin updates payment status.
 void invalidateMaintenancePaymentProviders(WidgetRef ref) {
@@ -41,9 +62,12 @@ final cycleInsightProvider = FutureProvider.autoDispose
   if (!userCanViewResidentBilling(user)) {
     return CycleInsight(breakdown: ExpenseBreakdown.empty());
   }
-  final dash = await ref
-      .watch(maintenanceRepositoryProvider)
-      .getFinancialDashboard(month: key.month, year: key.year);
+  final dash = await ref.watch(financialDashboardProvider((
+    month: key.month,
+    year: key.year,
+    billingCycleId: null,
+    collectionCycleId: null,
+  )).future);
   return CycleInsight(
     breakdown: ExpenseBreakdown.fromDashboard(dash, allowFallback: false),
     paymentMode: paymentModeForVilla(dash, user?.villaId),
@@ -141,24 +165,28 @@ final residentExpenseBreakdownProvider =
       final user = ref.watch(authProvider.select((s) => s.user));
       if (!userCanViewResidentBilling(user)) return ExpenseBreakdown.empty();
 
-      final repo = ref.watch(maintenanceRepositoryProvider);
       final selection = ref.watch(selectedExpenseCycleProvider);
 
       if (selection != null) {
         // Explicit cycle: show exactly that cycle's data (no month fallback).
-        final dashboard = await repo.getFinancialDashboard(
+        final dashboard = await ref.watch(financialDashboardProvider((
           month: selection.month,
           year: selection.year,
           billingCycleId: selection.billingCycleId,
-        );
+          collectionCycleId: null,
+        )).future);
         return ExpenseBreakdown.fromDashboard(dashboard, allowFallback: false)
             .copyWith(billingCycleId: selection.billingCycleId);
       }
 
       // Default: current month, falling back to the latest month with data.
       final now = DateTime.now();
-      final dashboard =
-          await repo.getFinancialDashboard(month: now.month, year: now.year);
+      final dashboard = await ref.watch(financialDashboardProvider((
+        month: now.month,
+        year: now.year,
+        billingCycleId: null,
+        collectionCycleId: null,
+      )).future);
       final initial = ExpenseBreakdown.fromDashboard(dashboard);
 
       // The member-count divisor (residentsSummary) is for the *requested*
@@ -169,10 +197,12 @@ final residentExpenseBreakdownProvider =
       // with the expenses being displayed.
       if (initial.hasData &&
           (initial.month != now.month || initial.year != now.year)) {
-        final aligned = await repo.getFinancialDashboard(
+        final aligned = await ref.watch(financialDashboardProvider((
           month: initial.month,
           year: initial.year,
-        );
+          billingCycleId: null,
+          collectionCycleId: null,
+        )).future);
         final alignedBreakdown =
             ExpenseBreakdown.fromDashboard(aligned, allowFallback: false);
         if (alignedBreakdown.hasData) return alignedBreakdown;
@@ -243,12 +273,12 @@ final maintenancePaymentProvider =
 /// multiple calendar years when a FY spans two (e.g. Apr 2025 – Mar 2026).
 final yearlyBreakdownForYearProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, int>((ref, year) async {
-      final dashboard = await ref
-          .watch(maintenanceRepositoryProvider)
-          .getFinancialDashboard(
-            month: 1,
-            year: year,
-          );
+      final dashboard = await ref.watch(financialDashboardProvider((
+        month: 1,
+        year: year,
+        billingCycleId: null,
+        collectionCycleId: null,
+      )).future);
       return ((dashboard['yearlyBreakdown'] ?? const []) as List)
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
@@ -312,13 +342,11 @@ final maintenanceDashboardProvider = FutureProvider<Map<String, dynamic>>((
   ref,
 ) async {
   final filter = ref.watch(maintenanceDashboardFilterProvider);
-  return ref
-      .watch(maintenanceRepositoryProvider)
-      .getFinancialDashboard(
-        month: filter.month,
-        year: filter.year,
-        maintenanceCollectionCycleId: filter.maintenanceCollectionCycleId,
-        billingCycleId: filter.billingCycleId,
-      );
+  return ref.watch(financialDashboardProvider((
+    month: filter.month,
+    year: filter.year,
+    billingCycleId: filter.billingCycleId,
+    collectionCycleId: filter.maintenanceCollectionCycleId,
+  )).future);
 });
 
