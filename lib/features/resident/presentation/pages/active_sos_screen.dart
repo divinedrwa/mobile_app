@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../providers/sos_provider.dart';
@@ -22,9 +23,15 @@ class ActiveSOSScreen extends ConsumerStatefulWidget {
 }
 
 class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
-    with SingleTickerProviderStateMixin {
-  Timer? _poll;
+    with SingleTickerProviderStateMixin, ForegroundPollingMixin {
   late AnimationController _pulse;
+
+  // Live SOS status; foreground-only (a backgrounded phone gets push updates).
+  @override
+  Duration get pollInterval => const Duration(seconds: 5);
+
+  @override
+  void onPollTick() => ref.invalidate(activeSosProvider);
 
   @override
   void initState() {
@@ -33,15 +40,12 @@ class _ActiveSOSScreenState extends ConsumerState<ActiveSOSScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    _poll = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
-      ref.invalidate(activeSosProvider);
-    });
+    startForegroundPolling();
   }
 
   @override
   void dispose() {
-    _poll?.cancel();
+    stopForegroundPolling();
     _pulse.dispose();
     super.dispose();
   }

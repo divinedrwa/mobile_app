@@ -1,11 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../widgets/list_skeleton.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -24,44 +23,43 @@ class VisitorApprovalRequestsScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitorApprovalRequestsScreenState
-    extends ConsumerState<VisitorApprovalRequestsScreen> {
+    extends ConsumerState<VisitorApprovalRequestsScreen>
+    with ForegroundPollingMixin {
   String _filter = 'pending';
   // Visitor ids with a decision in flight. Per-id (not a single flag) so acting
   // on one request doesn't freeze the others and errors can't attach to the
   // wrong card.
   final Set<String> _actingIds = <String>{};
-  Timer? _poll;
+
+  // Poll the pending inbox while foregrounded so a resident sees new gate
+  // requests without a push. Only on the 'pending' tab, and never while a
+  // decision is in flight (a reload can re-order/remove the card being acted
+  // on). No ticks in the background.
+  @override
+  Duration get pollInterval => const Duration(seconds: 5);
+
+  @override
+  bool get shouldPoll => _filter == 'pending' && _actingIds.isEmpty;
+
+  @override
+  void onPollTick() {
+    ref.invalidate(visitorApprovalRequestsProvider('pending'));
+  }
 
   @override
   void initState() {
     super.initState();
-    _syncPoll();
+    startForegroundPolling();
   }
 
   @override
   void dispose() {
-    _poll?.cancel();
+    stopForegroundPolling();
     super.dispose();
-  }
-
-  void _syncPoll() {
-    if (_filter == 'pending') {
-      _poll ??= Timer.periodic(const Duration(seconds: 5), (_) {
-        if (!mounted) return;
-        // Don't reload the list from under a decision that's in flight — it can
-        // re-order/remove the card the user is acting on.
-        if (_actingIds.isNotEmpty) return;
-        ref.invalidate(visitorApprovalRequestsProvider('pending'));
-      });
-    } else {
-      _poll?.cancel();
-      _poll = null;
-    }
   }
 
   void _setFilter(String filter) {
     setState(() => _filter = filter);
-    _syncPoll();
   }
 
   Future<void> _applyDecision({

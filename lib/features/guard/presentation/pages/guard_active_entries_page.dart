@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../../resident/data/models/parcel_model.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -65,13 +66,25 @@ class GuardActiveEntriesPage extends ConsumerStatefulWidget {
 }
 
 class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, ForegroundPollingMixin {
   late TabController _tab;
-  Timer? _poll;
   final _visitorsScroll = ScrollController();
   final _preApprovedScroll = ScrollController();
   final _deliveriesScroll = ScrollController();
   final _vehiclesScroll = ScrollController();
+
+  // Live-ish view of gate activity; foreground-only so a pocketed phone makes
+  // no calls. Push + pull-to-refresh cover the rest.
+  @override
+  Duration get pollInterval => const Duration(seconds: 5);
+
+  @override
+  void onPollTick() {
+    ref.invalidate(guardActiveVisitorsTabProvider);
+    ref.invalidate(guardPendingVisitorsProvider);
+    ref.invalidate(guardDashboardProvider);
+    ref.invalidate(guardPreApprovedEntriesProvider);
+  }
 
   @override
   void initState() {
@@ -79,13 +92,7 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
     _tab = TabController(length: 4, vsync: this);
     // Keep body (IndexedStack) in sync — TabController notifies listeners on index changes.
     _tab.addListener(_onTabCtl);
-    _poll = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardDashboardProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
-    });
+    startForegroundPolling();
   }
 
   void _onTabCtl() {
@@ -94,7 +101,7 @@ class _GuardActiveEntriesPageState extends ConsumerState<GuardActiveEntriesPage>
 
   @override
   void dispose() {
-    _poll?.cancel();
+    stopForegroundPolling();
     _tab.removeListener(_onTabCtl);
     _tab.dispose();
     _visitorsScroll.dispose();

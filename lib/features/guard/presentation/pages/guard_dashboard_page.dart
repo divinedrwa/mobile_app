@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -28,28 +29,34 @@ class GuardDashboardPage extends ConsumerStatefulWidget {
   ConsumerState<GuardDashboardPage> createState() => _GuardDashboardPageState();
 }
 
-class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage> {
+class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
+    with ForegroundPollingMixin {
   final ScrollController _scroll = ScrollController();
-  Timer? _poll;
+
+  // Refresh the visitor-facing sections on an interval so a guard learns of a
+  // resident's approve/reject decision (and new pre-approvals) even when the
+  // FCM push is delayed or dropped — the back-channel push is best-effort.
+  // Foreground-only: no ticks while the app is backgrounded/locked.
+  @override
+  Duration get pollInterval => const Duration(seconds: 15);
+
+  @override
+  void onPollTick() {
+    ref.invalidate(guardDashboardProvider);
+    ref.invalidate(guardPendingVisitorsProvider);
+    ref.invalidate(guardActiveVisitorsTabProvider);
+    ref.invalidate(guardPreApprovedEntriesProvider);
+  }
 
   @override
   void initState() {
     super.initState();
-    // Refresh the visitor-facing sections on an interval so a guard learns of a
-    // resident's approve/reject decision (and new pre-approvals) even when the
-    // FCM push is delayed or dropped — the back-channel push is best-effort.
-    _poll = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (!mounted) return;
-      ref.invalidate(guardDashboardProvider);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
-    });
+    startForegroundPolling();
   }
 
   @override
   void dispose() {
-    _poll?.cancel();
+    stopForegroundPolling();
     _scroll.dispose();
     super.dispose();
   }
