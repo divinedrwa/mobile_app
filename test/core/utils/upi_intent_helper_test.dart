@@ -3,9 +3,11 @@ import 'package:divine_app/core/utils/upi_intent_helper.dart';
 
 void main() {
   group('UpiIntentHelper.buildPaymentIntent', () {
-    test('rebuilds an unsigned merchant QR as a spec-correct P2M intent', () {
+    test('replays a real merchant QR verbatim and adds only am/cu/tn', () {
       // Exact shape of the society's Bank of Maharashtra merchant QR:
       // encoded @ (%40) in pa, mc present, no signature, variable amount.
+      // Verified end-to-end 2026-07-01: mc/mode/purpose replayed byte-for-byte
+      // → payment apps recognize the merchant and settle as P2M.
       const qr =
           'upi://pay?pa=bom260601340945%40mahb&pn=DIVINE+RESIDENCY+WEL&cu=INR&mc=2741&mode=01&purpose=00';
 
@@ -17,19 +19,12 @@ void main() {
         upiPayUri: qr,
       );
 
-      // pa decoded (literal @) — some apps reject %40 as an invalid VPA.
-      expect(intent, contains('pa=bom260601340945@mahb'));
-      // pn decoded from '+' form-encoding and re-encoded as %20.
-      expect(intent, contains('pn=DIVINE%20RESIDENCY%20WEL'));
-      // mc/purpose kept → stays person-to-merchant (P2M), dodging NPCI's
-      // per-payee 24h cap that a bare P2P intent hits.
+      // Merchant identity kept byte-for-byte → stays person-to-merchant (P2M),
+      // dodging NPCI's per-payee 24h cap that a bare P2P intent hits.
+      expect(intent, contains('pa=bom260601340945%40mahb'));
       expect(intent, contains('mc=2741'));
+      expect(intent, contains('mode=01'));
       expect(intent, contains('purpose=00'));
-      // Intent channel, not the QR's scan-channel value.
-      expect(intent, contains('mode=04'));
-      expect(intent, isNot(contains('mode=01')));
-      // Unique transaction reference — required for merchant intents.
-      expect(intent, matches(RegExp(r'(\?|&)tr=MNT[A-Z0-9]+(&|$)')));
       expect(intent, contains('am=1500.00'));
       // stale cu replaced, not duplicated
       expect('cu='.allMatches(intent).length, 1);
@@ -54,7 +49,6 @@ void main() {
       expect(intent, contains('pa=divine%40mahb'));
       expect(intent, contains('mode=01'));
       expect(intent, contains('sign=$sign'));
-      expect(intent, isNot(contains('tr=')));
       expect(intent, contains('am=1500.00'));
     });
 
