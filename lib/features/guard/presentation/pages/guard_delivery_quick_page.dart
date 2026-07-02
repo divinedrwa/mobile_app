@@ -7,6 +7,7 @@ import '../../../../core/widgets/screen_skeletons.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
 
 /// Premium delivery entry — brand grid, searchable flat, sticky actions.
@@ -29,36 +30,39 @@ class _GuardDeliveryQuickPageState
     (label: 'Other', api: 'Other'),
   ];
 
-  final _flatQuery = TextEditingController();
   final _tracking = TextEditingController();
   final _sender = TextEditingController();
   final _description = TextEditingController();
 
   String _brand = 'Zomato';
-  ResidentPickerItem? _resident;
+  // A parcel goes to a single flat — grid single-select (same picker as
+  // "Add visitor", but one flat at a time).
+  String? _villaId;
+  String? _flatLabel;
+  Set<String> _selectedUserIds = {};
   bool _submitting = false;
 
   @override
   void dispose() {
-    _flatQuery.dispose();
     _tracking.dispose();
     _sender.dispose();
     _description.dispose();
     super.dispose();
   }
 
-  List<ResidentPickerItem> _filter(List<ResidentPickerItem> all) {
-    final q = _flatQuery.text.trim().toLowerCase();
-    if (q.isEmpty) return all;
-    return all.where((r) {
-      final block = (r.block ?? '').toLowerCase();
-      final num = r.villaNumber.toLowerCase();
-      final name = r.name.toLowerCase();
-      return block.contains(q) ||
-          num.contains(q) ||
-          '$block $num'.contains(q) ||
-          name.contains(q);
-    }).toList();
+  void _onFlatTapped(GuardFlatSelection flat) {
+    if (_submitting) return;
+    setState(() {
+      if (_villaId == flat.villaId) {
+        _villaId = null;
+        _flatLabel = null;
+        _selectedUserIds = {};
+      } else {
+        _villaId = flat.villaId;
+        _flatLabel = flat.label;
+        _selectedUserIds = flat.userIds.toSet();
+      }
+    });
   }
 
   @override
@@ -200,24 +204,8 @@ class _GuardDeliveryQuickPageState
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
                       icon: Icons.people_rounded,
-                      title: 'Deliver to resident',
-                      subtitle: 'Search by name or flat — tap to select',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    TextField(
-                      controller: _flatQuery,
-                      onChanged: (_) => setState(() {}),
-                      enabled: !_submitting,
-                      decoration: InputDecoration(
-                        hintText: 'Block, flat, or name…',
-                        prefixIcon: Icon(Icons.search_rounded),
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            GuardTokens.radiusButton,
-                          ),
-                        ),
-                      ),
+                      title: 'Deliver to flat',
+                      subtitle: 'Search or pick a block, then tap the flat',
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     residentsAsync.when(
@@ -256,124 +244,17 @@ class _GuardDeliveryQuickPageState
                             style: GuardTokens.bodyStyle(context),
                           );
                         }
-                        final filtered = _filter(residents);
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              GuardTokens.radiusCard,
-                            ),
-                            border: Border.all(
-                              color: isDark
-                                  ? GuardTokens.darkBorder
-                                  : GuardTokens.borderSubtle,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              GuardTokens.radiusCard,
-                            ),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 280),
-                              child: ListView.separated(
-                                shrinkWrap: true,
-                                itemCount: filtered.length,
-                                separatorBuilder: (_, _) => Divider(
-                                  height: 1,
-                                  indent: GuardTokens.g2,
-                                  endIndent: GuardTokens.g2,
-                                  color: GuardTokens.borderSubtle
-                                      .withValues(alpha: 0.7),
-                                ),
-                                itemBuilder: (_, i) {
-                                  final r = filtered[i];
-                                  final sel = _resident?.userId == r.userId;
-                                  return Material(
-                                    color: sel
-                                        ? GuardTokens.success
-                                            .withValues(alpha: 0.08)
-                                        : Colors.transparent,
-                                    child: InkWell(
-                                      onTap: _submitting
-                                          ? null
-                                          : () =>
-                                              setState(() => _resident = r),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: GuardTokens.g2,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              sel
-                                                  ? Icons
-                                                      .radio_button_checked_rounded
-                                                  : Icons
-                                                      .radio_button_off_rounded,
-                                              size: 22,
-                                              color: sel
-                                                  ? GuardTokens.success
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withValues(alpha: 0.4),
-                                            ),
-                                            const SizedBox(
-                                              width: GuardTokens.g2,
-                                            ),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    r.name,
-                                                    style: TextStyle(
-                                                      fontWeight: sel
-                                                          ? FontWeight.w700
-                                                          : FontWeight.w500,
-                                                      fontSize:
-                                                          GuardTokens.body,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    r.tag.isNotEmpty
-                                                        ? '${r.flatLabel} · ${r.tag}'
-                                                        : r.flatLabel,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurface
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          ),
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (sel)
-                                              Icon(
-                                                Icons.done_rounded,
-                                                size: 20,
-                                                color: GuardTokens.success,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
+                        return GuardFlatPicker(
+                          residents: residents,
+                          selectedUserIds: _selectedUserIds,
+                          onToggleFlat: _onFlatTapped,
                         );
                       },
                     ),
+                    if (_flatLabel != null) ...[
+                      const SizedBox(height: GuardTokens.g2),
+                      _SelectedFlatBanner(label: _flatLabel!),
+                    ],
                     const SizedBox(height: GuardTokens.sectionGap),
                     const GuardScreenSectionHeader(
                       icon: Icons.receipt_long_rounded,
@@ -491,16 +372,16 @@ class _GuardDeliveryQuickPageState
   }
 
   Future<void> _submit(bool leftAtGate) async {
-    if (_resident == null) {
+    final villaId = _villaId;
+    if (villaId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Select a resident before submitting'),
+          content: Text('Select a flat before submitting'),
         ),
       );
       return;
     }
-    final selected = _resident!;
 
     setState(() => _submitting = true);
     try {
@@ -510,7 +391,7 @@ class _GuardDeliveryQuickPageState
       ];
       await ref.read(guardDeliverySubmitProvider)(
         GuardDeliverySubmitParams(
-          villaId: selected.villaId,
+          villaId: villaId,
           deliveryService: _brand,
           trackingNumber: _tracking.text.trim().isEmpty
               ? null
@@ -544,5 +425,44 @@ class _GuardDeliveryQuickPageState
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+}
+
+/// Confirmation of the flat chosen in the grid — the tapped tile can scroll out
+/// of view once the list is long or filtered, so restate it near the actions.
+class _SelectedFlatBanner extends StatelessWidget {
+  const _SelectedFlatBanner({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: GuardTokens.g2,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
+        color: GuardTokens.guardAccent.withValues(alpha: 0.10),
+        border: Border.all(color: GuardTokens.guardAccent),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_rounded,
+              size: 18, color: GuardTokens.guardAccentDeep),
+          const SizedBox(width: GuardTokens.g2),
+          Text(
+            'Delivering to ',
+            style: GuardTokens.bodyStyle(context),
+          ),
+          Text(
+            label,
+            style: GuardTokens.bodyStyle(context)
+                .copyWith(fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
   }
 }

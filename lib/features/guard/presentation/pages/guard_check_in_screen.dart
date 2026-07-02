@@ -508,8 +508,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   return GuardFlatPicker(
                                     residents: list,
                                     selectedUserIds: _selectedUserIds,
-                                    onToggleFlat: (ids) =>
-                                        formNotifier.toggleFlat(ids),
+                                    onToggleFlat: (flat) =>
+                                        formNotifier.toggleFlat(flat.userIds),
                                   );
                                 },
                               ),

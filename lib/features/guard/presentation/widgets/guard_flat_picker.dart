@@ -3,6 +3,23 @@ import 'package:flutter/material.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 
+/// A flat (villa) the guard tapped in [GuardFlatPicker].
+///
+/// Carries the flat identity so single-flat flows (delivery, vehicle) can read
+/// [villaId], and the full [userIds] set so multi-resident flows (add visitor)
+/// can notify everyone living there.
+class GuardFlatSelection {
+  const GuardFlatSelection({
+    required this.villaId,
+    required this.label,
+    required this.userIds,
+  });
+
+  final String villaId;
+  final String label;
+  final List<String> userIds;
+}
+
 /// One flat (villa) grouped from the resident directory.
 class _Flat {
   _Flat({
@@ -23,11 +40,17 @@ class _Flat {
     final b = block?.trim();
     return (b != null && b.isNotEmpty) ? '$b-$villaNumber' : villaNumber;
   }
+
+  GuardFlatSelection toSelection() =>
+      GuardFlatSelection(villaId: villaId, label: label, userIds: userIds);
 }
 
 /// Block-first, select-by-flat picker for guard flows (add visitor / delivery /
 /// vehicle). Search on top, block chips, then a grid of flat tiles. Tapping a
-/// flat selects ALL of its residents at once (they all get notified).
+/// flat hands the whole flat (villaId + all its resident user ids) back to the
+/// parent, which owns the selection state — so the same grid serves both
+/// multi-select (add visitor notifies every resident) and single-select
+/// (delivery/vehicle target one flat).
 class GuardFlatPicker extends StatefulWidget {
   const GuardFlatPicker({
     super.key,
@@ -39,8 +62,8 @@ class GuardFlatPicker extends StatefulWidget {
   final List<ResidentPickerItem> residents;
   final Set<String> selectedUserIds;
 
-  /// Toggle a whole flat — receives every resident user id in that flat.
-  final void Function(List<String> flatUserIds) onToggleFlat;
+  /// Toggle a whole flat — receives the flat identity + every resident user id.
+  final void Function(GuardFlatSelection flat) onToggleFlat;
 
   @override
   State<GuardFlatPicker> createState() => _GuardFlatPickerState();
@@ -195,7 +218,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
               return _FlatTile(
                 label: f.label,
                 selected: selected,
-                onTap: () => widget.onToggleFlat(f.userIds),
+                onTap: () => widget.onToggleFlat(f.toSelection()),
               );
             },
           ),
