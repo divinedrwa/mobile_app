@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../constants/api_endpoints.dart';
 import '../network/dio_client.dart';
 
-enum UpdateStatus { upToDate, softUpdate, forceUpdate }
+enum UpdateStatus { upToDate, softUpdate }
 
 class VersionCheckResult {
   final UpdateStatus status;
@@ -35,7 +35,11 @@ class AppVersionService {
   /// Primary check flow:
   /// 1. Android → try Play Store native update (Play Core API).
   /// 2. Fallback → backend version config check (works on all platforms).
-  /// Fail-open: any error returns [UpdateStatus.upToDate].
+  ///
+  /// Updates are **never forced** — the app must stay fully usable on any
+  /// version, old or new. The only outcome besides [UpdateStatus.upToDate] is
+  /// a dismissible [UpdateStatus.softUpdate] prompt when a newer version is
+  /// available. Fail-open: any error returns [UpdateStatus.upToDate].
   static Future<VersionCheckResult> check() async {
     // 1. Try Play Store native check on Android.
     if (platform_info.isAndroid) {
@@ -47,30 +51,37 @@ class AppVersionService {
     return _checkBackend();
   }
 
-  /// Start the native Play Store immediate update flow.
+  /// Run Google Play's **flexible** in-app update: shows Play's consent sheet,
+  /// downloads the update in the background, then installs it (Play restarts
+  /// the app to apply). The user can decline at any point — nothing is forced.
   ///
-  /// On success Play may kill this process to install; the app is not
-  /// auto-relaunched when the user updates from the Play Store listing
-  /// (only the in-app immediate flow may restart in some cases).
-  static Future<AppUpdateResult> performImmediateUpdate() async {
-    return InAppUpdate.performImmediateUpdate();
-  }
-
-  /// Resume an immediate update that was interrupted (e.g. process killed
-  /// mid-install). Safe to call on every cold start / resume.
-  static Future<AppUpdateResult?> resumeInterruptedImmediateUpdate() async {
-    if (!platform_info.isAndroid) return null;
+  /// Returns true when the update was handled in-app (started + completed, or
+  /// the user explicitly declined); false when a flexible update isn't
+  /// available (sideloaded build, Play Store missing, transient failure) so
+  /// the caller can fall back to opening the store listing.
+  static Future<bool> startFlexibleInAppUpdate() async {
+    if (!platform_info.isAndroid) return false;
     try {
       final info = await InAppUpdate.checkForUpdate();
-      final inProgress = info.updateAvailability ==
-          UpdateAvailability.developerTriggeredUpdateInProgress;
-      if (!inProgress || !info.immediateUpdateAllowed) return null;
-      return await InAppUpdate.performImmediateUpdate();
+      if (info.updateAvailability != UpdateAvailability.updateAvailable ||
+          !info.flexibleUpdateAllowed) {
+        return false;
+      }
+      final result = await InAppUpdate.startFlexibleUpdate();
+      switch (result) {
+        case AppUpdateResult.success:
+          // Downloaded in the background — install it now.
+          await InAppUpdate.completeFlexibleUpdate();
+          return true;
+        case AppUpdateResult.userDeniedUpdate:
+          // User chose to keep their current version — respect it.
+          return true;
+        case AppUpdateResult.inAppUpdateFailed:
+          return false;
+      }
     } catch (e) {
-      debugPrint(
-        '[AppVersionService] Resume interrupted update failed (ignored): $e',
-      );
-      return null;
+      debugPrint('[AppVersionService] Flexible in-app update failed: $e');
+      return false;
     }
   }
 
@@ -82,28 +93,18 @@ class AppVersionService {
       final info = await InAppUpdate.checkForUpdate();
 
       final updatePending = info.updateAvailability ==
-              UpdateAvailability.updateAvailable ||
-          info.updateAvailability ==
-              UpdateAvailability.developerTriggeredUpdateInProgress;
+          UpdateAvailability.updateAvailable;
 
       if (updatePending) {
-        // Immediate update = force (critical), flexible = soft prompt.
-        // developerTriggeredUpdateInProgress = prior in-app immediate update
-        // was interrupted; resume it instead of leaving the app stuck.
-        if (info.immediateUpdateAllowed) {
-          return VersionCheckResult(
-            status: UpdateStatus.forceUpdate,
-            playStoreUpdateInfo: info,
-          );
-        }
-        if (info.flexibleUpdateAllowed) {
-          return VersionCheckResult(
-            status: UpdateStatus.softUpdate,
-            playStoreUpdateInfo: info,
-          );
-        }
+        // A newer version is on the Play Store — offer a dismissible soft
+        // prompt only. We never force (no immediate flow), so the app stays
+        // usable whether the user updates now or later.
+        return VersionCheckResult(
+          status: UpdateStatus.softUpdate,
+          playStoreUpdateInfo: info,
+        );
       }
-      // No update or not allowed — let backend check decide.
+      // No update available — let backend check decide.
       return null;
     } catch (e) {
       debugPrint('[AppVersionService] Play Store check failed (falling back to backend): $e');
@@ -143,16 +144,9 @@ class AppVersionService {
       final packageInfo = await PackageInfo.fromPlatform();
       final installed = packageInfo.version;
 
-      if (_compareSemver(installed, minVersion) < 0) {
-        return VersionCheckResult(
-          status: UpdateStatus.forceUpdate,
-          latestVersion: latestVersion,
-          minVersion: minVersion,
-          storeUrl: storeUrl,
-          releaseNotes: releaseNotes,
-        );
-      }
-
+      // Never force: `minVersion` is intentionally ignored so the app stays
+      // usable on any version. Only show a dismissible soft prompt when a
+      // newer version has been published.
       if (_compareSemver(installed, latestVersion) < 0) {
         return VersionCheckResult(
           status: UpdateStatus.softUpdate,

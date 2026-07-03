@@ -111,7 +111,14 @@ class SocietyThemeCache {
       }
       final file = File('${folder.path}/$sid.jpg');
       final optimized = optimizedCloudinaryUrl(trimmedUrl, width: 1080);
-      final response = await Dio().get<List<int>>(
+      // Bounded timeouts — a stalled download must never hang callers that
+      // await this from the splash/boot path.
+      final response = await Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      ).get<List<int>>(
         optimized,
         options: Options(responseType: ResponseType.bytes),
       );

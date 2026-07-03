@@ -10,7 +10,6 @@ import 'package:go_router/go_router.dart';
 import 'bootstrap/app_bootstrap.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
-import 'core/services/app_update_lifecycle_binding.dart';
 import 'core/services/gateway_payment_lifecycle_binding.dart';
 import 'core/telemetry/guard_analytics_bridge.dart';
 import 'core/utils/app_restart.dart';
@@ -33,8 +32,6 @@ import 'core/session/session_expired_handler.dart';
 import 'core/services/notification_service.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/app_version_service.dart';
-import 'core/services/in_app_update_wrapper.dart';
-import 'core/utils/platform_info.dart' as platform_info;
 import 'core/widgets/app_update_dialog.dart';
 import 'core/widgets/offline_banner.dart';
 
@@ -95,10 +92,8 @@ void main() async {
   }
 
   final pushBinding = PushLifecycleBinding();
-  final appUpdateBinding = AppUpdateLifecycleBinding();
   final gatewayPaymentBinding = GatewayPaymentLifecycleBinding();
   WidgetsBinding.instance.addObserver(pushBinding);
-  WidgetsBinding.instance.addObserver(appUpdateBinding);
   WidgetsBinding.instance.addObserver(gatewayPaymentBinding);
 
   void startApp() {
@@ -169,22 +164,17 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
   }
 
   Future<void> _checkAppVersion() async {
-    // Resume a stalled Play immediate update before prompting again.
-    if (platform_info.isAndroid) {
-      final resumed = await AppVersionService.resumeInterruptedImmediateUpdate();
-      if (resumed == AppUpdateResult.success || !mounted) return;
-    }
-
+    // Updates are always optional — never blocks the app. Shows a dismissible
+    // prompt when a newer version is on the store; the user can keep using
+    // their current version.
     final result = await AppVersionService.check();
     if (!mounted) return;
     switch (result.status) {
-      case UpdateStatus.forceUpdate:
-        unawaited(showAppUpdateDialog(context, result, forceUpdate: true));
       case UpdateStatus.softUpdate:
         final dismissed = result.latestVersion != null &&
             await wasSoftUpdateDismissed(result.latestVersion!);
         if (!dismissed && mounted) {
-          unawaited(showAppUpdateDialog(context, result, forceUpdate: false));
+          unawaited(showAppUpdateDialog(context, result));
         }
       case UpdateStatus.upToDate:
         break;

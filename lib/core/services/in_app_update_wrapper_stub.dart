@@ -25,4 +25,7 @@ class InAppUpdate {
   static Future<AppUpdateInfo> checkForUpdate() async => AppUpdateInfo();
   static Future<AppUpdateResult> performImmediateUpdate() async =>
       AppUpdateResult.success;
+  static Future<AppUpdateResult> startFlexibleUpdate() async =>
+      AppUpdateResult.inAppUpdateFailed;
+  static Future<void> completeFlexibleUpdate() async {}
 }

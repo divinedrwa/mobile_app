@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -117,9 +118,16 @@ class _BrandedSplashScreenState extends ConsumerState<BrandedSplashScreen>
   }
 
   Future<void> _navigateToNext() async {
-    await _splashReady;
+    // Hard-capped waits: the splash must ALWAYS navigate on, even when the
+    // network stalls (backend cold start, dead connection). Theme/splash
+    // fetches keep running in the background and apply whenever they finish.
+    try {
+      await _splashReady.timeout(const Duration(seconds: 10));
+    } catch (_) {}
     await Future<void>.delayed(_holdDuration);
-    await _prefetchSocietyAppearance();
+    try {
+      await _prefetchSocietyAppearance().timeout(const Duration(seconds: 8));
+    } catch (_) {}
 
     final token = await StorageService.getToken();
     final hasSession = token != null && token.isNotEmpty;
