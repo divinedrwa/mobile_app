@@ -129,7 +129,15 @@ class _BrandedSplashScreenState extends ConsumerState<BrandedSplashScreen>
       await _prefetchSocietyAppearance().timeout(const Duration(seconds: 8));
     } catch (_) {}
 
-    final token = await StorageService.getToken();
+    // Never let a storage read block navigation. Secure storage can throw
+    // (e.g. AEADBadTagException after a reinstall with a different signing
+    // key); treat any failure as "no session" and continue to login.
+    String? token;
+    try {
+      token = await StorageService.getToken();
+    } catch (_) {
+      token = null;
+    }
     final hasSession = token != null && token.isNotEmpty;
 
     final preferredSid = StorageService.getPreferredLoginSocietyId()?.trim() ?? '';

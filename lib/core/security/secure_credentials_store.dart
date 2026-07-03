@@ -23,6 +23,21 @@ class SecureCredentialsStore {
   static const _kRememberUsername = 'remember_me_username';
   static const _kRememberPassword = 'remember_me_password';
 
+  /// Self-healing read. Encrypted storage becomes undecryptable after a
+  /// reinstall with a different signing key / keystore reset
+  /// (AEADBadTagException). Wipe the corrupt store and return null rather than
+  /// throwing, so the login screen just falls back to manual entry.
+  Future<String?> _read(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      try {
+        await _storage.deleteAll();
+      } catch (_) {}
+      return null;
+    }
+  }
+
   Future<void> saveCredentials({
     required String username,
     required String password,
@@ -35,13 +50,13 @@ class SecureCredentialsStore {
   }
 
   Future<({String username, String password, String societyId})?> readCredentials() async {
-    final u = await _storage.read(key: _kUsername);
-    final p = await _storage.read(key: _kPassword);
-    final s = await _storage.read(key: _kSocietyId);
+    final u = await _read(_kUsername);
+    final p = await _read(_kPassword);
+    final s = await _read(_kSocietyId);
     if (u == null || u.isEmpty || p == null || s == null || s.isEmpty) return null;
 
     // Auto-expire stale credentials.
-    final savedAtStr = await _storage.read(key: _kSavedAt);
+    final savedAtStr = await _read(_kSavedAt);
     if (savedAtStr != null) {
       final savedAt = DateTime.tryParse(savedAtStr);
       if (savedAt != null && DateTime.now().difference(savedAt) > _maxCredentialAge) {
@@ -54,8 +69,8 @@ class SecureCredentialsStore {
   }
 
   Future<bool> hasCredentials() async {
-    final u = await _storage.read(key: _kUsername);
-    final s = await _storage.read(key: _kSocietyId);
+    final u = await _read(_kUsername);
+    final s = await _read(_kSocietyId);
     return u != null && u.isNotEmpty && s != null && s.isNotEmpty;
   }
 
@@ -77,8 +92,8 @@ class SecureCredentialsStore {
 
   /// Read saved "Remember me" credentials; null if not stored.
   Future<({String username, String password})?> readRememberMe() async {
-    final u = await _storage.read(key: _kRememberUsername);
-    final p = await _storage.read(key: _kRememberPassword);
+    final u = await _read(_kRememberUsername);
+    final p = await _read(_kRememberPassword);
     if (u == null || u.isEmpty || p == null) return null;
     return (username: u, password: p);
   }

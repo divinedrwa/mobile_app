@@ -24,6 +24,54 @@ class StorageService {
     _prefs = await SharedPreferences.getInstance();
   }
 
+  /// Self-healing secure-storage read.
+  ///
+  /// After the app is reinstalled with a different signing key (sideloaded ↔
+  /// Play build), restored from backup, or the device keystore is reset,
+  /// Android's EncryptedSharedPreferences can no longer decrypt its data and
+  /// throws `AEADBadTagException` / keystore `VERIFICATION_FAILED`. The data is
+  /// unrecoverable, so we wipe the corrupted store and return null (the user
+  /// simply logs in again) instead of letting the exception propagate — an
+  /// unguarded throw here froze the app on the splash (getToken during boot).
+  static Future<String?> _secureRead(String key) async {
+    try {
+      return await _secure.read(key: key);
+    } catch (e) {
+      await _healCorruptSecureStorage();
+      return null;
+    }
+  }
+
+  static Future<void> _secureWrite(String key, String value) async {
+    try {
+      await _secure.write(key: key, value: value);
+    } catch (e) {
+      // A corrupt store can also fail writes; wipe and retry once on a fresh one.
+      await _healCorruptSecureStorage();
+      try {
+        await _secure.write(key: key, value: value);
+      } catch (_) {
+        // Give up silently — never crash the caller over token persistence.
+      }
+    }
+  }
+
+  static Future<void> _secureDelete(String key) async {
+    try {
+      await _secure.delete(key: key);
+    } catch (_) {
+      await _healCorruptSecureStorage();
+    }
+  }
+
+  static Future<void> _healCorruptSecureStorage() async {
+    try {
+      await _secure.deleteAll();
+    } catch (_) {
+      // Even deleteAll can throw on a corrupt store — nothing more we can do.
+    }
+  }
+
   static SharedPreferences get prefs {
     if (_prefs == null) {
       throw Exception('StorageService not initialized. Call init() first');
@@ -36,20 +84,20 @@ class StorageService {
   // migration path inside [getToken] exactly once and then live in secure
   // storage from then on.
   static Future<void> saveToken(String token) async {
-    await _secure.write(key: AppConstants.keyToken, value: token);
+    await _secureWrite(AppConstants.keyToken, token);
     // Defensive: a previous build may have left a plaintext copy here.
     await prefs.remove(AppConstants.keyToken);
   }
 
   static Future<String?> getToken() async {
-    final secure = await _secure.read(key: AppConstants.keyToken);
+    final secure = await _secureRead(AppConstants.keyToken);
     if (secure != null && secure.isNotEmpty) return secure;
     // One-shot migration: copy any plaintext token from older builds into
     // secure storage, then wipe the plaintext so it doesn't linger in
     // backups or on rooted devices.
     final legacy = prefs.getString(AppConstants.keyToken);
     if (legacy != null && legacy.isNotEmpty) {
-      await _secure.write(key: AppConstants.keyToken, value: legacy);
+      await _secureWrite(AppConstants.keyToken, legacy);
       await prefs.remove(AppConstants.keyToken);
       return legacy;
     }
@@ -57,21 +105,21 @@ class StorageService {
   }
 
   static Future<void> removeToken() async {
-    await _secure.delete(key: AppConstants.keyToken);
+    await _secureDelete(AppConstants.keyToken);
     await prefs.remove(AppConstants.keyToken);
   }
 
   // Refresh token — always secure storage.
   static Future<void> saveRefreshToken(String token) async {
-    await _secure.write(key: AppConstants.keyRefreshToken, value: token);
+    await _secureWrite(AppConstants.keyRefreshToken, token);
   }
 
   static Future<String?> getRefreshToken() async {
-    return _secure.read(key: AppConstants.keyRefreshToken);
+    return _secureRead(AppConstants.keyRefreshToken);
   }
 
   static Future<void> removeRefreshToken() async {
-    await _secure.delete(key: AppConstants.keyRefreshToken);
+    await _secureDelete(AppConstants.keyRefreshToken);
   }
 
   /// Fills [userData] 'societyId' when the API omits it, using preferred login and the
@@ -189,8 +237,8 @@ class StorageService {
     final appearanceBackup = _backupSocietyAppearance(preferredSocietyId);
     await prefs.clear();
     // The JWT and refresh token live in secure storage; prefs.clear() doesn't reach them.
-    await _secure.delete(key: AppConstants.keyToken);
-    await _secure.delete(key: AppConstants.keyRefreshToken);
+    await _secureDelete(AppConstants.keyToken);
+    await _secureDelete(AppConstants.keyRefreshToken);
     if (apiBase != null && apiBase.isNotEmpty) {
       await prefs.setString(AppConstants.keyApiBaseUrl, apiBase);
     }
