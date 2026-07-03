@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'bootstrap/app_bootstrap.dart';
+import 'core/routing/app_navigator_keys.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/services/gateway_payment_lifecycle_binding.dart';
@@ -168,16 +169,35 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
     // prompt when a newer version is on the store; the user can keep using
     // their current version.
     final result = await AppVersionService.check();
-    if (!mounted) return;
-    switch (result.status) {
-      case UpdateStatus.softUpdate:
-        final dismissed = result.latestVersion != null &&
-            await wasSoftUpdateDismissed(result.latestVersion!);
-        if (!dismissed && mounted) {
-          unawaited(showAppUpdateDialog(context, result));
-        }
-      case UpdateStatus.upToDate:
-        break;
+    if (result.status != UpdateStatus.softUpdate) return;
+    final dismissKey = result.availableVersionKey;
+    if (dismissKey != null && await wasSoftUpdateDismissed(dismissKey)) {
+      return;
+    }
+
+    // Defer until the app has left the splash ('/'), then show on the ROOT
+    // navigator. Using this widget's own context fails silently — it sits
+    // above MaterialApp.router's Navigator (no Navigator ancestor) — and
+    // showing during the splash lets the splash's redirect wipe the dialog.
+    for (var i = 0; i < 60 && mounted; i++) {
+      final path = _currentRouterPath();
+      final ctx = appRootNavigatorKey.currentContext;
+      if (ctx != null && path != null && path != '/') {
+        // ctx is the global root-navigator context (not a State context),
+        // fetched fresh and null-checked immediately above — safe to use.
+        // ignore: use_build_context_synchronously
+        unawaited(showAppUpdateDialog(ctx, result));
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  String? _currentRouterPath() {
+    try {
+      return _router?.routerDelegate.currentConfiguration.uri.path;
+    } catch (_) {
+      return null;
     }
   }
 

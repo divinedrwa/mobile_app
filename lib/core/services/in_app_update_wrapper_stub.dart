@@ -10,6 +10,7 @@ class AppUpdateInfo {
   UpdateAvailability get updateAvailability => UpdateAvailability.updateNotAvailable;
   bool get immediateUpdateAllowed => false;
   bool get flexibleUpdateAllowed => false;
+  int? get availableVersionCode => null;
 }
 
 class UpdateAvailability {

@@ -6,8 +6,6 @@ class ApiEndpoints {
   static const String baseUrl = 'https://gatepass-v037.onrender.com/api';
 
   // Public (no auth)
-  /// App version check for in-app update prompts (`GET ?platform=ANDROID`).
-  static const String appVersionCheck = '/public/app-version';
   /// Society theme colors (`GET`). Returns `{ themeColors: {...} | null }`.
   static const String societyTheme = '/public/society-theme';
   /// Society appearance (theme + splash) by id, no auth (`GET`). Used pre-login.
