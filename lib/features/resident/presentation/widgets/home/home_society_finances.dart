@@ -13,13 +13,18 @@ class HomeSocietyFinances extends StatelessWidget {
   const HomeSocietyFinances({
     super.key,
     required this.dashboardAsync,
+    this.seed,
   });
 
   final AsyncValue<ResidentDashboardModel> dashboardAsync;
 
+  /// Persisted dashboard from the last session — painted on a cold start while
+  /// [dashboardAsync] is still loading, instead of a shimmer skeleton.
+  final ResidentDashboardModel? seed;
+
   @override
   Widget build(BuildContext context) {
-    final data = dashboardAsync.valueOrNull;
+    final data = dashboardAsync.valueOrNull ?? seed;
     final isInitialLoad = dashboardAsync.isLoading && data == null;
     final hasError = dashboardAsync.hasError && data == null;
 

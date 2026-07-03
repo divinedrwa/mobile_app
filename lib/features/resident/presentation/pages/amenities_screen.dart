@@ -169,6 +169,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
         ],
       ),
       body: amenitiesState.whenAnimated(
+        skipLoadingOnReload: true,
         loading: () => const ListSkeleton(itemHeight: 88),
         error: (error, _) => Padding(
           padding: EdgeInsets.all(context.spacing.s16),

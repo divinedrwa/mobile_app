@@ -2,9 +2,27 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../shared/utils/persistent_list_cache.dart';
 import '../models/billing_cycle_current_model.dart';
 import '../models/maintenance_due_model.dart';
 import '../utils/gateway_payment_status.dart';
+
+/// Persistent cache name for the resident's pending maintenance dues list.
+const _pendingMaintenanceCacheName = 'pending_maintenance';
+
+/// Cold-start seed for pending maintenance dues, re-parsed from the raw cached
+/// API rows through [MaintenanceDueModel.fromJson] (full fidelity). Returns
+/// `null` on missing/corrupt entry so callers fall through to the network.
+List<MaintenanceDueModel>? readPendingMaintenanceSeed() {
+  final key = PersistentListCache.scopedKey(_pendingMaintenanceCacheName);
+  if (key == null) return null;
+  return PersistentListCache.read<List<MaintenanceDueModel>>(key, (json) {
+    return (json as List)
+        .whereType<Map>()
+        .map((e) => MaintenanceDueModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  });
+}
 
 class MaintenanceRepository {
   Dio get _dio => DioClient.dio;
@@ -197,10 +215,15 @@ class MaintenanceRepository {
       final list = data is Map<String, dynamic>
           ? (data['pending'] as List? ?? const [])
           : const [];
-      return list
+      final rows = list
           .whereType<Map>()
-          .map((e) => MaintenanceDueModel.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => Map<String, dynamic>.from(e))
           .toList();
+      final key = PersistentListCache.scopedKey(_pendingMaintenanceCacheName);
+      if (key != null) {
+        await PersistentListCache.write(key, rows);
+      }
+      return rows.map(MaintenanceDueModel.fromJson).toList();
     } on DioException catch (e) {
       // 404 "Villa not assigned" — not an error, just no dues to show.
       if (e.response?.statusCode == 404) return [];

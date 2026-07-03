@@ -154,6 +154,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (showSocietyFinances) ...[
                       HomeSocietyFinances(
                         dashboardAsync: dashboardAsync,
+                        seed: ref.watch(residentDashboardSeedProvider),
                       ),
                       const SizedBox(height: kHomeSectionGap),
                     ],

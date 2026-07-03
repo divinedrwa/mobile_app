@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../shared/utils/persistent_list_cache.dart';
 import '../models/notification_model.dart';
 import '../repositories/notification_repository.dart';
 
@@ -9,16 +10,47 @@ String _errorMessage(Object e) {
   return 'Something went wrong. Please try again.';
 }
 
+/// Persistent cache name for the notifications inbox (scoped by society + user).
+const _notificationsCacheName = 'notifications';
+
 /// Notification State Notifier
 class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationModel>>> {
   final NotificationRepository _repository;
 
   NotificationNotifier(this._repository) : super(const AsyncValue.loading()) {
+    // Seed from the persistent cache so the inbox paints cached content on a
+    // cold start instead of a blank/skeleton frame; the network fetch then
+    // revalidates. A corrupt/schema-incompatible entry silently falls through.
+    final seeded = _readCache();
+    if (seeded != null && seeded.isNotEmpty) {
+      state = AsyncValue.data(seeded);
+    }
     fetchNotifications();
   }
 
+  static List<NotificationModel>? _readCache() {
+    final key = PersistentListCache.scopedKey(_notificationsCacheName);
+    if (key == null) return null;
+    return PersistentListCache.read<List<NotificationModel>>(key, (json) {
+      return (json as List)
+          .map((e) => NotificationModel.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    });
+  }
+
+  Future<void> _writeCache(List<NotificationModel> notifications) async {
+    final key = PersistentListCache.scopedKey(_notificationsCacheName);
+    if (key == null) return;
+    await PersistentListCache.write(
+      key,
+      notifications.map((n) => n.toJson()).toList(),
+    );
+  }
+
   /// Fetch all notifications.
-  /// First load shows loading; retries keep the previous list if the request fails (better on flaky mobile networks).
+  /// First load shows loading (unless cache-seeded); retries keep the previous
+  /// list if the request fails (better on flaky mobile networks). On success
+  /// the list is persisted for the next cold start.
   Future<void> fetchNotifications() async {
     final previous = state.valueOrNull;
     if (previous == null) {
@@ -27,6 +59,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
     try {
       final notifications = await _repository.getNotifications();
       state = AsyncValue.data(notifications);
+      await _writeCache(notifications);
     } catch (e, stack) {
       if (previous != null) {
         state = AsyncValue.data(previous);

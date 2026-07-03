@@ -89,7 +89,9 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
 
     final confirmed = await _confirm(
       title: on ? 'Turn water supply ON?' : 'Turn water supply OFF?',
-      message: 'This will send a notification to all residents in the society.',
+      message: on
+          ? 'Residents will receive: "Water supply will begin shortly."'
+          : 'Only society admins will be notified (residents will not).',
       confirmLabel: on ? 'Yes, turn ON' : 'Yes, turn OFF',
       confirmColor: on
           ? GuardTokens.success
@@ -115,7 +117,9 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
         SnackBar(
           behavior: SnackBarBehavior.floating,
           content: Text(
-            on ? 'Residents notified: water supply ON' : 'Residents notified: water supply OFF',
+            on
+                ? 'Residents notified: water supply will begin shortly'
+                : 'Admins notified: water supply OFF',
           ),
         ),
       );

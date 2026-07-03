@@ -13,6 +13,15 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>(
   (ref) => MaintenanceRepository(),
 );
 
+/// Synchronous cold-start seed for pending maintenance dues, read from the
+/// persistent cache written after each successful [pendingMaintenanceProvider]
+/// fetch. Lets the home maintenance card paint cached dues instead of a
+/// skeleton before the network resolves.
+final pendingMaintenanceSeedProvider =
+    Provider<List<MaintenanceDueModel>?>((ref) {
+  return readPendingMaintenanceSeed();
+});
+
 /// Single cached source for the (heavy) financial-dashboard endpoint, keyed by
 /// period + cycle. All dashboard-consuming providers derive from this so the
 /// hub card, cycle-detail and year-review screens share one fetch instead of

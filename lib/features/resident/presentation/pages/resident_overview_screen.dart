@@ -35,7 +35,10 @@ class ResidentOverviewScreen extends ConsumerWidget {
     );
     final isBillingExcluded = userExcluded || billingExcludedFromCycle;
     final dash = ref.watch(residentDashboardProvider);
-    final stats = dash.valueOrNull?.stats;
+    // Cold-start seed so the snapshot shows last session's stats instead of a
+    // skeleton while the live dashboard is loading.
+    final stats =
+        dash.valueOrNull?.stats ?? ref.watch(residentDashboardSeedProvider)?.stats;
     final isInitialLoad = dash.isLoading && stats == null;
     final s = stats ??
         const ResidentDashboardStats(

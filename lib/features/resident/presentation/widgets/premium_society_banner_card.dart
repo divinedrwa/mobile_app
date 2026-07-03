@@ -1,9 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/society_banner_type.dart';
 
@@ -132,11 +134,15 @@ Widget _heroImageOrGradient({
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              _imageUrl(event),
+            CachedNetworkImage(
+              imageUrl: _imageUrl(event),
+              cacheKey: _imageUrl(event),
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                key: ValueKey<int>(Object.hash(context.hashCode, error.hashCode, stackTrace.hashCode)),
+              fadeInDuration: const Duration(milliseconds: 180),
+              placeholder: (_, _) => const ShimmerWrap(
+                child: ShimmerBox(height: 148, borderRadius: 0),
+              ),
+              errorWidget: (context, error, stackTrace) => Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: fallbackGradient,

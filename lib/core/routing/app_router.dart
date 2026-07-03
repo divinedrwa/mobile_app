@@ -63,6 +63,12 @@ import '../../features/admin/presentation/pages/admin_bank_accounts_screen.dart'
 import '../../features/admin/presentation/pages/admin_water_analytics_screen.dart';
 import '../../features/admin/presentation/pages/admin_patrols_screen.dart';
 import '../../features/admin/presentation/pages/admin_incidents_screen.dart';
+import '../../features/admin/presentation/pages/admin_payment_methods_screen.dart';
+import '../../features/admin/presentation/pages/admin_billing_cycles_screen.dart';
+import '../../features/admin/presentation/pages/admin_visitors_screen.dart';
+import '../../features/admin/presentation/pages/admin_push_notifications_screen.dart';
+import '../../features/admin/presentation/pages/admin_documents_screen.dart';
+import '../../features/admin/presentation/pages/admin_banners_screen.dart';
 import '../../features/admin/presentation/pages/admin_maintenance_actions_screen.dart';
 import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.dart';
 import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
@@ -614,6 +620,33 @@ class AppRouter {
               builder: (context, state) => AdminVillaHistoryScreen(
                 villaId: state.pathParameters['villaId'] ?? '',
               ),
+            ),
+            GoRoute(
+              path: 'admin-payment-methods',
+              builder: (context, state) =>
+                  const AdminPaymentMethodsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-billing-cycles',
+              builder: (context, state) =>
+                  const AdminBillingCyclesScreen(),
+            ),
+            GoRoute(
+              path: 'admin-visitors',
+              builder: (context, state) => const AdminVisitorsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-push-notifications',
+              builder: (context, state) =>
+                  const AdminPushNotificationsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-documents',
+              builder: (context, state) => const AdminDocumentsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-banners',
+              builder: (context, state) => const AdminBannersScreen(),
             ),
           ],
         ),

@@ -5,8 +5,33 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/network/api_error_message.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../shared/utils/persistent_list_cache.dart';
 import '../models/pre_approved_visitor_model.dart';
 import '../models/visitor_model.dart';
+
+/// Persistent cache name for the resident's pre-approved visitors list.
+const _preApprovedCacheName = 'pre_approved_visitors';
+
+/// Reads the cold-start seed for pre-approved visitors from the persistent
+/// cache. Re-parses the raw API item maps through [PreApprovedVisitorModel.fromJson]
+/// so all fields (incl. `passcodeExpiry`, used for filtering) are preserved.
+/// Returns `null` on a missing/corrupt entry — callers fall through to network.
+List<PreApprovedVisitorModel>? readPreApprovedVisitorsSeed() {
+  final key = PersistentListCache.scopedKey(_preApprovedCacheName);
+  if (key == null) return null;
+  return PersistentListCache.read<List<PreApprovedVisitorModel>>(key, (json) {
+    final out = <PreApprovedVisitorModel>[];
+    for (final item in json as List) {
+      if (item is! Map) continue;
+      try {
+        out.add(PreApprovedVisitorModel.fromJson(Map<String, dynamic>.from(item)));
+      } catch (_) {
+        // Skip malformed row; rest of cache still seeds.
+      }
+    }
+    return out;
+  });
+}
 
 /// Repository for visitor-related API calls
 class VisitorRepository {
@@ -81,6 +106,20 @@ class VisitorRepository {
           );
         } catch (_) {
           // Skip malformed row; rest of list still renders.
+        }
+      }
+      // Persist the raw API rows (only on the default first page) so the hub's
+      // upcoming-visitors section paints cached content on the next cold start.
+      if (offset == 0) {
+        final key = PersistentListCache.scopedKey(_preApprovedCacheName);
+        if (key != null) {
+          await PersistentListCache.write(
+            key,
+            visitorsList
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList(),
+          );
         }
       }
       return out;

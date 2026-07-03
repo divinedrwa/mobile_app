@@ -8,6 +8,13 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>(
   (ref) => DashboardRepository(),
 );
 
+/// Synchronous cold-start seed for the resident dashboard, read from the
+/// persistent cache written after each successful [residentDashboardProvider]
+/// fetch. Lets the home cards paint cached content instead of a skeleton.
+final residentDashboardSeedProvider = Provider<ResidentDashboardModel?>((ref) {
+  return readResidentDashboardSeed();
+});
+
 /// Resident home dashboard stats (`GET /residents/dashboard`).
 final residentDashboardProvider =
     FutureProvider.autoDispose<ResidentDashboardModel>((ref) async {

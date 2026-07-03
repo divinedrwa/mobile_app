@@ -18,7 +18,22 @@ extension AsyncValueAnimatedX<T> on AsyncValue<T> {
     required Widget Function(Object error, StackTrace stackTrace) error,
     required Widget Function(T data) data,
     Duration duration = DesignAnimations.durationEntrance,
+    bool skipLoadingOnReload = false,
   }) {
+    // On a reload of an already-cached provider, keep showing the data branch
+    // (via the previous value) instead of flashing back to the skeleton.
+    if (skipLoadingOnReload && isLoading && valueOrNull != null) {
+      return AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: DesignAnimations.curveEntrance,
+        switchOutCurve: DesignAnimations.curveExit,
+        child: KeyedSubtree(
+          key: const ValueKey('async-data'),
+          child: data(valueOrNull as T),
+        ),
+      );
+    }
+
     final Widget child = when(
       loading: () => KeyedSubtree(
         key: const ValueKey('async-loading'),

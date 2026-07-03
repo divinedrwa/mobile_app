@@ -13,36 +13,59 @@ class AmenityBookingNotifier extends StateNotifier<AsyncValue<List<AmenityBookin
     fetchBookings();
   }
 
-  /// Fetch all bookings
+  /// Fetch all bookings.
+  /// First load shows loading; refreshes keep the previous list on-screen and,
+  /// on failure, restore it rather than surfacing an error over existing data.
   Future<void> fetchBookings() async {
-    state = const AsyncValue.loading();
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final bookings = await _repository.getBookings();
       state = AsyncValue.data(bookings);
     } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+      if (previous != null) {
+        state = AsyncValue.data(previous);
+      } else {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
   /// Fetch upcoming bookings
   Future<void> fetchUpcomingBookings() async {
-    state = const AsyncValue.loading();
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final bookings = await _repository.getUpcomingBookings();
       state = AsyncValue.data(bookings);
     } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+      if (previous != null) {
+        state = AsyncValue.data(previous);
+      } else {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 
   /// Fetch past bookings
   Future<void> fetchPastBookings() async {
-    state = const AsyncValue.loading();
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final bookings = await _repository.getPastBookings();
       state = AsyncValue.data(bookings);
     } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+      if (previous != null) {
+        state = AsyncValue.data(previous);
+      } else {
+        state = AsyncValue.error(e, stack);
+      }
     }
   }
 

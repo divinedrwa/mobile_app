@@ -333,6 +333,38 @@ class ApiEndpoints {
   static const String adminUsers = '/users';
   static String adminUserById(String id) => '/users/$id';
 
+  // Admin — Payment methods (gateway config)
+  static const String adminPaymentMethods = '/payment-methods';
+  static String adminPaymentMethodById(String id) => '/payment-methods/$id';
+  static String adminPaymentMethodTest(String id) =>
+      '/payment-methods/$id/test-connection';
+
+  // Admin — Billing cycles v1
+  static const String adminBillingCycles = '/v1/admin/cycles';
+  static String adminBillingCyclePublish(String id) =>
+      '/v1/admin/cycles/$id/publish';
+  static String adminBillingCycleUnpublish(String id) =>
+      '/v1/admin/cycles/$id/unpublish';
+  static String adminBillingCycleReopen(String id) =>
+      '/v1/admin/cycles/$id/reopen';
+
+  // Admin — Visitors (society-wide log)
+  static String adminVisitorById(String id) => '/visitors/$id';
+
+  // Admin — Push notifications
+  static const String adminNotificationsDiagnostics =
+      '/notifications/diagnostics';
+  static const String adminNotificationsBroadcast =
+      '/notifications/broadcast';
+  static const String adminNotificationsSendTest =
+      '/notifications/send-test';
+
+  // Admin — Documents & Banners (CRUD)
+  static const String adminDocuments = '/documents';
+  static String adminDocumentById(String id) => '/documents/$id';
+  static const String adminBannersList = '/banners';
+  static String adminBannerById(String id) => '/banners/$id';
+
   // Guard — backend mounts under `/api/guards` (+ `/api/water-supply/toggle`, `/api/garbage-collection/entry`).
   // Date-range APIs (`my-visitors`, `my-parcels`, `gate-vehicle/today`): omit `from`/`to` for "today",
   // or send **both** `from` and `to` as `YYYY-MM-DD` (see backend `resolveGuardLogRange`).

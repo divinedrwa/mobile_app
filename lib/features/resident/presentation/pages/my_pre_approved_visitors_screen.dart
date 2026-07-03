@@ -324,6 +324,7 @@ class _MyPreApprovedVisitorsScreenState
         ),
       ),
       body: async.whenAnimated(
+        skipLoadingOnReload: true,
         loading: () => const ListSkeleton(itemHeight: 100),
         error: (e, _) => Center(
           child: Padding(

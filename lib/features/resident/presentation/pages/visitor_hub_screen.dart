@@ -46,8 +46,10 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
   @override
   Widget build(BuildContext context) {
     final preApprovedAsync = ref.watch(preApprovedVisitorsProvider);
+    final preApprovedSeed = ref.watch(preApprovedVisitorsSeedProvider);
     final pendingAsync = ref.watch(visitorApprovalRequestsProvider('pending'));
     final todaySummaryAsync = ref.watch(visitorTodaySummaryProvider);
+    final todaySummarySeed = ref.watch(visitorTodaySummarySeedProvider);
     // Use visitor history for live visitors and history sections.
     final historyAsync = ref.watch(visitorHistoryProvider);
 
@@ -68,6 +70,7 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
                 delegate: SliverChildListDelegate([
                   _TodaySummaryCard(
                     summaryAsync: todaySummaryAsync,
+                    seed: todaySummarySeed,
                     onRetry: () => ref.invalidate(visitorTodaySummaryProvider),
                   ),
                   const SizedBox(height: 16),
@@ -77,7 +80,10 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
                   ),
                   const SizedBox(height: 20),
                   _LiveVisitorsSection(historyAsync: historyAsync),
-                  _UpcomingVisitorsSection(preApprovedAsync: preApprovedAsync),
+                  _UpcomingVisitorsSection(
+                    preApprovedAsync: preApprovedAsync,
+                    seed: preApprovedSeed,
+                  ),
                   _PendingApprovalsSection(
                     pendingAsync: pendingAsync,
                   ),
@@ -225,10 +231,15 @@ class _TodaySummaryCard extends StatelessWidget {
   const _TodaySummaryCard({
     required this.summaryAsync,
     required this.onRetry,
+    this.seed,
   });
 
   final AsyncValue<VisitorTodaySummary> summaryAsync;
   final VoidCallback onRetry;
+
+  /// Persisted counts from the last session — painted on a cold start while the
+  /// live [summaryAsync] is still loading, instead of a skeleton.
+  final VisitorTodaySummary? seed;
 
   @override
   Widget build(BuildContext context) {
@@ -310,22 +321,26 @@ class _TodaySummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          summaryAsync.when(
-            loading: () => Row(
-              children: [
-                for (var i = 0; i < 3; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  const Expanded(
-                    child: ShimmerWrap(
-                      child: ShimmerBox(height: 90, borderRadius: 12),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            error: (_, __) => _SummaryErrorRow(onRetry: onRetry),
-            data: (summary) {
+          Builder(builder: (context) {
+            final summary = summaryAsync.valueOrNull ?? seed;
+            if (summaryAsync.isLoading && summary == null) {
               return Row(
+                children: [
+                  for (var i = 0; i < 3; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    const Expanded(
+                      child: ShimmerWrap(
+                        child: ShimmerBox(height: 90, borderRadius: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            }
+            if (summary == null) {
+              return _SummaryErrorRow(onRetry: onRetry);
+            }
+            return Row(
                 children: [
                   _StatBox(
                     count: summary.total,
@@ -363,8 +378,7 @@ class _TodaySummaryCard extends StatelessWidget {
                   ),
                 ],
               );
-            },
-          ),
+          }),
         ],
       ),
     ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.04, end: 0);
@@ -754,8 +768,9 @@ class _LiveVisitorsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return historyAsync.when(
-      loading: () => Padding(
+    final visitors = historyAsync.valueOrNull;
+    if (historyAsync.isLoading && visitors == null) {
+      return Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,9 +780,10 @@ class _LiveVisitorsSection extends StatelessWidget {
             const ShimmerWrap(child: ShimmerBox(height: 72, borderRadius: 12)),
           ],
         ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (visitors) {
+      );
+    }
+    if (visitors == null) return const SizedBox.shrink();
+    return Builder(builder: (context) {
         final live = visitors
             .where((v) => (v.status as String).toUpperCase() == 'CHECKED_IN')
             .toList();
@@ -812,8 +828,7 @@ class _LiveVisitorsSection extends StatelessWidget {
             ],
           ),
         ).animate().fadeIn(duration: 300.ms, delay: 80.ms);
-      },
-    );
+    });
   }
 }
 
@@ -1005,14 +1020,19 @@ class _ActionIconBtn extends StatelessWidget {
 // ─── Upcoming Visitors (pre-approved, not yet arrived) ────────────────────────
 
 class _UpcomingVisitorsSection extends StatelessWidget {
-  const _UpcomingVisitorsSection({required this.preApprovedAsync});
+  const _UpcomingVisitorsSection({required this.preApprovedAsync, this.seed});
 
   final AsyncValue<List<PreApprovedVisitorModel>> preApprovedAsync;
 
+  /// Persisted list from the last session — used on a cold start while the live
+  /// [preApprovedAsync] is loading, instead of a skeleton.
+  final List<PreApprovedVisitorModel>? seed;
+
   @override
   Widget build(BuildContext context) {
-    return preApprovedAsync.when(
-      loading: () => Padding(
+    final list = preApprovedAsync.valueOrNull ?? seed;
+    if (preApprovedAsync.isLoading && list == null) {
+      return Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1028,9 +1048,10 @@ class _UpcomingVisitorsSection extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (list) {
+      );
+    }
+    if (list == null) return const SizedBox.shrink();
+    return Builder(builder: (context) {
         final now = DateTime.now();
         // Non-expired active pre-approvals (all of them, not just today)
         final upcoming = list
@@ -1079,8 +1100,7 @@ class _UpcomingVisitorsSection extends StatelessWidget {
             ],
           ),
         ).animate().fadeIn(duration: 300.ms, delay: 120.ms);
-      },
-    );
+    });
   }
 }
 

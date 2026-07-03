@@ -47,8 +47,9 @@ class _AdminGateUtilitiesScreenState
 
     final confirmed = await _confirm(
       title: turnOn ? 'Turn water supply ON?' : 'Turn water supply OFF?',
-      message:
-          'This will send a notification to all residents in the society.',
+      message: turnOn
+          ? 'Residents will receive: "Water supply will begin shortly."'
+          : 'Only society admins will be notified (residents will not).',
       confirmLabel: turnOn ? 'Yes, turn ON' : 'Yes, turn OFF',
       confirmColor: turnOn ? _kWaterBlue : DesignColors.error,
     );
@@ -62,7 +63,12 @@ class _AdminGateUtilitiesScreenState
       ref.invalidate(adminWaterSupplyStatusProvider);
       ref.invalidate(adminWaterSupplyEventsProvider(_selectedGateId));
       if (mounted) {
-        _showSnack('Water supply turned ${turnOn ? 'ON' : 'OFF'}', false);
+        _showSnack(
+          turnOn
+              ? 'Water supply ON — residents notified'
+              : 'Water supply OFF — admins notified',
+          false,
+        );
       }
     } catch (e) {
       if (mounted) _showSnack(userFacingMessage(e), true);

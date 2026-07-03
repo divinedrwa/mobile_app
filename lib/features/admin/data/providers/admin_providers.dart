@@ -33,6 +33,12 @@ import '../repositories/admin_upi_payment_repository.dart';
 import '../repositories/admin_water_analytics_repository.dart';
 import '../repositories/admin_patrol_repository.dart';
 import '../repositories/admin_incident_repository.dart';
+import '../repositories/admin_payment_method_repository.dart';
+import '../repositories/admin_billing_cycle_repository.dart';
+import '../repositories/admin_visitor_repository.dart';
+import '../repositories/admin_notification_repository.dart';
+import '../repositories/admin_document_repository.dart';
+import '../repositories/admin_banner_repository.dart';
 import '../../../resident/data/models/upi_payment_model.dart';
 
 // ── Dashboard ─────────────────────────────────────────────────────────
@@ -638,4 +644,79 @@ final adminIncidentRepositoryProvider =
 final adminIncidentsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return ref.watch(adminIncidentRepositoryProvider).getIncidents();
+});
+
+// ── Payment Methods (Admin) ─────────────────────────────────────────
+
+final adminPaymentMethodRepositoryProvider =
+    Provider<AdminPaymentMethodRepository>(
+        (ref) => AdminPaymentMethodRepository());
+
+final adminPaymentMethodsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminPaymentMethodRepositoryProvider).getPaymentMethods();
+});
+
+// ── Billing Cycles v1 (Admin) ─────────────────────────────────────────
+
+final adminBillingCycleRepositoryProvider =
+    Provider<AdminBillingCycleRepository>(
+        (ref) => AdminBillingCycleRepository());
+
+final adminBillingCyclesProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminBillingCycleRepositoryProvider).getCycles();
+});
+
+// ── Visitors (Admin) ─────────────────────────────────────────────────
+
+final adminVisitorRepositoryProvider =
+    Provider<AdminVisitorRepository>((ref) => AdminVisitorRepository());
+
+final adminVisitorSearchProvider =
+    StateProvider.autoDispose<String>((ref) => '');
+
+final adminVisitorStatusFilterProvider =
+    StateProvider.autoDispose<String?>((ref) => null);
+
+final adminVisitorsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final repo = ref.watch(adminVisitorRepositoryProvider);
+  final search = ref.watch(adminVisitorSearchProvider);
+  final status = ref.watch(adminVisitorStatusFilterProvider);
+  return repo.getVisitors(
+    search: search.isEmpty ? null : search,
+    status: status,
+  );
+});
+
+// ── Push Notifications (Admin) ────────────────────────────────────────
+
+final adminNotificationRepositoryProvider =
+    Provider<AdminNotificationRepository>(
+        (ref) => AdminNotificationRepository());
+
+final adminNotificationDiagnosticsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminNotificationRepositoryProvider).getDiagnostics();
+});
+
+// ── Documents (Admin) ─────────────────────────────────────────────────
+
+final adminDocumentRepositoryProvider =
+    Provider<AdminDocumentRepository>((ref) => AdminDocumentRepository());
+
+final adminDocumentsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminDocumentRepositoryProvider).getDocuments();
+});
+
+// ── Banners (Admin) ───────────────────────────────────────────────────
+
+final adminBannerRepositoryProvider =
+    Provider<AdminBannerRepository>((ref) => AdminBannerRepository());
+
+final adminBannersProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminBannerRepositoryProvider).getBanners();
 });

@@ -68,7 +68,7 @@ class _AdminRoleManagementScreenState
         backgroundColor: DesignColors.background,
         scrolledUnderElevation: 0,
         title: Text(
-          'Manage Roles',
+          'Users & Roles',
           style: DesignTypography.headingM.copyWith(
             color: DesignColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -81,6 +81,12 @@ class _AdminRoleManagementScreenState
             onPressed: _refresh,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showCreateUserSheet,
+        backgroundColor: DesignColors.primary,
+        icon: const Icon(Icons.person_add, color: Colors.white),
+        label: const Text('Add User', style: TextStyle(color: Colors.white)),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -400,6 +406,200 @@ class _AdminRoleManagementScreenState
         onUpdated: _refresh,
       ),
     );
+  }
+
+  void _showCreateUserSheet() {
+    final usernameCtl = TextEditingController();
+    final nameCtl = TextEditingController();
+    final emailCtl = TextEditingController();
+    final passwordCtl = TextEditingController();
+    final phoneCtl = TextEditingController();
+    final villaCtl = TextEditingController();
+    var role = 'RESIDENT';
+    var residentType = 'OWNER';
+    bool submitting = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Create User',
+                          style: DesignTypography.headingM.copyWith(
+                            fontWeight: FontWeight.w700,
+                          )),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: usernameCtl,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: nameCtl,
+                        decoration: const InputDecoration(
+                          labelText: 'Full name',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: emailCtl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: passwordCtl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: phoneCtl,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: role,
+                        decoration: const InputDecoration(
+                          labelText: 'Role',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'RESIDENT', child: Text('Resident')),
+                          DropdownMenuItem(value: 'GUARD', child: Text('Guard')),
+                          DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
+                          DropdownMenuItem(
+                              value: 'RESIDENT_CUM_ADMIN',
+                              child: Text('Resident + Admin')),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) setLocal(() => role = v);
+                        },
+                      ),
+                      if (role == 'RESIDENT' || role == 'RESIDENT_CUM_ADMIN') ...[
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: villaCtl,
+                          decoration: const InputDecoration(
+                            labelText: 'Villa number',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: residentType,
+                          decoration: const InputDecoration(
+                            labelText: 'Resident type',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'OWNER', child: Text('Owner')),
+                            DropdownMenuItem(
+                                value: 'TENANT', child: Text('Tenant')),
+                            DropdownMenuItem(
+                                value: 'FAMILY_MEMBER',
+                                child: Text('Family member')),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) setLocal(() => residentType = v);
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                                setLocal(() => submitting = true);
+                                try {
+                                  await ref
+                                      .read(adminUserRepositoryProvider)
+                                      .createUser(
+                                        username: usernameCtl.text.trim(),
+                                        name: nameCtl.text.trim(),
+                                        email: emailCtl.text.trim(),
+                                        password: passwordCtl.text,
+                                        role: role,
+                                        phone: phoneCtl.text.trim(),
+                                        villaNumber: villaCtl.text.trim().isEmpty
+                                            ? null
+                                            : villaCtl.text.trim(),
+                                        residentType: role == 'RESIDENT' ||
+                                                role == 'RESIDENT_CUM_ADMIN'
+                                            ? residentType
+                                            : null,
+                                      );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  _refresh();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('User created')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      SnackBar(content: Text(e.toString())),
+                                    );
+                                  }
+                                } finally {
+                                  if (ctx.mounted) {
+                                    setLocal(() => submitting = false);
+                                  }
+                                }
+                              },
+                        child: Text(submitting ? 'Creating…' : 'Create user'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      usernameCtl.dispose();
+      nameCtl.dispose();
+      emailCtl.dispose();
+      passwordCtl.dispose();
+      phoneCtl.dispose();
+      villaCtl.dispose();
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────

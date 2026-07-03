@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/paginated_state.dart';
+import '../../../../shared/utils/persistent_list_cache.dart';
+import '../../../../shared/utils/provider_cache.dart';
 import '../models/visitor_model.dart';
 import '../repositories/visitor_repository.dart';
 import '../../presentation/providers/visitor_provider.dart';
@@ -10,9 +12,41 @@ typedef VisitorTodaySummary = ({
   int checkedOut,
 });
 
+const _visitorSummaryCacheName = 'visitor_today_summary';
+
+VisitorTodaySummary? _readVisitorSummarySeed() {
+  final key = PersistentListCache.scopedKey(_visitorSummaryCacheName);
+  if (key == null) return null;
+  return PersistentListCache.read<VisitorTodaySummary>(key, (json) {
+    final m = Map<String, dynamic>.from(json as Map);
+    return (
+      total: (m['total'] as num?)?.toInt() ?? 0,
+      checkedIn: (m['checkedIn'] as num?)?.toInt() ?? 0,
+      checkedOut: (m['checkedOut'] as num?)?.toInt() ?? 0,
+    );
+  });
+}
+
+/// Synchronous cold-start seed for the visitor hub summary card so it paints
+/// cached counts instead of a bare skeleton before the network fetch resolves.
+final visitorTodaySummarySeedProvider = Provider<VisitorTodaySummary?>((ref) {
+  return _readVisitorSummarySeed();
+});
+
 final visitorTodaySummaryProvider =
     FutureProvider.autoDispose<VisitorTodaySummary>((ref) async {
-  return ref.watch(visitorRepositoryProvider).getVisitorsTodaySummary();
+  cacheFor(ref, const Duration(minutes: 2));
+  final summary =
+      await ref.watch(visitorRepositoryProvider).getVisitorsTodaySummary();
+  final key = PersistentListCache.scopedKey(_visitorSummaryCacheName);
+  if (key != null) {
+    await PersistentListCache.write(key, {
+      'total': summary.total,
+      'checkedIn': summary.checkedIn,
+      'checkedOut': summary.checkedOut,
+    });
+  }
+  return summary;
 });
 
 final visitorHistoryProvider = FutureProvider<List<VisitorModel>>((ref) async {

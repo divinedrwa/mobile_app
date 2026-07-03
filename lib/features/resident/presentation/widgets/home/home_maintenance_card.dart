@@ -83,11 +83,16 @@ class HomeMaintenanceCard extends ConsumerWidget {
     final pendingAsync = ref.watch(pendingMaintenanceProvider);
     final outstandingAsync = ref.watch(outstandingDuesProvider);
 
-    if (pendingAsync.isLoading && pendingAsync.valueOrNull == null) {
+    // Cold-start seed from the persistent cache so the card renders last
+    // session's dues instead of a skeleton while the network fetch resolves.
+    final pendingData =
+        pendingAsync.valueOrNull ?? ref.watch(pendingMaintenanceSeedProvider);
+
+    if (pendingAsync.isLoading && pendingData == null) {
       return const HomeMaintenanceCardSkeleton();
     }
 
-    final shell = _resolveShellStyle(pendingAsync.valueOrNull);
+    final shell = _resolveShellStyle(pendingData);
 
     return Container(
       decoration: BoxDecoration(
@@ -109,7 +114,7 @@ class HomeMaintenanceCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _MaintenanceStatusHeader(
-            pendingAsync: pendingAsync,
+            pending: pendingData,
             dueState: shell.dueState,
           ),
           _MaintenanceInnerPanel(
@@ -399,28 +404,25 @@ class _MaintenanceOutstandingFooter extends StatelessWidget {
 
 class _MaintenanceStatusHeader extends StatelessWidget {
   const _MaintenanceStatusHeader({
-    required this.pendingAsync,
+    required this.pending,
     required this.dueState,
   });
 
-  final AsyncValue<List<MaintenanceDueModel>> pendingAsync;
+  /// Resolved dues (live value, or the persistent cold-start seed). `null` only
+  /// when there is no data at all yet — treated as caught-up.
+  final List<MaintenanceDueModel>? pending;
   final _MaintenanceDueState dueState;
 
   @override
   Widget build(BuildContext context) {
-    return pendingAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const _CaughtUpHeader(),
-      data: (pending) {
-        final totalDue =
-            pending.fold<double>(0, (sum, m) => sum + m.remainingDue);
-        if (totalDue <= 0) return const _CaughtUpHeader();
-        return _DueHeader(
-          pending: pending,
-          totalDue: totalDue,
-          dueState: dueState,
-        );
-      },
+    final pending = this.pending;
+    if (pending == null) return const _CaughtUpHeader();
+    final totalDue = pending.fold<double>(0, (sum, m) => sum + m.remainingDue);
+    if (totalDue <= 0) return const _CaughtUpHeader();
+    return _DueHeader(
+      pending: pending,
+      totalDue: totalDue,
+      dueState: dueState,
     );
   }
 }
