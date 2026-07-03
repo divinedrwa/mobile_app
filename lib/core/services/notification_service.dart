@@ -387,7 +387,11 @@ class NotificationService {
   Future<String?> _getTokenWithRetry() async {
     for (var attempt = 0; attempt < 4; attempt++) {
       try {
-        return await firebaseMessaging.getToken();
+        // Bounded: getToken() can hang indefinitely on flaky networks / busy
+        // Play Services. A stalled token fetch must never freeze startup.
+        return await firebaseMessaging
+            .getToken()
+            .timeout(const Duration(seconds: 8));
       } catch (e) {
         if (platform_info.isIOS && _isApnsNotReadyError(e) && attempt < 3) {
           await Future<void>.delayed(const Duration(seconds: 1));

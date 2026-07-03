@@ -94,7 +94,19 @@ Future<DivineBootstrapResult> bootstrapDivineBeforeRunApp() async {
 
   if (firebaseInitialized) {
     try {
-      await NotificationService().initialize();
+      // Bounded so a stalled FCM setup (e.g. getToken hanging on a flaky
+      // network) can NEVER block runApp and freeze the app on the native
+      // splash. If it exceeds the cap, it keeps finishing in the background.
+      await NotificationService().initialize().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          debugPrint(
+            '⚠️  Notification init exceeded 8s — continuing startup; '
+            'it will finish in the background.',
+          );
+          fcmDiag('MAIN', 'NotificationService.initialize timed out (non-fatal)');
+        },
+      );
       debugPrint('✅ Notification service initialized');
     } catch (e, st) {
       debugPrint('⚠️  Notification service failed to initialize: $e');
