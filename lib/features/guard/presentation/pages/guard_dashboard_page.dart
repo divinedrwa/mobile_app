@@ -297,6 +297,8 @@ class _DashboardContent extends ConsumerWidget {
           onPreApprovedVisitors: () =>
               context.push(GuardRoutes.preApprovedList),
           onPatrol: () => context.push(GuardRoutes.patrol),
+          onApprovedVehicles: () =>
+              context.push(GuardRoutes.approvedVehicles),
         ),
         const SizedBox(height: GuardTokens.sectionGap + 6),
         GuardGateUtilitiesCard(

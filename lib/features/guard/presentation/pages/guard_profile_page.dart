@@ -146,6 +146,13 @@ class GuardProfilePage extends ConsumerWidget {
           ),
           _tile(
             context,
+            icon: Icons.verified_user_rounded,
+            title: 'Approved vehicles',
+            subtitle: 'Internal plates registered by residents or admin',
+            onTap: () => context.push(GuardRoutes.approvedVehicles),
+          ),
+          _tile(
+            context,
             icon: Icons.report_problem_outlined,
             title: 'Incident report',
             subtitle: 'Record security events with clear operational notes',

@@ -112,7 +112,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
     final available = totalSlots - occupied;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         // Slot utilization
         Container(
@@ -171,7 +171,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
         const SizedBox(height: 16),
 
         // Vehicle list
-        EnterpriseSectionHeader(title: 'Vehicles'),
+        const EnterpriseSectionHeader(title: 'Vehicles'),
         const SizedBox(height: 8),
         AdminSearchField(
           controller: _searchCtl,
@@ -246,7 +246,7 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
       filtered = filtered.where((v) {
         final number = (v['vehicleNumber'] ?? v['registrationNumber'] ?? '').toString().toLowerCase();
         final villa = (v['villa'] as Map<String, dynamic>?)?['villaNumber']?.toString().toLowerCase() ?? '';
-        final owner = (v['ownerName'] ?? v['residentName'] ?? '').toString().toLowerCase();
+        final owner = (v['ownerName'] ?? v['residentName'] ?? v['ownerLabel'] ?? '').toString().toLowerCase();
         return number.contains(_searchQuery) ||
             villa.contains(_searchQuery) ||
             owner.contains(_searchQuery);
@@ -322,6 +322,8 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
         '';
     final villa = v['villa'] as Map<String, dynamic>?;
     final villaNum = villa?['villaNumber']?.toString() ?? '';
+    final ownerLabel = v['ownerLabel']?.toString() ?? '';
+    final category = v['registrationCategory']?.toString() ?? 'RESIDENT';
     final ownerName =
         v['ownerName']?.toString() ?? v['residentName']?.toString() ?? '';
 
@@ -358,9 +360,11 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
                 ),
                 Text(
                   [
+                    _formatCategory(category),
                     if (type.isNotEmpty) _formatType(type.toUpperCase()),
                     if (villaNum.isNotEmpty) 'Villa $villaNum',
-                    if (ownerName.isNotEmpty) ownerName,
+                    if (ownerLabel.isNotEmpty) ownerLabel,
+                    if (ownerName.isNotEmpty && ownerLabel.isEmpty) ownerName,
                   ].join(' \u00b7 '),
                   style: DesignTypography.captionSmall
                       .copyWith(color: DesignColors.textSecondary),
@@ -377,8 +381,10 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
 
   static IconData _vehicleIcon(String type) {
     switch (type) {
+      case 'FOUR_WHEELER':
       case 'CAR':
         return Icons.directions_car_outlined;
+      case 'TWO_WHEELER':
       case 'BIKE':
       case 'MOTORCYCLE':
         return Icons.two_wheeler;
@@ -394,6 +400,17 @@ class _AdminParkingScreenState extends ConsumerState<AdminParkingScreen> {
   static String _formatType(String type) {
     if (type.isEmpty) return '';
     return type[0].toUpperCase() + type.substring(1).toLowerCase();
+  }
+
+  static String _formatCategory(String category) {
+    switch (category.toUpperCase()) {
+      case 'VISITOR':
+        return 'Visitor';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return 'Resident';
+    }
   }
 
   static int _toInt(dynamic v) {

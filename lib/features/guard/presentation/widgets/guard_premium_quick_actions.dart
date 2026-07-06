@@ -12,6 +12,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
     required this.onEmergency,
     required this.onPreApprovedVisitors,
     required this.onPatrol,
+    required this.onApprovedVehicles,
   });
 
   final VoidCallback onAddVisitor;
@@ -20,6 +21,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
   final VoidCallback onEmergency;
   final VoidCallback onPreApprovedVisitors;
   final VoidCallback onPatrol;
+  final VoidCallback onApprovedVehicles;
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +116,15 @@ class GuardPremiumQuickActions extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+        _QuickTile(
+          icon: Icons.verified_user_rounded,
+          label: 'Approved vehicles',
+          subtitle: 'Verify internal plates at gate',
+          accent: GuardTokens.success,
+          isDark: isDark,
+          onTap: onApprovedVehicles,
         ),
       ],
     );

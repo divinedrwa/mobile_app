@@ -752,6 +752,47 @@ class GuardRepository {
     }
   }
 
+  Future<GuardApprovedVehiclesData> getApprovedVehicles({
+    String? query,
+    String? category,
+    String? vehicleType,
+  }) async {
+    try {
+      final response = await _dio.get(
+        ApiEndpoints.guardApprovedVehicles,
+        queryParameters: {
+          if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+          if (category != null &&
+              category.trim().isNotEmpty &&
+              category.toUpperCase() != 'ALL')
+            'category': category.trim().toUpperCase(),
+          if (vehicleType != null &&
+              vehicleType.trim().isNotEmpty &&
+              vehicleType.toUpperCase() != 'ALL')
+            'vehicleType': vehicleType.trim().toUpperCase(),
+          'limit': 150,
+        },
+      );
+      final data = response.data;
+      if (data is! Map) {
+        return GuardApprovedVehiclesData(vehicles: [], total: 0, count: 0);
+      }
+      final map = Map<String, dynamic>.from(data);
+      final list = map['vehicles'] as List? ?? [];
+      final vehicles = list
+          .whereType<Map>()
+          .map((e) => GuardApprovedVehicleRow.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      return GuardApprovedVehiclesData(
+        vehicles: vehicles,
+        total: (map['total'] as num?)?.toInt() ?? vehicles.length,
+        count: (map['count'] as num?)?.toInt() ?? vehicles.length,
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not load approved vehicles');
+    }
+  }
+
   Future<Map<String, dynamic>> verifyVisitorOtp({
     required String otp,
     String? villaId,

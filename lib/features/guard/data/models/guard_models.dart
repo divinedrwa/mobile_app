@@ -748,3 +748,123 @@ class ResidentDirectoryRow {
     );
   }
 }
+
+/// GET /guards/approved-vehicles — internal approved registry (read-only).
+class GuardApprovedVehiclesData {
+  GuardApprovedVehiclesData({
+    required this.vehicles,
+    required this.total,
+    required this.count,
+  });
+
+  final List<GuardApprovedVehicleRow> vehicles;
+  final int total;
+  final int count;
+}
+
+/// GET /guards/approved-vehicles — internal approved registry (read-only).
+class GuardApprovedVehicleRow {
+  GuardApprovedVehicleRow({
+    required this.id,
+    required this.registrationNumber,
+    required this.registrationCategory,
+    required this.source,
+    this.vehicleType,
+    this.make,
+    this.model,
+    this.color,
+    this.ownerLabel,
+    this.notes,
+    this.parkingSlot,
+    this.villaNumber,
+    this.villaBlock,
+  });
+
+  final String id;
+  final String registrationNumber;
+  final String registrationCategory;
+  final String source;
+  final String? vehicleType;
+  final String? make;
+  final String? model;
+  final String? color;
+  final String? ownerLabel;
+  final String? notes;
+  final String? parkingSlot;
+  final String? villaNumber;
+  final String? villaBlock;
+
+  String get flatLabel {
+    if (villaNumber == null || villaNumber!.isEmpty) return '';
+    final block = villaBlock?.trim();
+    if (block != null && block.isNotEmpty) return '$block-$villaNumber';
+    return villaNumber!;
+  }
+
+  String get categoryLabel {
+    switch (registrationCategory.toUpperCase()) {
+      case 'VISITOR':
+        return 'Visitor';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return 'Resident';
+    }
+  }
+
+  String get vehicleTypeLabel {
+    switch ((vehicleType ?? '').toUpperCase()) {
+      case 'TWO_WHEELER':
+        return 'Two wheeler';
+      case 'FOUR_WHEELER':
+        return 'Four wheeler';
+      case 'BICYCLE':
+        return 'Bicycle';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return '';
+    }
+  }
+
+  String get subtitle {
+    final parts = <String>[];
+    if (flatLabel.isNotEmpty) parts.add(flatLabel);
+    if (ownerLabel != null && ownerLabel!.trim().isNotEmpty) {
+      parts.add(ownerLabel!.trim());
+    }
+    if (vehicleTypeLabel.isNotEmpty) parts.add(vehicleTypeLabel);
+    final modelParts = <String>[];
+    if (make != null && make!.trim().isNotEmpty) modelParts.add(make!.trim());
+    if (model != null && model!.trim().isNotEmpty) modelParts.add(model!.trim());
+    if (modelParts.isNotEmpty) parts.add(modelParts.join(' '));
+    if (color != null && color!.trim().isNotEmpty) parts.add(color!.trim());
+    if (parkingSlot != null && parkingSlot!.trim().isNotEmpty) {
+      parts.add('Slot ${parkingSlot!.trim()}');
+    }
+    return parts.join(' · ');
+  }
+
+  factory GuardApprovedVehicleRow.fromJson(Map<String, dynamic> json) {
+    final villa = json['villa'];
+    return GuardApprovedVehicleRow(
+      id: json['id']?.toString() ?? '',
+      registrationNumber:
+          json['registrationNumber']?.toString() ??
+          json['vehicleNumber']?.toString() ??
+          '',
+      registrationCategory:
+          json['registrationCategory']?.toString() ?? 'RESIDENT',
+      source: json['source']?.toString() ?? 'RESIDENT',
+      vehicleType: json['vehicleType']?.toString() ?? json['type']?.toString(),
+      make: json['make']?.toString(),
+      model: json['model']?.toString(),
+      color: json['color']?.toString(),
+      ownerLabel: json['ownerLabel']?.toString(),
+      notes: json['notes']?.toString(),
+      parkingSlot: json['parkingSlot']?.toString(),
+      villaNumber: villa is Map ? villa['villaNumber']?.toString() : null,
+      villaBlock: villa is Map ? villa['block']?.toString() : null,
+    );
+  }
+}

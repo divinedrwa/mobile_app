@@ -47,4 +47,46 @@ class AdminParkingRepository {
       throw mapDioException(e, 'Failed to load vehicles');
     }
   }
+
+  Future<Map<String, dynamic>> registerVehicle({
+    required String registrationCategory,
+    required String vehicleNumber,
+    required String vehicleType,
+    String? villaId,
+    String? model,
+    String? color,
+    String? parkingSlot,
+    String? ownerLabel,
+    String? notes,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiEndpoints.adminVehicles,
+        data: {
+          'registrationCategory': registrationCategory,
+          'vehicleNumber': vehicleNumber.trim().toUpperCase(),
+          'vehicleType': vehicleType,
+          if (villaId != null && villaId.isNotEmpty) 'villaId': villaId,
+          if (model != null && model.trim().isNotEmpty) 'model': model.trim(),
+          if (color != null && color.trim().isNotEmpty) 'color': color.trim(),
+          if (parkingSlot != null && parkingSlot.trim().isNotEmpty)
+            'parkingSlot': parkingSlot.trim(),
+          if (ownerLabel != null && ownerLabel.trim().isNotEmpty)
+            'ownerLabel': ownerLabel.trim(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        },
+      );
+      final data = res.data;
+      if (data != null) {
+        final vehicle = data['vehicle'];
+        if (vehicle is Map) {
+          return Map<String, dynamic>.from(vehicle);
+        }
+        return data;
+      }
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to register vehicle');
+    }
+  }
 }

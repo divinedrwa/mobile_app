@@ -2,8 +2,21 @@
 String parseApiErrorMessage(dynamic data, [String fallback = 'Something went wrong']) {
   if (data is String) {
     final s = data.trim();
-    if (s.length > 200 && (s.startsWith('<') || s.contains('<!DOCTYPE'))) {
-      return 'Server returned a web page instead of JSON. Check API base URL (Settings → API server).';
+    if (s.startsWith('<') || s.contains('<!DOCTYPE')) {
+      final preMatch =
+          RegExp(r'<pre[^>]*>([\s\S]*?)</pre>', caseSensitive: false)
+              .firstMatch(s);
+      final preBody = preMatch?.group(1)?.trim();
+      if (preBody != null && preBody.isNotEmpty) {
+        if (preBody.startsWith('Cannot GET ') || preBody.startsWith('Cannot POST ')) {
+          return 'API not available on server ($preBody). Deploy the latest backend or check API URL.';
+        }
+        return preBody;
+      }
+      if (s.length > 200) {
+        return 'Server returned a web page instead of JSON. Check API base URL (Settings → API server).';
+      }
+      return 'Server returned HTML instead of JSON. Deploy the latest backend or check API URL.';
     }
     if (s.isNotEmpty) return s;
     return fallback;

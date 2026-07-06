@@ -903,6 +903,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           items: [
             _QA(Icons.water_drop_outlined, 'Gate Utilities', ActionColors.success,
                 '/resident/admin-gate-utilities'),
+            _QA(Icons.directions_car_outlined, 'Register Vehicle',
+                ActionColors.secondary, '/resident/admin-add-vehicle'),
             _QA(Icons.notifications_active, 'Push Notify', ActionColors.warning,
                 '/resident/admin-push-notifications'),
             _QA(Icons.folder_open_outlined, 'Documents', ActionColors.info,

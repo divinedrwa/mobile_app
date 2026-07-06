@@ -57,6 +57,7 @@ import '../../features/admin/presentation/pages/admin_gate_analytics_screen.dart
 import '../../features/admin/presentation/pages/admin_reconciliation_screen.dart';
 import '../../features/admin/presentation/pages/admin_complaint_analytics_screen.dart';
 import '../../features/admin/presentation/pages/admin_parking_screen.dart';
+import '../../features/admin/presentation/pages/admin_add_vehicle_screen.dart';
 import '../../features/admin/presentation/pages/admin_data_tools_screen.dart';
 import '../../features/admin/presentation/pages/admin_amenities_screen.dart';
 import '../../features/admin/presentation/pages/admin_bank_accounts_screen.dart';
@@ -136,8 +137,8 @@ class AppRouter {
             if (role == UserRole.resident && (isGuardRoute || isAdminRoute)) {
               return '/resident';
             }
-            // Block plain residents from admin sub-screens inside resident shell.
-            if (role == UserRole.resident && loc.startsWith('/resident/admin')) {
+            // Block non-admin roles from admin sub-screens inside resident shell.
+            if (!role.isAdminLike && loc.startsWith('/resident/admin')) {
               return '/resident';
             }
             // Block tenants from accessing society expenses.
@@ -576,8 +577,15 @@ class AppRouter {
             ),
             GoRoute(
               path: 'admin-parking',
+              parentNavigatorKey: appRootNavigatorKey,
               builder: (context, state) =>
                   const AdminParkingScreen(),
+            ),
+            GoRoute(
+              path: 'admin-add-vehicle',
+              parentNavigatorKey: appRootNavigatorKey,
+              builder: (context, state) =>
+                  const AdminAddVehicleScreen(),
             ),
             // Tier 3 — tools & extras
             GoRoute(

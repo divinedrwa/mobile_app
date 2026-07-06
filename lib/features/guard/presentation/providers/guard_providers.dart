@@ -188,6 +188,23 @@ final guardResidentsDirectoryProvider = FutureProvider.autoDispose
   },
 );
 
+/// Filter key: `query|category|vehicleType` (ALL = no filter).
+final guardApprovedVehiclesProvider = FutureProvider.autoDispose
+    .family<GuardApprovedVehiclesData, String>(
+  (ref, filterKey) async {
+    cacheFor(ref, const Duration(minutes: 10));
+    final parts = filterKey.split('|');
+    final query = parts.isNotEmpty ? parts[0] : '';
+    final category = parts.length > 1 ? parts[1] : 'ALL';
+    final vehicleType = parts.length > 2 ? parts[2] : 'ALL';
+    return ref.read(guardRepositoryProvider).getApprovedVehicles(
+          query: query.trim().isEmpty ? null : query.trim(),
+          category: category == 'ALL' ? null : category,
+          vehicleType: vehicleType == 'ALL' ? null : vehicleType,
+        );
+  },
+);
+
 final guardGateVehicleTodayProvider =
     FutureProvider.autoDispose<List<GuardVehicleEntry>>((ref) async {
   return ref.read(guardRepositoryProvider).getGateVehicleToday();
