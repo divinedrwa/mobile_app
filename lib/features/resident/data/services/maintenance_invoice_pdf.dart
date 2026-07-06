@@ -658,20 +658,35 @@ pw.Widget _totalsBox(double total, double prevBalance, double received,
       );
 
   final accent = isPaid ? _green : _red;
+  final creditLabel = isPaid ? 'Advance Credit Applied' : 'Advance Credit Applied';
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     children: [
-      // Ledger: starts from this cycle's charge, brings forward arrears, then
-      // (for unpaid) subtracts what's been paid to reach the amount due. For a
-      // paid receipt Total already equals what was paid, so no further lines.
+      // Ledger: cycle charge, then cash and advance credit components, then
+      // amount paid/due so the figures always reconcile.
       row('Total Amount', money.format(total)),
       if (!isPaid && prevBalance > 0)
         row('Previous Outstanding', '+ ${money.format(prevBalance)}'),
-      if (!isPaid && received > 0)
-        row('Payments Received', '- ${money.format(received)}', color: _green),
-      if (!isPaid && adjustments > 0)
-        row('Advance Credit Applied', '- ${money.format(adjustments)}',
-            color: _green),
+      if (received > 0)
+        row(
+          isPaid ? 'Cash Payment Received' : 'Payments Received',
+          isPaid ? money.format(received) : '- ${money.format(received)}',
+          color: _green,
+        ),
+      if (adjustments > 0)
+        row(
+          creditLabel,
+          isPaid ? money.format(adjustments) : '- ${money.format(adjustments)}',
+          color: _green,
+        ),
+      if (isPaid && received > 0 && adjustments > 0)
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 2, bottom: 2),
+          child: pw.Text(
+            'Settled with ${money.format(received)} cash and ${money.format(adjustments)} advance credit.',
+            style: const pw.TextStyle(fontSize: 8, color: _muted),
+          ),
+        ),
       pw.SizedBox(height: 4),
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
