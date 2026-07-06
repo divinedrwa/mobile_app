@@ -73,7 +73,7 @@ List<QuickAction> get residentHomeQuickActionsGrid => [
       ),
       QuickAction(
         id: 'amenities',
-        label: 'Amenity booking',
+        label: 'Amenity',
         icon: Icons.pool,
         color: ActionColors.success,
         route: '/resident/amenities',
@@ -94,7 +94,7 @@ List<QuickAction> get residentHomeQuickActionsGrid => [
       ),
       QuickAction(
         id: 'amenity_bookings',
-        label: 'Facility booking',
+        label: 'Facility',
         icon: Icons.event_note_outlined,
         color: ActionColors.info,
         route: '/resident/amenity-bookings',
@@ -176,7 +176,7 @@ List<QuickAction> get residentHomeSecondaryActionsGrid => [
       ),
       QuickAction(
         id: 'amenity_bookings',
-        label: 'Facility Booking',
+        label: 'Facility',
         icon: Icons.event_note_outlined,
         color: DesignColors.primary,
         route: '/resident/amenity-bookings',
@@ -190,7 +190,7 @@ List<QuickAction> get residentHomeSecondaryActionsGrid => [
       ),
       QuickAction(
         id: 'amenities',
-        label: 'Amenity Booking',
+        label: 'Amenity',
         icon: Icons.pool_rounded,
         color: DesignColors.success,
         route: '/resident/amenities',
