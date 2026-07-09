@@ -18,11 +18,31 @@ class AdminDashboardRepository {
         _dio.get(ApiEndpoints.adminVisitors),
         _dio.get(ApiEndpoints.adminParcels),
         _dio.get(ApiEndpoints.adminComplaints),
-        _dio.get(ApiEndpoints.adminFinancialDashboard, queryParameters: {
-          'month': month,
-          'year': year,
-        }),
       ]);
+
+      // Financial dashboard can 400 when a draft collection cycle exists without
+      // generated snapshots — do not fail the whole admin home for that.
+      Map<String, dynamic> finSummary = {};
+      try {
+        final finRes = await _dio.get(
+          ApiEndpoints.adminFinancialDashboard,
+          queryParameters: {'month': month, 'year': year},
+        );
+        final finData = finRes.data;
+        finSummary = finData is Map<String, dynamic>
+            ? (finData['summary'] as Map<String, dynamic>? ?? finData)
+            : <String, dynamic>{};
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        final message = e.response?.data is Map
+            ? (e.response?.data['message'] as String? ?? '')
+            : '';
+        final isDraftCycleGap = status == 400 &&
+            message.contains('No billing snapshots for this period');
+        if (!isDraftCycleGap) {
+          throw mapDioException(e, 'Failed to fetch admin dashboard');
+        }
+      }
 
       // Visitors — extract todayCount from response
       final visitorsData = results[0].data;
@@ -39,11 +59,8 @@ class AdminDashboardRepository {
       final openComplaints = _extractInt(complaintsData, 'openCount') ??
           _extractListLength(complaintsData);
 
-      // Financial dashboard — extract summary
-      final finData = results[3].data;
-      final summary = finData is Map<String, dynamic>
-          ? (finData['summary'] as Map<String, dynamic>? ?? finData)
-          : <String, dynamic>{};
+      // Financial dashboard — extract summary (may be empty when draft cycle has no snapshots)
+      final summary = finSummary;
 
       final totalExpected = _toDouble(summary['totalExpected']);
       final totalCollected =
