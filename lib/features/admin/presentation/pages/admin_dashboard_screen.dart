@@ -16,6 +16,7 @@ import '../../../resident/data/providers/dashboard_provider.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../../resident/presentation/pages/notifications_center_screen.dart';
 import '../../../resident/presentation/widgets/home/home_society_finances.dart';
+import '../../../resident/data/providers/maintenance_provider.dart';
 import '../../data/models/admin_dashboard_model.dart';
 import '../../data/providers/admin_providers.dart';
 
@@ -56,11 +57,12 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Future<void> _handleRefresh() async {
+    invalidateAdminHomeFinanceProviders(ref);
     ref.invalidate(adminDashboardProvider);
-    ref.invalidate(residentDashboardProvider);
     ref.invalidate(adminOutstandingDuesProvider);
     ref.invalidate(notificationProvider);
     ref.invalidate(adminUpiStatsProvider);
+    ref.invalidate(adminBillingCyclesProvider);
   }
 
   static String _greeting() {

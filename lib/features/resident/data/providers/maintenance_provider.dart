@@ -63,6 +63,14 @@ void invalidateSocietyFinanceProviders(WidgetRef ref) {
   invalidateMaintenancePaymentProviders(ref);
 }
 
+/// Admin home tab — also drop cached financial-dashboard payloads and any
+/// stale per-cycle expense selection after billing-cycle changes.
+void invalidateAdminHomeFinanceProviders(WidgetRef ref) {
+  invalidateSocietyFinanceProviders(ref);
+  ref.invalidate(financialDashboardProvider);
+  ref.read(selectedExpenseCycleProvider.notifier).state = null;
+}
+
 /// Per-cycle insight for the cycle-detail screen: the per-home expense split
 /// (same as the hub card) plus the resident's actual payment mode — both from
 /// a single dashboard fetch for the cycle's month.

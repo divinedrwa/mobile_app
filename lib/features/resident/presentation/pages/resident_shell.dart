@@ -8,9 +8,11 @@ import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../../admin/data/providers/admin_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../data/resident_home_prefetch.dart';
+import '../../data/providers/maintenance_provider.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/resident_data_refresh.dart';
 import 'maintenance/gateway_payment_recovery.dart';
@@ -40,6 +42,9 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    final isAdmin = user?.role.isAdminLike ?? false;
+
     ref.listen<int>(currentTabProvider, (prev, next) {
       if (next == 1) {
         prefetchCommunityTabData(
@@ -47,12 +52,16 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
           activeTab: ref.read(communitySubTabIndexProvider),
         );
       }
+      if (isAdmin && next == 2 && prev != 2) {
+        invalidateAdminHomeFinanceProviders(ref);
+        ref.invalidate(adminDashboardProvider);
+        ref.invalidate(adminOutstandingDuesProvider);
+        ref.invalidate(adminBillingCyclesProvider);
+      }
     });
 
     final currentTab = ref.watch(currentTabProvider);
     final unreadCount = ref.watch(unreadCountProvider);
-    final user = ref.watch(authProvider).user;
-    final isAdmin = user?.role.isAdminLike ?? false;
     final hasVilla = user?.villaId != null &&
         (user?.villaId?.isNotEmpty ?? false);
 
