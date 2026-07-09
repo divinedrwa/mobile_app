@@ -12,6 +12,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../resident/data/models/expense_category_model.dart';
+import '../../../resident/data/providers/maintenance_provider.dart';
 import '../../data/providers/admin_providers.dart';
 
 /// Admin screen for recording and viewing society expenses.
@@ -61,6 +62,8 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
   Future<void> _refresh() async {
     ref.invalidate(adminExpensesProvider);
     ref.invalidate(adminExpenseCategoriesProvider);
+    ref.invalidate(adminMaintenanceDashboardProvider);
+    invalidateSocietyFinanceProviders(ref);
     try {
       await ref.read(adminExpensesProvider.future);
     } catch (e) {
@@ -460,6 +463,8 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
         ),
       );
       ref.invalidate(adminExpensesProvider);
+      ref.invalidate(adminMaintenanceDashboardProvider);
+      invalidateSocietyFinanceProviders(ref);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

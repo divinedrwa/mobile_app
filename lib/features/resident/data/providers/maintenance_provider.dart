@@ -54,6 +54,15 @@ void invalidateMaintenancePaymentProviders(WidgetRef ref) {
   ref.invalidate(residentDashboardProvider);
 }
 
+/// Refresh fund balance, maintenance dashboard, and home finances after
+/// society expenses are created, updated, or deleted.
+void invalidateSocietyFinanceProviders(WidgetRef ref) {
+  ref.invalidate(maintenanceDashboardProvider);
+  ref.invalidate(residentDashboardProvider);
+  ref.invalidate(residentExpenseBreakdownProvider);
+  invalidateMaintenancePaymentProviders(ref);
+}
+
 /// Per-cycle insight for the cycle-detail screen: the per-home expense split
 /// (same as the hub card) plus the resident's actual payment mode — both from
 /// a single dashboard fetch for the cycle's month.
@@ -229,15 +238,25 @@ final billingFinancialYearsProvider =
     });
 
 /// Billing cycles for a financial year (only months where a cycle was created).
+/// Draft (unpublished) cycles are excluded — they belong on admin billing setup.
 final billingCyclesForFinancialYearProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, financialYearId) async {
       cacheFor(ref, const Duration(minutes: 5));
       if (financialYearId.isEmpty) {
         return {'financialYear': null, 'cycles': <Map<String, dynamic>>[]};
       }
-      return ref
+      final body = await ref
           .watch(maintenanceRepositoryProvider)
           .getBillingCyclesForFinancialYear(financialYearId);
+      final raw = body['cycles'];
+      if (raw is List) {
+        body['cycles'] = raw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .where((c) => c['publishedAt'] != null)
+            .toList();
+      }
+      return body;
     });
 
 class MaintenancePaymentNotifier
