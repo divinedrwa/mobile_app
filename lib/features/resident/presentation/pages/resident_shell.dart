@@ -10,12 +10,12 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../admin/data/providers/admin_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
+import '../../../admin/presentation/pages/admin_dashboard/admin_dashboard_screen.dart';
 import '../../data/resident_home_prefetch.dart';
 import '../../data/providers/maintenance_provider.dart';
 import '../../data/providers/notification_provider.dart';
 import '../../data/resident_data_refresh.dart';
-import 'maintenance/gateway_payment_recovery.dart';
+import '../../data/services/payment_orchestrator.dart';
 import '../providers/resident_tab_provider.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
@@ -36,7 +36,7 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       prefetchResidentHomeData(ref);
-      GatewayPaymentRecovery.tryRecover(context: context, ref: ref);
+      PaymentOrchestrator.recoverPendingPayment(context: context, ref: ref);
     });
   }
 

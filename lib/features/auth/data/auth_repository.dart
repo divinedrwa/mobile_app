@@ -7,6 +7,7 @@ import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_error_message.dart';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/storage_service.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/push_sync_service.dart';
 import '../../../shared/models/user_model.dart';
@@ -62,6 +63,17 @@ enum RefreshResult { success, networkError, rejected }
 class AuthRepository {
   Dio get _dio => DioClient.dio;
   final NotificationService _notificationService = NotificationService();
+
+  /// L2 — persist the "must (re-)accept legal docs" flag from a login/refresh
+  /// response's additive `legal` block. Absent block (older backend) → false,
+  /// so the gate stays dormant and nothing breaks for N-1 servers.
+  Future<void> _persistLegalFlag(dynamic legalBlock) async {
+    final requires = legalBlock is Map && legalBlock['requiresAcceptance'] == true;
+    await StorageService.setBool(
+      AppConstants.keyRequiresLegalAcceptance,
+      requires,
+    );
+  }
 
   /// Societies for login picker (`GET /public/societies`, no auth). Includes status when present.
   Future<({
@@ -246,6 +258,7 @@ class AuthRepository {
 
       final user = UserModel.fromJson(userData);
       await StorageService.saveUserData(userData);
+      await _persistLegalFlag(response.data['legal']);
       if (kDebugMode) {
         debugPrint('✅ User data saved: ${user.name} (${user.role})');
       }
@@ -373,6 +386,7 @@ class AuthRepository {
 
       final user = UserModel.fromJson(userData);
       await StorageService.saveUserData(userData);
+      await _persistLegalFlag(root['legal']);
       await PushSyncService.sync();
       return user;
     } on DioException catch (e) {
@@ -654,6 +668,7 @@ class AuthRepository {
       }
       await StorageService.saveToken(newToken);
       await StorageService.saveRefreshToken(newRefresh);
+      await _persistLegalFlag(data['legal']);
       return RefreshResult.success;
     } on DioException catch (e) {
       // Server explicitly rejected the refresh token → session is dead.

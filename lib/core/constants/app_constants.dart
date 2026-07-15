@@ -168,6 +168,28 @@ class AppConstants {
     }
     return 'http://localhost:4000/api';
   }
+
+  /// Admin web dashboard origin (no `/api`). Override with `ADMIN_WEB_URL` dart-define.
+  static const String _adminWebUrlFromEnv = String.fromEnvironment(
+    'ADMIN_WEB_URL',
+    defaultValue: '',
+  );
+
+  static String get adminWebUrl {
+    if (_adminWebUrlFromEnv.isNotEmpty) {
+      return _adminWebUrlFromEnv.replaceAll(RegExp(r'/+$'), '');
+    }
+    final api = baseUrl;
+    if (api.contains('localhost:4000') ||
+        api.contains('127.0.0.1:4000') ||
+        api.contains('10.0.2.2:4000')) {
+      return 'http://localhost:3000';
+    }
+    if (api.endsWith('/api')) {
+      return api.substring(0, api.length - 4);
+    }
+    return api;
+  }
   
   // Storage Keys
   static const String keyToken = 'auth_token';
@@ -189,6 +211,9 @@ class AppConstants {
 
   /// User opted in to biometric unlock on the login screen (credentials in secure storage).
   static const String keyBiometricLoginEnabled = 'biometric_login_enabled';
+
+  /// Set when backend `legal.requiresAcceptance` is true after login/refresh (L2).
+  static const String keyRequiresLegalAcceptance = 'requires_legal_acceptance';
 
   /// Master on-device notification switch (UI + local banners); persisted across sessions.
   static const String keyNotificationsEnabled = 'pref_notifications_enabled';

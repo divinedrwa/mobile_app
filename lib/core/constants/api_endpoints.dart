@@ -23,6 +23,16 @@ class ApiEndpoints {
   static const String logout = '/auth/logout';
   static const String refreshToken = '/auth/refresh';
 
+  // Legal — consent & terms versioning (L2)
+  /// Authenticated: `GET` current legal versions + this user's acceptance state.
+  static const String legalStatus = '/legal/status';
+  /// Authenticated: `POST` body `{ termsVersion, privacyVersion, appVersion? }` to record acceptance.
+  static const String legalAccept = '/legal/accept';
+  /// Public: `GET` current legal versions + hosted URLs (no auth).
+  static const String publicLegalVersion = '/public/legal-version';
+
+  /// Per-category push preferences (L3). `GET` list, `PUT` body `{ category, pushEnabled }`.
+  static const String notificationPreferences = '/notifications/preferences';
   /// Register or refresh FCM token (authenticated). Keeps token in sync after refresh.
   static const String notificationsRegisterDevice = '/notifications/devices';
   static const String notificationsRemoveDevice = '/notifications/devices/remove';

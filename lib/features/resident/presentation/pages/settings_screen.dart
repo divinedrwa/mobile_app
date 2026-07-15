@@ -14,8 +14,10 @@ import '../../../../core/utils/validators.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/notification_settings_notifier.dart';
+import '../../../notifications/presentation/providers/notification_preferences_provider.dart';
 import 'legal_markdown_screen.dart';
 import 'legal_webview_screen.dart';
+import 'platform_help_screen.dart';
 
 /// Reads the real installed version from the OS (e.g. "1.1.10").
 final _appVersionProvider = FutureProvider.autoDispose<String>((ref) async {
@@ -112,6 +114,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _openAdminWeb() async {
+    final uri = Uri.parse(AppConstants.adminWebUrl);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open ${AppConstants.adminWebUrl}')),
+      );
+    }
+  }
+
+  void _openPlatformHelp() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const PlatformHelpScreen()),
+    );
+  }
+
   Future<void> _runNotificationAction(Future<void> Function() action) async {
     try {
       await action();
@@ -131,6 +149,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final emailEnabled = notif.emailEnabled;
     final notifBusy = notif.isBusy;
     final appVersion = ref.watch(_appVersionProvider).valueOrNull ?? AppConstants.appVersion;
+    final user = ref.watch(authProvider).user;
+    final showAdminWeb = user?.role.isAdminLike ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -231,6 +251,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
           SizedBox(height: context.spacing.s24),
+          _NotificationCategoriesSection(
+            enabled: notificationsEnabled && pushEnabled,
+          ),
+          SizedBox(height: context.spacing.s24),
           _SettingsSection(
             title: 'Appearance',
             subtitle:
@@ -298,6 +322,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Help & Support',
             subtitle: 'Reach the GatePass+ team for issues or feedback.',
             children: [
+              _SettingsTile(
+                icon: Icons.devices_outlined,
+                title: 'What works where',
+                subtitle: 'Mobile vs web vs admin dashboard capabilities',
+                onTap: _openPlatformHelp,
+              ),
+              if (showAdminWeb)
+                _SettingsTile(
+                  icon: Icons.laptop_mac_outlined,
+                  title: 'Admin web dashboard',
+                  subtitle: AppConstants.adminWebUrl,
+                  onTap: _openAdminWeb,
+                ),
               _SettingsTile(
                 icon: Icons.support_agent_outlined,
                 title: 'Contact support',
@@ -873,6 +910,56 @@ class _SettingsTile extends StatelessWidget {
           ? null
           : Icon(Icons.chevron_right_rounded, color: context.text.tertiary),
       onTap: onTap,
+    );
+  }
+}
+
+/// L3 — per-category push toggles. Critical categories (SOS/payment) are never listed
+/// because the backend always delivers them; only mutable categories appear here.
+class _NotificationCategoriesSection extends ConsumerWidget {
+  const _NotificationCategoriesSection({required this.enabled});
+
+  /// Whether push is on overall — category toggles only make sense when it is.
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(notificationPreferencesProvider);
+    final notifier = ref.read(notificationPreferencesProvider.notifier);
+
+    return _SettingsSection(
+      title: 'Notification categories',
+      subtitle: enabled
+          ? 'Mute the updates you don\'t need. Emergency (SOS) and payment alerts are always delivered.'
+          : 'Turn on push notifications above to customize categories.',
+      children: [
+        if (prefs.isLoading)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.s12),
+            child: const Center(child: CircularProgressIndicator()),
+          )
+        else if (prefs.error != null)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.s12),
+            child: Text(
+              prefs.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          )
+        else
+          ...[
+            for (final item in prefs.mutableItems)
+              _SettingsSwitchTile(
+                icon: Icons.notifications_none_rounded,
+                title: notificationCategoryLabel(item.category),
+                subtitle: item.pushEnabled ? 'Push on' : 'Muted',
+                value: item.pushEnabled,
+                onChanged: (!enabled || prefs.busy.contains(item.category))
+                    ? null
+                    : (value) => notifier.setCategory(item.category, value),
+              ),
+          ],
+      ],
     );
   }
 }

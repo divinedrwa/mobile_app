@@ -8,6 +8,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/enterprise_ui.dart';
 import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../theme/context_extensions.dart';
+import '../../widgets/checkout_step_indicator.dart';
 import '../../../data/models/payment_method_model.dart';
 import '../../../data/providers/payment_methods_provider.dart';
 
@@ -117,28 +118,73 @@ class PaymentMethodSelectionScreen extends ConsumerWidget {
           final filtered = kIsWeb
               ? methods.where((m) => !_mobileOnlyPaymentTypes.contains(m.type)).toList()
               : methods;
+          final mobileOnlyConfigured = kIsWeb &&
+              methods.isNotEmpty &&
+              methods.every((m) => _mobileOnlyPaymentTypes.contains(m.type));
           if (filtered.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No payment methods configured for your society. '
-                  'Please ask your admin to set up payment options.',
-                  textAlign: TextAlign.center,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (mobileOnlyConfigured) ...[
+                      EnterpriseInfoBanner(
+                        icon: Icons.phone_android_rounded,
+                        tone: EnterpriseTone.warning,
+                        title: 'Use the mobile app to pay',
+                        message:
+                            'Your society accepts PhonePe and UPI on the GatePass+ mobile app. '
+                            'Web checkout supports Razorpay and bank transfer only.',
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Text(
+                      mobileOnlyConfigured
+                          ? 'No web payment methods are configured. Install the mobile app to pay maintenance.'
+                          : 'No payment methods configured for your society. '
+                              'Please ask your admin to set up payment options.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             );
           }
-          return _buildMethodList(context, _sortPaymentMethods(filtered));
+          return _buildMethodList(
+            context,
+            _sortPaymentMethods(filtered),
+            showMobileAppBanner: kIsWeb &&
+                methods.any((m) => _mobileOnlyPaymentTypes.contains(m.type)),
+          );
         },
       ),
     );
   }
 
-  Widget _buildMethodList(BuildContext context, List<PaymentMethodModel> methods) {
+  Widget _buildMethodList(
+    BuildContext context,
+    List<PaymentMethodModel> methods, {
+    bool showMobileAppBanner = false,
+  }) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: CheckoutStepIndicator(currentStep: 2),
+        ),
+        if (showMobileAppBanner) ...[
+          EnterpriseInfoBanner(
+            icon: Icons.phone_android_rounded,
+            tone: EnterpriseTone.info,
+            title: 'PhonePe & UPI on mobile',
+            message:
+                'For PhonePe or direct UPI, use the GatePass+ Android/iOS app. '
+                'This web page supports Razorpay and bank transfer.',
+          ),
+          const SizedBox(height: 12),
+        ],
         // Amount header
         Container(
           padding: const EdgeInsets.all(16),

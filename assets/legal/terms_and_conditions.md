@@ -2,7 +2,7 @@
 
 **Service:** GatePass+ ("Service", "Platform", "we", "us", "our")
 **Effective date:** 12 May 2026
-**Last updated:** 12 May 2026
+**Last updated:** 7 July 2026
 **Contact:** divine.drwa@gmail.com
 **Governing law:** Republic of India
 
@@ -20,7 +20,7 @@ Please read these Terms carefully. **By installing the mobile app, creating an a
 
 GatePass+ is a housing-society operations platform that provides software to **Resident Welfare Associations**, **Apartment Owners' Associations**, housing co-operatives and similar communities (each, a **"Society"**) and their members. The Service helps a Society manage residents, gate security, visitors and deliveries, vehicles and parking, maintenance records, notices, polls, documents, complaints, amenity bookings, SOS / emergency response, and related operations.
 
-GatePass+ is provided **purely as a technology platform**. **It is not** an emergency service, a security agency, a police service, a fire brigade, a medical-response service, a banking institution, a payment aggregator, a real-estate broker, or a property manager. **GatePass+ does not collect, process, or facilitate any online payments — see §6 below.**
+GatePass+ is provided **purely as a technology platform**. **It is not** an emergency service, a security agency, a police service, a fire brigade, a medical-response service, a banking institution, a **payment aggregator**, a real-estate broker, or a property manager. Where the Service enables **online payment** of Society charges, it does so **only as a technology facilitator**: the payment is processed by a licensed third-party payment gateway and settles to your Society's own account, and **GatePass+ never holds, custodies or settles your funds. See §6 below.**
 
 ---
 
@@ -122,30 +122,37 @@ Multi-villa approval responses (approve / reject) are time-sensitive operational
 
 ---
 
-## 6. No payment processing
+## 6. Payments
 
-**GatePass+ does NOT collect, process, or facilitate any online payments within the Service.**
+The Service lets Residents pay maintenance and other Society charges **online** through third-party payment gateways, and also lets a Society **record offline payments**. This section explains exactly what role we play — and, importantly, what we do **not** do.
 
-* **No payment gateways** (Razorpay, PhonePe, Stripe, Paytm, Cashfree or any similar service) are integrated into the mobile app or the admin web dashboard.
-* The Service does **not** handle or transmit any payment-instrument data — no card numbers, no CVVs, no UPI VPAs / handles, no net-banking credentials, no wallet identifiers, no one-time payment OTPs.
-* GatePass+ does **not store, process, or have access to** any financial or payment-instrument information of users.
-* No payment webhooks, gateway callbacks, settlement messages or chargebacks are routed through the Service.
+### 6.1 We are a technology facilitator — not a payment aggregator or bank
 
-### 6.1 How maintenance payments actually happen
+* Online payments are processed by **third-party payment gateways / aggregators** — currently **Razorpay** and **PhonePe** — and, for UPI, by the UPI rails operated by NPCI and the participating banks. Those providers are licensed and authorised for payment processing; **GatePass+ is not** a bank, a payment aggregator, or a payment-system operator.
+* Your **Society is the merchant of record.** Funds you pay online settle to the **Society's own gateway account / bank account**, under the Society's own agreement with the gateway. **GatePass+ does not hold, custody, pool, route or settle your money**, and does not add to, earn from, or deduct any amount from your maintenance payment.
+* What GatePass+ does is limited to: **initiating** a payment through the gateway's own checkout / SDK, **receiving the resulting status** (success / failure / pending) via the gateway's callback or webhook, and **recording** that outcome against your maintenance account so you and your Admin see an up-to-date status.
 
-All maintenance and other society-related payments are made **outside the Service**, directly between the Resident and the Society — typically by bank transfer, cheque, UPI to the Society's own account, or cash. The Society's bank-account details shown inside the app are the **Society's** information, displayed to Residents for their convenience.
+### 6.2 Payment-instrument data goes to the gateway, not to us
 
-### 6.2 Records of offline payments
+* When you pay online, your **card number, CVV, UPI PIN, net-banking credentials, wallet credentials and payment OTPs are entered into and handled by the payment gateway's own PCI-DSS-compliant interface** — **not** by GatePass+.
+* **We do not store, and do not have access to, your full card number, CVV, UPI PIN, or bank / net-banking credentials.**
+* We store only the **non-sensitive transaction metadata** needed to reconcile your payment — for example the gateway order / payment reference, the amount, the status, the timestamp, and the payment-method type (e.g. "UPI", "card") — linked to your maintenance record.
 
-After receiving a payment offline, the Society Admin may record an entry inside the admin dashboard so the Resident can see an acknowledgement. **Such an entry is a record only** — it is not a payment instruction, does not move any money, and creates no financial obligation between you and us.
+### 6.3 Offline payments are still supported
 
-### 6.3 Bill amounts and disputes are between you and your Society
+Residents may also pay **offline** — by bank transfer, cheque, UPI directly to the Society's account, or cash. The Society's bank-account / UPI details shown inside the app are the **Society's** information, displayed for your convenience. After receiving an offline payment, the Society Admin may record an entry inside the admin dashboard so you can see an acknowledgement. **Such an entry is a record only** — it is not a payment instruction, does not itself move any money, and creates no financial obligation between you and us.
 
-Maintenance bills are issued by your **Society**, not by us. Bill amounts, due dates, components (sinking fund, common-area charges, penalties), late-fee rules, refund rules, grace periods and book-keeping treatment are determined by the Society and are governed by the Society's bye-laws or resolutions. **We are not a party to the underlying financial transaction.** Any dispute about a maintenance amount or a recorded payment is between you and your Society — raise it with your Society Admin first.
+### 6.4 Bill amounts, refunds and disputes are between you and your Society
 
-### 6.4 Future changes
+Maintenance bills are issued by your **Society**, not by us. Bill amounts, due dates, components (sinking fund, common-area charges, penalties), late-fee rules, **refund and reversal rules**, grace periods and book-keeping treatment are determined by the Society and are governed by the Society's bye-laws or resolutions. **We are not a party to the underlying financial transaction, and we do not decide, approve, fund or process refunds.** Any refund is granted by the **Society** and, where a payment was made online, is actioned through the gateway using the Society's own gateway account. Any dispute about a maintenance amount, a recorded payment, or a refund is between you and your Society — raise it with your Society Admin first. Payment-gateway-level issues (for example chargebacks, or amounts debited by your bank against a failed transaction) are additionally subject to the relevant gateway's own grievance and dispute process.
 
-If a future version of the Service adds any online-payment functionality, these Terms and our Privacy Policy will be updated in advance, the relevant payment-processor sub-processor will be added to the Privacy Policy, and the corresponding consent will be obtained from you before any such processing begins.
+### 6.5 Payment failures, pending status and reversals
+
+Online payments depend on your bank, the UPI network and the gateway. A payment may fail, be declined, or remain **pending** while confirmation is awaited; occasionally your bank may debit an amount while the gateway reports failure. In such cases the gateway's and bank's standard **auto-reversal and settlement timelines** apply. **We make no guarantee as to the timing of payment confirmation** and are not liable for delays, failures or reversals originating with your bank, the UPI network or the gateway. If a payment shows as pending, check your account status before re-attempting, to avoid a duplicate payment.
+
+### 6.6 Changes to payment providers
+
+We may add, change or remove payment gateways over time. Every payment-processor we use is listed as a sub-processor in our Privacy Policy (see §10 and the Privacy Policy). Where a change materially affects how your payments are processed, we will update these Terms and the Privacy Policy accordingly.
 
 ---
 
@@ -198,9 +205,9 @@ We do **not** send marketing communications today. If we introduce them in futur
 
 ## 10. Third-party services
 
-The Service integrates with the sub-processors listed in the Privacy Policy (currently: **Neon** — managed PostgreSQL; **Render** — application hosting; **Cloudinary** — profile-photo storage; **Firebase Cloud Messaging** and **Firebase Analytics** — push delivery and aggregated analytics; **Apple** and **Google** — app distribution and push transport). When you use those features, you also accept the applicable third-party terms. We do not control and are not responsible for the content, policies or practices of any third party.
+The Service integrates with the sub-processors listed in the Privacy Policy (currently: **Neon** — managed PostgreSQL; **Render** — application hosting; **Cloudinary** — profile-photo storage; **Firebase Cloud Messaging** and **Firebase Analytics** — push delivery and aggregated analytics; **Apple** and **Google** — app distribution and push transport; **Razorpay** and **PhonePe** — payment gateways for online maintenance payments). When you use those features, you also accept the applicable third-party terms. We do not control and are not responsible for the content, policies or practices of any third party.
 
-GatePass+ **does not** integrate any payment-gateway or payment-processor sub-processor (see §6).
+The payment gateways above act as the **payment aggregators / processors** for online payments; **they, not GatePass+, handle your payment-instrument data and the movement of funds** (see §6). GatePass+ does not itself operate as a bank or payment aggregator.
 
 ---
 
@@ -394,4 +401,4 @@ Continuing to use the Service after a change becomes effective constitutes accep
 
 ---
 
-*Last updated: 12 May 2026.*
+*Last updated: 7 July 2026.*

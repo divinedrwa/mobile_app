@@ -257,11 +257,14 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     _router ??= AppRouter.router(ref, refreshListenable: _routerRefresh);
 
-    // Only refresh the router when the user actually logs in or out.
+    // Refresh the router when the user logs in/out, or when the L2 legal-consent
+    // gate opens/closes (so the redirect re-runs while already authenticated).
     ref.listen<AuthState>(authProvider, (prev, next) {
       final wasAuth = prev?.isAuthenticated ?? false;
       final nowAuth = next.isAuthenticated;
-      if (wasAuth != nowAuth) {
+      final legalChanged = (prev?.requiresLegalAcceptance ?? false) !=
+          next.requiresLegalAcceptance;
+      if (wasAuth != nowAuth || legalChanged) {
         _routerRefresh.notify();
       }
       if (wasAuth && !nowAuth) {

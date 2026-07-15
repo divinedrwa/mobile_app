@@ -14,7 +14,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../data/providers/maintenance_provider.dart';
-import 'gateway_payment_poll_actions.dart';
+import '../../../data/services/payment_orchestrator.dart';
 import 'gateway_sdk_errors.dart';
 
 class RazorpayPaymentScreen extends ConsumerStatefulWidget {
@@ -129,7 +129,7 @@ class _RazorpayPaymentScreenState
         final period = widget.payAllPending
             ? 'All outstanding'
             : '${_monthName(widget.month)} ${widget.year}';
-        GatewayPaymentPollActions.navigateToPaymentPending(
+        PaymentOrchestrator.navigateToPending(
           context,
           transactionId: orderId,
           paymentMethod: 'Razorpay',
@@ -145,7 +145,7 @@ class _RazorpayPaymentScreenState
       }
 
       if (autoSettledFromCredit || autoSettled || (orderId == null && _readAmount(amountPaise) == 0)) {
-        unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+        unawaited(PaymentOrchestrator.clearPending());
         _maintenanceDue = _readAmount(result['totalDue']) ?? widget.amount;
         invalidateMaintenancePaymentProviders(ref);
         if (!mounted) return;
@@ -153,7 +153,7 @@ class _RazorpayPaymentScreenState
           _loading = false;
           _paymentComplete = true;
         });
-        GatewayPaymentPollActions.navigateToPaymentSuccess(
+        PaymentOrchestrator.navigateToSuccess(
           context,
           maintenanceAmount: _maintenanceDue,
           totalPaid: _maintenanceDue,
@@ -240,7 +240,7 @@ class _RazorpayPaymentScreenState
           ? 'All outstanding'
           : '${_monthName(widget.month)} ${widget.year}';
       unawaited(
-        GatewayPaymentPollActions.persistPendingGatewayPayment(
+        PaymentOrchestrator.persistPending(
           transactionId: orderId,
           gateway: 'razorpay',
           amount: _maintenanceDue,
@@ -316,7 +316,7 @@ class _RazorpayPaymentScreenState
     final period = widget.payAllPending
         ? 'All outstanding'
         : '${_monthName(widget.month)} ${widget.year}';
-    GatewayPaymentPollActions.navigateToPaymentPending(
+    PaymentOrchestrator.navigateToPending(
       context,
       transactionId: orderId,
       paymentMethod: 'Razorpay',
@@ -349,18 +349,18 @@ class _RazorpayPaymentScreenState
           : '${_monthName(widget.month)} ${widget.year}';
 
       var handled = false;
-      handled = GatewayPaymentPollActions.handlePollResult(
+      handled = PaymentOrchestrator.handlePollResult(
         poll: poll,
         onSuccess: () {
           _verifyTimer?.cancel();
-          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+          unawaited(PaymentOrchestrator.clearPending());
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
             _loading = false;
             _paymentComplete = true;
             _error = null;
           });
-          GatewayPaymentPollActions.navigateToPaymentSuccess(
+          PaymentOrchestrator.navigateToSuccess(
             context,
             maintenanceAmount: _maintenanceDue,
             totalPaid: _totalPayable,
@@ -375,7 +375,7 @@ class _RazorpayPaymentScreenState
         onFailed: (message) {
           _verifyTimer?.cancel();
           if (poll.isFailed) {
-            unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+            unawaited(PaymentOrchestrator.clearPending());
           }
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
@@ -414,7 +414,7 @@ class _RazorpayPaymentScreenState
       // User cancelled / timed out before submitting — the order was never paid.
       // Clear the persisted-pending record so resume-recovery doesn't later show a
       // false "payment processing" screen for an abandoned checkout.
-      unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+      unawaited(PaymentOrchestrator.clearPending());
       invalidateMaintenancePaymentProviders(ref);
       setState(() {
         _loading = false;

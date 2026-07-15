@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../features/resident/presentation/pages/maintenance/gateway_payment_recovery.dart';
+import '../../features/resident/data/services/payment_orchestrator.dart';
 
 /// Polls server for a persisted in-flight Razorpay/PhonePe payment when the app resumes.
 class GatewayPaymentLifecycleBinding extends WidgetsBindingObserver {
@@ -8,7 +8,7 @@ class GatewayPaymentLifecycleBinding extends WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        GatewayPaymentRecovery.tryRecover();
+        PaymentOrchestrator.recoverPendingPayment();
       });
     }
   }

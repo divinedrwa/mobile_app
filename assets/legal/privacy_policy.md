@@ -2,7 +2,7 @@
 
 **Service:** GatePass+ (the "Service", "Platform", "we", "us", "our")
 **Effective date:** 12 May 2026
-**Last updated:** 12 May 2026
+**Last updated:** 7 July 2026
 **Governing law:** Republic of India — Digital Personal Data Protection Act, 2023 ("DPDP Act") and the Information Technology Act, 2000 with rules made thereunder (including the IT (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011 and the IT (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021).
 **Contact for privacy matters / Grievance Officer:** divine.drwa@gmail.com
 
@@ -35,6 +35,8 @@ The detailed terms below override this summary in case of any conflict.
 | Grievance Officer | The officer designated at the email above acts as both the **Grievance Officer under Rule 5(9) of the IT (Reasonable Security Practices) Rules, 2011 / Rule 3(2) of the IT (Intermediary Guidelines) Rules, 2021** and the **point of contact for grievance redressal under Section 8(10) of the DPDP Act, 2023**. We will acknowledge your communication within 24 hours and respond within 15 (fifteen) days of receipt. |
 
 If you cannot reach us, you may also write to the **Data Protection Board of India** once it is operational, in accordance with the DPDP Act.
+
+**Language of this notice (DPDP Act §5(3)):** You may access this Privacy Policy and any consent notice we present in **English or in any language listed in the Eighth Schedule to the Constitution of India**. To request a copy in another such language, write to **divine.drwa@gmail.com** and we will provide one.
 
 ---
 
@@ -112,14 +114,16 @@ We process **only** the categories listed below. We do not collect contacts, cal
 
 ### 4.6 Financial data (maintenance billing)
 
+GatePass+ is a **technology facilitator** for Society maintenance payments. **We are not** a bank, payment aggregator, or payment-system operator. Online payments are processed by licensed third-party gateways; funds settle to your **Society's own** gateway or bank account.
+
 | Field | Notes |
 |---|---|
 | Per-villa monthly maintenance amount and due date | Set by the Society Admin. |
 | Payment record — amount, date, mode, transaction id, receipt number, optional remarks, optional bank-account reference | Created when a payment is recorded (online or manual). |
-| Razorpay-routed payment metadata — payment id, order id, signature, gateway status | Received from Razorpay via webhook (see §6). |
+| Gateway payment metadata — payment id, order id, signature, gateway status, amount, timestamp, method type | Received from **Razorpay** or **PhonePe** via webhook/callback, or from UPI flow status recorded by the Society. We store **non-sensitive transaction metadata only** — not card numbers, CVV, or UPI PIN. |
 | RWA bank-account details — bank name, account number, IFSC, holder name, account type | Set by the Admin so that residents can see where to remit dues. **This is the Society's own bank information, not the user's.** |
 
-We **never store** your debit-card, credit-card, UPI VPA, internet-banking password or any other payment-instrument credential. All such data is collected and held by Razorpay on Razorpay's payment pages.
+We **never store** your debit-card, credit-card, UPI PIN, internet-banking password or any other payment-instrument credential. Such data is collected and handled **only by the payment gateway** (Razorpay, PhonePe, or your bank/UPI app) on their PCI-DSS-compliant interfaces.
 
 ### 4.7 Device & technical data
 
@@ -152,7 +156,7 @@ For accountability, we record administrative actions in `AdminAuditLog` — the 
 The following items qualify as **Sensitive Personal Data or Information** under the IT (RSP) Rules, 2011:
 
 * Your password (stored only as a one-way bcrypt hash; never in plaintext);
-* Financial information (payment-instrument metadata received via Razorpay; we do not hold raw card / UPI credentials);
+* Financial information (gateway transaction metadata — order id, payment id, status, amount; we do **not** hold raw card / UPI PIN / CVV credentials);
 * Biometric matching on your device (Face ID / fingerprint) is performed entirely **on-device** by `local_auth`. **We do not collect, transmit, or store any biometric template, image, or signature.**
 
 ---
@@ -167,7 +171,7 @@ We process Personal Data for the following purposes. Where the DPDP Act requires
 | 2 | Authenticating you (password, biometric prompt) | §4.1, §4.8 | Performance of contract; security |
 | 3 | Recording and verifying visitors, deliveries, and vehicles at the gate | §4.3 | Legitimate use under §7(a) (where the data principal voluntarily provides data) and consent of visitors via gate-side signage / verbal notice given by the Guard |
 | 4 | Pre-approval and OTP verification of guests invited by Residents | §4.3 | Consent of the Resident; the visitor is informed at the gate before the OTP is consumed |
-| 5 | Issuing maintenance bills, recording payments, and reconciling with Razorpay | §4.6 | Performance of contract between Resident and Society; compliance with applicable financial-record laws |
+| 5 | Issuing maintenance bills, recording payments, and reconciling with payment gateways (Razorpay, PhonePe, UPI) | §4.6 | Performance of contract between Resident and Society; compliance with applicable financial-record laws |
 | 6 | Sending operational notifications (visitor at the gate, new notice, payment receipt, SOS, complaint update, billing reminder) | §4.7 | Consent (push permission obtained at first launch on Android 13+ and on iOS) |
 | 7 | Investigating incidents, complaints and security events | §4.4, §4.5, §4.9 | Legitimate use under §7(d) — interest of public order / safety where applicable, otherwise consent |
 | 8 | Maintaining audit and security logs | §4.7, §4.9 | Legitimate use under §7(g) — compliance with law; security of processing |
@@ -199,7 +203,8 @@ Different Societies on the Platform are kept **logically isolated** — every da
 | **Cloudinary (Cloudinary Ltd.)** | Media storage for profile photos | Profile-photo bytes, public id, secure URL | Cloudinary's global CDN with the regions enabled on the account |
 | **Google — Firebase Cloud Messaging (Google LLC / Google India Pvt. Ltd.)** | Push-notification delivery on Android and iOS | FCM token, notification payload (title, body, structured data) | Google's global infrastructure |
 | **Google — Firebase Analytics** | Aggregated event analytics (when enabled) | Pseudonymous app-installation id, in-app event names, OS / device-class info | Google's global infrastructure |
-| **Razorpay (Razorpay Software Pvt. Ltd.)** | Payment processing for maintenance dues | Payment-instrument data (collected directly by Razorpay), payment id, order id, signature, amount, currency, Society / Villa reference | India |
+| **Razorpay (Razorpay Software Pvt. Ltd.)** | Online payment processing for maintenance dues (cards, UPI, net-banking via Razorpay checkout) | Payment-instrument data (collected directly by Razorpay), payment id, order id, signature, amount, currency, Society / Villa reference | India |
+| **PhonePe (PhonePe Pvt. Ltd.)** | Online payment processing for maintenance dues (UPI, cards via PhonePe checkout) | Payment-instrument data (collected directly by PhonePe), transaction id, status, amount, Society / Villa reference | India |
 | **Apple Inc.** | Distribution of the iOS app and APNs delivery for push | Information you share with iOS as part of the app lifecycle | Apple infrastructure |
 | **Google LLC** | Distribution of the Android app via Google Play and FCM delivery for push | Information you share with Google as part of the app lifecycle | Google infrastructure |
 
@@ -320,7 +325,7 @@ We follow the requirements of Rule 8 of the IT (RSP) Rules, 2011 and §8(5) of t
 * **Session tokens** — short-lived JWTs verified on every API call; tenant clients additionally send `X-Society-Id`, which is cross-checked against the JWT's `societyId` at the auth-middleware layer.
 * **Role-based access control** — `SUPER_ADMIN`, `ADMIN`, `RESIDENT` and `GUARD` are enforced server-side; `SUPER_ADMIN` cannot reach tenant routes.
 * **Tenancy isolation** — every tenant query is filtered by `societyId`; archived Societies (`archivedAt != null`) block every tenant role at the auth layer.
-* **Webhook authenticity** — the Razorpay billing webhook verifies the `X-Razorpay-Signature` HMAC against `RAZORPAY_WEBHOOK_SECRET` before doing any work.
+* **Webhook authenticity** — billing webhooks from **Razorpay** and **PhonePe** verify cryptographic signatures (`X-Razorpay-Signature` HMAC against `RAZORPAY_WEBHOOK_SECRET`; PhonePe callback signature per their spec) before any ledger work runs.
 * **Distributed-lock-protected cron jobs** — billing-cycle reconciliation uses a Postgres advisory lock so duplicate replicas cannot double-charge.
 * **Defence in depth** — Multer file-size limits on uploads, Zod validation on every request body, and Prisma parameterised queries to prevent injection.
 * **Vulnerability management** — CI runs dependency typechecks, lint, tests, and a `verify:migrations-safe` step that blocks `DROP TABLE` / `TRUNCATE` migrations without explicit allow-listing.
@@ -357,6 +362,18 @@ Under the DPDP Act you have the following rights, which you can exercise free of
 You also have rights under the IT Act and rules, including the right to access your information collected as "SPDI" (Rule 5(6) of the RSP Rules) and to opt out of providing certain SPDI for non-mandatory purposes.
 
 If you are located in the EEA / UK at the time you use the Service, we will additionally honour your applicable GDPR / UK-GDPR rights of access, rectification, erasure, restriction, portability and objection on a best-effort basis even though the Service is not targeted at the EEA / UK.
+
+### 14.1 Your duties as a Data Principal (DPDP Act §15)
+
+The DPDP Act also places certain duties on you when you use the Service. You agree to:
+
+* comply with applicable law while exercising your rights under this Policy;
+* **not impersonate** another person when providing your Personal Data;
+* **not suppress** any material information when providing Personal Data for any document, unique identifier, proof of identity or address issued by the State;
+* **not register a false or frivolous** grievance or complaint; and
+* furnish only **information that is verifiably authentic** when exercising your right to correction or erasure.
+
+Filing a false or frivolous grievance may attract the penalty prescribed under the DPDP Act.
 
 ---
 
@@ -409,7 +426,7 @@ We disclose the following on the Google Play Data safety form, which you can rev
 | App activity | In-app actions; search history (not collected); installed apps (not collected) | App actions only | Sub-processors only | Analytics, app functionality | Optional |
 | App info and performance | Crash logs, diagnostics | Yes | Sub-processors only | App functionality | No |
 | Device or other IDs | FCM token, internal device id | Yes | Sub-processors only | Push delivery | No |
-| Financial info | Payment-instrument metadata routed via Razorpay | Yes | Razorpay | Maintenance billing | Optional (you may pay offline) |
+| Financial info | Gateway transaction metadata (Razorpay / PhonePe order or payment reference, amount, status) | Yes | Razorpay, PhonePe | Maintenance billing | Optional (you may pay offline) |
 
 Data is **encrypted in transit** and we provide an in-app and email channel for **data deletion**. We commit to the Play Families Policy and the Developer Program Policies.
 
@@ -419,7 +436,7 @@ Data is **encrypted in transit** and we provide an in-app and email channel for 
 
 The corresponding Apple "App Privacy" disclosures show:
 
-* **Data Linked to You:** Contact Info (name, email, phone), Identifiers (FCM token, internal device id), User Content (photos, complaints), Financial Info (Razorpay-routed payment metadata).
+* **Data Linked to You:** Contact Info (name, email, phone), Identifiers (FCM token, internal device id), User Content (photos, complaints), Financial Info (gateway transaction metadata from Razorpay or PhonePe — not raw card / UPI PIN / CVV).
 * **Data Not Linked to You:** Diagnostics, App-functionality usage counts.
 * **Data Used to Track You:** **None.**
 
@@ -441,7 +458,7 @@ Continuing to use the Service after a change becomes effective constitutes accep
 
 | | |
 |---|---|
-| Service | **GatePass+** — housing-society operations platform |
+| Service | **GatePass+** — housing-society operations platform  and other subscribing Resident Welfare Associations / housing societies |
 | Application packages | Android `com.app.gatepass` · iOS `com.app.gatepass` |
 | Privacy / grievance email | **divine.drwa@gmail.com** |
 | Hours of response | Monday – Saturday, 10:00 – 18:00 IST (excluding public holidays) |

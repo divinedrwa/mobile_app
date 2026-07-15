@@ -7,13 +7,14 @@ import '../../core/constants/app_constants.dart';
 import '../../features/auth/presentation/pages/branded_splash_screen.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/society_selection_screen.dart';
+import '../../features/legal/presentation/pages/legal_consent_gate_screen.dart';
 import '../../core/utils/storage_service.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/resident/presentation/pages/resident_shell.dart';
 import '../../features/resident/presentation/pages/pre_approve_visitor_screen.dart';
 import '../../features/resident/presentation/pages/sos_screen.dart';
 import '../../features/resident/presentation/pages/active_sos_screen.dart';
-import '../../features/resident/presentation/pages/maintenance_payment_screen.dart';
+import '../../features/resident/presentation/pages/maintenance/dashboard/maintenance_payment_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/cycle_detail_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/maintenance_history_screen.dart';
 import '../../features/resident/presentation/pages/maintenance/maintenance_hub_screen.dart';
@@ -43,7 +44,7 @@ import '../../features/admin/presentation/pages/admin_notices_screen.dart';
 import '../../features/admin/presentation/pages/admin_parcels_screen.dart';
 import '../../features/admin/presentation/pages/admin_reminders_screen.dart';
 import '../../features/admin/presentation/pages/admin_role_management_screen.dart';
-import '../../features/admin/presentation/pages/admin_maintenance_hub_screen.dart';
+import '../../features/admin/presentation/pages/admin_maintenance_hub/admin_maintenance_hub_screen.dart';
 import '../../features/admin/presentation/pages/admin_gate_utilities_screen.dart';
 import '../../features/admin/presentation/pages/admin_sos_screen.dart';
 import '../../features/admin/presentation/pages/admin_guard_shifts_screen.dart';
@@ -88,6 +89,11 @@ import '../../features/guard/presentation/router/guard_routes.dart';
 
 /// App-wide router configuration with role-based navigation
 class AppRouter {
+  /// Home route for a role once past the login/legal gates.
+  static String _homeForRole(UserRole role) {
+    return role == UserRole.guard ? '/guard/dashboard' : '/resident';
+  }
+
   static GoRouter router(WidgetRef ref, {required ChangeNotifier refreshListenable}) {
     return GoRouter(
       navigatorKey: appRootNavigatorKey,
@@ -132,6 +138,18 @@ class AppRouter {
                 () => ref.read(authProvider.notifier).logout(),
               );
               return null;
+            }
+
+            // L2 — legal re-acceptance gate. Block the whole app behind
+            // /legal-consent until the user accepts the current Terms/Privacy.
+            final requiresLegal =
+                ref.read(authProvider).requiresLegalAcceptance;
+            final isLegalConsent = loc == '/legal-consent';
+            if (requiresLegal && !isLegalConsent) {
+              return '/legal-consent';
+            }
+            if (!requiresLegal && isLegalConsent) {
+              return _homeForRole(role);
             }
 
             if (role == UserRole.resident && (isGuardRoute || isAdminRoute)) {
@@ -194,6 +212,12 @@ class AppRouter {
         GoRoute(
           path: '/society-select',
           builder: (context, state) => const SocietySelectionScreen(),
+        ),
+
+        // L2 — mandatory legal re-acceptance gate.
+        GoRoute(
+          path: '/legal-consent',
+          builder: (context, state) => const LegalConsentGateScreen(),
         ),
 
         // Resident App Routes

@@ -10,7 +10,7 @@ import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
-import 'gateway_payment_poll_actions.dart';
+import '../../../data/services/payment_orchestrator.dart';
 
 class PhonePePaymentScreen extends ConsumerStatefulWidget {
   const PhonePePaymentScreen({
@@ -120,7 +120,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
           ? 'All outstanding'
           : '${_monthName(widget.month)} ${widget.year}';
       unawaited(
-        GatewayPaymentPollActions.persistPendingGatewayPayment(
+        PaymentOrchestrator.persistPending(
           transactionId: txnId,
           gateway: 'phonepe',
           amount: _serverAmount,
@@ -132,7 +132,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       // Server says this order was already completed at PhonePe.
       if (autoSettled) {
-        unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+        unawaited(PaymentOrchestrator.clearPending());
         invalidateMaintenancePaymentProviders(ref);
         setState(() {
           _loading = false;
@@ -225,7 +225,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
 
       if (!mounted || gen != _pollGeneration) return;
 
-      final handled = GatewayPaymentPollActions.handlePollResult(
+      final handled = PaymentOrchestrator.handlePollResult(
         poll: poll,
         onSuccess: () {
           _pollTimer?.cancel();
@@ -239,7 +239,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         onFailed: (message) {
           _pollTimer?.cancel();
           if (poll.isFailed) {
-            unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+            unawaited(PaymentOrchestrator.clearPending());
           }
           invalidateMaintenancePaymentProviders(ref);
           setState(() {
@@ -274,7 +274,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
       final period = widget.payAllPending
           ? 'All outstanding'
           : '${_monthName(widget.month)} ${widget.year}';
-      GatewayPaymentPollActions.navigateToPaymentPending(
+      PaymentOrchestrator.navigateToPending(
         context,
         transactionId: _merchantTxnId ?? '',
         paymentMethod: 'PhonePe',
@@ -299,7 +299,7 @@ class _PhonePePaymentScreenState extends ConsumerState<PhonePePaymentScreen> {
         ? 'All outstanding'
         : '${_monthName(widget.month)} ${widget.year}';
 
-    GatewayPaymentPollActions.navigateToPaymentSuccess(
+    PaymentOrchestrator.navigateToSuccess(
       context,
       maintenanceAmount: amount,
       totalPaid: amount,

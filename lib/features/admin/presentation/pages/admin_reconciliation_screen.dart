@@ -203,8 +203,13 @@ class _AdminReconciliationScreenState
             ? cycle['title'].toString()
             : 'Billing cycle';
     final diff = money(alert['difference']);
+    // A6 — when advance credit settled the villa side without fresh cash, show it as an
+    // explicit credit line rather than an unexplained gap (field absent on older API → 0).
+    final credit = money(alert['creditApplied']);
+    final creditNote =
+        credit > 0 ? ' · credit ${inr.format(credit)} applied' : '';
     final message =
-        '$cycleTitle · Villas ${inr.format(money(alert['villaSum']))} vs cash ${inr.format(money(alert['societyCash']))} · diff ${diff >= 0 ? '+' : ''}${inr.format(diff)}';
+        '$cycleTitle · Villas ${inr.format(money(alert['villaSum']))} vs cash ${inr.format(money(alert['societyCash']))}$creditNote · diff ${diff >= 0 ? '+' : ''}${inr.format(diff)}';
 
     final sevColor = _severityColor(severity);
 

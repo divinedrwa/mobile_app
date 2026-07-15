@@ -8,7 +8,7 @@ import '../../../../../core/network/dio_exception_mapper.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
-import 'gateway_payment_poll_actions.dart';
+import '../../../data/services/payment_orchestrator.dart';
 
 /// Shown when the gateway reports payment but the server has not confirmed
 /// within the in-app poll window (webhook / status API still pending).
@@ -59,7 +59,7 @@ class _PaymentPendingVerificationScreenState
 
   Future<void> _persistFromRoute() async {
     if (widget.transactionId.isEmpty) return;
-    await GatewayPaymentPollActions.persistPendingGatewayPayment(
+    await PaymentOrchestrator.persistPending(
       transactionId: widget.transactionId,
       gateway: widget.gateway,
       amount: widget.amount,
@@ -87,12 +87,12 @@ class _PaymentPendingVerificationScreenState
 
       if (!mounted) return;
 
-      final handled = GatewayPaymentPollActions.handlePollResult(
+      final handled = PaymentOrchestrator.handlePollResult(
         poll: poll,
         onSuccess: () {
-          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+          unawaited(PaymentOrchestrator.clearPending());
           invalidateMaintenancePaymentProviders(ref);
-          GatewayPaymentPollActions.navigateToPaymentSuccess(
+          PaymentOrchestrator.navigateToSuccess(
             context,
             maintenanceAmount: widget.amount,
             totalPaid: widget.totalPaid > 0 ? widget.totalPaid : widget.amount,
@@ -105,7 +105,7 @@ class _PaymentPendingVerificationScreenState
           );
         },
         onFailed: (message) {
-          unawaited(GatewayPaymentPollActions.clearPersistedGatewayPayment());
+          unawaited(PaymentOrchestrator.clearPending());
           setState(() => _error = message);
         },
         onGatewayUnavailable: (message) {
