@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../models/expense_billing_cycle_group.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 
@@ -50,6 +51,40 @@ class ExpenseRepository {
         total: data['total'] as int? ?? expenses.length,
         hasMore: data['hasMore'] as bool? ?? false,
       );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load expenses');
+    }
+  }
+
+  Future<List<ExpenseBillingCycleGroup>> getExpensesGroupedByBillingCycle({
+    String? categoryId,
+    int? month,
+    int? year,
+    String? search,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (categoryId != null && categoryId.isNotEmpty) {
+        params['categoryId'] = categoryId;
+      }
+      if (month != null) params['month'] = month;
+      if (year != null) params['year'] = year;
+      if (search != null && search.trim().isNotEmpty) {
+        params['search'] = search.trim();
+      }
+
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.societyExpensesGroupedByBillingCycle,
+        queryParameters: params,
+      );
+      final data = res.data;
+      if (data == null) return [];
+
+      final raw = data['groups'] as List<dynamic>? ?? [];
+      return raw
+          .map((e) => ExpenseBillingCycleGroup.fromJson(
+              Map<String, dynamic>.from(e as Map)))
+          .toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load expenses');
     }

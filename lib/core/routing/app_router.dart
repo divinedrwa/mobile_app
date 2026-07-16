@@ -417,9 +417,12 @@ class AppRouter {
                     state.uri.queryParameters['month'] ?? '');
                 final year = int.tryParse(
                     state.uri.queryParameters['year'] ?? '');
+                final highlight =
+                    state.uri.queryParameters['highlight'] == '1';
                 return SocietyExpensesScreen(
                   initialMonth: month,
                   initialYear: year,
+                  highlightInitialCycle: highlight,
                 );
               },
               routes: [

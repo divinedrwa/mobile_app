@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/utils/provider_cache.dart';
+import '../models/expense_billing_cycle_group.dart';
 import '../models/expense_category_model.dart';
 import '../models/expense_model.dart';
 import '../repositories/expense_repository.dart';
@@ -45,6 +46,22 @@ class ExpenseFilter {
 final expenseFilterProvider = StateProvider<ExpenseFilter>(
   (ref) => const ExpenseFilter(),
 );
+
+/// Grouped by billing cycle (includes draft/upcoming cycles on this screen).
+final societyExpensesGroupedProvider = FutureProvider.autoDispose
+    .family<List<ExpenseBillingCycleGroup>, (int?, int?)>((ref, routeKey) async {
+  cacheFor(ref, const Duration(minutes: 2));
+  final (routeMonth, routeYear) = routeKey;
+  final filter = ref.watch(expenseFilterProvider);
+  final month = routeMonth ?? filter.month;
+  final year = routeYear ?? filter.year;
+  return ref.watch(expenseRepositoryProvider).getExpensesGroupedByBillingCycle(
+        categoryId: filter.categoryId,
+        month: month,
+        year: year,
+        search: filter.search,
+      );
+});
 
 /// Fetches expenses for a route period (`?month=&year=`). Route params take
 /// precedence over [expenseFilterProvider] month/year so billing-cycle changes

@@ -7,6 +7,7 @@ import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/widgets/empty_state_widget.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/resident_dashboard_model.dart';
+import 'home_early_cycle_expenses_teaser.dart';
 import 'home_shared.dart';
 
 class HomeSocietyFinances extends StatelessWidget {
@@ -380,6 +381,10 @@ class HomeSocietyFinances extends StatelessWidget {
             currentBalance: inr.format(fund.currentBalance),
             projected: inr.format(projected),
           ),
+          if (d.fund.earlyCycleExpenses != null) ...[
+            const SizedBox(height: 12),
+            HomeEarlyCycleExpensesTeaser(preview: d.fund.earlyCycleExpenses!),
+          ],
         ],
       ),
     );

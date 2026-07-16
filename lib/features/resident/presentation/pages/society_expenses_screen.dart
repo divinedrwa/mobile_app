@@ -11,14 +11,22 @@ import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../theme/context_extensions.dart';
 import '../widgets/list_skeleton.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../data/models/expense_billing_cycle_group.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/providers/expense_provider.dart';
+import '../../data/providers/dashboard_provider.dart';
 
 class SocietyExpensesScreen extends ConsumerStatefulWidget {
-  const SocietyExpensesScreen({super.key, this.initialMonth, this.initialYear});
+  const SocietyExpensesScreen({
+    super.key,
+    this.initialMonth,
+    this.initialYear,
+    this.highlightInitialCycle = false,
+  });
 
   final int? initialMonth;
   final int? initialYear;
+  final bool highlightInitialCycle;
 
   @override
   ConsumerState<SocietyExpensesScreen> createState() =>
@@ -28,14 +36,42 @@ class SocietyExpensesScreen extends ConsumerStatefulWidget {
 class _SocietyExpensesScreenState
     extends ConsumerState<SocietyExpensesScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _highlightSectionKey = GlobalKey();
   Timer? _debounce;
   bool _showSearch = false;
+  bool _didScrollToHighlight = false;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  bool _groupMatchesHighlight(ExpenseBillingCycleGroup group) {
+    if (widget.initialMonth == null || widget.initialYear == null) return false;
+    return group.month == widget.initialMonth && group.year == widget.initialYear;
+  }
+
+  void _maybeScrollToHighlightedGroup(List<ExpenseBillingCycleGroup> groups) {
+    if (!widget.highlightInitialCycle || _didScrollToHighlight) return;
+    if (widget.initialMonth == null || widget.initialYear == null) return;
+    if (!groups.any(_groupMatchesHighlight)) return;
+
+    _didScrollToHighlight = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _highlightSectionKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      }
+    });
   }
 
   void _onSearchChanged(String value) {
@@ -64,15 +100,16 @@ class _SocietyExpensesScreenState
   Future<void> _refresh() async {
     ref.invalidate(expenseCategoriesProvider);
     ref.invalidate(
-      societyExpensesListProvider((widget.initialMonth, widget.initialYear)),
+      societyExpensesGroupedProvider((widget.initialMonth, widget.initialYear)),
     );
+    ref.invalidate(residentDashboardProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final routeKey = (widget.initialMonth, widget.initialYear);
     final categoriesAsync = ref.watch(expenseCategoriesProvider);
-    final expensesAsync = ref.watch(societyExpensesListProvider(routeKey));
+    final groupsAsync = ref.watch(societyExpensesGroupedProvider(routeKey));
     final filter = ref.watch(expenseFilterProvider);
     final inr = NumberFormat.currency(
       locale: 'en_IN',
@@ -164,6 +201,7 @@ class _SocietyExpensesScreenState
         color: DesignColors.primary,
         onRefresh: _refresh,
         child: ListView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             context.spacing.s16,
@@ -246,8 +284,8 @@ class _SocietyExpensesScreenState
             ),
             const SizedBox(height: 12),
 
-            // Expenses list
-            expensesAsync.when(
+            // Expenses grouped by billing cycle
+            groupsAsync.when(
               // ListSkeleton builds its own (non-scrolling) ListView. Nested
               // directly inside this outer ListView it gets an unbounded height
               // constraint and throws a layout error — the screen renders black
@@ -266,8 +304,8 @@ class _SocietyExpensesScreenState
                 actionLabel: 'Retry',
                 onAction: _refresh,
               ),
-              data: (expenses) {
-                if (expenses.isEmpty) {
+              data: (groups) {
+                if (groups.isEmpty) {
                   return SizedBox(
                     height: MediaQuery.sizeOf(context).height * 0.55,
                     child: EmptyStateWidget(
@@ -276,29 +314,203 @@ class _SocietyExpensesScreenState
                           ? 'No expenses for ${DateFormat('MMM yyyy').format(DateTime(displayYear, displayMonth))}'
                           : 'No expenses found',
                       subtitle: hasMonthFilter
-                          ? 'There are no approved expenses recorded for this month.'
+                          ? 'There are no approved expenses recorded for this billing cycle.'
                           : 'There are no approved expenses matching your filters.',
                     ),
                   );
                 }
+                _maybeScrollToHighlightedGroup(groups);
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final expense in expenses) ...[
-                      _ExpenseCard(
-                        expense: expense,
+                    for (final group in groups) ...[
+                      _BillingCycleGroupSection(
+                        key: widget.highlightInitialCycle &&
+                                _groupMatchesHighlight(group)
+                            ? _highlightSectionKey
+                            : null,
+                        group: group,
                         inr: inr,
                         dateFmt: dateFmt,
-                        onTap: () => context.push(
-                          '/resident/expenses/${expense.id}',
-                        ),
+                        highlighted: widget.highlightInitialCycle &&
+                            _groupMatchesHighlight(group),
+                        onExpenseTap: (id) =>
+                            context.push('/resident/expenses/$id'),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                     ],
                   ],
                 );
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BillingCycleGroupSection extends StatelessWidget {
+  const _BillingCycleGroupSection({
+    super.key,
+    required this.group,
+    required this.inr,
+    required this.dateFmt,
+    required this.highlighted,
+    required this.onExpenseTap,
+  });
+
+  final ExpenseBillingCycleGroup group;
+  final NumberFormat inr;
+  final DateFormat dateFmt;
+  final bool highlighted;
+  final void Function(String id) onExpenseTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _BillingCycleGroupHeader(
+          group: group,
+          inr: inr,
+          highlighted: highlighted,
+        ),
+        const SizedBox(height: 8),
+        for (final expense in group.expenses) ...[
+          _ExpenseCard(
+            expense: expense,
+            inr: inr,
+            dateFmt: dateFmt,
+            onTap: () => onExpenseTap(expense.id),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _BillingCycleGroupHeader extends StatelessWidget {
+  const _BillingCycleGroupHeader({
+    required this.group,
+    required this.inr,
+    this.highlighted = false,
+  });
+
+  final ExpenseBillingCycleGroup group;
+  final NumberFormat inr;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = _phaseBadge(context, group.phase);
+    final subtitleParts = <String>[
+      inr.format(group.totalAmount),
+      '${group.expenseCount} ${group.expenseCount == 1 ? 'item' : 'items'}',
+    ];
+    final accent = switch (group.phase) {
+      ExpenseCyclePhase.draft || ExpenseCyclePhase.upcoming => DesignColors.info,
+      ExpenseCyclePhase.open => DesignColors.success,
+      _ => DesignColors.primary,
+    };
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? accent.withValues(alpha: 0.06)
+            : context.surface.defaultSurface,
+        borderRadius: DesignRadius.borderLG,
+        border: Border.all(
+          color: highlighted ? accent.withValues(alpha: 0.45) : context.surface.border,
+          width: highlighted ? 1.4 : 1,
+        ),
+        boxShadow: highlighted
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        group.title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: context.text.primary,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 8),
+                      badge,
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitleParts.join('  •  '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: context.text.secondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget? _phaseBadge(BuildContext context, ExpenseCyclePhase phase) {
+    if (phase == ExpenseCyclePhase.closed ||
+        phase == ExpenseCyclePhase.noCycle) {
+      return null;
+    }
+
+    final (bg, fg) = switch (phase) {
+      ExpenseCyclePhase.draft || ExpenseCyclePhase.upcoming => (
+          DesignColors.info.withValues(alpha: 0.14),
+          DesignColors.info,
+        ),
+      ExpenseCyclePhase.open => (
+          DesignColors.success.withValues(alpha: 0.14),
+          DesignColors.success,
+        ),
+      _ => (Colors.transparent, context.text.secondary),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        phase.residentLabel,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
         ),
       ),
     );

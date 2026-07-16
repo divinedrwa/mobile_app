@@ -1,3 +1,5 @@
+import 'early_cycle_expenses_preview.dart';
+
 /// Response from `GET /residents/dashboard`.
 class ResidentDashboardStats {
   const ResidentDashboardStats({
@@ -75,6 +77,7 @@ class ResidentFundSnapshot {
     required this.pendingDues,
     required this.projectedBalance,
     required this.collectionRate,
+    this.earlyCycleExpenses,
   });
 
   final double currentBalance;
@@ -99,6 +102,9 @@ class ResidentFundSnapshot {
   /// Collection percentage (0–100).
   final double collectionRate;
 
+  /// Draft/upcoming billing cycle with approved expenses (home teaser).
+  final EarlyCycleExpensesPreview? earlyCycleExpenses;
+
   /// Spendable society fund = total balance minus advance credit earmarked for
   /// future billing cycles.
   double get societyFund => currentBalance - totalAdvanceCredit;
@@ -121,6 +127,7 @@ class ResidentFundSnapshot {
         pendingDues: 0,
         projectedBalance: 0,
         collectionRate: 0,
+        earlyCycleExpenses: null,
       );
     }
     double d(dynamic v) {
@@ -150,6 +157,9 @@ class ResidentFundSnapshot {
       pendingDues: d(json['pendingDues']),
       projectedBalance: d(json['projectedBalance']),
       collectionRate: d(json['collectionRate']),
+      earlyCycleExpenses: EarlyCycleExpensesPreview.tryFromJson(
+        json['earlyCycleExpenses'],
+      ),
     );
   }
 }

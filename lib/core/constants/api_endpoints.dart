@@ -183,6 +183,8 @@ class ApiEndpoints {
 
   // Resident - Society Expenses (read-only)
   static const String societyExpenses = '/residents/society-expenses';
+  static const String societyExpensesGroupedByBillingCycle =
+      '/residents/society-expenses/grouped-by-billing-cycle';
   static const String societyExpenseCategories = '/residents/society-expenses/categories';
   static String societyExpenseById(String id) => '/residents/society-expenses/$id';
 

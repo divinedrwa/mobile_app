@@ -346,59 +346,189 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   final amountWords = amountInWordsIndian(billedTotal);
   final generatedStamp = DateFormat('d MMM yyyy, HH:mm').format(generatedAt.toLocal());
 
+  final layout = _InvoiceLayout.forContent(
+    rowCount: rows.length,
+    showPay: showPay,
+    hasLongAddress: (societyAddress ?? '').trim().length > 48,
+  );
+  const marginTop = 150.0;
+  const marginBottom = 72.0;
+  final contentHeight = PdfPageFormat.letter.height - marginTop - marginBottom;
+  final contentWidth = PdfPageFormat.letter.width - 76;
+
+  final content = pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    mainAxisSize: pw.MainAxisSize.min,
+    children: [
+      _titleBar(documentTitle, isPaid, isPartial, layout),
+      pw.SizedBox(height: layout.titleGap),
+      _partiesBlock(
+        name: residentName,
+        unit: villaLabel,
+        society: societyName,
+        societyAddress: societyAddress,
+        invoiceNo: invoiceNo,
+        billingPeriod: billingPeriod,
+        financialYear: fyLabel,
+        dFmt: dFmt,
+        paidAt: paidAt,
+        generatedAt: generatedAt,
+        dueDate: periodEnd,
+        isPaid: isPaid,
+        paymentMode: isPaid ? paymentMode : null,
+        transactionId: isPaid ? transactionId : null,
+        layout: layout,
+      ),
+      pw.SizedBox(height: layout.sectionGap),
+      _breakupTable(rows, billedTotal, money, amountWords, layout),
+      pw.SizedBox(height: layout.sectionGap),
+      _totalsAndPay(
+        billedTotal,
+        previousBalance,
+        paymentsReceived,
+        adjustments,
+        isPaid ? amountPaidTotal : amountDue,
+        isPaid,
+        money,
+        upi,
+        upiUri,
+        qrImage,
+        showPay,
+        layout,
+      ),
+      pw.SizedBox(height: layout.signOffGap),
+      _signOff(
+        societyName: societyName,
+        signatureImage: signatureImage,
+        stampImage: stampImage,
+        financialYear: fyLabel,
+        generatedStamp: generatedStamp,
+        invoiceNo: invoiceNo,
+        layout: layout,
+      ),
+    ],
+  );
+
   final doc = pw.Document();
+  // Single page + scale-down keeps the invoice on one sheet even when the
+  // breakup table grows. MultiPage was spilling the footer to a second page
+  // that showed only the letterhead background (looked blank).
   doc.addPage(
-    pw.MultiPage(
+    pw.Page(
       pageTheme: pageTheme,
-      build: (ctx) => [
-        _titleBar(documentTitle, isPaid, isPartial),
-        pw.SizedBox(height: 12),
-        _partiesBlock(
-          name: residentName,
-          unit: villaLabel,
-          society: societyName,
-          societyAddress: societyAddress,
-          invoiceNo: invoiceNo,
-          billingPeriod: billingPeriod,
-          financialYear: fyLabel,
-          dFmt: dFmt,
-          paidAt: paidAt,
-          generatedAt: generatedAt,
-          dueDate: periodEnd,
-          isPaid: isPaid,
-          paymentMode: isPaid ? paymentMode : null,
-          transactionId: isPaid ? transactionId : null,
+      build: (ctx) => pw.SizedBox(
+        height: contentHeight,
+        child: pw.FittedBox(
+          fit: pw.BoxFit.scaleDown,
+          alignment: pw.Alignment.topCenter,
+          child: pw.ConstrainedBox(
+            constraints: pw.BoxConstraints(maxWidth: contentWidth),
+            child: content,
+          ),
         ),
-        pw.SizedBox(height: 16),
-        _breakupTable(rows, billedTotal, money, amountWords),
-        pw.SizedBox(height: 16),
-        _totalsAndPay(
-          billedTotal,
-          previousBalance,
-          paymentsReceived,
-          adjustments,
-          isPaid ? amountPaidTotal : amountDue,
-          isPaid,
-          money,
-          upi,
-          upiUri,
-          qrImage,
-          showPay,
-        ),
-        pw.SizedBox(height: 20),
-        _signOff(
-          societyName: societyName,
-          signatureImage: signatureImage,
-          stampImage: stampImage,
-          financialYear: fyLabel,
-          generatedStamp: generatedStamp,
-          invoiceNo: invoiceNo,
-        ),
-      ],
+      ),
     ),
   );
 
   return doc.save();
+}
+
+/// Spacing and type sizes tuned from estimated content height so most invoices
+/// stay readable without scaling; [forContent] picks a denser preset when the
+/// breakup table, QR block, or address would overflow one letter page.
+class _InvoiceLayout {
+  const _InvoiceLayout({
+    required this.titleGap,
+    required this.sectionGap,
+    required this.signOffGap,
+    required this.rowPaddingV,
+    required this.rowFontSize,
+    required this.metaFontSize,
+    required this.qrSize,
+    required this.stampSize,
+    required this.signatureHeight,
+  });
+
+  final double titleGap;
+  final double sectionGap;
+  final double signOffGap;
+  final double rowPaddingV;
+  final double rowFontSize;
+  final double metaFontSize;
+  final double qrSize;
+  final double stampSize;
+  final double signatureHeight;
+
+  factory _InvoiceLayout.standard() => const _InvoiceLayout(
+        titleGap: 12,
+        sectionGap: 16,
+        signOffGap: 20,
+        rowPaddingV: 5,
+        rowFontSize: 9.5,
+        metaFontSize: 9,
+        qrSize: 68,
+        stampSize: 56,
+        signatureHeight: 32,
+      );
+
+  factory _InvoiceLayout.compact() => const _InvoiceLayout(
+        titleGap: 8,
+        sectionGap: 10,
+        signOffGap: 12,
+        rowPaddingV: 3.5,
+        rowFontSize: 9,
+        metaFontSize: 8.5,
+        qrSize: 58,
+        stampSize: 48,
+        signatureHeight: 26,
+      );
+
+  factory _InvoiceLayout.dense() => const _InvoiceLayout(
+        titleGap: 6,
+        sectionGap: 8,
+        signOffGap: 8,
+        rowPaddingV: 2.5,
+        rowFontSize: 8.5,
+        metaFontSize: 8,
+        qrSize: 52,
+        stampSize: 44,
+        signatureHeight: 22,
+      );
+
+  factory _InvoiceLayout.forContent({
+    required int rowCount,
+    required bool showPay,
+    required bool hasLongAddress,
+  }) {
+    switch (invoicePdfDensityForContent(
+      rowCount: rowCount,
+      showPay: showPay,
+      hasLongAddress: hasLongAddress,
+    )) {
+      case InvoicePdfDensity.standard:
+        return _InvoiceLayout.standard();
+      case InvoicePdfDensity.compact:
+        return _InvoiceLayout.compact();
+      case InvoicePdfDensity.dense:
+        return _InvoiceLayout.dense();
+    }
+  }
+}
+
+/// Density preset chosen from breakup row count and optional QR/address blocks.
+enum InvoicePdfDensity { standard, compact, dense }
+
+InvoicePdfDensity invoicePdfDensityForContent({
+  required int rowCount,
+  required bool showPay,
+  required bool hasLongAddress,
+}) {
+  var score = rowCount;
+  if (showPay) score += 3;
+  if (hasLongAddress) score += 2;
+  if (score <= 8) return InvoicePdfDensity.standard;
+  if (score <= 12) return InvoicePdfDensity.compact;
+  return InvoicePdfDensity.dense;
 }
 
 // ============================================================
@@ -435,7 +565,12 @@ pw.Widget _statusPill(bool isPaid, bool isPartial) {
 }
 
 /// Document title + status, with a thin accent rule.
-pw.Widget _titleBar(String documentTitle, bool isPaid, bool isPartial) {
+pw.Widget _titleBar(
+  String documentTitle,
+  bool isPaid,
+  bool isPartial,
+  _InvoiceLayout layout,
+) {
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     children: [
@@ -475,7 +610,9 @@ pw.Widget _partiesBlock({
   required bool isPaid,
   String? paymentMode,
   String? transactionId,
+  required _InvoiceLayout layout,
 }) {
+  final metaSize = layout.metaFontSize;
   pw.Widget kv(String k, String v) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 2),
         child: pw.Row(
@@ -483,11 +620,13 @@ pw.Widget _partiesBlock({
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(k,
-                style: const pw.TextStyle(fontSize: 9, color: _muted)),
+                style: pw.TextStyle(fontSize: metaSize - 0.5, color: _muted)),
             pw.SizedBox(width: 10),
             pw.Text(v,
                 style: pw.TextStyle(
-                    fontSize: 9, color: _ink, fontWeight: pw.FontWeight.bold)),
+                    fontSize: metaSize,
+                    color: _ink,
+                    fontWeight: pw.FontWeight.bold)),
           ],
         ),
       );
@@ -555,23 +694,25 @@ pw.Widget _breakupTable(
   double total,
   NumberFormat money,
   String amountWords,
+  _InvoiceLayout layout,
 ) {
   String amt(double v) => money.format(v).replaceAll('₹', '').trim();
+  final rowSize = layout.rowFontSize;
 
   pw.Widget line(String particulars, String amount,
-          {bool bold = false, PdfColor color = _ink, double size = 9.5}) =>
+          {bool bold = false, PdfColor color = _ink, double? size}) =>
       pw.Row(children: [
         pw.Expanded(
           child: pw.Text(particulars,
               style: pw.TextStyle(
-                  fontSize: size,
+                  fontSize: size ?? rowSize,
                   color: color,
                   fontWeight:
                       bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
         ),
         pw.Text(amount,
             style: pw.TextStyle(
-                fontSize: size,
+                fontSize: size ?? rowSize,
                 color: color,
                 fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
       ]);
@@ -603,23 +744,23 @@ pw.Widget _breakupTable(
       ),
       for (final r in rows)
         pw.Container(
-          padding: const pw.EdgeInsets.symmetric(vertical: 5),
+          padding: pw.EdgeInsets.symmetric(vertical: layout.rowPaddingV),
           decoration: const pw.BoxDecoration(
             border:
                 pw.Border(bottom: pw.BorderSide(color: _line, width: 0.5)),
           ),
           child: line(r.name, amt(r.amount)),
         ),
-      pw.SizedBox(height: 6),
+      pw.SizedBox(height: layout.rowPaddingV + 1),
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(vertical: 2),
         child: line('Total Amount', money.format(total),
-            bold: true, color: _navy, size: 11),
+            bold: true, color: _navy, size: rowSize + 1.5),
       ),
-      pw.SizedBox(height: 6),
+      pw.SizedBox(height: layout.rowPaddingV),
       pw.Text(
         'Amount in words: $amountWords',
-        style: const pw.TextStyle(fontSize: 8.5, color: _muted),
+        style: pw.TextStyle(fontSize: rowSize - 1, color: _muted),
       ),
     ],
   );
@@ -639,6 +780,7 @@ pw.Widget _totalsAndPay(
   String? upiUri,
   pw.MemoryImage? qrImage,
   bool showPay,
+  _InvoiceLayout layout,
 ) {
   final totals = _totalsBox(
       total, prevBalance, received, adjustments, finalAmount, isPaid, money);
@@ -651,7 +793,7 @@ pw.Widget _totalsAndPay(
   return pw.Row(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
-      pw.Expanded(flex: 6, child: _payBox(upi, upiUri, qrImage)),
+      pw.Expanded(flex: 6, child: _payBox(upi, upiUri, qrImage, layout)),
       pw.SizedBox(width: 18),
       pw.Expanded(flex: 6, child: totals),
     ],
@@ -732,10 +874,16 @@ pw.Widget _totalsBox(double total, double prevBalance, double received,
   );
 }
 
-pw.Widget _payBox(String upi, String? upiUri, pw.MemoryImage? qrImage) {
+pw.Widget _payBox(
+  String upi,
+  String? upiUri,
+  pw.MemoryImage? qrImage,
+  _InvoiceLayout layout,
+) {
   final hasQr = qrImage != null || upiUri != null;
+  final qrSize = layout.qrSize;
   return pw.Container(
-    padding: const pw.EdgeInsets.all(10),
+    padding: pw.EdgeInsets.all(qrSize <= 52 ? 8 : 10),
     decoration: pw.BoxDecoration(
       border: pw.Border.all(color: _line),
       borderRadius: pw.BorderRadius.circular(8),
@@ -745,8 +893,8 @@ pw.Widget _payBox(String upi, String? upiUri, pw.MemoryImage? qrImage) {
       children: [
         if (hasQr) ...[
           pw.SizedBox(
-            width: 68,
-            height: 68,
+            width: qrSize,
+            height: qrSize,
             child: qrImage != null
                 ? pw.Image(qrImage, fit: pw.BoxFit.contain)
                 : pw.BarcodeWidget(
@@ -798,6 +946,7 @@ pw.Widget _signOff({
   required String financialYear,
   required String generatedStamp,
   required String invoiceNo,
+  required _InvoiceLayout layout,
 }) {
   return pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -816,8 +965,8 @@ pw.Widget _signOff({
           pw.SizedBox(width: 16),
           if (stampImage != null) ...[
             pw.SizedBox(
-                width: 56,
-                height: 56,
+                width: layout.stampSize,
+                height: layout.stampSize,
                 child: pw.Image(stampImage, fit: pw.BoxFit.contain)),
             pw.SizedBox(width: 10),
           ],
@@ -828,12 +977,12 @@ pw.Widget _signOff({
               children: [
                 if (signatureImage != null)
                   pw.Container(
-                    height: 32,
+                    height: layout.signatureHeight,
                     alignment: pw.Alignment.center,
                     child: pw.Image(signatureImage, fit: pw.BoxFit.contain),
                   )
                 else
-                  pw.SizedBox(height: 28),
+                  pw.SizedBox(height: layout.signatureHeight - 4),
                 pw.Container(height: 0.7, color: _line),
                 pw.SizedBox(height: 3),
                 pw.Text('Authorised Signatory',
