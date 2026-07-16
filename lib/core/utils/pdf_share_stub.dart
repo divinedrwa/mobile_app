@@ -33,3 +33,5 @@ Future<void> openSavedPdf(String path) async {}
 Future<void> shareSavedPdf(String path,
     {String text = 'Maintenance invoice'}) async {}
 
+Future<void> clearInvoicePdfCache() async {}
+

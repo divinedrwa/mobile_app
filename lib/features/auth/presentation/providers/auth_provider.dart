@@ -6,6 +6,7 @@ import '../../data/auth_repository.dart' show AuthRepository, RefreshResult;
 import '../../../legal/data/legal_repository.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/utils/pdf_share.dart';
 import '../../../../core/utils/storage_service.dart';
 
 /// Auth state
@@ -231,6 +232,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _loggingOut = true;
     try {
       await _authRepository.logout();
+      await clearInvoicePdfCache();
     } catch (_) {
       // Best-effort — proceed even if cleanup partially fails.
     }

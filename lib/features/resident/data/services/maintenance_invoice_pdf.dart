@@ -109,14 +109,32 @@ Future<Uint8List> buildInvoiceForPayment({
   );
 }
 
-/// Stable cache filename for a cycle's invoice. Includes the month/year and a
-/// paid/due tag so the file regenerates automatically when a cycle is paid,
-/// while staying friendly when shared. (Other changes — e.g. accruing dues —
-/// are handled by the "Regenerate" action.)
-String invoiceCacheFilename(MaintenanceDueModel m) {
+/// Stable cache filename for a cycle's invoice for the **current resident**.
+///
+/// Includes [userId] (or [villaId] fallback) so invoices from different logged-in
+/// accounts on the same device do not share one PDF path. Month/year + paid/due
+/// tag still allow auto-refresh when a cycle is settled.
+String invoiceCacheFilename(
+  MaintenanceDueModel m, {
+  String? userId,
+  String? villaId,
+}) {
   final month = DateFormat('MMM_yyyy').format(DateTime(m.year, m.month));
   final tag = m.status.toUpperCase() == 'PAID' ? 'PAID' : 'DUE';
-  return 'Maintenance_Invoice_${month}_$tag.pdf';
+  final residentKey = _invoiceCacheResidentKey(userId: userId, villaId: villaId);
+  return 'Maintenance_Invoice_${month}_${tag}_$residentKey.pdf';
+}
+
+/// Filesystem-safe resident segment for invoice cache keys.
+String _invoiceCacheResidentKey({String? userId, String? villaId}) {
+  final raw = (userId?.trim().isNotEmpty == true
+          ? userId!.trim()
+          : villaId?.trim().isNotEmpty == true
+              ? 'villa_${villaId!.trim()}'
+              : 'unknown')
+      .replaceAll(RegExp(r'[^\w-]'), '_');
+  // Keep filenames short on mobile; full cuid is unique enough.
+  return raw.length > 24 ? raw.substring(0, 24) : raw;
 }
 
 /// Best-effort fetch of a remote image as bytes. Returns null on any failure

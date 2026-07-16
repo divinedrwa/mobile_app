@@ -22,9 +22,15 @@ Future<void> downloadOrViewInvoice({
   required MaintenanceDueModel m,
   required void Function(bool busy) setBusy,
 }) async {
-  final filename = invoiceCacheFilename(m);
+  final user = ref.read(authProvider).user;
+  final filename = invoiceCacheFilename(
+    m,
+    userId: user?.id,
+    villaId: user?.villaId,
+  );
 
   Future<void> generate() async {
+    final currentUser = ref.read(authProvider).user;
     setBusy(true);
     String? savedPath;
     try {
@@ -36,7 +42,7 @@ Future<void> downloadOrViewInvoice({
       }
       final bytes = await buildInvoiceForPayment(
         repo: ref.read(maintenanceRepositoryProvider),
-        user: ref.read(authProvider).user,
+        user: currentUser,
         m: m,
         generatedAt: DateTime.now(),
         upiId: cfg?['upiVpa']?.toString(),

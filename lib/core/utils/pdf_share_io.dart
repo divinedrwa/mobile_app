@@ -48,3 +48,18 @@ Future<void> shareSavedPdf(String path,
     {String text = 'Maintenance invoice'}) async {
   await Share.shareXFiles([XFile(path)], text: text);
 }
+
+/// Remove all cached maintenance invoices (e.g. on logout / account switch).
+Future<void> clearInvoicePdfCache() async {
+  final dir = await _invoiceDir();
+  if (!await dir.exists()) return;
+  await for (final entity in dir.list()) {
+    if (entity is File && entity.path.toLowerCase().endsWith('.pdf')) {
+      try {
+        await entity.delete();
+      } catch (_) {
+        // Best-effort cleanup.
+      }
+    }
+  }
+}
