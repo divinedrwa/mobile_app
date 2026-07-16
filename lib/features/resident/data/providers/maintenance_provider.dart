@@ -6,6 +6,7 @@ import '../models/expense_breakdown_model.dart';
 import '../models/maintenance_due_model.dart';
 import '../../../../shared/utils/resident_capabilities.dart';
 import '../repositories/maintenance_repository.dart';
+import '../utils/billing_cycle_visibility.dart';
 import '../utils/payment_mode.dart';
 import 'dashboard_provider.dart';
 
@@ -194,46 +195,49 @@ final residentExpenseBreakdownProvider =
       final selection = ref.watch(selectedExpenseCycleProvider);
 
       if (selection != null) {
-        // Explicit cycle: show exactly that cycle's data (no month fallback).
-        final dashboard = await ref.watch(financialDashboardProvider((
-          month: selection.month,
-          year: selection.year,
-          billingCycleId: selection.billingCycleId,
-          collectionCycleId: null,
-        )).future);
-        return ExpenseBreakdown.fromDashboard(dashboard, allowFallback: false)
-            .copyWith(billingCycleId: selection.billingCycleId);
+        final body = await ref.watch(
+          billingCyclesForFinancialYearProvider(selection.financialYearId).future,
+        );
+        final visible = parseVisibleBillingCycles(body);
+        final stillVisible = visible.any(
+          (c) => c['id']?.toString() == selection.billingCycleId,
+        );
+        if (stillVisible) {
+          final dashboard = await ref.watch(financialDashboardProvider((
+            month: selection.month,
+            year: selection.year,
+            billingCycleId: selection.billingCycleId,
+            collectionCycleId: null,
+          )).future);
+          return ExpenseBreakdown.fromDashboard(dashboard, allowFallback: false)
+              .copyWith(billingCycleId: selection.billingCycleId);
+        }
       }
 
-      // Default: current month, falling back to the latest month with data.
-      final now = DateTime.now();
+      final fys = await ref.watch(billingFinancialYearsProvider.future);
+      final fyId = pickDefaultFinancialYearId(fys);
+      if (fyId == null || fyId.isEmpty) return ExpenseBreakdown.empty();
+
+      final body =
+          await ref.watch(billingCyclesForFinancialYearProvider(fyId).future);
+      final cycles = parseVisibleBillingCycles(body);
+      final defaultCycleId = pickDefaultBillingCycleId(cycles);
+      if (defaultCycleId == null) return ExpenseBreakdown.empty();
+
+      final cycle = cycles.firstWhere(
+        (c) => c['id']?.toString() == defaultCycleId,
+      );
+      final my = billingCycleMonthYear(cycle);
+      if (my == null) return ExpenseBreakdown.empty();
+
       final dashboard = await ref.watch(financialDashboardProvider((
-        month: now.month,
-        year: now.year,
-        billingCycleId: null,
+        month: my.month,
+        year: my.year,
+        billingCycleId: defaultCycleId,
         collectionCycleId: null,
       )).future);
-      final initial = ExpenseBreakdown.fromDashboard(dashboard);
-
-      // The member-count divisor (residentsSummary) is for the *requested*
-      // month. The current month often has no billing cycle yet — so its count
-      // is every villa (exclusions not applied) while the expenses we show came
-      // from an earlier month via fallback. Re-fetch that earlier month so the
-      // divisor reflects ITS cycle (which excludes excluded homes) and lines up
-      // with the expenses being displayed.
-      if (initial.hasData &&
-          (initial.month != now.month || initial.year != now.year)) {
-        final aligned = await ref.watch(financialDashboardProvider((
-          month: initial.month,
-          year: initial.year,
-          billingCycleId: null,
-          collectionCycleId: null,
-        )).future);
-        final alignedBreakdown =
-            ExpenseBreakdown.fromDashboard(aligned, allowFallback: false);
-        if (alignedBreakdown.hasData) return alignedBreakdown;
-      }
-      return initial;
+      return ExpenseBreakdown.fromDashboard(dashboard, allowFallback: false)
+          .copyWith(billingCycleId: defaultCycleId);
     });
 
 /// Financial years for billing period selection (admin + resident).
@@ -320,13 +324,6 @@ final yearlyBreakdownForYearProvider = FutureProvider.autoDispose
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     });
-
-/// Only published billing cycles whose payment window is OPEN or CLOSED.
-bool isAppVisibleBillingCycle(Map<String, dynamic> cycle) {
-  if (cycle['publishedAt'] == null) return false;
-  final status = cycle['status']?.toString().toUpperCase() ?? '';
-  return status == 'OPEN' || status == 'CLOSED';
-}
 
 class MaintenanceDashboardFilter {
   const MaintenanceDashboardFilter({

@@ -1,4 +1,6 @@
 import '../../../../data/providers/maintenance_provider.dart';
+export '../../../../data/utils/billing_cycle_visibility.dart'
+    show pickDefaultBillingCycleId, pickDefaultFinancialYearId;
 
 /// Some gateways or proxies wrap JSON as `{ "data": { ... } }` — normalize for the UI.
 Map<String, dynamic> normalizeDashboardPayload(Map<String, dynamic> raw) {
@@ -7,45 +9,6 @@ Map<String, dynamic> normalizeDashboardPayload(Map<String, dynamic> raw) {
     return Map<String, dynamic>.from(nested);
   }
   return raw;
-}
-
-/// Pick a sensible default billing cycle among app-visible cycles.
-String? pickDefaultBillingCycleId(List<Map<String, dynamic>> cycles) {
-  final visible = cycles.where(isAppVisibleBillingCycle).toList();
-  if (visible.isEmpty) return null;
-
-  for (final c in visible.reversed) {
-    if (c['status']?.toString().toUpperCase() == 'OPEN') {
-      return c['id']?.toString();
-    }
-  }
-
-  final now = DateTime.now();
-  final key = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-  for (final c in visible) {
-    if (c['cycleKey']?.toString() == key) {
-      return c['id']?.toString();
-    }
-  }
-
-  return visible.last['id']?.toString();
-}
-
-String? pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
-  if (fys.isEmpty) return null;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  for (final fy in fys) {
-    final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
-    final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
-    if (s == null || e == null) continue;
-    final ds = DateTime(s.year, s.month, s.day);
-    final de = DateTime(e.year, e.month, e.day);
-    if (!today.isBefore(ds) && !today.isAfter(de)) {
-      return fy['id']?.toString();
-    }
-  }
-  return fys.first['id']?.toString();
 }
 
 ({int month, int year})? monthYearFromCycleKey(String cycleKey) {

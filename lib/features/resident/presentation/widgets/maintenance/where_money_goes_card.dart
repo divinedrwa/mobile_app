@@ -10,6 +10,7 @@ import '../../../../../core/widgets/screen_skeletons.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/expense_breakdown_model.dart';
 import '../../../data/providers/maintenance_provider.dart';
+import '../../../data/utils/billing_cycle_visibility.dart';
 
 /// Parses a billing-cycle map's month/year. The backend exposes the period as
 /// `cycleKey` ("YYYY-MM") (sometimes `periodMonth`/`periodYear`), not plain
@@ -47,6 +48,23 @@ class WhereMoneyGoesCard extends ConsumerWidget {
     final selection = ref.watch(selectedExpenseCycleProvider);
     final data = async.valueOrNull;
     final hasData = data != null && data.hasData;
+
+    if (selection != null) {
+      ref.listen(
+        billingCyclesForFinancialYearProvider(selection.financialYearId),
+        (prev, next) {
+          next.whenData((body) {
+            final visible = parseVisibleBillingCycles(body);
+            final ok = visible.any(
+              (c) => c['id']?.toString() == selection.billingCycleId,
+            );
+            if (!ok) {
+              ref.read(selectedExpenseCycleProvider.notifier).state = null;
+            }
+          });
+        },
+      );
+    }
 
     // Hide entirely only in the default/auto state with nothing to show. Once
     // the resident has picked a cycle, keep the card (and its chip) visible so
@@ -557,13 +575,7 @@ class _CyclePickerSheetState extends ConsumerState<_CyclePickerSheet> {
         style: DesignTypography.bodySmall.copyWith(color: DesignColors.error),
       ),
       data: (body) {
-        final raw = body['cycles'];
-        final cycles = raw is List
-            ? raw
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList()
-            : <Map<String, dynamic>>[];
+        final cycles = parseVisibleBillingCycles(body);
         if (cycles.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
