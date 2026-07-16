@@ -1,4 +1,3 @@
-// Pure helpers for the maintenance financial dashboard (B1).
 import '../../../../data/providers/maintenance_provider.dart';
 
 /// Some gateways or proxies wrap JSON as `{ "data": { ... } }` — normalize for the UI.
@@ -10,22 +9,26 @@ Map<String, dynamic> normalizeDashboardPayload(Map<String, dynamic> raw) {
   return raw;
 }
 
-/// Pick a sensible default billing cycle (matches current calendar month if present).
+/// Pick a sensible default billing cycle among app-visible cycles.
 String? pickDefaultBillingCycleId(List<Map<String, dynamic>> cycles) {
-  if (cycles.isEmpty) return null;
+  final visible = cycles.where(isAppVisibleBillingCycle).toList();
+  if (visible.isEmpty) return null;
+
+  for (final c in visible.reversed) {
+    if (c['status']?.toString().toUpperCase() == 'OPEN') {
+      return c['id']?.toString();
+    }
+  }
+
   final now = DateTime.now();
   final key = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-  for (final c in cycles) {
+  for (final c in visible) {
     if (c['cycleKey']?.toString() == key) {
       return c['id']?.toString();
     }
   }
-  for (final c in cycles.reversed) {
-    if (c['status']?.toString() == 'OPEN') {
-      return c['id']?.toString();
-    }
-  }
-  return cycles.last['id']?.toString();
+
+  return visible.last['id']?.toString();
 }
 
 String? pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {

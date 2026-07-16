@@ -33,21 +33,29 @@ void main() {
   });
 
   group('pickDefaultBillingCycleId', () {
-    test('prefers cycle matching current calendar month', () {
+    test('ignores UPCOMING and draft cycles', () {
+      final id = pickDefaultBillingCycleId([
+        {'id': 'draft', 'cycleKey': '2026-07', 'status': 'UPCOMING'},
+        {'id': 'open', 'cycleKey': '2026-06', 'status': 'OPEN', 'publishedAt': '2026-06-01'},
+      ]);
+      expect(id, 'open');
+    });
+
+    test('prefers OPEN cycle over matching calendar month UPCOMING', () {
       final now = DateTime.now();
       final key =
           '${now.year}-${now.month.toString().padLeft(2, '0')}';
       final id = pickDefaultBillingCycleId([
-        {'id': 'a', 'cycleKey': '2020-01'},
-        {'id': 'b', 'cycleKey': key},
+        {'id': 'a', 'cycleKey': '2020-01', 'status': 'CLOSED', 'publishedAt': '2020-01-01'},
+        {'id': 'b', 'cycleKey': key, 'status': 'OPEN', 'publishedAt': '2026-01-01'},
       ]);
       expect(id, 'b');
     });
 
     test('falls back to last OPEN cycle', () {
       final id = pickDefaultBillingCycleId([
-        {'id': 'closed', 'cycleKey': '2020-01', 'status': 'CLOSED'},
-        {'id': 'open', 'cycleKey': '2020-02', 'status': 'OPEN'},
+        {'id': 'closed', 'cycleKey': '2020-01', 'status': 'CLOSED', 'publishedAt': '2020-01-01'},
+        {'id': 'open', 'cycleKey': '2020-02', 'status': 'OPEN', 'publishedAt': '2020-02-01'},
       ]);
       expect(id, 'open');
     });

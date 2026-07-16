@@ -246,7 +246,7 @@ final billingFinancialYearsProvider =
     });
 
 /// Billing cycles for a financial year (only months where a cycle was created).
-/// Draft (unpublished) cycles are excluded — they belong on admin billing setup.
+/// App shows published OPEN/CLOSED cycles only — draft and UPCOMING stay hidden.
 final billingCyclesForFinancialYearProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, financialYearId) async {
       cacheFor(ref, const Duration(minutes: 5));
@@ -261,7 +261,7 @@ final billingCyclesForFinancialYearProvider = FutureProvider.autoDispose
         body['cycles'] = raw
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))
-            .where((c) => c['publishedAt'] != null)
+            .where(isAppVisibleBillingCycle)
             .toList();
       }
       return body;
@@ -320,6 +320,13 @@ final yearlyBreakdownForYearProvider = FutureProvider.autoDispose
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     });
+
+/// Only published billing cycles whose payment window is OPEN or CLOSED.
+bool isAppVisibleBillingCycle(Map<String, dynamic> cycle) {
+  if (cycle['publishedAt'] == null) return false;
+  final status = cycle['status']?.toString().toUpperCase() ?? '';
+  return status == 'OPEN' || status == 'CLOSED';
+}
 
 class MaintenanceDashboardFilter {
   const MaintenanceDashboardFilter({
