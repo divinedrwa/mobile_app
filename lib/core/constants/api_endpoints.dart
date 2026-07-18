@@ -54,6 +54,10 @@ class ApiEndpoints {
   static const String paymentHistory = '/residents/my-maintenance';
   static const String maintenanceDashboard = '/residents/maintenance-dashboard';
   static const String maintenanceDashboardReportPdf = '/residents/maintenance-dashboard/report-pdf';
+  static const String maintenanceStatementPdf =
+      '/residents/maintenance-statement/pdf';
+  static const String residentPaymentDisputes = '/residents/payment-disputes';
+  static const String adminPaymentDisputes = '/payment-disputes';
   static const String maintenancePending = '/residents/maintenance-pending';
   static const String maintenancePayments = '/maintenance/payments';
   static const String maintenanceMarkPaid = '/maintenance-management/mark-paid';
@@ -452,6 +456,8 @@ class ApiEndpoints {
 
   // Admin
   static const String adminSpecialProjects = '/special-projects';
+  static const String adminSpecialProjectsAdHocCharge =
+      '/special-projects/ad-hoc-charge';
   static String adminSpecialProjectDetail(String id) =>
       '/special-projects/$id';
   static String adminSpecialProjectStatus(String id) =>

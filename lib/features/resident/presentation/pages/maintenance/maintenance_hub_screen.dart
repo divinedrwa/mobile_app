@@ -751,13 +751,148 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
 
   // ---- RAISE AN ISSUE ----
 
+  Future<void> _showPaymentDisputeSheet() async {
+    final cycle = ref.read(residentBillingCycleProvider).valueOrNull;
+    final cycleKey = cycle?.cycleKey?.trim() ?? '';
+    final reasonController = TextEditingController();
+    final noteController = TextEditingController();
+    var submitting = false;
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DesignColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(DesignRadius.lg)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final bottom = MediaQuery.viewInsetsOf(context).bottom;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg + bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Report payment issue',
+                    style: DesignTypography.headingS.copyWith(
+                      color: DesignColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    cycleKey.isNotEmpty
+                        ? 'Billing cycle $cycleKey'
+                        : 'Tell us what went wrong with your maintenance payment.',
+                    style: DesignTypography.bodySmall.copyWith(
+                      color: DesignColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: reasonController,
+                    enabled: !submitting,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Issue summary',
+                      hintText: 'e.g. Paid via UPI but still showing due',
+                    ),
+                    maxLength: 200,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextField(
+                    controller: noteController,
+                    enabled: !submitting,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Details (optional)',
+                      hintText: 'Transaction ID, date, amount…',
+                    ),
+                    maxLines: 3,
+                    maxLength: 4000,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton(
+                    onPressed: submitting
+                        ? null
+                        : () async {
+                            final reason = reasonController.text.trim();
+                            if (reason.length < 5) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please describe the issue (at least 5 characters).',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            setSheetState(() => submitting = true);
+                            try {
+                              await ref
+                                  .read(maintenanceRepositoryProvider)
+                                  .createPaymentDispute(
+                                    reason: reason,
+                                    residentNote: noteController.text.trim(),
+                                    cycleKey:
+                                        cycleKey.isNotEmpty ? cycleKey : null,
+                                  );
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Report submitted. The admin team will review it.',
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              setSheetState(() => submitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString()),
+                                ),
+                              );
+                            }
+                          },
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Submit report'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    reasonController.dispose();
+    noteController.dispose();
+  }
+
   Widget _buildIssueCard() {
     return Material(
       color: DesignColors.surface,
       borderRadius: BorderRadius.circular(DesignRadius.lg),
       child: InkWell(
         borderRadius: BorderRadius.circular(DesignRadius.lg),
-        onTap: () => context.push('/resident/complaint'),
+        onTap: _showPaymentDisputeSheet,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
@@ -773,7 +908,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                   color: DesignColors.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.help_outline_rounded,
+                child: Icon(Icons.report_problem_outlined,
                     size: 18, color: DesignColors.warning),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -782,7 +917,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Have an issue with a bill?',
+                      'Report payment issue',
                       style: DesignTypography.bodySmall.copyWith(
                         color: DesignColors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -790,7 +925,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Raise a query and we\'ll resolve it quickly.',
+                      'Paid but not updated? Tell the admin team.',
                       style: DesignTypography.caption.copyWith(
                         color: DesignColors.textSecondary,
                       ),

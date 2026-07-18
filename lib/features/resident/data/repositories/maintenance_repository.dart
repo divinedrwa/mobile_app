@@ -181,6 +181,35 @@ class MaintenanceRepository {
     }
   }
 
+  /// G5 — resident reports a payment not reflected on their account.
+  Future<Map<String, dynamic>> createPaymentDispute({
+    required String reason,
+    String? residentNote,
+    String? cycleKey,
+    String? maintenancePaymentId,
+    double? amount,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.residentPaymentDisputes,
+        data: {
+          'reason': reason,
+          if (residentNote != null && residentNote.isNotEmpty)
+            'residentNote': residentNote,
+          if (cycleKey != null && cycleKey.isNotEmpty) 'cycleKey': cycleKey,
+          if (maintenancePaymentId != null && maintenancePaymentId.isNotEmpty)
+            'maintenancePaymentId': maintenancePaymentId,
+          if (amount != null && amount > 0) 'amount': amount,
+        },
+      );
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to submit payment dispute');
+    }
+  }
+
   Future<Map<String, dynamic>> getOutstandingDues() async {
     try {
       final response = await _dio.get(ApiEndpoints.outstandingDues);
