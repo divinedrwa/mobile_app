@@ -1,3 +1,28 @@
+class MaintenanceChargeLine {
+  final String label;
+  final double amount;
+  final String? code;
+
+  const MaintenanceChargeLine({
+    required this.label,
+    required this.amount,
+    this.code,
+  });
+
+  factory MaintenanceChargeLine.fromJson(Map<String, dynamic> json) {
+    double dv(dynamic value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    return MaintenanceChargeLine(
+      label: json['label']?.toString() ?? '',
+      amount: dv(json['amount']),
+      code: json['code']?.toString(),
+    );
+  }
+}
+
 class MaintenanceDueModel {
   final String id;
   final String villaId;
@@ -20,6 +45,7 @@ class MaintenanceDueModel {
   final bool isOverdue;
   final double? societyExpense;
   final Map<String, double> expenseBreakdown;
+  final List<MaintenanceChargeLine> chargeLines;
 
   MaintenanceDueModel({
     required this.id,
@@ -43,6 +69,7 @@ class MaintenanceDueModel {
     this.isOverdue = false,
     this.societyExpense,
     this.expenseBreakdown = const {},
+    this.chargeLines = const [],
   });
 
   factory MaintenanceDueModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +92,18 @@ class MaintenanceDueModel {
             : double.tryParse(value?.toString() ?? '');
         if (parsed != null) {
           breakdown[entry.key.toString()] = parsed;
+        }
+      }
+    }
+
+    final chargeLinesRaw = json['chargeLines'];
+    final List<MaintenanceChargeLine> chargeLines = [];
+    if (chargeLinesRaw is List) {
+      for (final item in chargeLinesRaw) {
+        if (item is Map) {
+          chargeLines.add(
+            MaintenanceChargeLine.fromJson(Map<String, dynamic>.from(item)),
+          );
         }
       }
     }
@@ -101,6 +140,7 @@ class MaintenanceDueModel {
           ? (json['societyExpense'] as num).toDouble()
           : double.tryParse(json['societyExpense']?.toString() ?? ''),
       expenseBreakdown: breakdown,
+      chargeLines: chargeLines,
     );
   }
 }

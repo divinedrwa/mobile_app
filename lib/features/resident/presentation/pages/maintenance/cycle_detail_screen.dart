@@ -234,6 +234,16 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
                     : cycle.amount),
                 icon: Icons.receipt_outlined,
               ),
+              if (cycle.chargeLines.isNotEmpty) ...[
+                for (final line in cycle.chargeLines) ...[
+                  Divider(height: 1, color: DesignColors.divider),
+                  BreakdownRow(
+                    label: line.label,
+                    value: inr.format(line.amount),
+                    icon: Icons.list_alt_outlined,
+                  ),
+                ],
+              ],
               Divider(height: 1, color: DesignColors.divider),
               BreakdownRow(
                 label: paidRowLabel,

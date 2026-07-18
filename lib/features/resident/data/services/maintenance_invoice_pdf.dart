@@ -106,6 +106,7 @@ Future<Uint8List> buildInvoiceForPayment({
     letterheadBytes: letterheadBytes,
     signatureBytes: signatureBytes,
     stampBytes: stampBytes,
+    chargeLines: m.chargeLines,
   );
 }
 
@@ -190,6 +191,7 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   // Admin-uploaded authorised-signature and stamp bytes (else placeholders).
   Uint8List? signatureBytes,
   Uint8List? stampBytes,
+  List<MaintenanceChargeLine> chargeLines = const [],
 }) async {
   final money =
       NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -272,7 +274,30 @@ Future<Uint8List> buildMaintenanceInvoicePdf({
   final hasSplit = breakdown != null && breakdown.hasData && breakdown.hasMemberSplit;
   final totalRupees = billedTotal.round();
   final rows = <_Row>[];
-  if (hasSplit) {
+  if (chargeLines.isNotEmpty) {
+    for (var i = 0; i < chargeLines.length; i++) {
+      final line = chargeLines[i];
+      if (line.label.trim().isEmpty || line.amount <= 0) continue;
+      rows.add(_Row(
+        color: _catPalette[i % _catPalette.length],
+        name: line.label,
+        desc: line.code?.trim().isNotEmpty == true
+            ? line.code!.trim()
+            : 'Bill line item',
+        amount: line.amount.roundToDouble(),
+      ));
+    }
+    final lineSum = rows.fold<double>(0, (s, r) => s + r.amount);
+    final plug = totalRupees - lineSum.round();
+    if (plug.abs() >= 1 && rows.isNotEmpty) {
+      rows.add(_Row(
+        color: const PdfColor.fromInt(0xFF94A3B8),
+        name: plug >= 0 ? 'Adjustments' : 'Credit offset',
+        desc: 'Rounding / late fee / balance adjustment',
+        amount: plug.toDouble(),
+      ));
+    }
+  } else if (hasSplit) {
     var categoryRupees = 0;
     for (var i = 0; i < breakdown.categories.length; i++) {
       final c = breakdown.categories[i];
