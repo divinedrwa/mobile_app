@@ -784,7 +784,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
                 children: [
                   Text(
                     'Report payment issue',
-                    style: DesignTypography.headingS.copyWith(
+                    style: DesignTypography.headingM.copyWith(
                       color: DesignColors.textPrimary,
                       fontWeight: FontWeight.w700,
                     ),
