@@ -2,7 +2,7 @@
 
 **Service:** GatePass+ ("Service", "Platform", "we", "us", "our")
 **Effective date:** 12 May 2026
-**Last updated:** 7 July 2026
+**Last updated:** 18 July 2026
 **Contact:** divine.drwa@gmail.com
 **Governing law:** Republic of India
 
@@ -18,7 +18,7 @@ Please read these Terms carefully. **By installing the mobile app, creating an a
 
 ## 1. About the Service
 
-GatePass+ is a housing-society operations platform that provides software to **Resident Welfare Associations**, **Apartment Owners' Associations**, housing co-operatives and similar communities (each, a **"Society"**) and their members. The Service helps a Society manage residents, gate security, visitors and deliveries, vehicles and parking, maintenance records, notices, polls, documents, complaints, amenity bookings, SOS / emergency response, and related operations.
+GatePass+ is a housing-society operations platform that provides software to **Resident Welfare Associations**, **Apartment Owners' Associations**, housing co-operatives and similar communities (each, a **"Society"**) and their members. The Service helps a Society manage residents, gate security, visitors and deliveries, vehicles and parking, maintenance records and **online maintenance payments**, notices, polls, documents, complaints, amenity bookings, SOS / emergency response, and related operations.
 
 GatePass+ is provided **purely as a technology platform**. **It is not** an emergency service, a security agency, a police service, a fire brigade, a medical-response service, a banking institution, a **payment aggregator**, a real-estate broker, or a property manager. Where the Service enables **online payment** of Society charges, it does so **only as a technology facilitator**: the payment is processed by a licensed third-party payment gateway and settles to your Society's own account, and **GatePass+ never holds, custodies or settles your funds. See §6 below.**
 
@@ -124,7 +124,13 @@ Multi-villa approval responses (approve / reject) are time-sensitive operational
 
 ## 6. Payments
 
-The Service lets Residents pay maintenance and other Society charges **online** through third-party payment gateways, and also lets a Society **record offline payments**. This section explains exactly what role we play — and, importantly, what we do **not** do.
+The Service lets Residents pay maintenance and other Society charges **online** through third-party payment gateways from the **Maintenance** section of the mobile app (and, where your Society enables it, from the admin web dashboard), and also lets a Society **record offline payments**. This section explains exactly what role we play — and, importantly, what we do **not** do.
+
+### 6.0 How online payments work in the app
+
+* Your **Society Admin** chooses which payment options are enabled for your Society — typically **Razorpay** checkout, **PhonePe** checkout, direct **UPI** to the Society's VPA, and/or manual recording of cash, cheque, or bank transfer.
+* When you tap **Pay online** in the app, you are redirected to the **gateway's own secure checkout** (Razorpay or PhonePe SDK / web view). GatePass+ never sees your card number, CVV, UPI PIN, or net-banking password.
+* If you pay **UPI directly** to the Society's VPA (outside a gateway checkout), you may **submit the payment reference** in the app so your Admin can verify and record it. That submission is a claim only — it does not itself move money.
 
 ### 6.1 We are a technology facilitator — not a payment aggregator or bank
 
@@ -140,7 +146,7 @@ The Service lets Residents pay maintenance and other Society charges **online** 
 
 ### 6.3 Offline payments are still supported
 
-Residents may also pay **offline** — by bank transfer, cheque, UPI directly to the Society's account, or cash. The Society's bank-account / UPI details shown inside the app are the **Society's** information, displayed for your convenience. After receiving an offline payment, the Society Admin may record an entry inside the admin dashboard so you can see an acknowledgement. **Such an entry is a record only** — it is not a payment instruction, does not itself move any money, and creates no financial obligation between you and us.
+Residents may also pay **offline** — by bank transfer, cheque, UPI directly to the Society's account, or cash. The Society's bank-account / UPI details shown inside the app are the **Society's** information, displayed for your convenience. After paying UPI directly to the Society, you may submit the amount and transaction reference in **Maintenance → Pay / UPI** so your Admin can verify the credit. After receiving any offline payment, the Society Admin may record an entry inside the admin dashboard so you can see an acknowledgement. **Such an entry or submission is a record only** — it is not a payment instruction, does not itself move any money, and creates no financial obligation between you and us.
 
 ### 6.4 Bill amounts, refunds and disputes are between you and your Society
 
@@ -396,9 +402,12 @@ Continuing to use the Service after a change becomes effective constitutes accep
 | Service | **GatePass+** — housing-society operations platform |
 | Application packages | Android `com.app.gatepass` · iOS `com.app.gatepass` |
 | Email (all matters, including grievance redressal) | **divine.drwa@gmail.com** |
+| Public Terms (web) | **https://divinedrwa.github.io/GatePass-Legal/terms_condition.html** |
+| Public Privacy Policy (web) | **https://divinedrwa.github.io/GatePass-Legal/privacy_policy.html** |
+| Account deletion (web) | **https://divinedrwa.github.io/GatePass-Legal/account_deletion.html** |
 | Response hours | Monday – Saturday, 10:00 – 18:00 IST (excluding public holidays) |
 | Response timeline | Acknowledgement within 24 hours; substantive response within 15 days |
 
 ---
 
-*Last updated: 7 July 2026.*
+*Last updated: 18 July 2026.*

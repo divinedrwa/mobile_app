@@ -2,7 +2,7 @@
 
 **Service:** GatePass+ (the "Service", "Platform", "we", "us", "our")
 **Effective date:** 12 May 2026
-**Last updated:** 7 July 2026
+**Last updated:** 18 July 2026
 **Governing law:** Republic of India — Digital Personal Data Protection Act, 2023 ("DPDP Act") and the Information Technology Act, 2000 with rules made thereunder (including the IT (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011 and the IT (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021).
 **Contact for privacy matters / Grievance Officer:** divine.drwa@gmail.com
 
@@ -16,7 +16,7 @@ This Privacy Policy applies to every person who uses the Service — Residents, 
 
 * GatePass+ is operated as a **Data Fiduciary** under the DPDP Act for the personal data we determine the purpose and means of processing for.
 * Each Society (Resident Welfare Association or similar community) using GatePass+ is a **joint Data Fiduciary** with us for data of its members and its visitors. Your Society may set additional rules; ask your Society for its own privacy notice if it has one.
-* We collect only the data needed to run housing-society workflows: identity & contact details, household composition, visitor logs, maintenance billing, complaints, gate activity, push-notification tokens, and basic device information.
+* We collect only the data needed to run housing-society workflows: identity & contact details, household composition, visitor logs, maintenance billing, **online payment transaction metadata** (via Razorpay, PhonePe, or UPI reference submissions — never card numbers or UPI PINs), complaints, gate activity, push-notification tokens, and basic device information.
 * We **do not** sell personal data. We **do not** use your data to train any AI/ML system.
 * You can request access, correction, erasure, grievance redress and account deletion at **divine.drwa@gmail.com**, or in-app via **Settings → Account → Delete account**.
 
@@ -121,7 +121,9 @@ GatePass+ is a **technology facilitator** for Society maintenance payments. **We
 | Per-villa monthly maintenance amount and due date | Set by the Society Admin. |
 | Payment record — amount, date, mode, transaction id, receipt number, optional remarks, optional bank-account reference | Created when a payment is recorded (online or manual). |
 | Gateway payment metadata — payment id, order id, signature, gateway status, amount, timestamp, method type | Received from **Razorpay** or **PhonePe** via webhook/callback, or from UPI flow status recorded by the Society. We store **non-sensitive transaction metadata only** — not card numbers, CVV, or UPI PIN. |
+| UPI payment submission — amount, billing month/year, optional UPI transaction reference (UTR), optional remark, verification status | Submitted by you in **Maintenance** when you pay the Society's VPA directly; reviewed by your Society Admin before a payment record is created. |
 | RWA bank-account details — bank name, account number, IFSC, holder name, account type | Set by the Admin so that residents can see where to remit dues. **This is the Society's own bank information, not the user's.** |
+| Society UPI VPA / QR payee details | Configured by Admin; shown so you can pay the Society directly via your UPI app. |
 
 We **never store** your debit-card, credit-card, UPI PIN, internet-banking password or any other payment-instrument credential. Such data is collected and handled **only by the payment gateway** (Razorpay, PhonePe, or your bank/UPI app) on their PCI-DSS-compliant interfaces.
 
@@ -171,7 +173,7 @@ We process Personal Data for the following purposes. Where the DPDP Act requires
 | 2 | Authenticating you (password, biometric prompt) | §4.1, §4.8 | Performance of contract; security |
 | 3 | Recording and verifying visitors, deliveries, and vehicles at the gate | §4.3 | Legitimate use under §7(a) (where the data principal voluntarily provides data) and consent of visitors via gate-side signage / verbal notice given by the Guard |
 | 4 | Pre-approval and OTP verification of guests invited by Residents | §4.3 | Consent of the Resident; the visitor is informed at the gate before the OTP is consumed |
-| 5 | Issuing maintenance bills, recording payments, and reconciling with payment gateways (Razorpay, PhonePe, UPI) | §4.6 | Performance of contract between Resident and Society; compliance with applicable financial-record laws |
+| 5 | Issuing maintenance bills, recording payments, reconciling with payment gateways (Razorpay, PhonePe), and verifying direct UPI submissions | §4.6 | Performance of contract between Resident and Society; compliance with applicable financial-record laws |
 | 6 | Sending operational notifications (visitor at the gate, new notice, payment receipt, SOS, complaint update, billing reminder) | §4.7 | Consent (push permission obtained at first launch on Android 13+ and on iOS) |
 | 7 | Investigating incidents, complaints and security events | §4.4, §4.5, §4.9 | Legitimate use under §7(d) — interest of public order / safety where applicable, otherwise consent |
 | 8 | Maintaining audit and security logs | §4.7, §4.9 | Legitimate use under §7(g) — compliance with law; security of processing |
@@ -458,9 +460,12 @@ Continuing to use the Service after a change becomes effective constitutes accep
 
 | | |
 |---|---|
-| Service | **GatePass+** — housing-society operations platform  and other subscribing Resident Welfare Associations / housing societies |
+| Service | **GatePass+** — housing-society operations platform for Divine Residency Welfare Association (DRWA) and other subscribing Resident Welfare Associations / housing societies |
 | Application packages | Android `com.app.gatepass` · iOS `com.app.gatepass` |
 | Privacy / grievance email | **divine.drwa@gmail.com** |
+| Public Privacy Policy | **https://divinedrwa.github.io/GatePass-Legal/privacy_policy.html** |
+| Public Terms & Conditions | **https://divinedrwa.github.io/GatePass-Legal/terms_condition.html** |
+| Account deletion | **https://divinedrwa.github.io/GatePass-Legal/account_deletion.html** |
 | Hours of response | Monday – Saturday, 10:00 – 18:00 IST (excluding public holidays) |
 
 ---
