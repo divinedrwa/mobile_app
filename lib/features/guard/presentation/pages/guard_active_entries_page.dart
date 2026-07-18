@@ -9,6 +9,7 @@ import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../../resident/data/models/parcel_model.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_offline_actions.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_keep_alive_tab.dart';
@@ -639,11 +640,20 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     if (ok != true || !context.mounted) return;
     setState(() => _busyVisitorIds.add(v.id));
     try {
-      await ref.read(guardRepositoryProvider).checkOutVisitor(v.id);
+      final result = await guardCheckOutWithOfflineFallback(ref, v.id);
       ref.invalidate(guardActiveVisitorsTabProvider);
       ref.invalidate(guardPendingVisitorsProvider);
       ref.invalidate(guardPreApprovedEntriesProvider);
       ref.invalidate(guardTodayVisitorsProvider);
+      if (context.mounted && result.queuedOffline) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Saved offline — will sync automatically when back online.',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(

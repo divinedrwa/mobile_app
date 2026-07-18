@@ -133,6 +133,13 @@ class OfflineSyncNotifier extends StateNotifier<OfflineSyncState> {
           photo: m.params['photo'] as String?,
           awaitResidentApproval:
               m.params['awaitResidentApproval'] as bool? ?? true,
+          clientMutationId: m.params['clientMutationId'] as String? ?? m.id,
+        );
+      case OfflineMutationType.visitorCheckOut:
+        await repo.checkOutVisitor(
+          m.params['visitorId'] as String,
+          clientMutationId:
+              m.params['clientMutationId'] as String? ?? m.id,
         );
       case OfflineMutationType.vehicleEntry:
         await repo.logGateVehicleEntry(

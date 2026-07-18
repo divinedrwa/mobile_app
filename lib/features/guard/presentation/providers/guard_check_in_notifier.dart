@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/telemetry/guard_flow_telemetry.dart';
@@ -233,14 +234,17 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
           for (final r in allResidents)
             if (state.selectedUserIds.contains(r.userId)) r.villaId,
         }.map((vid) => VisitTarget(villaId: vid).toJson()).toList();
+        final clientMutationId = const Uuid().v4();
         final mutation = OfflineMutation(
-          id: 'checkin_${DateTime.now().millisecondsSinceEpoch}',
+          id: clientMutationId,
           type: OfflineMutationType.visitorCheckIn,
           params: {
             'name': name,
             'phone': phone,
             'visitTargets': targets,
             'visitorTypeApi': state.visitorType.apiValue,
+            'awaitResidentApproval': true,
+            'clientMutationId': clientMutationId,
             if (vehicleNumber != null) 'vehicleNumber': vehicleNumber,
             if (_photoForApi() != null) 'photo': _photoForApi(),
           },

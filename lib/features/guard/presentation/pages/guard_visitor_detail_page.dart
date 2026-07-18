@@ -7,6 +7,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
+import '../providers/guard_offline_actions.dart';
 import '../providers/guard_providers.dart';
 
 /// Detail view for a visitor row (from active entries or related flows).
@@ -625,7 +626,7 @@ class _GuardVisitorDetailPageState
     if (ok != true || !context.mounted) return;
     setState(() => _exiting = true);
     try {
-      await ref.read(guardRepositoryProvider).checkOutVisitor(v.id);
+      final result = await guardCheckOutWithOfflineFallback(ref, v.id);
       ref.invalidate(guardPendingVisitorsProvider);
       ref.invalidate(guardActiveVisitorsTabProvider);
       ref.invalidate(guardPreApprovedEntriesProvider);
@@ -633,11 +634,19 @@ class _GuardVisitorDetailPageState
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${v.name} marked as exited'),
+          content: Text(
+            result.queuedOffline
+                ? 'Saved offline — will sync when back online.'
+                : '${v.name} marked as exited',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      context.pop();
+      if (!result.queuedOffline) {
+        context.pop();
+      } else {
+        setState(() => _exiting = false);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _exiting = false);

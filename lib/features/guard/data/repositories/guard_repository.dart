@@ -307,6 +307,7 @@ class GuardRepository {
     String? photo,
     /// When true, residents must approve before the guest is admitted (`APPROVED` then guard confirms).
     bool awaitResidentApproval = true,
+    String? clientMutationId,
   }) async {
     try {
       final response = await _dio.post(
@@ -321,6 +322,7 @@ class GuardRepository {
             'vehicleNumber': vehicleNumber.trim(),
           if (photo != null && photo.trim().isNotEmpty) 'photo': photo.trim(),
           'awaitResidentApproval': awaitResidentApproval,
+          if (clientMutationId != null) 'clientMutationId': clientMutationId,
         },
       );
       final data = response.data;
@@ -344,11 +346,17 @@ class GuardRepository {
     }
   }
 
-  Future<void> checkOutVisitor(String visitorId) async {
+  Future<void> checkOutVisitor(
+    String visitorId, {
+    String? clientMutationId,
+  }) async {
     try {
       await _dio.post(
         ApiEndpoints.guardVisitorCheckOut,
-        data: {'visitorId': visitorId},
+        data: {
+          'visitorId': visitorId,
+          if (clientMutationId != null) 'clientMutationId': clientMutationId,
+        },
       );
     } on DioException catch (e) {
       throw mapDioException(e, 'Check-out failed');

@@ -7,6 +7,7 @@ import '../../../core/utils/storage_service.dart';
 /// Types of guard mutations that can be queued offline.
 enum OfflineMutationType {
   visitorCheckIn,
+  visitorCheckOut,
   vehicleEntry,
   patrolStart,
   patrolCheckpoint,
