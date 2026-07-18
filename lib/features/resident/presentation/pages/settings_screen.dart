@@ -114,16 +114,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _openAdminWeb() async {
-    final uri = Uri.parse(AppConstants.adminWebUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open ${AppConstants.adminWebUrl}')),
-      );
-    }
-  }
-
   void _openPlatformHelp() {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (_) => const PlatformHelpScreen()),
@@ -149,8 +139,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final emailEnabled = notif.emailEnabled;
     final notifBusy = notif.isBusy;
     final appVersion = ref.watch(_appVersionProvider).valueOrNull ?? AppConstants.appVersion;
-    final user = ref.watch(authProvider).user;
-    final showAdminWeb = user?.role.isAdminLike ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -328,13 +316,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 subtitle: 'Mobile vs web vs admin dashboard capabilities',
                 onTap: _openPlatformHelp,
               ),
-              if (showAdminWeb)
-                _SettingsTile(
-                  icon: Icons.laptop_mac_outlined,
-                  title: 'Admin web dashboard',
-                  subtitle: AppConstants.adminWebUrl,
-                  onTap: _openAdminWeb,
-                ),
               _SettingsTile(
                 icon: Icons.support_agent_outlined,
                 title: 'Contact support',
