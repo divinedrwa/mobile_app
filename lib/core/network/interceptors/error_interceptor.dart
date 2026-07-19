@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../telemetry/business_analytics.dart';
 import '../../errors/exceptions.dart';
 import '../../session/account_deactivated_handler.dart';
 import '../../session/session_expired_handler.dart';
@@ -143,5 +144,37 @@ class ErrorInterceptor extends Interceptor {
         response: err.response,
       ),
     );
+
+    _trackApiError(err);
+  }
+
+  void _trackApiError(DioException err) {
+    try {
+      final path = err.requestOptions.path.toLowerCase();
+      if (path.contains('/app-analytics/')) return;
+      if (isAuthExemptPath(path)) return;
+
+      final status = err.response?.statusCode;
+      if (status == 401 || status == 403) return;
+
+      final name = switch (err.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout =>
+          'api_timeout',
+        DioExceptionType.connectionError => 'api_connection_error',
+        _ => status != null ? 'api_http_$status' : 'api_unknown',
+      };
+
+      unawaited(
+        BusinessAnalytics.trackError(
+          name,
+          properties: {
+            'path': path,
+            if (status != null) 'status': status,
+          },
+        ),
+      );
+    } catch (_) {}
   }
 }

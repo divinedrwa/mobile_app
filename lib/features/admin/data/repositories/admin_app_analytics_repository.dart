@@ -130,11 +130,36 @@ class AdminAppAnalyticsRepository {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.appAnalyticsUserEngagement,
-        queryParameters: {'days': days, 'limit': 50},
+        queryParameters: {'days': days},
       );
       return (res.data?['engagement'] as Map?)?.cast<String, dynamic>() ?? {};
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load user engagement');
+    }
+  }
+
+  /// Unified business-growth view merging custom analytics + Firebase mirror metadata.
+  Future<Map<String, dynamic>> getGrowthDashboard({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsGrowthDashboard,
+        queryParameters: {'days': days},
+      );
+      return (res.data?['growth'] as Map?)?.cast<String, dynamic>() ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load growth dashboard');
+    }
+  }
+
+  Future<Map<String, dynamic>> getRoleAdoption({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsRoleAdoption,
+        queryParameters: {'days': days},
+      );
+      return (res.data?['adoption'] as Map?)?.cast<String, dynamic>() ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load role adoption');
     }
   }
 }

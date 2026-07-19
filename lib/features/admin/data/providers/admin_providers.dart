@@ -515,6 +515,16 @@ final adminAppAnalyticsUserEngagementProvider =
   return ref.watch(adminAppAnalyticsRepositoryProvider).getUserEngagement();
 });
 
+final adminAppAnalyticsGrowthDashboardProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getGrowthDashboard();
+});
+
+final adminAppAnalyticsRoleAdoptionProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getRoleAdoption();
+});
+
 // ── Financial Reconciliation ─────────────────────────────────────────
 
 final adminReconciliationRepositoryProvider =

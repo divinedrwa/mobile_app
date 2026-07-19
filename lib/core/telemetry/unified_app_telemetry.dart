@@ -1,33 +1,34 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-
 import 'app_analytics_service.dart';
+import 'business_analytics.dart';
 import 'firebase_analytics_helper.dart';
 import 'guard_flow_telemetry.dart';
+import 'telemetry_safe.dart';
 
-/// Guard flows + session events go to both Firebase Analytics and our backend.
+/// Registers dual telemetry: every guard flow and business action is written to
+/// **custom backend** (society dashboard) and **Firebase Analytics** (GA4 mirror).
 void registerUnifiedAppTelemetry({required bool firebaseAvailable}) {
   FirebaseAnalyticsHelper.configure(available: firebaseAvailable);
 
   GuardFlowTelemetry.onFlowComplete =
       (String flowId, Duration duration, {required bool success}) {
-    debugPrint(
-      '[Telemetry] flow=$flowId ms=${duration.inMilliseconds} success=$success',
-    );
-    unawaited(
-      AppAnalyticsService.logFlow(
+    runTelemetrySafe(
+      () => AppAnalyticsService.logFlow(
         flowId: flowId,
         durationMs: duration.inMilliseconds,
         success: success,
       ),
+      label: 'flow-backend',
     );
-    unawaited(
-      FirebaseAnalyticsHelper.logFlowComplete(
+    runTelemetrySafe(
+      () => FirebaseAnalyticsHelper.logFlowComplete(
         flowId: flowId,
         durationMs: duration.inMilliseconds,
         success: success,
       ),
+      label: 'flow-firebase',
     );
   };
 }
+
+/// Convenience export so callers import one module for growth tracking.
+typedef UnifiedBusinessAnalytics = BusinessAnalytics;

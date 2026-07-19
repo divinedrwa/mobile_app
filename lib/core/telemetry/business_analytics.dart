@@ -1,40 +1,43 @@
 import 'dart:async';
 
+import 'analytics_catalog.dart';
 import 'app_analytics_service.dart';
 import 'firebase_analytics_helper.dart';
+import 'telemetry_safe.dart';
 
-/// Named business events for admin adoption / growth analytics.
-/// Each action is stored as `ACTION` on the backend and mirrored to Firebase.
+/// Dual-write business events: custom backend (primary) + Firebase Analytics (mirror).
 abstract class BusinessAnalytics {
   BusinessAnalytics._();
 
-  static const preApproveVisitor = 'resident_pre_approve_visitor';
-  static const complaintSubmit = 'resident_complaint_submit';
-  static const maintenancePayment = 'resident_maintenance_payment';
-  static const amenityBooking = 'resident_amenity_booking';
-  static const pollVote = 'resident_poll_vote';
-  static const noticePublish = 'admin_notice_publish';
-  static const billingCyclePublish = 'admin_billing_cycle_publish';
-  static const expenseAdd = 'admin_expense_add';
-  static const guardQrScan = 'guard_qr_scan';
+  static const preApproveVisitor = AnalyticsCatalog.preApproveVisitor;
+  static const complaintSubmit = AnalyticsCatalog.complaintSubmit;
+  static const maintenancePayment = AnalyticsCatalog.maintenancePayment;
+  static const amenityBooking = AnalyticsCatalog.amenityBooking;
+  static const pollVote = AnalyticsCatalog.pollVote;
+  static const noticePublish = AnalyticsCatalog.noticePublish;
+  static const billingCyclePublish = AnalyticsCatalog.billingCyclePublish;
+  static const expenseAdd = AnalyticsCatalog.expenseAdd;
+  static const guardQrScan = AnalyticsCatalog.guardQrScan;
 
   static Future<void> track(
     String action, {
     Map<String, dynamic>? properties,
     bool success = true,
   }) async {
-    unawaited(
-      AppAnalyticsService.logAction(
+    runTelemetrySafe(
+      () => AppAnalyticsService.logAction(
         action,
         properties: {...?properties, 'success': success},
       ),
+      label: 'action',
     );
-    unawaited(
-      FirebaseAnalyticsHelper.logBusinessAction(
+    runTelemetrySafe(
+      () => FirebaseAnalyticsHelper.logBusinessAction(
         action: action,
         success: success,
         properties: properties,
       ),
+      label: 'firebaseAction',
     );
   }
 
@@ -42,9 +45,12 @@ abstract class BusinessAnalytics {
     String name, {
     Map<String, dynamic>? properties,
   }) async {
-    unawaited(AppAnalyticsService.logError(name, properties: properties));
-    unawaited(
-      FirebaseAnalyticsHelper.logCustomEvent(
+    runTelemetrySafe(
+      () => AppAnalyticsService.logError(name, properties: properties),
+      label: 'error',
+    );
+    runTelemetrySafe(
+      () => FirebaseAnalyticsHelper.logCustomEvent(
         name: 'app_error',
         parameters: {
           'error_name': name,
@@ -54,6 +60,7 @@ abstract class BusinessAnalytics {
             ),
         },
       ),
+      label: 'firebaseError',
     );
   }
 }

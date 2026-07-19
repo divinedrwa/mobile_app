@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +10,7 @@ import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../data/models/poll_model.dart';
 import '../../data/providers/content_provider.dart';
 
@@ -413,7 +416,10 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
     ref.invalidate(pollsProvider);
 
     if (mounted) {
-      if (errorMsg == null) DesignHaptics.success();
+      if (errorMsg == null) {
+        DesignHaptics.success();
+        unawaited(BusinessAnalytics.track(BusinessAnalytics.pollVote));
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

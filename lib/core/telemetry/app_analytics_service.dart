@@ -12,7 +12,9 @@ import '../constants/api_endpoints.dart';
 import '../network/dio_client.dart';
 import '../utils/platform_info.dart' as platform_info;
 import '../utils/storage_service.dart';
+import 'analytics_screen_names.dart';
 import 'firebase_analytics_helper.dart';
+import 'telemetry_safe.dart';
 
 /// First-party app usage telemetry (backend) + optional Firebase Analytics mirror.
 class AppAnalyticsService {
@@ -33,13 +35,17 @@ class AppAnalyticsService {
   static Dio get _dio => DioClient.dio;
 
   static void setUserContext(UserModel user) {
-    _user = user;
-    unawaited(FirebaseAnalyticsHelper.setUser(user));
+    try {
+      _user = user;
+      runTelemetrySafe(() => FirebaseAnalyticsHelper.setUser(user), label: 'setUser');
+    } catch (_) {}
   }
 
   static void clearUserContext() {
-    _user = null;
-    unawaited(FirebaseAnalyticsHelper.setUser(null));
+    try {
+      _user = null;
+      runTelemetrySafe(() => FirebaseAnalyticsHelper.setUser(null), label: 'clearUser');
+    } catch (_) {}
   }
 
   static Map<String, dynamic> _userProperties() {
@@ -67,6 +73,13 @@ class AppAnalyticsService {
       _appVersion ??= 'unknown';
     }
     _metaLoaded = true;
+    unawaited(
+      FirebaseAnalyticsHelper.setAppContext(
+        platform: _platform ?? 'unknown',
+        appVersion: _appVersion ?? 'unknown',
+        buildNumber: _buildNumber,
+      ),
+    );
   }
 
   static String _resolvePlatform() {
@@ -104,9 +117,9 @@ class AppAnalyticsService {
 
   /// Start a session after login or cold start with valid auth.
   static Future<void> startSession() async {
-    await ensureMetaLoaded();
-    await _flushPending();
     try {
+      await ensureMetaLoaded();
+      await _flushPending();
       final meta = await _deviceMeta();
       final res = await _dio.post<Map<String, dynamic>>(
         ApiEndpoints.appAnalyticsSessions,
@@ -124,7 +137,7 @@ class AppAnalyticsService {
         _sessionId = session['id'] as String;
         await StorageService.setString(_sessionIdKey, _sessionId!);
       }
-      unawaited(FirebaseAnalyticsHelper.logSessionStart());
+      runTelemetrySafe(FirebaseAnalyticsHelper.logSessionStart, label: 'sessionStart');
     } catch (e) {
       assert(() {
         debugPrint('[AppAnalytics] startSession failed: $e');
@@ -134,74 +147,141 @@ class AppAnalyticsService {
   }
 
   static Future<void> heartbeat() async {
-    final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
-    if (sid == null || sid.isEmpty) {
-      await startSession();
-      return;
-    }
-    _sessionId = sid;
     try {
+      final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
+      if (sid == null || sid.isEmpty) {
+        await startSession();
+        return;
+      }
+      _sessionId = sid;
       await _dio.patch(ApiEndpoints.appAnalyticsSession(sid), data: {'heartbeat': true});
     } catch (_) {}
   }
 
   static Future<void> endSession() async {
-    final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
-    if (sid == null || sid.isEmpty) return;
     try {
-      // Server PATCH records SESSION_END with deduped clientEventId — no duplicate client event.
+      final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
+      if (sid == null || sid.isEmpty) return;
       await _dio.patch(ApiEndpoints.appAnalyticsSession(sid), data: {'ended': true});
-      unawaited(FirebaseAnalyticsHelper.logSessionEnd());
+      runTelemetrySafe(FirebaseAnalyticsHelper.logSessionEnd, label: 'sessionEnd');
+      _sessionId = null;
+      await StorageService.remove(_sessionIdKey);
     } catch (_) {}
-    _sessionId = null;
-    await StorageService.remove(_sessionIdKey);
   }
 
   static Future<void> logSessionEnd() async {
-    final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
-    if (sid == null || sid.isEmpty) return;
-    await _logEvent(
-      kind: 'SESSION_END',
-      name: 'session_end',
-      clientEventId: 'sess-end-$sid',
-    );
-    unawaited(FirebaseAnalyticsHelper.logSessionEnd());
+    try {
+      final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
+      if (sid == null || sid.isEmpty) return;
+      await _logEvent(
+        kind: 'SESSION_END',
+        name: 'session_end',
+        clientEventId: 'sess-end-$sid',
+      );
+      runTelemetrySafe(FirebaseAnalyticsHelper.logSessionEnd, label: 'sessionEnd');
+    } catch (_) {}
   }
 
   static Future<void> logTabScreen(String path) => logScreen(path);
 
   static Future<void> logLogin() async {
-    await _logEvent(kind: 'LOGIN', name: 'login_success');
-    unawaited(FirebaseAnalyticsHelper.logLogin(method: _user?.role.name ?? 'app'));
+    try {
+      await _logEvent(kind: 'LOGIN', name: 'login_success');
+      runTelemetrySafe(
+        () => FirebaseAnalyticsHelper.logLogin(method: _user?.role.name ?? 'app'),
+        label: 'login',
+      );
+    } catch (_) {}
   }
 
   static Future<void> logLogout() async {
-    await _logEvent(kind: 'LOGOUT', name: 'logout');
-    unawaited(FirebaseAnalyticsHelper.logLogout());
+    try {
+      await _logEvent(kind: 'LOGOUT', name: 'logout');
+      runTelemetrySafe(FirebaseAnalyticsHelper.logLogout, label: 'logout');
+    } catch (_) {}
   }
 
-  static Future<void> logScreen(String routePath) {
-    unawaited(FirebaseAnalyticsHelper.logScreenView(routePath));
-    return _logEvent(kind: 'SCREEN_VIEW', name: routePath);
+  static Future<void> logScreen(String routePath) async {
+    try {
+      runTelemetrySafe(
+        () => FirebaseAnalyticsHelper.logScreenView(routePath),
+        label: 'screenView',
+      );
+      final label = AnalyticsScreenNames.labelForPath(routePath);
+      await _logEvent(
+        kind: 'SCREEN_VIEW',
+        name: routePath,
+        properties: {'screenLabel': label},
+      );
+    } catch (_) {}
+  }
+
+  static Future<void> logNotificationReceive({
+    required String type,
+    String? title,
+  }) async {
+    try {
+      runTelemetrySafe(
+        () => FirebaseAnalyticsHelper.logNotificationReceive(type: type, title: title),
+        label: 'notificationReceive',
+      );
+      await _logEvent(
+        kind: 'ACTION',
+        name: 'notification_receive',
+        properties: {
+          'notificationType': type,
+          if (title != null) 'title': title,
+        },
+      );
+    } catch (_) {}
+  }
+
+  static Future<void> logNotificationOpen({
+    required String type,
+    String source = 'tap',
+  }) async {
+    try {
+      runTelemetrySafe(
+        () => FirebaseAnalyticsHelper.logNotificationOpen(type: type, source: source),
+        label: 'notificationOpen',
+      );
+      await _logEvent(
+        kind: 'ACTION',
+        name: 'notification_open',
+        properties: {
+          'notificationType': type,
+          'source': source,
+        },
+      );
+    } catch (_) {}
   }
 
   static Future<void> logFlow({
     required String flowId,
     required int durationMs,
     required bool success,
-  }) =>
-      _logEvent(
+  }) async {
+    try {
+      await _logEvent(
         kind: 'FLOW_COMPLETE',
         name: flowId,
         durationMs: durationMs,
         success: success,
       );
+    } catch (_) {}
+  }
 
-  static Future<void> logAction(String action, {Map<String, dynamic>? properties}) =>
-      _logEvent(kind: 'ACTION', name: action, properties: properties);
+  static Future<void> logAction(String action, {Map<String, dynamic>? properties}) async {
+    try {
+      await _logEvent(kind: 'ACTION', name: action, properties: properties);
+    } catch (_) {}
+  }
 
-  static Future<void> logError(String name, {Map<String, dynamic>? properties}) =>
-      _logEvent(kind: 'ERROR', name: name, success: false, properties: properties);
+  static Future<void> logError(String name, {Map<String, dynamic>? properties}) async {
+    try {
+      await _logEvent(kind: 'ERROR', name: name, success: false, properties: properties);
+    } catch (_) {}
+  }
 
   static Future<void> _logEvent({
     required String kind,

@@ -19,6 +19,7 @@ import '../../features/resident/data/resident_data_refresh.dart';
 import '../constants/app_constants.dart';
 import '../logging/fcm_log.dart';
 import '../routing/app_navigator_keys.dart';
+import '../telemetry/app_analytics_service.dart';
 import '../utils/notification_preference_storage.dart';
 import '../utils/storage_service.dart';
 import 'push_sync_service.dart';
@@ -181,6 +182,7 @@ class NotificationService {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         fcmDiag('RX_FOREGROUND_WEB', describeRemoteMessage(message));
         final data = _normalizeData(message.data);
+        _trackPushAnalytics(message, data, opened: false);
         _refreshProvidersForPushType(data['type'] ?? '');
 
         if (!NotificationPreferenceStorage.shouldDeliverPush) {
@@ -196,6 +198,7 @@ class NotificationService {
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         fcmDiag('RX_OPENED_APP_WEB', describeRemoteMessage(message));
         final normalized = _normalizeData(message.data);
+        _trackPushAnalytics(message, normalized, opened: true, source: 'foreground_tap');
         applyNavigationFromPushData(normalized, openDetails: true);
       });
 
@@ -204,6 +207,7 @@ class NotificationService {
         if (message == null) return;
         fcmDiag('RX_INITIAL_WEB', describeRemoteMessage(message));
         final normalized = _normalizeData(message.data);
+        _trackPushAnalytics(message, normalized, opened: true, source: 'cold_start');
         applyNavigationFromPushData(normalized, openDetails: true);
       });
 
@@ -418,13 +422,16 @@ class NotificationService {
   void _setupMessageListeners() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       fcmDiag('RX_FOREGROUND', describeRemoteMessage(message));
-      _refreshProvidersForPushType(_normalizeData(message.data)['type'] ?? '');
+      final data = _normalizeData(message.data);
+      _trackPushAnalytics(message, data, opened: false);
+      _refreshProvidersForPushType(data['type'] ?? '');
       unawaited(_showForegroundLocalNotification(message));
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       fcmDiag('RX_OPENED_APP', describeRemoteMessage(message));
       final normalized = _normalizeData(message.data);
+      _trackPushAnalytics(message, normalized, opened: true, source: 'background_tap');
       fcmDiag('NAV', 'openedApp data type=${normalized['type']} keys=${normalized.keys.toList()}');
       applyNavigationFromPushData(normalized, openDetails: true);
     });
@@ -436,6 +443,7 @@ class NotificationService {
       }
       fcmDiag('RX_INITIAL', describeRemoteMessage(message));
       final normalized = _normalizeData(message.data);
+      _trackPushAnalytics(message, normalized, opened: true, source: 'cold_start');
       fcmDiag(
         'NAV',
         'initialMessage type=${normalized['type']} keys=${normalized.keys.toList()}',
@@ -446,6 +454,27 @@ class NotificationService {
 
   Map<String, String> _normalizeData(Map<String, dynamic> data) {
     return data.map((k, v) => MapEntry(k, v?.toString() ?? ''));
+  }
+
+  void _trackPushAnalytics(
+    RemoteMessage message,
+    Map<String, String> data, {
+    required bool opened,
+    String source = 'tap',
+  }) {
+    try {
+      final type = data['type'] ?? 'general';
+      final title = message.notification?.title ?? data['title'];
+      if (opened) {
+        unawaited(
+          AppAnalyticsService.logNotificationOpen(type: type, source: source),
+        );
+      } else {
+        unawaited(
+          AppAnalyticsService.logNotificationReceive(type: type, title: title),
+        );
+      }
+    } catch (_) {}
   }
 
   /// Guard check-in often sends `photoUrl` as a data URL — decode for local big-picture style.

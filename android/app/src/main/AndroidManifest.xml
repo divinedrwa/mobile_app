@@ -34,6 +34,11 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_brand" />
 
+        <!-- Use named Flutter screen_view events instead of "MainActivity". -->
+        <meta-data
+            android:name="google_analytics_automatic_screen_reporting_enabled"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

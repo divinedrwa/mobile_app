@@ -14,6 +14,7 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/amenity_model.dart';
 import '../../data/providers/amenity_booking_provider.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../widgets/list_skeleton.dart';
 import 'amenity_booking_history_screen.dart';
 
@@ -94,6 +95,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
     if (mounted) setState(() => _booking = false);
     if (!mounted) return;
     if (error == null) {
+      unawaited(BusinessAnalytics.track(BusinessAnalytics.amenityBooking));
       ref.invalidate(amenitiesProvider);
       unawaited(ref.read(amenityBookingProvider.notifier).fetchBookings());
       ScaffoldMessenger.of(context).showSnackBar(
