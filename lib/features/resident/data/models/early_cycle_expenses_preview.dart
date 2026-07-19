@@ -51,15 +51,20 @@ class EarlyCycleExpensesPreview {
       return double.tryParse(v?.toString() ?? '') ?? 0;
     }
 
+    int iv(dynamic v) {
+      if (v is num) return v.toInt();
+      return int.tryParse(v?.toString() ?? '') ?? 0;
+    }
+
     return EarlyCycleExpensesPreview(
       billingCycleId: json['billingCycleId'] as String?,
       cycleKey: json['cycleKey'] as String? ?? '',
       title: json['title'] as String? ?? '',
       phase: ExpenseCyclePhase.fromApi(json['phase'] as String?),
-      month: json['month'] as int? ?? 0,
-      year: json['year'] as int? ?? 0,
+      month: iv(json['month']),
+      year: iv(json['year']),
       totalAmount: d(json['totalAmount']),
-      expenseCount: json['expenseCount'] as int? ?? 0,
+      expenseCount: iv(json['expenseCount']),
       paymentStartDate: json['paymentStartDate'] != null
           ? DateTime.tryParse(json['paymentStartDate'].toString())
           : null,

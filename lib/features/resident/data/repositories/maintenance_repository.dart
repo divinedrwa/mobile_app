@@ -241,9 +241,9 @@ class MaintenanceRepository {
     try {
       final response = await _dio.get(ApiEndpoints.maintenancePending);
       final data = response.data;
-      final list = data is Map<String, dynamic>
-          ? (data['pending'] as List? ?? const [])
-          : const [];
+      final pendingRaw =
+          data is Map<String, dynamic> ? data['pending'] : null;
+      final list = pendingRaw is List ? pendingRaw : const [];
       final rows = list
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
@@ -252,7 +252,15 @@ class MaintenanceRepository {
       if (key != null) {
         await PersistentListCache.write(key, rows);
       }
-      return rows.map(MaintenanceDueModel.fromJson).toList();
+      final dues = <MaintenanceDueModel>[];
+      for (final row in rows) {
+        try {
+          dues.add(MaintenanceDueModel.fromJson(row));
+        } catch (_) {
+          // Skip malformed rows — one bad cycle must not break the home card.
+        }
+      }
+      return dues;
     } on DioException catch (e) {
       // 404 "Villa not assigned" — not an error, just no dues to show.
       if (e.response?.statusCode == 404) return [];

@@ -24,6 +24,23 @@ void main() {
     expect(preview.itemLabel, '12 items');
   });
 
+  test('EarlyCycleExpensesPreview accepts numeric month/year from JSON', () {
+    final preview = EarlyCycleExpensesPreview.tryFromJson({
+      'cycleKey': '2026-07',
+      'title': 'July 2026',
+      'phase': 'DRAFT',
+      'month': 7.0,
+      'year': 2026.0,
+      'totalAmount': 5000,
+      'expenseCount': 4.0,
+    });
+
+    expect(preview, isNotNull);
+    expect(preview!.month, 7);
+    expect(preview.year, 2026);
+    expect(preview.expenseCount, 4);
+  });
+
   test('ExpenseCyclePhase residentLabel maps draft to Upcoming', () {
     expect(ExpenseCyclePhase.draft.residentLabel, 'Upcoming');
     expect(ExpenseCyclePhase.upcoming.residentLabel, 'Upcoming');
