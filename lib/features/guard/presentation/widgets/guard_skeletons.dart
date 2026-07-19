@@ -115,7 +115,7 @@ class _ShiftCardSkeleton extends StatelessWidget {
   }
 }
 
-/// Skeleton for the residents directory list.
+/// Skeleton for the residents directory flat grid.
 class GuardDirectorySkeleton extends StatelessWidget {
   const GuardDirectorySkeleton({super.key});
 
@@ -124,14 +124,18 @@ class GuardDirectorySkeleton extends StatelessWidget {
     return ShimmerWrap(
       child: Padding(
         padding: const EdgeInsets.all(GuardTokens.padScreen),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (int i = 0; i < 6; i++) ...[
-              const _DirectoryCardSkeleton(),
-              if (i < 5) const SizedBox(height: GuardTokens.g2),
-            ],
-          ],
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 130,
+            mainAxisExtent: 58,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: 12,
+          itemBuilder: (_, __) =>
+              const ShimmerBox(height: 58, borderRadius: 10),
         ),
       ),
     );

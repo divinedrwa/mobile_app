@@ -57,10 +57,14 @@ class GuardFlatPicker extends StatefulWidget {
     required this.residents,
     required this.selectedUserIds,
     required this.onToggleFlat,
+    this.singleSelect = false,
   });
 
   final List<ResidentPickerItem> residents;
   final Set<String> selectedUserIds;
+
+  /// When true, highlight a flat if any occupant is selected (visitor approval).
+  final bool singleSelect;
 
   /// Toggle a whole flat — receives the flat identity + every resident user id.
   final void Function(GuardFlatSelection flat) onToggleFlat;
@@ -121,8 +125,12 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
     return list;
   }
 
-  bool _isSelected(_Flat f) =>
-      f.userIds.isNotEmpty && f.userIds.every(widget.selectedUserIds.contains);
+  bool _isSelected(_Flat f) {
+    if (widget.singleSelect) {
+      return f.userIds.any(widget.selectedUserIds.contains);
+    }
+    return f.userIds.isNotEmpty && f.userIds.every(widget.selectedUserIds.contains);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +223,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
             itemBuilder: (context, i) {
               final f = visible[i];
               final selected = _isSelected(f);
-              return _FlatTile(
+              return GuardFlatGridTile(
                 label: f.label,
                 selected: selected,
                 onTap: () => widget.onToggleFlat(f.toSelection()),
@@ -258,14 +266,18 @@ class _BlockChip extends StatelessWidget {
   }
 }
 
-class _FlatTile extends StatelessWidget {
-  const _FlatTile({
+/// Flat tile used in [GuardFlatPicker] and residents directory grid.
+class GuardFlatGridTile extends StatelessWidget {
+  const GuardFlatGridTile({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.subtitle,
   });
 
   final String label;
+  final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
 
@@ -279,7 +291,7 @@ class _FlatTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
@@ -289,26 +301,44 @@ class _FlatTile extends StatelessWidget {
               width: selected ? 1.5 : 1,
             ),
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (selected) ...[
-                Icon(Icons.check_circle_rounded, size: 16, color: tone),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: Text(
-                  label,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (selected) ...[
+                    Icon(Icons.check_circle_rounded, size: 16, color: tone),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: selected ? tone : GuardTokens.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: selected ? tone : GuardTokens.textPrimary,
+                    fontSize: 10.5,
+                    color: GuardTokens.textSecondary,
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

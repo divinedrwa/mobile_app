@@ -15,6 +15,7 @@ import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../providers/guard_visitor_approval_notifier.dart';
 import '../router/guard_routes.dart';
+import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
 
 /// Walk-in approval: OTP verify, notify flat, dial resident, allow/deny entry.
@@ -39,7 +40,6 @@ class _GuardVisitorApprovalPageState
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _otp = TextEditingController();
-  final _villaQuery = TextEditingController();
 
   /// Ensures [initialExtra] `villaId` is applied even when [guardVillasProvider] is already loaded.
   bool _didResolveInitialVilla = false;
@@ -61,7 +61,6 @@ class _GuardVisitorApprovalPageState
     _name.dispose();
     _phone.dispose();
     _otp.dispose();
-    _villaQuery.dispose();
     super.dispose();
   }
 
@@ -74,20 +73,6 @@ class _GuardVisitorApprovalPageState
       _didResolveInitialVilla = false;
       _requestedVillasRefresh = false;
     }
-  }
-
-  List<ResidentPickerItem> _filter(List<ResidentPickerItem> all) {
-    final q = _villaQuery.text.trim().toLowerCase();
-    if (q.isEmpty) return all;
-    return all.where((r) {
-      final block = (r.block ?? '').toLowerCase();
-      final num = r.villaNumber.toLowerCase();
-      final name = r.name.toLowerCase();
-      return block.contains(q) ||
-          num.contains(q) ||
-          '$block $num'.contains(q) ||
-          name.contains(q);
-    }).toList();
   }
 
   void _tryApplyInitialVillaExtra(List<ResidentPickerItem> list) {
@@ -344,21 +329,7 @@ class _GuardVisitorApprovalPageState
                     const GuardScreenSectionHeader(
                       icon: Icons.apartment_rounded,
                       title: 'Visiting flat',
-                    ),
-                    const SizedBox(height: GuardTokens.g2),
-                    TextField(
-                      controller: _villaQuery,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'Block, flat, or name…',
-                        prefixIcon: Icon(Icons.search_rounded),
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            GuardTokens.radiusButton,
-                          ),
-                        ),
-                      ),
+                      subtitle: 'Search by block or flat — tap a tile to select',
                     ),
                     const SizedBox(height: GuardTokens.g2),
               villas.when(
@@ -394,119 +365,26 @@ class _GuardVisitorApprovalPageState
                             style: GuardTokens.bodyStyle(context),
                           );
                         }
-                        final filtered = _filter(list);
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              GuardTokens.radiusCard,
-                            ),
-                            border: Border.all(
-                              color: GuardTokens.borderSubtle,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              GuardTokens.radiusCard,
-                            ),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 280),
-                              child: ListView.separated(
-                                shrinkWrap: true,
-                                itemCount: filtered.length,
-                                separatorBuilder: (_, _) => Divider(
-                                  height: 1,
-                                  indent: GuardTokens.g2,
-                                  endIndent: GuardTokens.g2,
-                                  color: GuardTokens.borderSubtle
-                                      .withValues(alpha: 0.7),
-                                ),
-                                itemBuilder: (_, i) {
-                                  final r = filtered[i];
-                                  final sel = _resident?.userId == r.userId;
-                                  return Material(
-                                    color: sel
-                                        ? GuardTokens.guardAccent
-                                            .withValues(alpha: 0.1)
-                                        : Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        formNotifier.selectResident(r);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: GuardTokens.g2,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              sel
-                                                  ? Icons
-                                                      .radio_button_checked_rounded
-                                                  : Icons
-                                                      .radio_button_off_rounded,
-                                              size: 22,
-                                              color: sel
-                                                  ? GuardTokens.guardAccentDeep
-                                                  : theme
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withValues(alpha: 0.4),
-                                            ),
-                                            const SizedBox(
-                                              width: GuardTokens.g2,
-                                            ),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    r.name,
-                                                    style: TextStyle(
-                                                      fontWeight: sel
-                                                          ? FontWeight.w700
-                                                          : FontWeight.w500,
-                                                      fontSize:
-                                                          GuardTokens.body,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    r.tag.isNotEmpty
-                                                        ? '${r.flatLabel} · ${r.tag}'
-                                                        : r.flatLabel,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurface
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          ),
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            if (sel)
-                                              Icon(
-                                                Icons.done_rounded,
-                                                size: 20,
-                                                color: GuardTokens
-                                                    .guardAccentDeep,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
+                        return GuardFlatPicker(
+                          singleSelect: true,
+                          residents: list,
+                          selectedUserIds: _resident != null
+                              ? {_resident!.userId}
+                              : const {},
+                          onToggleFlat: (flat) {
+                            if (_resident?.villaId == flat.villaId) {
+                              formNotifier.selectResident(null);
+                              return;
+                            }
+                            ResidentPickerItem? pick;
+                            for (final r in list) {
+                              if (r.villaId == flat.villaId) {
+                                pick = r;
+                                break;
+                              }
+                            }
+                            formNotifier.selectResident(pick);
+                          },
                         );
                       },
                     ),

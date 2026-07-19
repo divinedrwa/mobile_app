@@ -26,7 +26,7 @@ messaging.onBackgroundMessage(function (payload) {
   var notification = payload.notification;
   if (!notification) return;
 
-  var title = notification.title || 'Divine Society';
+  var title = notification.title || 'GatePass+';
   var options = {
     body: notification.body || '',
     icon: iconUrl,

@@ -13,8 +13,21 @@ import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_error_banner.dart';
+import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_skeletons.dart';
+
+class _DirectoryFlatGroup {
+  const _DirectoryFlatGroup({
+    required this.key,
+    required this.label,
+    required this.residents,
+  });
+
+  final String key;
+  final String label;
+  final List<ResidentDirectoryRow> residents;
+}
 
 class GuardResidentsDirectoryPage extends ConsumerStatefulWidget {
   const GuardResidentsDirectoryPage({super.key});
@@ -28,6 +41,7 @@ class _GuardResidentsDirectoryPageState
     extends ConsumerState<GuardResidentsDirectoryPage> {
   final _query = TextEditingController();
   String _debouncedQuery = '';
+  String? _blockFilter;
   Timer? _debounceTimer;
 
   @override
@@ -68,6 +82,113 @@ class _GuardResidentsDirectoryPageState
     return '${uc(list.first)}${uc(list.last)}';
   }
 
+  List<_DirectoryFlatGroup> _groupFlats(List<ResidentDirectoryRow> rows) {
+    final map = <String, _DirectoryFlatGroup>{};
+    for (final r in rows) {
+      final key =
+          (r.villaId != null && r.villaId!.isNotEmpty) ? r.villaId! : r.flatLabel;
+      final existing = map[key];
+      if (existing != null) {
+        map[key] = _DirectoryFlatGroup(
+          key: key,
+          label: existing.label,
+          residents: [...existing.residents, r],
+        );
+      } else {
+        map[key] = _DirectoryFlatGroup(
+          key: key,
+          label: r.flatLabel,
+          residents: [r],
+        );
+      }
+    }
+    final list = map.values.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    return list;
+  }
+
+  String? _blockFromLabel(String label) {
+    final m = RegExp(r'^([A-Za-z]+)[\s-]').firstMatch(label.trim());
+    return m?.group(1)?.toUpperCase();
+  }
+
+  List<String> _blocks(List<_DirectoryFlatGroup> flats) {
+    final set = <String>{};
+    for (final f in flats) {
+      final b = _blockFromLabel(f.label);
+      if (b != null && b.isNotEmpty) set.add(b);
+    }
+    return set.toList()..sort();
+  }
+
+  List<_DirectoryFlatGroup> _visibleFlats(List<_DirectoryFlatGroup> flats) {
+    final q = _debouncedQuery.trim().toLowerCase();
+    return flats.where((f) {
+      if (q.isNotEmpty) {
+        final inFlat = f.label.toLowerCase().contains(q);
+        final inName =
+            f.residents.any((r) => r.name.toLowerCase().contains(q));
+        if (!inFlat && !inName) return false;
+      }
+      if (_blockFilter != null) {
+        return _blockFromLabel(f.label) == _blockFilter;
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<void> _openFlatSheet(_DirectoryFlatGroup flat) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              GuardTokens.padScreen,
+              0,
+              GuardTokens.padScreen,
+              GuardTokens.g3,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Flat ${flat.label}',
+                  style: GuardTokens.headingStyle(ctx),
+                ),
+                const SizedBox(height: GuardTokens.g1),
+                Text(
+                  '${flat.residents.length} resident${flat.residents.length == 1 ? '' : 's'}',
+                  style: GuardTokens.captionStyle(ctx),
+                ),
+                const SizedBox(height: GuardTokens.g2),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: flat.residents.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: GuardTokens.g2),
+                    itemBuilder: (_, i) {
+                      final r = flat.residents[i];
+                      return _ResidentActionCard(
+                        row: r,
+                        initials: _initials(r.name),
+                        index: i,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -102,7 +223,7 @@ class _GuardResidentsDirectoryPageState
                     icon: Icons.apartment_rounded,
                     title: 'Directory',
                     subtitle:
-                        'Search by name or flat — tap approval or call when needed',
+                        'Search by name or flat — tap a flat tile for approval or call',
                   ),
                   const SizedBox(height: GuardTokens.g2),
                   TextField(
@@ -168,27 +289,99 @@ class _GuardResidentsDirectoryPageState
                       ),
                     );
                   }
+
+                  final flats = _groupFlats(rows);
+                  final blocks = _blocks(flats);
+                  final visible = _visibleFlats(flats);
+
                   return RefreshIndicator(
                     onRefresh: () async {
-                      ref.invalidate(guardResidentsDirectoryProvider(_debouncedQuery));
-                      await ref.read(guardResidentsDirectoryProvider(_debouncedQuery).future);
+                      ref.invalidate(
+                        guardResidentsDirectoryProvider(_debouncedQuery),
+                      );
+                      await ref.read(
+                        guardResidentsDirectoryProvider(_debouncedQuery).future,
+                      );
                     },
-                    child: ListView.builder(
+                    child: ListView(
                       padding: const EdgeInsets.fromLTRB(
                         GuardTokens.padScreen,
                         GuardTokens.g2,
                         GuardTokens.padScreen,
                         GuardTokens.g3,
                       ),
-                      itemCount: rows.length,
-                      itemBuilder: (_, i) {
-                        final r = rows[i];
-                        return _ResidentCard(
-                          row: r,
-                          initials: _initials(r.name),
-                          index: i,
-                        );
-                      },
+                      children: [
+                        if (_debouncedQuery.isEmpty && blocks.isNotEmpty) ...[
+                          SizedBox(
+                            height: 34,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: const Text('All'),
+                                    selected: _blockFilter == null,
+                                    onSelected: (_) =>
+                                        setState(() => _blockFilter = null),
+                                  ),
+                                ),
+                                for (final b in blocks)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(b),
+                                      selected: _blockFilter == b,
+                                      onSelected: (_) =>
+                                          setState(() => _blockFilter = b),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: GuardTokens.g2),
+                        ],
+                        if (visible.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: Text(
+                                'No flats match your search.',
+                                style: GuardTokens.bodyStyle(context),
+                              ),
+                            ),
+                          )
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 130,
+                              mainAxisExtent: 58,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                            ),
+                            itemCount: visible.length,
+                            itemBuilder: (_, i) {
+                              final f = visible[i];
+                              final subtitle = f.residents.length == 1
+                                  ? f.residents.first.name
+                                  : '${f.residents.length} residents';
+                              return GuardFlatGridTile(
+                                label: f.label.replaceFirst(
+                                  RegExp(r'^Flat\s+', caseSensitive: false),
+                                  '',
+                                ),
+                                subtitle: subtitle,
+                                selected: false,
+                                onTap: () => _openFlatSheet(f),
+                              ).animate(
+                                delay: DesignAnimations.staggerFor(i),
+                              ).fadeIn(duration: 200.ms).slideY(begin: 0.04);
+                            },
+                          ),
+                      ],
                     ),
                   );
                 },
@@ -201,8 +394,8 @@ class _GuardResidentsDirectoryPageState
   }
 }
 
-class _ResidentCard extends StatelessWidget {
-  const _ResidentCard({
+class _ResidentActionCard extends StatelessWidget {
+  const _ResidentActionCard({
     required this.row,
     required this.initials,
     required this.index,
@@ -217,172 +410,131 @@ class _ResidentCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: GuardTokens.g2),
-      child: Material(
-        color: cs.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
-          side: BorderSide(
-            color: isDark
-                ? GuardTokens.darkBorder.withValues(alpha: 0.85)
-                : GuardTokens.borderSubtle.withValues(alpha: 0.9),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: GuardTokens.g2,
-            vertical: GuardTokens.g2 + 2,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: GuardTokens.guardAccent.withValues(alpha: 0.16),
-                foregroundColor: GuardTokens.guardAccentDeep,
-                child: Text(
-                  initials,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: GuardTokens.title,
-                  ),
-                ),
-              ),
-              const SizedBox(width: GuardTokens.g2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.name,
-                      style: GuardTokens.headingStyle(context).copyWith(
-                        fontSize: GuardTokens.body + 1,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 5),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: GuardTokens.g1,
-                      runSpacing: 4,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: GuardTokens.guardAccent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: GuardTokens.guardAccent.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: Text(
-                            'Flat ${row.flatLabel}',
-                            style: GuardTokens.captionStyle(context).copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: GuardTokens.guardAccentDeep,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        ),
-                        if (row.phoneMasked != null &&
-                            row.phoneMasked!.trim().isNotEmpty)
-                          Text(
-                            row.phoneMasked!,
-                            style: GuardTokens.captionStyle(context),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: GuardTokens.g1),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                    onPressed: () {
-                      final residentPhone = row.phone?.trim() ?? '';
-                      final q = <String, String>{
-                        'name': row.name,
-                        if (row.villaId != null && row.villaId!.isNotEmpty)
-                          'villaId': row.villaId!,
-                        if (residentPhone.isNotEmpty)
-                          'residentPhone': residentPhone,
-                      };
-                      context.push(
-                        GuardRoutes.visitorApprovalWithQuery('dir', q),
-                      );
-                    },
-                    icon: Icon(
-                      Icons.verified_user_outlined,
-                      color: GuardTokens.guardAccentDeep,
-                    ),
-                    tooltip: 'Check in visitor for ${row.name}',
-                  ),
-                  const SizedBox(height: GuardTokens.g1),
-                  IconButton.outlined(
-                    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                    onPressed: () async {
-                      final display = row.phoneMasked?.trim().isNotEmpty == true
-                          ? row.phoneMasked!
-                          : maskPhone(row.phone);
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Call resident?'),
-                          content: Text('Dial ${row.name} at $display?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Call'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed != true || !context.mounted) return;
-                      final ok = await launchDial(row.phone);
-                      if (!context.mounted) return;
-                      if (!ok) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            behavior: SnackBarBehavior.floating,
-                            content: Text(
-                              row.phoneMasked != null &&
-                                      row.phoneMasked!.trim().isNotEmpty
-                                  ? 'Cannot dial — check number format (${row.phoneMasked})'
-                                  : 'Phone not available',
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    icon: Icon(
-                      Icons.phone_outlined,
-                      color: GuardTokens.guardAccentDeep,
-                    ),
-                    tooltip: 'Call ${row.name}',
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Material(
+      color: cs.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+        side: BorderSide(
+          color: isDark
+              ? GuardTokens.darkBorder.withValues(alpha: 0.85)
+              : GuardTokens.borderSubtle.withValues(alpha: 0.9),
         ),
       ),
-    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: 0.04);
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: GuardTokens.g2,
+          vertical: GuardTokens.g2 + 2,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: GuardTokens.guardAccent.withValues(alpha: 0.16),
+              foregroundColor: GuardTokens.guardAccentDeep,
+              child: Text(
+                initials,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: GuardTokens.title,
+                ),
+              ),
+            ),
+            const SizedBox(width: GuardTokens.g2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.name,
+                    style: GuardTokens.headingStyle(context).copyWith(
+                      fontSize: GuardTokens.body + 1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (row.phoneMasked != null &&
+                      row.phoneMasked!.trim().isNotEmpty)
+                    Text(
+                      row.phoneMasked!,
+                      style: GuardTokens.captionStyle(context),
+                    ),
+                ],
+              ),
+            ),
+            IconButton.filledTonal(
+              style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+              onPressed: () {
+                final residentPhone = row.phone?.trim() ?? '';
+                final q = <String, String>{
+                  'name': row.name,
+                  if (row.villaId != null && row.villaId!.isNotEmpty)
+                    'villaId': row.villaId!,
+                  if (residentPhone.isNotEmpty) 'residentPhone': residentPhone,
+                };
+                Navigator.of(context).pop();
+                context.push(GuardRoutes.visitorApprovalWithQuery('dir', q));
+              },
+              icon: Icon(
+                Icons.verified_user_outlined,
+                color: GuardTokens.guardAccentDeep,
+              ),
+              tooltip: 'Check in visitor for ${row.name}',
+            ),
+            IconButton.outlined(
+              style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+              onPressed: () async {
+                final display = row.phoneMasked?.trim().isNotEmpty == true
+                    ? row.phoneMasked!
+                    : maskPhone(row.phone);
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Call resident?'),
+                    content: Text('Dial ${row.name} at $display?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Call'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !context.mounted) return;
+                final ok = await launchDial(row.phone);
+                if (!context.mounted) return;
+                if (!ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      content: Text(
+                        row.phoneMasked != null &&
+                                row.phoneMasked!.trim().isNotEmpty
+                            ? 'Cannot dial — check number format (${row.phoneMasked})'
+                            : 'Phone not available',
+                      ),
+                    ),
+                  );
+                }
+              },
+              icon: Icon(
+                Icons.phone_outlined,
+                color: GuardTokens.guardAccentDeep,
+              ),
+              tooltip: 'Call ${row.name}',
+            ),
+          ],
+        ),
+      ),
+    ).animate(delay: DesignAnimations.staggerFor(index))
+        .fadeIn(duration: 200.ms)
+        .slideY(begin: 0.04);
   }
 }
-
