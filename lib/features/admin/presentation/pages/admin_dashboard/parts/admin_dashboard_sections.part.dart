@@ -11,6 +11,8 @@ extension _AdminDashboardSectionsPart on _AdminDashboardScreenState {
         _buildSummaryStrip(d),
         _buildUpiPendingAlert(ctx),
         SizedBox(height: kAdminDashSectionGap),
+        _buildAppUsageCard(ctx),
+        SizedBox(height: kAdminDashSectionGap),
         // Same "Society Finances" card the resident home page shows.
         HomeSocietyFinances(
           dashboardAsync: fundAsync,
@@ -23,6 +25,174 @@ extension _AdminDashboardSectionsPart on _AdminDashboardScreenState {
         _buildRecentActivity(ctx, notificationsAsync),
         const SizedBox(height: 20),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // APP USAGE (admin home — not bottom nav)
+  // ═══════════════════════════════════════════════════════════════════
+
+  Widget _buildAppUsageCard(BuildContext ctx) {
+    final summaryAsync = ref.watch(adminAppAnalyticsSummaryProvider);
+
+    return summaryAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.zero,
+        child: BannerSkeleton(height: 88),
+      ),
+      error: (_, __) => _appUsageCardShell(
+        ctx,
+        dailyActive: null,
+        weeklyActive: null,
+      ),
+      data: (summary) {
+        final totals =
+            (summary['totals'] as Map?)?.cast<String, dynamic>() ?? {};
+        return _appUsageCardShell(
+          ctx,
+          dailyActive: totals['dailyActiveUsers'] as int?,
+          weeklyActive: totals['weeklyActiveUsers'] as int?,
+        );
+      },
+    );
+  }
+
+  Widget _appUsageCardShell(
+    BuildContext ctx, {
+    required int? dailyActive,
+    required int? weeklyActive,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kAdminDashRadiusLg),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          ctx.push('/resident/admin-app-analytics');
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(kAdminDashRadiusLg),
+            border: Border.all(color: const Color(0xFFE8ECF0)),
+            boxShadow: adminDashCardShadow(0.05),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: DesignColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.smartphone_outlined,
+                      color: DesignColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'App Usage',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: DesignColors.textPrimary,
+                            letterSpacing: -0.25,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Residents, guards & admins — mobile & web activity',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: DesignColors.textSecondary,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: DesignColors.textSecondary.withValues(alpha: 0.7),
+                    size: 22,
+                  ),
+                ],
+              ),
+              if (dailyActive != null || weeklyActive != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _appUsageStatChip(
+                        label: 'Daily active',
+                        value: dailyActive ?? 0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _appUsageStatChip(
+                        label: 'Weekly active',
+                        value: weeklyActive ?? 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _appUsageStatChip({required String label, required int value}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: DesignColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: DesignColors.primary.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: DesignColors.primary,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: DesignColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

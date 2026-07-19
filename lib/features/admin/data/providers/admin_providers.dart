@@ -23,6 +23,7 @@ import '../repositories/admin_villa_repository.dart';
 import '../repositories/admin_invitation_repository.dart';
 import '../repositories/admin_society_settings_repository.dart';
 import '../repositories/admin_gate_analytics_repository.dart';
+import '../repositories/admin_app_analytics_repository.dart';
 import '../repositories/admin_reconciliation_repository.dart';
 import '../repositories/admin_complaint_analytics_repository.dart';
 import '../repositories/admin_parking_repository.dart';
@@ -462,6 +463,41 @@ final adminGateAnalyticsPeakHoursProvider =
 final adminGateAnalyticsDailyTrendProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return ref.watch(adminGateAnalyticsRepositoryProvider).getDailyTrend();
+});
+
+// ── App usage analytics (first-party) ────────────────────────────────
+
+final adminAppAnalyticsRepositoryProvider =
+    Provider<AdminAppAnalyticsRepository>((ref) => AdminAppAnalyticsRepository());
+
+final adminAppAnalyticsSummaryProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getSummary(days: 30);
+});
+
+final adminAppAnalyticsDailyTrendProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getDailyTrend(days: 14);
+});
+
+final adminAppAnalyticsScreensProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getTopScreens();
+});
+
+final adminAppAnalyticsFlowsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getFlows();
+});
+
+final adminAppAnalyticsActiveUsersProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getActiveUsers();
+});
+
+final adminAppAnalyticsUserEngagementProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getUserEngagement();
 });
 
 // ── Financial Reconciliation ─────────────────────────────────────────

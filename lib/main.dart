@@ -12,7 +12,8 @@ import 'core/routing/app_navigator_keys.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/push_lifecycle_binding.dart';
 import 'core/services/gateway_payment_lifecycle_binding.dart';
-import 'core/telemetry/guard_analytics_bridge.dart';
+import 'core/telemetry/app_analytics_service.dart';
+import 'core/telemetry/unified_app_telemetry.dart';
 import 'core/utils/app_restart.dart';
 import 'theme/theme.dart' as gp_theme;
 import 'features/auth/presentation/providers/auth_provider.dart';
@@ -76,7 +77,7 @@ void main() async {
   // Fetch native screen resolution before building the UI (iOS + Android).
   await _fetchNativeScreenInfo();
 
-  registerGuardFlowTelemetry(firebaseAvailable: r.firebaseInitialized);
+  registerUnifiedAppTelemetry(firebaseAvailable: r.firebaseInitialized);
 
   // Set up global error handlers in release builds.
   // Use Crashlytics when Firebase is available, fallback to debugPrint otherwise.
@@ -159,6 +160,14 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
         // logout() calls restartApp() — no navigation needed.
       });
       _registerResidentDataRefresh();
+      if (ref.read(authProvider).isAuthenticated) {
+        final auth = ref.read(authProvider);
+        if (auth.user != null) {
+          AppAnalyticsService.setUserContext(auth.user!);
+        }
+        unawaited(AppAnalyticsService.startSession());
+        unawaited(AppAnalyticsService.logLogin());
+      }
       _registerGuardDataRefresh();
       _checkAppVersion();
     });
@@ -242,6 +251,13 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       gp_theme.refreshSocietyThemeFromServer(ref);
+      if (ref.read(authProvider).isAuthenticated) {
+        unawaited(AppAnalyticsService.heartbeat());
+      }
+    } else if (state == AppLifecycleState.paused) {
+      if (ref.read(authProvider).isAuthenticated) {
+        unawaited(AppAnalyticsService.heartbeat());
+      }
     }
   }
 
@@ -268,8 +284,16 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
         _routerRefresh.notify();
       }
       if (wasAuth && !nowAuth) {
+        unawaited(AppAnalyticsService.logLogout());
+        unawaited(AppAnalyticsService.endSession());
+        AppAnalyticsService.clearUserContext();
         gp_theme.handleAuthLogoutTheme(ref);
       } else if (!wasAuth && nowAuth) {
+        if (next.user != null) {
+          AppAnalyticsService.setUserContext(next.user!);
+        }
+        unawaited(AppAnalyticsService.startSession());
+        unawaited(AppAnalyticsService.logLogin());
         gp_theme.refreshSocietyThemeFromServer(ref);
       }
     });

@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../../../core/telemetry/app_analytics_service.dart';
+import '../../../../core/telemetry/app_analytics_tab_paths.dart';
 import '../../../admin/data/providers/admin_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/pages/admin_dashboard/admin_dashboard_screen.dart';
@@ -30,6 +33,25 @@ class ResidentShell extends ConsumerStatefulWidget {
 }
 
 class _ResidentShellState extends ConsumerState<ResidentShell> {
+  int? _lastLoggedTab;
+  bool _loggedAdminOnly = false;
+
+  void _logTabIfNeeded(int tabIndex, {required bool isAdmin, required bool adminOnly}) {
+    if (adminOnly) {
+      if (_loggedAdminOnly) return;
+      _loggedAdminOnly = true;
+      unawaited(AppAnalyticsService.logTabScreen(AppAnalyticsTabPaths.residentAdminOnly));
+      return;
+    }
+    if (_lastLoggedTab == tabIndex) return;
+    _lastLoggedTab = tabIndex;
+    unawaited(
+      AppAnalyticsService.logTabScreen(
+        AppAnalyticsTabPaths.residentTab(tabIndex, isAdmin: isAdmin),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +59,12 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
       if (!mounted) return;
       prefetchResidentHomeData(ref);
       PaymentOrchestrator.recoverPendingPayment(context: context, ref: ref);
+      final user = ref.read(authProvider).user;
+      final isAdmin = user?.role.isAdminLike ?? false;
+      final hasVilla = user?.villaId != null && (user?.villaId?.isNotEmpty ?? false);
+      final adminOnly = isAdmin && !hasVilla;
+      final tab = ref.read(currentTabProvider).clamp(0, adminOnly ? 0 : (isAdmin ? 3 : 2));
+      _logTabIfNeeded(tab, isAdmin: isAdmin, adminOnly: adminOnly);
     });
   }
 
@@ -46,6 +74,11 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     final isAdmin = user?.role.isAdminLike ?? false;
 
     ref.listen<int>(currentTabProvider, (prev, next) {
+      final hasVillaNow = user?.villaId != null && (user?.villaId?.isNotEmpty ?? false);
+      final adminOnlyNow = isAdmin && !hasVillaNow;
+      if (prev != next) {
+        _logTabIfNeeded(next, isAdmin: isAdmin, adminOnly: adminOnlyNow);
+      }
       if (next == 1) {
         prefetchCommunityTabData(
           ref,

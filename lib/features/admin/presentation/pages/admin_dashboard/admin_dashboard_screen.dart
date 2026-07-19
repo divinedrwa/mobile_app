@@ -45,6 +45,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     ref.invalidate(notificationProvider);
     ref.invalidate(adminUpiStatsProvider);
     ref.invalidate(adminBillingCyclesProvider);
+    ref.invalidate(adminAppAnalyticsSummaryProvider);
   }
 
   @override

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/telemetry/app_analytics_service.dart';
+import '../../../../core/telemetry/app_analytics_tab_paths.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/resident_home_prefetch.dart';
 import '../../data/providers/notification_provider.dart';
@@ -23,6 +27,13 @@ class CommunityScreen extends ConsumerStatefulWidget {
 class _CommunityScreenState extends ConsumerState<CommunityScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  int? _lastLoggedSubTab;
+
+  void _logSubTabIfNeeded(int index) {
+    if (_lastLoggedSubTab == index) return;
+    _lastLoggedSubTab = index;
+    unawaited(AppAnalyticsService.logTabScreen(AppAnalyticsTabPaths.communitySubTab(index)));
+  }
 
   static const _tabs = [
     CommunitySubTab(icon: Icons.campaign_outlined, label: 'Notices'),
@@ -41,6 +52,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
       initialIndex: initial.clamp(0, _tabs.length - 1),
     );
     _tabController.addListener(_syncProviderFromTab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _logSubTabIfNeeded(_tabController.index);
+    });
   }
 
   void _syncProviderFromTab() {
@@ -51,6 +65,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
       if (ref.read(communitySubTabIndexProvider) != idx) {
         ref.read(communitySubTabIndexProvider.notifier).state = idx;
       }
+      _logSubTabIfNeeded(idx);
       prefetchCommunityTabData(ref, activeTab: idx);
     }
   }

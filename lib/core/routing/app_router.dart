@@ -54,7 +54,9 @@ import '../../features/admin/presentation/pages/admin_residents_screen.dart';
 import '../../features/admin/presentation/pages/admin_villas_screen.dart';
 import '../../features/admin/presentation/pages/admin_invitations_screen.dart';
 import '../../features/admin/presentation/pages/admin_society_settings_screen.dart';
+import '../telemetry/app_analytics_route_observer.dart';
 import '../../features/admin/presentation/pages/admin_gate_analytics_screen.dart';
+import '../../features/admin/presentation/pages/admin_app_analytics_screen.dart';
 import '../../features/admin/presentation/pages/admin_reconciliation_screen.dart';
 import '../../features/admin/presentation/pages/admin_complaint_analytics_screen.dart';
 import '../../features/admin/presentation/pages/admin_parking_screen.dart';
@@ -97,6 +99,7 @@ class AppRouter {
   static GoRouter router(WidgetRef ref, {required ChangeNotifier refreshListenable}) {
     return GoRouter(
       navigatorKey: appRootNavigatorKey,
+      observers: [AppAnalyticsRouteObserver()],
       debugLogDiagnostics: kDebugMode,
       refreshListenable: refreshListenable,
       redirect: (context, state) {
@@ -591,6 +594,11 @@ class AppRouter {
               path: 'admin-gate-analytics',
               builder: (context, state) =>
                   const AdminGateAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-app-analytics',
+              builder: (context, state) =>
+                  const AdminAppAnalyticsScreen(),
             ),
             GoRoute(
               path: 'admin-reconciliation',

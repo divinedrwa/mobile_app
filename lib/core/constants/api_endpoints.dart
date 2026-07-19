@@ -293,6 +293,16 @@ class ApiEndpoints {
 
   // Admin — Gate Analytics
   static const String gateAnalyticsOverview = '/gate-analytics/overview';
+  static const String appAnalyticsSessions = '/app-analytics/sessions';
+  static String appAnalyticsSession(String id) => '/app-analytics/sessions/$id';
+  static const String appAnalyticsEvents = '/app-analytics/events';
+  static const String appAnalyticsEventsBatch = '/app-analytics/events/batch';
+  static const String appAnalyticsSummary = '/app-analytics/summary';
+  static const String appAnalyticsDailyTrend = '/app-analytics/daily-trend';
+  static const String appAnalyticsScreens = '/app-analytics/screens';
+  static const String appAnalyticsFlows = '/app-analytics/flows';
+  static const String appAnalyticsActiveUsers = '/app-analytics/active-users';
+  static const String appAnalyticsUserEngagement = '/app-analytics/user-engagement';
   static const String gateAnalyticsVisitorStats = '/gate-analytics/visitor-statistics';
   static const String gateAnalyticsPeakHours = '/gate-analytics/peak-hours';
   static const String gateAnalyticsDailyTrend = '/gate-analytics/daily-trend';
