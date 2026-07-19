@@ -28,4 +28,14 @@ abstract class AppAnalyticsTabPaths {
     final name = _communitySubTabs[index.clamp(0, _communitySubTabs.length - 1)];
     return '/resident/tab/community/$name';
   }
+
+  static String guardTab(int index) {
+    return switch (index) {
+      0 => '/guard/tab/dashboard',
+      1 => '/guard/tab/active',
+      2 => '/guard/tab/logs',
+      3 => '/guard/tab/profile',
+      _ => '/guard/tab/dashboard',
+    };
+  }
 }

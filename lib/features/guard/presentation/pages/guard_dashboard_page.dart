@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -287,6 +288,7 @@ class _DashboardContent extends ConsumerWidget {
             }
             final extra = _scanPayload(raw);
             if (extra == null) return;
+            unawaited(BusinessAnalytics.track(BusinessAnalytics.guardQrScan));
             await context.push(
               GuardRoutes.visitorApprovalWithQuery('qr-scan', extra),
             );

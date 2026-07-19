@@ -149,8 +149,9 @@ class AppAnalyticsService {
     final sid = _sessionId ?? StorageService.getString(_sessionIdKey);
     if (sid == null || sid.isEmpty) return;
     try {
-      await logSessionEnd();
+      // Server PATCH records SESSION_END with deduped clientEventId — no duplicate client event.
       await _dio.patch(ApiEndpoints.appAnalyticsSession(sid), data: {'ended': true});
+      unawaited(FirebaseAnalyticsHelper.logSessionEnd());
     } catch (_) {}
     _sessionId = null;
     await StorageService.remove(_sessionIdKey);

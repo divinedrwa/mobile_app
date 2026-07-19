@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_animations.dart';
@@ -495,6 +498,8 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
             isUrgent: _isUrgent,
             notifyResidents: _notifyResidents,
           );
+
+      unawaited(BusinessAnalytics.track(BusinessAnalytics.noticePublish));
 
       if (!mounted) return;
       Navigator.of(context).pop();

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
+import '../../../../../core/telemetry/business_analytics.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/providers/maintenance_provider.dart';
@@ -57,6 +60,16 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
       curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
     );
     _controller.forward();
+    unawaited(
+      BusinessAnalytics.track(
+        BusinessAnalytics.maintenancePayment,
+        properties: {
+          'amount': widget.amount,
+          'method': widget.paymentMethod,
+          if (widget.billingPeriod != null) 'billingPeriod': widget.billingPeriod,
+        },
+      ),
+    );
   }
 
   bool _didInvalidate = false;

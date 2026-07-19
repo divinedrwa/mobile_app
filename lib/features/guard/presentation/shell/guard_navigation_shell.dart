@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_haptics.dart';
+import '../../../../core/telemetry/app_analytics_service.dart';
+import '../../../../core/telemetry/app_analytics_tab_paths.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../ui/guard_tokens.dart';
@@ -99,6 +103,11 @@ class GuardNavigationShell extends ConsumerWidget {
                       selectedIndex: shell.currentIndex,
                       onDestinationSelected: (index) {
                         DesignHaptics.selection();
+                        unawaited(
+                          AppAnalyticsService.logTabScreen(
+                            AppAnalyticsTabPaths.guardTab(index),
+                          ),
+                        );
                         shell.goBranch(index);
                       },
                       destinations: [
@@ -160,6 +169,9 @@ class GuardNavigationShell extends ConsumerWidget {
       selectedIndex: shell.currentIndex,
       onDestinationSelected: (index) {
         DesignHaptics.selection();
+        unawaited(
+          AppAnalyticsService.logTabScreen(AppAnalyticsTabPaths.guardTab(index)),
+        );
         shell.goBranch(index);
       },
       labelType: NavigationRailLabelType.all,

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
@@ -265,9 +268,12 @@ class _AdminBillingCyclesScreenState
     final ok = await _confirm('Publish cycle?',
         'Residents will see this cycle and can pay maintenance.');
     if (!ok) return;
-    await _runAction(() => ref
+    final success = await _runAction(() => ref
         .read(adminBillingCycleRepositoryProvider)
         .publishCycle(id), 'Cycle published');
+    if (success) {
+      unawaited(BusinessAnalytics.track(BusinessAnalytics.billingCyclePublish));
+    }
   }
 
   Future<void> _unpublish(String id) async {
@@ -307,7 +313,7 @@ class _AdminBillingCyclesScreenState
         false;
   }
 
-  Future<void> _runAction(
+  Future<bool> _runAction(
       Future<Map<String, dynamic>> Function() action, String success) async {
     try {
       await action();
@@ -316,11 +322,13 @@ class _AdminBillingCyclesScreenState
             .showSnackBar(SnackBar(content: Text(success)));
       }
       _refresh();
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.toString())));
       }
+      return false;
     }
   }
 }

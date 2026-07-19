@@ -301,6 +301,9 @@ class ApiEndpoints {
   static const String appAnalyticsDailyTrend = '/app-analytics/daily-trend';
   static const String appAnalyticsScreens = '/app-analytics/screens';
   static const String appAnalyticsFlows = '/app-analytics/flows';
+  static const String appAnalyticsActions = '/app-analytics/actions';
+  static const String appAnalyticsErrors = '/app-analytics/errors';
+  static const String appAnalyticsInsights = '/app-analytics/insights';
   static const String appAnalyticsActiveUsers = '/app-analytics/active-users';
   static const String appAnalyticsUserEngagement = '/app-analytics/user-engagement';
   static const String gateAnalyticsVisitorStats = '/gate-analytics/visitor-statistics';

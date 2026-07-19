@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_haptics.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
@@ -263,6 +266,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
     if (mounted) {
       if (error == null) {
         DesignHaptics.success();
+        unawaited(BusinessAnalytics.track(BusinessAnalytics.complaintSubmit));
         ref.invalidate(myComplaintsProvider);
         setState(() {
           _isSubmitting = false;

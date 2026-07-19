@@ -67,6 +67,49 @@ class AdminAppAnalyticsRepository {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getActions({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsActions,
+        queryParameters: {'days': days},
+      );
+      final list = res.data?['actions'];
+      if (list is List) {
+        return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load business actions');
+    }
+  }
+
+  Future<Map<String, dynamic>> getErrors({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsErrors,
+        queryParameters: {'days': days},
+      );
+      return {
+        'errors': (res.data?['errors'] as List?) ?? [],
+        'totals': (res.data?['totals'] as Map?)?.cast<String, dynamic>() ?? {},
+      };
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load error analytics');
+    }
+  }
+
+  Future<Map<String, dynamic>> getInsights({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsInsights,
+        queryParameters: {'days': days},
+      );
+      return (res.data?['insights'] as Map?)?.cast<String, dynamic>() ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load analytics insights');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getActiveUsers({int days = 7}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(

@@ -490,6 +490,21 @@ final adminAppAnalyticsFlowsProvider =
   return ref.watch(adminAppAnalyticsRepositoryProvider).getFlows();
 });
 
+final adminAppAnalyticsActionsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getActions();
+});
+
+final adminAppAnalyticsErrorsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getErrors();
+});
+
+final adminAppAnalyticsInsightsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getInsights();
+});
+
 final adminAppAnalyticsActiveUsersProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref.watch(adminAppAnalyticsRepositoryProvider).getActiveUsers();

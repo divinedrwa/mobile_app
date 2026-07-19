@@ -116,6 +116,30 @@ class FirebaseAnalyticsHelper {
     } catch (_) {}
   }
 
+  static Future<void> logBusinessAction({
+    required String action,
+    bool success = true,
+    Map<String, dynamic>? properties,
+  }) async {
+    if (!_available) return;
+    try {
+      await FirebaseAnalytics.instance.logEvent(
+        name: 'business_action',
+        parameters: {
+          'action': _sanitizeName(action),
+          'success': success,
+          if (properties != null)
+            ...properties.map(
+              (k, v) => MapEntry(
+                _sanitizeName(k),
+                v is num || v is String ? v : v.toString(),
+              ),
+            ),
+        },
+      );
+    } catch (_) {}
+  }
+
   static String _sanitizeName(String raw) {
     var s = raw.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase();
     if (s.length > 40) s = s.substring(0, 40);

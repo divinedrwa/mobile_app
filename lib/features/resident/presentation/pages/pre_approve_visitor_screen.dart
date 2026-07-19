@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
@@ -481,6 +482,8 @@ class _PreApproveVisitorScreenState
       );
 
       final result = await ref.read(visitorRepositoryProvider).preApproveVisitor(visitor);
+
+      unawaited(BusinessAnalytics.track(BusinessAnalytics.preApproveVisitor));
 
       if (mounted) {
         ref.invalidate(preApprovedVisitorsProvider);
