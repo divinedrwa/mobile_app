@@ -6,6 +6,8 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_tab_switcher.dart';
 
 /// Admin screen for gate analytics and visitor statistics.
 class AdminGateAnalyticsScreen extends ConsumerStatefulWidget {
@@ -49,6 +51,15 @@ class _AdminGateAnalyticsScreenState
             onPressed: _refresh,
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(48),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AnalyticsTabSwitcher(
+              currentRoute: '/resident/admin-gate-analytics',
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -316,73 +327,20 @@ class _AdminGateAnalyticsScreenState
             .toList() ??
         [];
 
-    if (hours.isEmpty) {
-      return EmptyStateWidget(
-        icon: Icons.schedule_outlined,
-        title: 'No peak hour data',
-        subtitle: 'Visitor peak hours will appear here once data is available.',
-        iconColor: const Color(0xFF0891B2),
-      );
-    }
-
-    final maxCount = hours.fold<int>(
-        0,
-        (m, h) => _toInt(h['count'] ?? h['totalEvents']) > m
-            ? _toInt(h['count'] ?? h['totalEvents'])
-            : m);
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: hours.take(8).map((h) {
-          final label = h['label']?.toString() ??
-              '${_toInt(h['hour']).toString().padLeft(2, '0')}:00';
-          final count = _toInt(h['count'] ?? h['totalEvents']);
-          final fraction = maxCount > 0 ? count / maxCount : 0.0;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Text(
-                    label,
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: DesignColors.textSecondary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      minHeight: 14,
-                      backgroundColor:
-                          const Color(0xFF0891B2).withValues(alpha: 0.08),
-                      valueColor: const AlwaysStoppedAnimation(
-                          Color(0xFF0891B2)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    '$count',
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
+    return AnalyticsBarChart(
+      color: const Color(0xFF0891B2),
+      emptyIcon: Icons.schedule_outlined,
+      emptyTitle: 'No peak hour data',
+      emptySubtitle: 'Visitor peak hours will appear here once data is available.',
+      points: hours
+          .map(
+            (h) => AnalyticsBarPoint(
+              label: h['label']?.toString() ??
+                  '${_toInt(h['hour']).toString().padLeft(2, '0')}:00',
+              value: _toInt(h['count'] ?? h['totalEvents']).toDouble(),
             ),
-          );
-        }).toList(),
-      ),
+          )
+          .toList(),
     );
   }
 
@@ -397,72 +355,20 @@ class _AdminGateAnalyticsScreenState
             .toList() ??
         [];
 
-    if (days.isEmpty) {
-      return EmptyStateWidget(
-        icon: Icons.show_chart_rounded,
-        title: 'No trend data',
-        subtitle: '7-day visitor trends will appear here once data is available.',
-        iconColor: DesignColors.success,
-      );
-    }
-
-    final maxCount = days.fold<int>(
-        0, (m, d) => _toInt(d['total'] ?? d['count']) > m ? _toInt(d['total'] ?? d['count']) : m);
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: days.map((d) {
-          final date = d['date']?.toString() ?? '';
-          final count = _toInt(d['total'] ?? d['count']);
-          final fraction = maxCount > 0 ? count / maxCount : 0.0;
-          final shortDate = d['displayDate']?.toString().isNotEmpty == true
-              ? d['displayDate'].toString()
-              : (date.length >= 10 ? date.substring(5, 10) : date);
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 50,
-                  child: Text(
-                    shortDate,
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: DesignColors.textSecondary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      minHeight: 14,
-                      backgroundColor:
-                          DesignColors.success.withValues(alpha: 0.08),
-                      valueColor: AlwaysStoppedAnimation(
-                          DesignColors.success),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    '$count',
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+    return AnalyticsBarChart(
+      color: DesignColors.success,
+      emptyTitle: 'No trend data',
+      emptySubtitle: '7-day visitor trends will appear here once data is available.',
+      points: days.map((d) {
+        final date = d['date']?.toString() ?? '';
+        final shortDate = d['displayDate']?.toString().isNotEmpty == true
+            ? d['displayDate'].toString()
+            : (date.length >= 10 ? date.substring(5, 10) : date);
+        return AnalyticsBarPoint(
+          label: shortDate,
+          value: _toInt(d['total'] ?? d['count']).toDouble(),
+        );
+      }).toList(),
     );
   }
 

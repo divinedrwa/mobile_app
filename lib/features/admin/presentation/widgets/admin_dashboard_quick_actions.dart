@@ -74,16 +74,13 @@ class AdminDashboardQuickActions extends StatelessWidget {
           title: 'Insights & Analytics',
           subtitle: 'Reports and data views',
           items: [
-            AdminQuickAction(Icons.analytics_outlined, 'Gate Analytics', ActionColors.info,
-                '/resident/admin-gate-analytics'),
-            AdminQuickAction(Icons.bar_chart_rounded, 'Complaint Analytics',
-                ActionColors.danger, '/resident/admin-complaint-analytics'),
-            AdminQuickAction(Icons.account_balance_outlined, 'Reconciliation',
-                ActionColors.success, '/resident/admin-reconciliation'),
+            // Single entry point into the Analytics hub — Gate, Complaints,
+            // Water, and Reconciliation are now reachable from the tab
+            // switcher inside it, so they no longer need separate tiles here.
+            AdminQuickAction(Icons.insights_rounded, 'Analytics', ActionColors.info,
+                '/resident/admin-app-analytics'),
             AdminQuickAction(Icons.local_parking, 'Parking', ActionColors.secondary,
                 '/resident/admin-parking'),
-            AdminQuickAction(Icons.water_outlined, 'Water Analytics', ActionColors.info,
-                '/resident/admin-water-analytics'),
             AdminQuickAction(Icons.upload_file_outlined, 'Data Tools', ActionColors.neutral,
                 '/resident/admin-data-tools'),
           ],

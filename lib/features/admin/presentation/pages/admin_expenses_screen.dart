@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -586,6 +589,8 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
                 : _descCtl.text.trim(),
           );
 
+      unawaited(BusinessAnalytics.track(BusinessAnalytics.expenseAdd));
+
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -599,6 +604,9 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
       );
       widget.onCreated();
     } catch (e) {
+      unawaited(
+        BusinessAnalytics.track(BusinessAnalytics.expenseAdd, success: false),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -103,7 +103,7 @@ extension _AdminDashboardSectionsPart on _AdminDashboardScreenState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'App Usage',
+                          'Analytics',
                           style: TextStyle(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w800,
@@ -113,7 +113,7 @@ extension _AdminDashboardSectionsPart on _AdminDashboardScreenState {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Residents, guards & admins — mobile & web activity',
+                          'Growth, engagement, gate, complaints & more',
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,

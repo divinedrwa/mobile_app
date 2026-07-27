@@ -8,6 +8,8 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_tab_switcher.dart';
 
 /// Admin screen for advanced complaint analytics.
 class AdminComplaintAnalyticsScreen extends ConsumerStatefulWidget {
@@ -51,6 +53,15 @@ class _AdminComplaintAnalyticsScreenState
             onPressed: _refresh,
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(48),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AnalyticsTabSwitcher(
+              currentRoute: '/resident/admin-complaint-analytics',
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -305,74 +316,18 @@ class _AdminComplaintAnalyticsScreenState
   }
 
   Widget _trendCard(List<Map<String, dynamic>> trend) {
-    if (trend.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'No trend data available',
-          style: DesignTypography.bodySmall
-              .copyWith(color: DesignColors.textSecondary),
-        ),
-      );
-    }
-
-    final maxCount = trend.fold<int>(
-        0,
-        (m, t) => _toInt(t['totalComplaints'] ?? t['count']) > m
-            ? _toInt(t['totalComplaints'] ?? t['count'])
-            : m);
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: trend.map((t) {
-          final month = t['month']?.toString() ?? '';
-          final count = _toInt(t['totalComplaints'] ?? t['count']);
-          final fraction = maxCount > 0 ? count / maxCount : 0.0;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 60,
-                  child: Text(
-                    month,
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: DesignColors.textSecondary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      minHeight: 14,
-                      backgroundColor:
-                          DesignColors.error.withValues(alpha: 0.08),
-                      valueColor:
-                          AlwaysStoppedAnimation(DesignColors.error),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    '$count',
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
+    return AnalyticsBarChart(
+      color: DesignColors.error,
+      emptyTitle: 'No trend data available',
+      emptySubtitle: 'Monthly complaint volume will appear here once data is available.',
+      points: trend
+          .map(
+            (t) => AnalyticsBarPoint(
+              label: t['month']?.toString() ?? '',
+              value: _toInt(t['totalComplaints'] ?? t['count']).toDouble(),
             ),
-          );
-        }).toList(),
-      ),
+          )
+          .toList(),
     );
   }
 

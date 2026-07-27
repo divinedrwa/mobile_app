@@ -803,6 +803,16 @@ class NotificationService {
           router.push('/resident/utilities');
           return true;
         }
+        if (type == 'WATER_SUPPLY_STILL_ON' ||
+            type == 'WATER_SUPPLY_ON' ||
+            type == 'WATER_SUPPLY_OFF') {
+          if (_isGuardSession()) {
+            router.go('/guard/dashboard');
+          } else {
+            router.push('/resident/admin-gate-utilities');
+          }
+          return true;
+        }
         if (type == 'UPI_PAYMENT_SUBMITTED') {
           router.push('/resident/admin-upi-verifications');
           return true;
@@ -880,6 +890,9 @@ class NotificationService {
       'amenity_booking_status',
       'WATER_SUPPLY_REQUEST',
       'WATER_SUPPLY_REQUEST_RESOLVED',
+      'WATER_SUPPLY_STILL_ON',
+      'WATER_SUPPLY_ON',
+      'WATER_SUPPLY_OFF',
       'UPI_PAYMENT_SUBMITTED',
       'UPI_PAYMENT_VERIFIED',
       'UPI_PAYMENT_REJECTED',
@@ -913,6 +926,9 @@ class NotificationService {
       'UPI_PAYMENT_REJECTED',
       'WATER_SUPPLY_REQUEST',
       'WATER_SUPPLY_REQUEST_RESOLVED',
+      'WATER_SUPPLY_STILL_ON',
+      'WATER_SUPPLY_ON',
+      'WATER_SUPPLY_OFF',
       'COMPLAINT_SLA_BREACH',
       'COMPLAINT_AUTO_CLOSED',
       'SOS_CANCELLED',

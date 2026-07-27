@@ -10,6 +10,8 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_tab_switcher.dart';
 
 /// Admin screen for financial reconciliation and alerts.
 class AdminReconciliationScreen extends ConsumerStatefulWidget {
@@ -51,6 +53,15 @@ class _AdminReconciliationScreenState
             onPressed: _refresh,
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(48),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AnalyticsTabSwitcher(
+              currentRoute: '/resident/admin-reconciliation',
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -148,6 +159,23 @@ class _AdminReconciliationScreenState
         ),
         const SizedBox(height: 16),
 
+        alertsAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (alerts) {
+            if (alerts.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                EnterpriseSectionHeader(title: 'Discrepancy by cycle'),
+                const SizedBox(height: 8),
+                _discrepancyChart(alerts),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+        ),
+
         // Alerts
         EnterpriseSectionHeader(title: 'Alerts'),
         const SizedBox(height: 8),
@@ -183,6 +211,27 @@ class _AdminReconciliationScreenState
           },
         ),
       ],
+    );
+  }
+
+  Widget _discrepancyChart(List<Map<String, dynamic>> alerts) {
+    double money(dynamic v) =>
+        v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
+
+    return AnalyticsBarChart(
+      color: DesignColors.error,
+      emptyTitle: 'No discrepancies',
+      points: alerts.reversed.map((alert) {
+        final cycle = (alert['cycle'] as Map?) ?? const {};
+        final title = (cycle['title']?.toString().trim().isNotEmpty ?? false)
+            ? cycle['title'].toString()
+            : 'Cycle';
+        final short = title.length > 6 ? title.substring(0, 6) : title;
+        return AnalyticsBarPoint(
+          label: short,
+          value: money(alert['difference']).abs(),
+        );
+      }).toList(),
     );
   }
 

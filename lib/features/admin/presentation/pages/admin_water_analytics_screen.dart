@@ -6,6 +6,8 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_tab_switcher.dart';
 
 /// Admin screen for water supply analytics.
 class AdminWaterAnalyticsScreen extends ConsumerStatefulWidget {
@@ -55,6 +57,15 @@ class _AdminWaterAnalyticsScreenState
             onPressed: _refresh,
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(48),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AnalyticsTabSwitcher(
+              currentRoute: '/resident/admin-water-analytics',
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -260,31 +271,38 @@ class _AdminWaterAnalyticsScreenState
             (b['date'] ?? '').toString(),
           ));
 
-    final maxVal = sorted.fold<int>(
-      0,
-      (m, i) => _toInt(i['totalEvents']) > m ? _toInt(i['totalEvents']) : m,
-    );
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: sorted.map((item) {
-          final label =
-              item['displayDate']?.toString() ?? item['date']?.toString() ?? '';
-          final total = _toInt(item['totalEvents']);
-          final on = _toInt(item['onCount']);
-          final off = _toInt(item['offCount']);
-          final fraction = maxVal > 0 ? total / maxVal : 0.0;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnalyticsBarChart(
+          color: DesignColors.info,
+          emptyTitle: 'No daily water events in this period',
+          points: sorted
+              .map(
+                (item) => AnalyticsBarPoint(
+                  label: item['displayDate']?.toString() ??
+                      item['date']?.toString() ??
+                      '',
+                  value: _toInt(item['totalEvents']).toDouble(),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 8),
+        EnterprisePanel(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: sorted.map((item) {
+              final label = item['displayDate']?.toString() ??
+                  item['date']?.toString() ??
+                  '';
+              final on = _toInt(item['onCount']);
+              final off = _toInt(item['offCount']);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
                   children: [
-                    SizedBox(
-                      width: 56,
+                    Expanded(
                       child: Text(
                         label,
                         style: DesignTypography.captionSmall.copyWith(
@@ -293,114 +311,37 @@ class _AdminWaterAnalyticsScreenState
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: fraction,
-                          minHeight: 14,
-                          backgroundColor:
-                              DesignColors.info.withValues(alpha: 0.08),
-                          valueColor: AlwaysStoppedAnimation(
-                            DesignColors.info,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 24,
-                      child: Text(
-                        '$total',
-                        style: DesignTypography.captionSmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.right,
+                    Text(
+                      'ON $on · OFF $off',
+                      style: DesignTypography.captionSmall.copyWith(
+                        color: DesignColors.textTertiary,
+                        fontSize: 10,
                       ),
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 56, top: 2),
-                  child: Text(
-                    'ON $on · OFF $off',
-                    style: DesignTypography.captionSmall.copyWith(
-                      color: DesignColors.textTertiary,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _hourlyList(List<Map<String, dynamic>> items) {
-    if (items.isEmpty) {
-      return _emptyPanel('No hourly pattern data');
-    }
-
-    final maxVal = items.fold<int>(
-      0,
-      (m, i) => _toInt(i['totalEvents']) > m ? _toInt(i['totalEvents']) : m,
-    );
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: items.map((item) {
-          final label = item['label']?.toString() ??
-              '${item['hour']?.toString().padLeft(2, '0')}:00';
-          final total = _toInt(item['totalEvents']);
-          final fraction = maxVal > 0 ? total / maxVal : 0.0;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 72,
-                  child: Text(
-                    label,
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: DesignColors.textSecondary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: fraction,
-                      minHeight: 14,
-                      backgroundColor:
-                          DesignColors.secondary.withValues(alpha: 0.08),
-                      valueColor: AlwaysStoppedAnimation(
-                        DesignColors.secondary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 52,
-                  child: Text(
-                    '$total',
-                    style: DesignTypography.captionSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
+    return AnalyticsBarChart(
+      color: DesignColors.secondary,
+      emptyIcon: Icons.schedule_outlined,
+      emptyTitle: 'No hourly pattern data',
+      points: items
+          .map(
+            (item) => AnalyticsBarPoint(
+              label: item['label']?.toString() ??
+                  '${item['hour']?.toString().padLeft(2, '0')}:00',
+              value: _toInt(item['totalEvents']).toDouble(),
             ),
-          );
-        }).toList(),
-      ),
+          )
+          .toList(),
     );
   }
 
