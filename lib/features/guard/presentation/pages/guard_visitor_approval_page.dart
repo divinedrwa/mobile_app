@@ -17,6 +17,7 @@ import '../providers/guard_visitor_approval_notifier.dart';
 import '../router/guard_routes.dart';
 import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_section_card.dart';
 
 /// Walk-in approval: OTP verify, notify flat, dial resident, allow/deny entry.
 class GuardVisitorApprovalPage extends ConsumerStatefulWidget {
@@ -138,12 +139,10 @@ class _GuardVisitorApprovalPageState
         ? Icons.verified_user_rounded
         : Icons.assignment_outlined;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(GuardTokens.padScreen),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+    return GuardSectionCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
             Container(
               width: 36,
               height: 36,
@@ -181,8 +180,7 @@ class _GuardVisitorApprovalPageState
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -257,27 +255,27 @@ class _GuardVisitorApprovalPageState
                         }
                         return Padding(
                           padding: const EdgeInsets.only(bottom: GuardTokens.g2),
-                          child: Card(
+                          child: GuardSectionCard(
                             color: GuardTokens.warningMuted,
-                            child: Padding(
-                              padding: const EdgeInsets.all(GuardTokens.g2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.schedule_rounded,
-                                    color: GuardTokens.warning,
+                            borderColor:
+                                GuardTokens.warning.withValues(alpha: 0.35),
+                            padding: const EdgeInsets.all(GuardTokens.g2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  color: GuardTokens.warning,
+                                ),
+                                const SizedBox(width: GuardTokens.g2),
+                                Expanded(
+                                  child: Text(
+                                    'No active gate shift on your account. '
+                                    'OTP admission is blocked until an admin schedules a shift for you at this gate.',
+                                    style: GuardTokens.bodyStyle(context),
                                   ),
-                                  const SizedBox(width: GuardTokens.g2),
-                                  Expanded(
-                                    child: Text(
-                                      'No active gate shift on your account. '
-                                      'OTP admission is blocked until an admin schedules a shift for you at this gate.',
-                                      style: GuardTokens.bodyStyle(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         );

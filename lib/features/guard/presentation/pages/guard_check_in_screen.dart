@@ -15,8 +15,10 @@ import '../providers/guard_check_in_notifier.dart';
 import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../../utils/shift_active_helper.dart';
-import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_flat_picker.dart';
+import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_section_card.dart';
+import '../widgets/guard_action_sheet.dart';
 
 /// Premium **Add visitor** — card sections, large inputs, searchable flats, optional vehicle & photo.
 class GuardCheckInScreen extends ConsumerStatefulWidget {
@@ -31,10 +33,22 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _vehicle = TextEditingController();
+  final _phoneFocus = FocusNode();
+  final _nameFocus = FocusNode();
 
+  @override
+  void initState() {
+    super.initState();
+    // Open keyboard on the first contact field — phone is primary at the gate.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _phoneFocus.requestFocus();
+    });
+  }
 
   @override
   void dispose() {
+    _phoneFocus.dispose();
+    _nameFocus.dispose();
     _name.dispose();
     _phone.dispose();
     _vehicle.dispose();
@@ -72,24 +86,13 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       return;
     }
     // Confirmation before API call.
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm check-in'),
-        content: Text(
+    final confirmed = await showGuardConfirmSheet(
+      context,
+      title: 'Confirm check-in',
+      message:
           'Check in ${_name.text.trim()} (${formState.visitorType.name})?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Check in'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Check in',
+      icon: Icons.how_to_reg_rounded,
     );
     if (confirmed != true || !mounted) return;
     final notifier = ref.read(checkInFormProvider.notifier);
@@ -233,18 +236,16 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ),
                       ),
                       const SizedBox(height: GuardTokens.sectionGap),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(GuardTokens.padScreen),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GuardScreenSectionHeader(
-                                icon: Icons.category_rounded,
-                                title: 'Visitor category',
-                                subtitle:
-                                    'Used for notifications and audit trail',
-                              ),
+                      GuardSectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuardScreenSectionHeader(
+                              icon: Icons.category_rounded,
+                              title: 'Visitor category',
+                              subtitle:
+                                  'Used for notifications and audit trail',
+                            ),
                               const SizedBox(height: GuardTokens.g2),
                               Wrap(
                                 spacing: GuardTokens.g2,
@@ -287,24 +288,23 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ),
                             ],
                           ),
-                        ),
                       ),
                       const SizedBox(height: GuardTokens.sectionGap),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(GuardTokens.padScreen),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GuardScreenSectionHeader(
-                                icon: Icons.contact_phone_rounded,
-                                title: 'Contact',
-                                subtitle:
-                                    'Phone first — guards verify quickly outdoors',
-                              ),
+                      GuardSectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuardScreenSectionHeader(
+                              icon: Icons.contact_phone_rounded,
+                              title: 'Contact',
+                              subtitle:
+                                  'Phone first — guards verify quickly outdoors',
+                            ),
                               const SizedBox(height: GuardTokens.g2),
                               TextFormField(
                                 controller: _phone,
+                                focusNode: _phoneFocus,
+                                autofocus: true,
                                 enabled: !_submitting,
                                 textInputAction: TextInputAction.next,
                                 keyboardType: TextInputType.phone,
@@ -312,6 +312,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   FilteringTextInputFormatter.digitsOnly,
                                   LengthLimitingTextInputFormatter(15),
                                 ],
+                                onFieldSubmitted: (_) =>
+                                    _nameFocus.requestFocus(),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
@@ -335,6 +337,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               const SizedBox(height: GuardTokens.g2),
                               TextFormField(
                                 controller: _name,
+                                focusNode: _nameFocus,
                                 enabled: !_submitting,
                                 textInputAction: TextInputAction.done,
                                 onFieldSubmitted: (_) => _submit(),
@@ -359,21 +362,18 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ),
                             ],
                           ),
-                        ),
                       ),
                       const SizedBox(height: GuardTokens.sectionGap),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(GuardTokens.padScreen),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GuardScreenSectionHeader(
-                                icon: Icons.people_rounded,
-                                title: 'Visiting resident',
-                                subtitle:
-                                    'Search by name or flat — tap to select',
-                              ),
+                      GuardSectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuardScreenSectionHeader(
+                              icon: Icons.people_rounded,
+                              title: 'Visiting resident',
+                              subtitle:
+                                  'Search by name or flat — tap to select',
+                            ),
                               const SizedBox(height: GuardTokens.g2),
                               if (selectedCount > 0)
                                 Padding(
@@ -515,27 +515,24 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ),
                             ],
                           ),
-                        ),
                       ),
                       const SizedBox(height: GuardTokens.sectionGap),
-                      Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            GuardTokens.padScreen,
-                            14,
-                            GuardTokens.padScreen,
-                            GuardTokens.padScreen,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GuardScreenSectionHeader(
-                                icon: Icons.directions_car_rounded,
-                                title: 'Vehicle',
-                                subtitle:
-                                    'Optional — registration for gate records',
-                              ),
+                      GuardSectionCard(
+                        padding: const EdgeInsets.fromLTRB(
+                          GuardTokens.padScreen,
+                          14,
+                          GuardTokens.padScreen,
+                          GuardTokens.padScreen,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuardScreenSectionHeader(
+                              icon: Icons.directions_car_rounded,
+                              title: 'Vehicle',
+                              subtitle:
+                                  'Optional — registration for gate records',
+                            ),
                               const SizedBox(height: 12),
                               TextFormField(
                                 controller: _vehicle,
@@ -554,21 +551,18 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ),
                             ],
                           ),
-                        ),
                       ),
                       const SizedBox(height: GuardTokens.sectionGap),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(GuardTokens.padScreen),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const GuardScreenSectionHeader(
-                                icon: Icons.photo_camera_outlined,
-                                title: 'Photo (optional)',
-                                subtitle:
-                                    'Helpful if there is ever a dispute at the gate',
-                              ),
+                      GuardSectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuardScreenSectionHeader(
+                              icon: Icons.photo_camera_outlined,
+                              title: 'Photo (optional)',
+                              subtitle:
+                                  'Helpful if there is ever a dispute at the gate',
+                            ),
                               const SizedBox(height: GuardTokens.g2),
                               Row(
                                 children: [
@@ -626,7 +620,6 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                               ],
                             ],
                           ),
-                        ),
                       ),
                       const SizedBox(height: GuardTokens.g3),
                     ]),

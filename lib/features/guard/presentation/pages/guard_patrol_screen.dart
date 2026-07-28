@@ -12,6 +12,7 @@ import '../providers/guard_providers.dart';
 import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_skeletons.dart';
+import '../widgets/guard_action_sheet.dart';
 
 class GuardPatrolScreen extends ConsumerStatefulWidget {
   const GuardPatrolScreen({super.key});
@@ -87,115 +88,19 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
     }
   }
 
-  Future<String?> _promptLocation(String title) async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g. Main gate, Block A entrance',
-            labelText: 'Location',
-          ),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (v) {
-            if (v.trim().isNotEmpty) Navigator.pop(ctx, v.trim());
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final v = controller.text.trim();
-              if (v.isNotEmpty) Navigator.pop(ctx, v);
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+  Future<String?> _promptLocation(String title) {
+    return showGuardTextPromptSheet(
+      context,
+      title: title,
+      subtitle: 'Where are you starting this patrol?',
+      fieldLabel: 'Location',
+      fieldHint: 'e.g. Main gate, Block A entrance',
+      confirmLabel: 'Start patrol',
     );
-    controller.dispose();
-    return result;
   }
 
-  Future<_CheckpointInput?> _promptCheckpoint() async {
-    final locCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
-    bool issuesFound = false;
-
-    final result = await showDialog<_CheckpointInput>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Log checkpoint'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: locCtrl,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Parking B2, Pool area',
-                    labelText: 'Location',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Optional notes',
-                    labelText: 'Notes',
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 8),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Issues found'),
-                  value: issuesFound,
-                  onChanged: (v) =>
-                      setDialogState(() => issuesFound = v ?? false),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final loc = locCtrl.text.trim();
-                if (loc.isNotEmpty) {
-                  Navigator.pop(
-                    ctx,
-                    _CheckpointInput(
-                      location: loc,
-                      notes: notesCtrl.text.trim().isEmpty
-                          ? null
-                          : notesCtrl.text.trim(),
-                      issuesFound: issuesFound,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Log'),
-            ),
-          ],
-        ),
-      ),
-    );
-    locCtrl.dispose();
-    notesCtrl.dispose();
-    return result;
+  Future<GuardCheckpointInput?> _promptCheckpoint() {
+    return showGuardCheckpointSheet(context);
   }
 
   @override
@@ -377,18 +282,6 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
       ),
     );
   }
-}
-
-class _CheckpointInput {
-  const _CheckpointInput({
-    required this.location,
-    this.notes,
-    this.issuesFound = false,
-  });
-
-  final String location;
-  final String? notes;
-  final bool issuesFound;
 }
 
 class _PatrolCard extends StatelessWidget {

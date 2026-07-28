@@ -12,6 +12,7 @@ import '../../../../core/telemetry/guard_flow_telemetry.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_action_sheet.dart';
 
 String _kindToApi(String ui) {
   switch (ui) {
@@ -68,27 +69,14 @@ class _GuardEmergencyPageState extends ConsumerState<GuardEmergencyPage> {
 
   Future<void> _broadcast() async {
     if (_sending) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm broadcast'),
-        content: const Text(
+    final confirmed = await showGuardConfirmSheet(
+      context,
+      title: 'Confirm broadcast',
+      message:
           'This will send an emergency alert to all admins. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: GuardTokens.guardAccentDeep,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Send broadcast'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Send broadcast',
+      tone: GuardConfirmTone.danger,
+      icon: Icons.emergency_rounded,
     );
     if (confirmed != true || !mounted) return;
     setState(() => _sending = true);

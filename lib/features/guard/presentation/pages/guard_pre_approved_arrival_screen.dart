@@ -12,6 +12,8 @@ import '../providers/guard_providers.dart';
 import '../router/guard_routes.dart';
 import '../../utils/shift_active_helper.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_section_card.dart';
+import '../widgets/guard_action_sheet.dart';
 
 /// Confirm gate check-in for a resident pre-approval — same visual language as
 /// [GuardCheckInScreen], prefilled and editable for verification at the gate.
@@ -122,22 +124,12 @@ class _GuardPreApprovedArrivalScreenState
     if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm entry'),
-        content: Text('Admit ${widget.entry.name}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Admit'),
-          ),
-        ],
-      ),
+    final confirmed = await showGuardConfirmSheet(
+      context,
+      title: 'Confirm entry',
+      message: 'Admit ${widget.entry.name}?',
+      confirmLabel: 'Admit',
+      icon: Icons.login_rounded,
     );
     if (confirmed != true || !mounted) return;
 
@@ -376,20 +368,16 @@ class _GuardPreApprovedArrivalScreenState
                                   ),
                                 ),
                               ),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(
-                                  GuardTokens.padScreen,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const GuardScreenSectionHeader(
-                                      icon: Icons.contact_phone_rounded,
-                                      title: 'Contact',
-                                      subtitle:
-                                          'Confirm against ID or resident message',
-                                    ),
+                            GuardSectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const GuardScreenSectionHeader(
+                                    icon: Icons.contact_phone_rounded,
+                                    title: 'Contact',
+                                    subtitle:
+                                        'Confirm against ID or resident message',
+                                  ),
                                     const SizedBox(height: GuardTokens.g2),
                                     TextFormField(
                                       controller: _phone,
@@ -446,23 +434,18 @@ class _GuardPreApprovedArrivalScreenState
                                     ),
                                   ],
                                 ),
-                              ),
                             ),
                             const SizedBox(height: GuardTokens.sectionGap),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(
-                                  GuardTokens.padScreen,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const GuardScreenSectionHeader(
-                                      icon: Icons.apartment_rounded,
-                                      title: 'Visiting flat',
-                                      subtitle:
-                                          "From the resident's pre-approval",
-                                    ),
+                            GuardSectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const GuardScreenSectionHeader(
+                                    icon: Icons.apartment_rounded,
+                                    title: 'Visiting flat',
+                                    subtitle:
+                                        "From the resident's pre-approval",
+                                  ),
                                     const SizedBox(height: GuardTokens.g2),
                                     Text(
                                       'Flat',
@@ -516,22 +499,17 @@ class _GuardPreApprovedArrivalScreenState
                                     ),
                                   ],
                                 ),
-                              ),
                             ),
                             const SizedBox(height: GuardTokens.sectionGap),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(
-                                  GuardTokens.padScreen,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const GuardScreenSectionHeader(
-                                      icon: Icons.edit_note_rounded,
-                                      title: 'Purpose',
-                                      subtitle: 'Optional — adjust if needed',
-                                    ),
+                            GuardSectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const GuardScreenSectionHeader(
+                                    icon: Icons.edit_note_rounded,
+                                    title: 'Purpose',
+                                    subtitle: 'Optional — adjust if needed',
+                                  ),
                                     const SizedBox(height: GuardTokens.g2),
                                     TextFormField(
                                       controller: _purpose,
@@ -546,7 +524,6 @@ class _GuardPreApprovedArrivalScreenState
                                     ),
                                   ],
                                 ),
-                              ),
                             ),
                             const SizedBox(height: GuardTokens.sectionGap + 88),
                           ]),

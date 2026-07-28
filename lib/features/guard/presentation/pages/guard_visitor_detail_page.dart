@@ -9,6 +9,7 @@ import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_offline_actions.dart';
 import '../providers/guard_providers.dart';
+import '../widgets/guard_action_sheet.dart';
 
 /// Detail view for a visitor row (from active entries or related flows).
 class GuardVisitorDetailPage extends ConsumerStatefulWidget {
@@ -554,25 +555,12 @@ class _GuardVisitorDetailPageState
     GuardVisitorRow v,
   ) async {
     if (_admitting) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm entry'),
-        content: Text(
-          'Residents approved ${v.name}. Mark them as on premises?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: GuardTokens.primaryFilled(context),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final ok = await showGuardConfirmSheet(
+      context,
+      title: 'Confirm entry',
+      message: 'Residents approved ${v.name}. Mark them as on premises?',
+      confirmLabel: 'Confirm',
+      icon: Icons.verified_user_outlined,
     );
     if (ok != true || !context.mounted) return;
     setState(() => _admitting = true);
@@ -605,23 +593,12 @@ class _GuardVisitorDetailPageState
     GuardVisitorRow v,
   ) async {
     if (_exiting) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Check out'),
-        content: Text('Mark ${v.name} as checked out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: GuardTokens.primaryFilled(context),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final ok = await showGuardConfirmSheet(
+      context,
+      title: 'Check out',
+      message: 'Mark ${v.name} as checked out?',
+      confirmLabel: 'Mark exit',
+      icon: Icons.logout_rounded,
     );
     if (ok != true || !context.mounted) return;
     setState(() => _exiting = true);

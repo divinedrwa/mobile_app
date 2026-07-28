@@ -17,6 +17,7 @@ import '../widgets/guard_pre_approved_entries_list.dart';
 import '../widgets/guard_empty_placeholder.dart';
 import '../widgets/guard_skeletons.dart';
 import '../widgets/guard_admit_by_otp_sheet.dart';
+import '../widgets/guard_action_sheet.dart';
 
 /// Prominent entry to the OTP-only admit flow (type OTP → resolve → admit),
 /// so a guard never has to hunt a visitor in a long pre-approved list.
@@ -213,24 +214,12 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     GuardVisitorRow v,
   ) async {
     if (_busyVisitorIds.contains(v.id)) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm entry'),
-        content: Text(
-          'Residents approved ${v.name}. Mark them as on premises?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final ok = await showGuardConfirmSheet(
+      context,
+      title: 'Confirm entry',
+      message: 'Residents approved ${v.name}. Mark them as on premises?',
+      confirmLabel: 'Confirm',
+      icon: Icons.verified_user_outlined,
     );
     if (ok != true || !context.mounted) return;
     setState(() => _busyVisitorIds.add(v.id));
@@ -619,23 +608,12 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     GuardVisitorRow v,
   ) async {
     if (_busyVisitorIds.contains(v.id)) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Check out'),
-        content: Text('Mark ${v.name} as checked out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: GuardTokens.primaryFilled(context),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final ok = await showGuardConfirmSheet(
+      context,
+      title: 'Check out',
+      message: 'Mark ${v.name} as checked out?',
+      confirmLabel: 'Mark exit',
+      icon: Icons.logout_rounded,
     );
     if (ok != true || !context.mounted) return;
     setState(() => _busyVisitorIds.add(v.id));

@@ -9,31 +9,61 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/telemetry/app_analytics_service.dart';
 import '../../../../core/telemetry/app_analytics_tab_paths.dart';
+import '../../../../core/utils/foreground_polling_mixin.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_offline_sync_notifier.dart';
+import '../providers/guard_providers.dart';
 
 /// Bottom navigation shell for guard — separate from [ResidentShell].
-class GuardNavigationShell extends ConsumerWidget {
+class GuardNavigationShell extends ConsumerStatefulWidget {
   const GuardNavigationShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GuardNavigationShell> createState() =>
+      _GuardNavigationShellState();
+}
+
+class _GuardNavigationShellState extends ConsumerState<GuardNavigationShell>
+    with ForegroundPollingMixin {
+  @override
+  Duration get pollInterval => const Duration(seconds: 15);
+
+  @override
+  void onPollTick() {
+    ref.invalidate(guardActiveVisitorsTabProvider);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startForegroundPolling();
+  }
+
+  @override
+  void dispose() {
+    stopForegroundPolling();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? GuardTokens.darkSurface : GuardTokens.surfaceCard;
     final barBg = isDark ? GuardTokens.darkCard : Colors.white;
     final unread = ref.watch(unreadCountProvider);
+    final activeBadge = ref.watch(guardLiveQueueCountsProvider)?.activeTabBadgeCount ?? 0;
     final wide = isWideScreen(context);
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (shell.currentIndex != 0) {
-          shell.goBranch(0);
+        if (widget.shell.currentIndex != 0) {
+          widget.shell.goBranch(0);
           return;
         }
         if (!kIsWeb) SystemNavigator.pop();
@@ -48,17 +78,19 @@ class GuardNavigationShell extends ConsumerWidget {
                   ? Row(
                       children: [
                         _buildNavigationRail(
-                          context,
-                          barBg: barBg,
                           unread: unread,
+                          activeBadge: activeBadge,
+                          barBg: barBg,
                         ),
                         const VerticalDivider(width: 1, thickness: 1),
-                        Expanded(child: WebContentConstraint(child: shell)),
+                        Expanded(
+                          child: WebContentConstraint(child: widget.shell),
+                        ),
                       ],
                     )
-                  : shell,
+                  : widget.shell,
             ),
-            _OfflineSyncStrip(),
+            const _OfflineSyncStrip(),
             if (!wide)
               Material(
                 elevation: 2,
@@ -100,7 +132,7 @@ class GuardNavigationShell extends ConsumerWidget {
                       }),
                     ),
                     child: NavigationBar(
-                      selectedIndex: shell.currentIndex,
+                      selectedIndex: widget.shell.currentIndex,
                       onDestinationSelected: (index) {
                         DesignHaptics.selection();
                         unawaited(
@@ -108,7 +140,7 @@ class GuardNavigationShell extends ConsumerWidget {
                             AppAnalyticsTabPaths.guardTab(index),
                           ),
                         );
-                        shell.goBranch(index);
+                        widget.shell.goBranch(index);
                       },
                       destinations: [
                         const NavigationDestination(
@@ -117,9 +149,15 @@ class GuardNavigationShell extends ConsumerWidget {
                               Icon(Icons.space_dashboard_rounded),
                           label: 'Home',
                         ),
-                        const NavigationDestination(
-                          icon: Icon(Icons.sensor_door_outlined),
-                          selectedIcon: Icon(Icons.sensor_door_rounded),
+                        NavigationDestination(
+                          icon: _GuardTabBadgeIcon(
+                            count: activeBadge,
+                            outlined: true,
+                          ),
+                          selectedIcon: _GuardTabBadgeIcon(
+                            count: activeBadge,
+                            outlined: false,
+                          ),
                           label: 'Active',
                         ),
                         const NavigationDestination(
@@ -135,8 +173,7 @@ class GuardNavigationShell extends ConsumerWidget {
                               unread > 99 ? '99+' : '$unread',
                               style: const TextStyle(fontSize: 10),
                             ),
-                            child: Icon(
-                                Icons.person_outline_rounded),
+                            child: Icon(Icons.person_outline_rounded),
                           ),
                           selectedIcon: Badge(
                             isLabelVisible: unread > 0,
@@ -144,8 +181,7 @@ class GuardNavigationShell extends ConsumerWidget {
                               unread > 99 ? '99+' : '$unread',
                               style: const TextStyle(fontSize: 10),
                             ),
-                            child:
-                                Icon(Icons.person_rounded),
+                            child: Icon(Icons.person_rounded),
                           ),
                           label: 'Profile',
                         ),
@@ -160,19 +196,21 @@ class GuardNavigationShell extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavigationRail(
-    BuildContext context, {
+  Widget _buildNavigationRail({
     required Color barBg,
     required int unread,
+    required int activeBadge,
   }) {
     return NavigationRail(
-      selectedIndex: shell.currentIndex,
+      selectedIndex: widget.shell.currentIndex,
       onDestinationSelected: (index) {
         DesignHaptics.selection();
         unawaited(
-          AppAnalyticsService.logTabScreen(AppAnalyticsTabPaths.guardTab(index)),
+          AppAnalyticsService.logTabScreen(
+            AppAnalyticsTabPaths.guardTab(index),
+          ),
         );
-        shell.goBranch(index);
+        widget.shell.goBranch(index);
       },
       labelType: NavigationRailLabelType.all,
       backgroundColor: barBg,
@@ -194,10 +232,10 @@ class GuardNavigationShell extends ConsumerWidget {
           selectedIcon: Icon(Icons.space_dashboard_rounded),
           label: Text('Home'),
         ),
-        const NavigationRailDestination(
-          icon: Icon(Icons.sensor_door_outlined),
-          selectedIcon: Icon(Icons.sensor_door_rounded),
-          label: Text('Active'),
+        NavigationRailDestination(
+          icon: _GuardTabBadgeIcon(count: activeBadge, outlined: true),
+          selectedIcon: _GuardTabBadgeIcon(count: activeBadge, outlined: false),
+          label: const Text('Active'),
         ),
         const NavigationRailDestination(
           icon: Icon(Icons.receipt_long_outlined),
@@ -228,8 +266,36 @@ class GuardNavigationShell extends ConsumerWidget {
   }
 }
 
+class _GuardTabBadgeIcon extends StatelessWidget {
+  const _GuardTabBadgeIcon({
+    required this.count,
+    required this.outlined,
+  });
+
+  final int count;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = outlined
+        ? Icons.sensor_door_outlined
+        : Icons.sensor_door_rounded;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text(
+        count > 99 ? '99+' : '$count',
+        style: const TextStyle(fontSize: 10),
+      ),
+      backgroundColor: GuardTokens.warning,
+      child: Icon(icon),
+    );
+  }
+}
+
 /// Slim banner above the nav bar when offline mutations are pending sync.
 class _OfflineSyncStrip extends ConsumerWidget {
+  const _OfflineSyncStrip();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sync = ref.watch(offlineSyncProvider);

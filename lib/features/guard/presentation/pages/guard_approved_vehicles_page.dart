@@ -11,6 +11,7 @@ import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../widgets/guard_section_card.dart';
 import '../widgets/guard_skeletons.dart';
 
 /// Read-only list of society-approved internal vehicles for gate verification.
@@ -374,19 +375,13 @@ class _VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
+    return GuardSectionCard(
       margin: const EdgeInsets.only(bottom: GuardTokens.g2),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
-        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.35)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(GuardTokens.g2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      padding: const EdgeInsets.all(GuardTokens.g2),
+      borderRadius: GuardTokens.radiusButton,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Container(
               width: 42,
               height: 42,
@@ -451,8 +446,7 @@ class _VehicleCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

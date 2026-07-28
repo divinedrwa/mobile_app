@@ -116,6 +116,17 @@ final guardActiveVisitorsTabProvider =
   );
 });
 
+/// Live on-site / pending counts for dashboard CTA and Active tab badge.
+final guardLiveQueueCountsProvider =
+    Provider.autoDispose<GuardLiveQueueCounts?>((ref) {
+  final async = ref.watch(guardActiveVisitorsTabProvider);
+  return async.when(
+    data: GuardLiveQueueCounts.fromActiveTab,
+    loading: () => null,
+    error: (_, _) => null,
+  );
+});
+
 /// Gate logs: pass `'today'` or `'YYYY-MM-DD_YYYY-MM-DD'`.
 final guardVisitorLogsProvider =
     FutureProvider.autoDispose.family<List<GuardVisitorRow>, String>(

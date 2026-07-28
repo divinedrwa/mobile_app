@@ -538,6 +538,81 @@ class GuardActiveVisitorsTabData {
   bool get isEmpty => pendingVisitors.isEmpty && preApproved.isEmpty;
 }
 
+/// Live operational counts for dashboard CTA + Active tab badge.
+class GuardLiveQueueCounts {
+  const GuardLiveQueueCounts({
+    required this.onPremises,
+    required this.awaitingResident,
+    required this.readyToAdmit,
+    required this.preApproved,
+  });
+
+  /// Checked in and not yet checked out.
+  final int onPremises;
+
+  /// Walk-ins waiting on resident approval.
+  final int awaitingResident;
+
+  /// Resident approved — guard must admit at gate.
+  final int readyToAdmit;
+
+  /// Pre-approved guests not yet admitted today.
+  final int preApproved;
+
+  /// Guard can act now (admit approved walk-in or pre-approved guest).
+  int get needsGuardAction => readyToAdmit + preApproved;
+
+  /// Nav badge: actionable items first, else residents still deciding.
+  int get activeTabBadgeCount {
+    if (needsGuardAction > 0) return needsGuardAction;
+    if (awaitingResident > 0) return awaitingResident;
+    return 0;
+  }
+
+  factory GuardLiveQueueCounts.fromActiveTab(GuardActiveVisitorsTabData data) {
+    var onPremises = 0;
+    var awaitingResident = 0;
+    var readyToAdmit = 0;
+    for (final v in data.pendingVisitors) {
+      final status = v.status.trim().toUpperCase();
+      if (v.awaitingCheckout && status == 'CHECKED_IN') {
+        onPremises++;
+      } else if (v.needsResidentApproval) {
+        awaitingResident++;
+      } else if (v.awaitingGuardAdmission) {
+        readyToAdmit++;
+      }
+    }
+    return GuardLiveQueueCounts(
+      onPremises: onPremises,
+      awaitingResident: awaitingResident,
+      readyToAdmit: readyToAdmit,
+      preApproved: data.preApproved.length,
+    );
+  }
+
+  /// Short subtitle for the dashboard "View visitors" CTA.
+  String? dashboardSubtitle({String fallback = 'On-site guests, approvals, pre-approved & exits'}) {
+    if (onPremises == 0 &&
+        awaitingResident == 0 &&
+        readyToAdmit == 0 &&
+        preApproved == 0) {
+      return fallback;
+    }
+    final parts = <String>[];
+    if (needsGuardAction > 0) {
+      parts.add('$needsGuardAction need${needsGuardAction == 1 ? 's' : ''} admit');
+    }
+    if (onPremises > 0) {
+      parts.add('$onPremises inside');
+    }
+    if (awaitingResident > 0) {
+      parts.add('$awaitingResident awaiting resident');
+    }
+    return parts.join(' · ');
+  }
+}
+
 /// Single source of truth for the guard-facing visitor status copy. Keeps the
 /// active-entries pill and the visitor-detail header aligned so a status like
 /// "Approved · admit at gate" doesn't render as "Approved · admit" in one
