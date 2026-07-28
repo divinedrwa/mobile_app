@@ -10,6 +10,8 @@ class NotificationModel {
   final bool isRead;
   final String? actionUrl;
   final Map<String, dynamic>? data;
+  /// Prisma `NotificationCategory` when present on inbox rows.
+  final String? category;
 
   NotificationModel({
     required this.id,
@@ -20,6 +22,7 @@ class NotificationModel {
     this.isRead = false,
     this.actionUrl,
     this.data,
+    this.category,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,7 @@ class NotificationModel {
       isRead: _parseBool(json['isRead']) || (readAt != null && readAt.toString().isNotEmpty),
       actionUrl: json['actionUrl']?.toString(),
       data: json['data'] is Map ? Map<String, dynamic>.from(json['data'] as Map) : null,
+      category: json['category']?.toString(),
     );
   }
 

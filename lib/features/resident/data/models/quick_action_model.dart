@@ -113,6 +113,13 @@ List<QuickAction> get residentHomeQuickActionsGrid => [
         color: ActionColors.brand,
         route: '/resident/special-projects',
       ),
+      QuickAction(
+        id: 'vehicle_log',
+        label: 'Vehicle Log',
+        icon: Icons.directions_car_outlined,
+        color: ActionColors.secondary,
+        route: '/resident/vehicle-log',
+      ),
     ];
 
 /// Overflow actions shown in the “More” bottom sheet.
@@ -132,11 +139,11 @@ List<QuickAction> get residentQuickActionsOverflow => [
         route: '/resident/directory',
       ),
       QuickAction(
-        id: 'vehicle_log',
-        label: 'Vehicle Log',
-        icon: Icons.directions_car_outlined,
-        color: ActionColors.secondary,
-        route: '/resident/vehicle-log',
+        id: 'incidents',
+        label: 'Incidents',
+        icon: Icons.shield_outlined,
+        color: ActionColors.danger,
+        route: '/resident/incidents',
       ),
     ];
 
@@ -217,6 +224,7 @@ const Set<String> residentHomeOnScreenQuickActionIds = {
   'special_projects',
   'utilities',
   'directory',
+  'incidents',
   'vehicle_log',
 };
 

@@ -10,6 +10,7 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/providers/complaint_provider.dart';
+import '../../data/models/complaint_list_item.dart';
 import '../widgets/list_skeleton.dart';
 
 /// Lists complaints from GET /residents/my-complaints with pagination.
@@ -234,7 +235,7 @@ class _ComplaintCard extends StatelessWidget {
     required this.statusLabel,
   });
 
-  final dynamic item;
+  final ComplaintListItem item;
   final Color color;
   final String statusLabel;
 
@@ -242,10 +243,15 @@ class _ComplaintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(bottom: context.spacing.s12),
-      child: EnterprisePanel(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(context.radius.lg),
+          onTap: () => context.push('/resident/my-complaints/${item.id}'),
+          child: EnterprisePanel(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Container(
               width: 44,
               height: 44,
@@ -301,7 +307,9 @@ class _ComplaintCard extends StatelessWidget {
                     ),
               ),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

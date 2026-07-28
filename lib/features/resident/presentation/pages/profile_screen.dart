@@ -13,15 +13,6 @@ import '../../../../shared/utils/resident_capabilities.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/home/home_shared.dart';
-import 'family_members_screen.dart';
-import 'vehicles_screen.dart';
-import 'emergency_contacts_screen.dart';
-import 'payment_history_screen.dart';
-import 'my_complaints_screen.dart';
-import 'amenity_booking_history_screen.dart';
-import 'settings_screen.dart';
-import 'edit_profile_screen.dart';
-import 'vendors_staff_screen.dart';
 
 /// Profile — same destinations as before; layout uses shared design tokens.
 
@@ -72,10 +63,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Edit Profile',
                       subtitle: 'Update your details',
                       iconColor: DesignColors.primary,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const EditProfileScreen()),
-                      ),
+                      onTap: () => context.push('/resident/edit-profile'),
                     ),
                     _divider,
                     _ProfileTile(
@@ -83,10 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Family Members',
                       subtitle: 'Manage your family',
                       iconColor: DesignColors.primary,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const FamilyMembersScreen()),
-                      ),
+                      onTap: () => context.push('/resident/family-members'),
                     ),
                     _divider,
                     _ProfileTile(
@@ -94,10 +79,15 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Emergency Contacts',
                       subtitle: 'Quick access contacts',
                       iconColor: DesignColors.error,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const EmergencyContactsScreen()),
-                      ),
+                      onTap: () => context.push('/resident/emergency-contacts'),
+                    ),
+                    _divider,
+                    _ProfileTile(
+                      icon: Icons.shield_outlined,
+                      title: 'Incident Reports',
+                      subtitle: 'Society safety & incident log',
+                      iconColor: const Color(0xFFDC2626),
+                      onTap: () => context.push('/resident/incidents'),
                     ),
                   ],
                 ),
@@ -111,10 +101,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Vehicles',
                       subtitle: 'View and manage your vehicles',
                       iconColor: const Color(0xFFEA580C),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const VehiclesScreen()),
-                      ),
+                      onTap: () => context.push('/resident/vehicles'),
                     ),
                     _divider,
                     _ProfileTile(
@@ -122,10 +109,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Vendors',
                       subtitle: 'Manage domestic staff',
                       iconColor: DesignColors.primary,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const VendorsStaffScreen()),
-                      ),
+                      onTap: () => context.push('/resident/vendors-staff'),
                     ),
                   ],
                 ),
@@ -140,10 +124,7 @@ class ProfileScreen extends ConsumerWidget {
                         title: 'Payment History',
                         subtitle: 'View all transactions',
                         iconColor: DesignColors.accent,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: (_) => const PaymentHistoryScreen()),
-                        ),
+                        onTap: () => context.push('/resident/payment-history'),
                       ),
                       _divider,
                     ],
@@ -152,10 +133,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'My Complaints',
                       subtitle: 'Track your submitted tickets',
                       iconColor: const Color(0xFFCA8A04),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const MyComplaintsScreen()),
-                      ),
+                      onTap: () => context.push('/resident/my-complaints'),
                     ),
                     _divider,
                     _ProfileTile(
@@ -163,12 +141,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Amenity bookings',
                       subtitle: 'Upcoming and past bookings',
                       iconColor: DesignColors.info,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const AmenityBookingHistoryScreen(),
-                        ),
-                      ),
+                      onTap: () => context.push('/resident/amenity-bookings'),
                     ),
                   ],
                 ),
@@ -182,10 +155,7 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Settings',
                       subtitle: 'App preferences',
                       iconColor: DesignColors.secondary,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-                      ),
+                      onTap: () => context.push('/resident/settings'),
                     ),
                     _divider,
                     _ProfileTile(
@@ -454,14 +424,7 @@ class _ProfileHeroHeader extends StatelessWidget {
                         ),
                       ),
                       _ProfileEditButton(
-                        onTap: () {
-                          Navigator.push<void>(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const EditProfileScreen(),
-                            ),
-                          );
-                        },
+                        onTap: () => context.push('/resident/edit-profile'),
                       ),
                     ],
                   ),

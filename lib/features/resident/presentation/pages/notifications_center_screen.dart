@@ -60,6 +60,7 @@ class _NotificationsCenterScreenState
     return NotificationService().applyNavigationFromPushData(
       normalized,
       openDetails: true,
+      category: n.category,
     );
   }
 
@@ -613,8 +614,14 @@ class _NotificationsCenterScreenState
   }
 
   bool _navigateFromInlineDataPreview(NotificationModel n) {
-    final t = n.data?['type']?.toString() ?? '';
-    return NotificationService.applyNavigationFromPushDataPreview(t);
+    final normalized = <String, String>{
+      for (final e in (n.data ?? {}).entries)
+        e.key: e.value?.toString() ?? '',
+    };
+    return NotificationService.applyNavigationFromPushDataPreview(
+      normalized,
+      category: n.category,
+    );
   }
 
   Widget _buildEmptyState(ColorScheme scheme, bool isDark) {

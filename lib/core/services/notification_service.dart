@@ -681,13 +681,40 @@ class NotificationService {
     return UserRole.fromString(role ?? '') == UserRole.guard;
   }
 
+  static bool _isAdminLikeSession() {
+    final role = UserRole.fromString(StorageService.getUserRole() ?? '');
+    return role.isAdminLike;
+  }
+
+  /// Fills missing `type` for legacy inbox rows (garbage before type was added).
+  static Map<String, String> resolvePushNavigationData(
+    Map<String, String> data, {
+    String? category,
+  }) {
+    final out = Map<String, String>.from(data);
+    if ((out['type'] ?? '').isNotEmpty) return out;
+
+    final cat = (category ?? out['category'] ?? '').trim().toUpperCase();
+    if (cat == 'GARBAGE' ||
+        (out.containsKey('eventId') &&
+            (out['eventId'] ?? '').isNotEmpty &&
+            out.containsKey('gateId'))) {
+      out['type'] = 'GARBAGE_COLLECTOR_ARRIVED';
+    } else if (cat == 'WATER_SUPPLY') {
+      out['type'] = 'WATER_SUPPLY_ON';
+    }
+    return out;
+  }
+
   /// Called when user taps a push (background/terminated) or we retry pending routes.
   /// Returns true when a route was matched (navigation attempted).
   bool applyNavigationFromPushData(
     Map<String, String> data, {
     required bool openDetails,
+    String? category,
   }) {
-    final type = data['type'] ?? '';
+    var navData = resolvePushNavigationData(data, category: category);
+    final type = navData['type'] ?? '';
 
     bool go() {
       final ctx = appRootNavigatorKey.currentContext;
@@ -698,7 +725,7 @@ class NotificationService {
       final router = GoRouter.of(ctx);
       try {
         if (type == 'VISITOR_APPROVAL_REQUEST' && openDetails) {
-          final id = data['visitorId'] ?? '';
+          final id = navData['visitorId'] ?? '';
           if (id.isNotEmpty && _isValidPushId(id)) {
             router.push('/resident/visitor-requests/$id');
           } else {
@@ -719,7 +746,7 @@ class NotificationService {
           return true;
         }
         if (type == 'VISITOR_PRE_APPROVED_CREATED') {
-          final id = data['preApprovedId'] ?? '';
+          final id = navData['preApprovedId'] ?? '';
           if (id.isNotEmpty && _isValidPushId(id)) {
             router.push(
               Uri(
@@ -769,7 +796,12 @@ class NotificationService {
         if (type == 'complaint_status' ||
             type == 'COMPLAINT_SLA_BREACH' ||
             type == 'COMPLAINT_AUTO_CLOSED') {
-          router.push('/resident/my-complaints');
+          final complaintId = navData['complaintId'] ?? '';
+          if (complaintId.isNotEmpty && _isValidPushId(complaintId)) {
+            router.push('/resident/my-complaints/$complaintId');
+          } else {
+            router.push('/resident/my-complaints');
+          }
           return true;
         }
         if (type == 'notice') {
@@ -796,7 +828,11 @@ class NotificationService {
           return true;
         }
         if (type == 'WATER_SUPPLY_REQUEST') {
-          router.push('/resident/admin-gate-utilities');
+          if (_isAdminLikeSession()) {
+            router.push('/resident/admin-gate-utilities');
+          } else {
+            router.push('/resident/utilities');
+          }
           return true;
         }
         if (type == 'WATER_SUPPLY_REQUEST_RESOLVED') {
@@ -808,13 +844,23 @@ class NotificationService {
             type == 'WATER_SUPPLY_OFF') {
           if (_isGuardSession()) {
             router.go('/guard/dashboard');
-          } else {
+          } else if (_isAdminLikeSession()) {
             router.push('/resident/admin-gate-utilities');
+          } else {
+            router.push('/resident/utilities');
           }
           return true;
         }
+        if (type == 'GARBAGE_COLLECTOR_ARRIVED') {
+          router.push('/resident/utilities');
+          return true;
+        }
         if (type == 'UPI_PAYMENT_SUBMITTED') {
-          router.push('/resident/admin-upi-verifications');
+          if (_isAdminLikeSession()) {
+            router.push('/resident/admin-upi-verifications');
+          } else {
+            router.push('/resident/maintenance/payment-pending');
+          }
           return true;
         }
         if (type == 'UPI_PAYMENT_VERIFIED' || type == 'UPI_PAYMENT_REJECTED') {
@@ -823,7 +869,7 @@ class NotificationService {
         }
         if (type == 'SPECIAL_PROJECT_CREATED' ||
             type == 'SPECIAL_PROJECT_PAYMENT_RECORDED') {
-          final projectId = data['projectId'] ?? '';
+          final projectId = navData['projectId'] ?? '';
           if (projectId.isNotEmpty && _isValidPushId(projectId)) {
             router.push('/resident/special-projects/$projectId');
           } else {
@@ -834,7 +880,7 @@ class NotificationService {
         fcmDiag(
           'NAV_SKIP',
           'no matching route type="$type" openDetails=$openDetails '
-              'visitorId=${data['visitorId']}',
+              'visitorId=${navData['visitorId']}',
         );
         return false;
       } catch (e, st) {
@@ -848,9 +894,9 @@ class NotificationService {
       fcmDiag(
         'NAV',
         'defer: no navigator context yet → pending type=$type '
-            'visitorId=${data['visitorId']}',
+            'visitorId=${navData['visitorId']}',
       );
-      _pendingPushData = Map<String, String>.from(data);
+      _pendingPushData = Map<String, String>.from(navData);
       return false;
     }
 
@@ -893,6 +939,7 @@ class NotificationService {
       'WATER_SUPPLY_STILL_ON',
       'WATER_SUPPLY_ON',
       'WATER_SUPPLY_OFF',
+      'GARBAGE_COLLECTOR_ARRIVED',
       'UPI_PAYMENT_SUBMITTED',
       'UPI_PAYMENT_VERIFIED',
       'UPI_PAYMENT_REJECTED',
@@ -903,8 +950,12 @@ class NotificationService {
   }
 
   /// Whether inbox rows should show a navigation affordance for this push type.
-  static bool applyNavigationFromPushDataPreview(String type) {
-    return _isKnownPushNavigationType(type);
+  static bool applyNavigationFromPushDataPreview(
+    Map<String, String> data, {
+    String? category,
+  }) {
+    final resolved = resolvePushNavigationData(data, category: category);
+    return _isKnownPushNavigationType(resolved['type'] ?? '');
   }
 
   /// Invalidate cached providers when a push indicates server data changed.

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -36,7 +37,7 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
         scrolledUnderElevation: 0.5,
         leading: IconButton(
           tooltip: 'Go back',
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
         ),
         title: Column(

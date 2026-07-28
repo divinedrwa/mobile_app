@@ -108,3 +108,9 @@ final paginatedComplaintsProvider = StateNotifierProvider.autoDispose<
     ComplaintListNotifier, PaginatedState<ComplaintListItem>>(
   (ref) => ComplaintListNotifier(ref.watch(complaintRepositoryProvider)),
 );
+
+final complaintDetailProvider = FutureProvider.autoDispose
+    .family<ComplaintListItem, String>((ref, id) async {
+  cacheFor(ref, const Duration(seconds: 30));
+  return ref.watch(complaintRepositoryProvider).getComplaintById(id);
+});

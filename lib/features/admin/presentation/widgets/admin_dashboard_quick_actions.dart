@@ -38,6 +38,8 @@ class AdminDashboardQuickActions extends StatelessWidget {
                 '/resident/admin-parcels'),
             AdminQuickAction(Icons.currency_rupee_rounded, 'UPI Verifications',
                 ActionColors.accent, '/resident/admin-upi-verifications'),
+            AdminQuickAction(Icons.scale_outlined, 'Payment Disputes',
+                ActionColors.warning, '/resident/admin-payment-disputes'),
             AdminQuickAction(Icons.construction_rounded, 'Special Projects',
                 ActionColors.brand, '/resident/admin-special-projects'),
           ],

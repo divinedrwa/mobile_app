@@ -60,4 +60,15 @@ class AdminReconciliationRepository {
       throw mapDioException(e, 'Failed to resolve alert');
     }
   }
+
+  Future<Map<String, dynamic>> runReconciliation() async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiEndpoints.reconciliationRun,
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to run reconciliation');
+    }
+  }
 }

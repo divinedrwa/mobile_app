@@ -29,6 +29,14 @@ import '../../features/admin/presentation/pages/admin_upi_verifications_screen.d
 import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
 import '../../features/resident/presentation/pages/my_complaints_screen.dart';
+import '../../features/resident/presentation/pages/complaint_detail_screen.dart';
+import '../../features/resident/presentation/pages/edit_profile_screen.dart';
+import '../../features/resident/presentation/pages/family_members_screen.dart';
+import '../../features/resident/presentation/pages/emergency_contacts_screen.dart';
+import '../../features/resident/presentation/pages/vehicles_screen.dart';
+import '../../features/resident/presentation/pages/vendors_staff_screen.dart';
+import '../../features/resident/presentation/pages/payment_history_screen.dart';
+import '../../features/resident/presentation/pages/settings_screen.dart';
 import '../../features/resident/presentation/pages/amenity_booking_history_screen.dart';
 import '../../features/resident/presentation/pages/visitor_approval_requests_screen.dart';
 import '../../features/resident/presentation/pages/visitor_approval_detail_screen.dart';
@@ -73,6 +81,7 @@ import '../../features/admin/presentation/pages/admin_visitors_screen.dart';
 import '../../features/admin/presentation/pages/admin_push_notifications_screen.dart';
 import '../../features/admin/presentation/pages/admin_documents_screen.dart';
 import '../../features/admin/presentation/pages/admin_banners_screen.dart';
+import '../../features/admin/presentation/pages/admin_payment_disputes_screen.dart';
 import '../../features/admin/presentation/pages/admin_maintenance_actions_screen.dart';
 import '../../features/admin/presentation/pages/admin_outstanding_dues_screen.dart';
 import '../../features/admin/presentation/pages/admin_villa_history_screen.dart';
@@ -387,6 +396,14 @@ class AppRouter {
             GoRoute(
               path: 'my-complaints',
               builder: (context, state) => const MyComplaintsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) => ComplaintDetailScreen(
+                    complaintId: state.pathParameters['id'] ?? '',
+                  ),
+                ),
+              ],
             ),
             GoRoute(
               path: 'amenity-bookings',
@@ -464,6 +481,34 @@ class AppRouter {
             GoRoute(
               path: 'parcels',
               builder: (context, state) => const ParcelManagementScreen(),
+            ),
+            GoRoute(
+              path: 'edit-profile',
+              builder: (context, state) => const EditProfileScreen(),
+            ),
+            GoRoute(
+              path: 'family-members',
+              builder: (context, state) => const FamilyMembersScreen(),
+            ),
+            GoRoute(
+              path: 'emergency-contacts',
+              builder: (context, state) => const EmergencyContactsScreen(),
+            ),
+            GoRoute(
+              path: 'vehicles',
+              builder: (context, state) => const VehiclesScreen(),
+            ),
+            GoRoute(
+              path: 'vendors-staff',
+              builder: (context, state) => const VendorsStaffScreen(),
+            ),
+            GoRoute(
+              path: 'payment-history',
+              builder: (context, state) => const PaymentHistoryScreen(),
+            ),
+            GoRoute(
+              path: 'settings',
+              builder: (context, state) => const SettingsScreen(),
             ),
             // Special Projects (resident + admin)
             GoRoute(
@@ -647,6 +692,11 @@ class AppRouter {
               path: 'admin-upi-verifications',
               builder: (context, state) =>
                   const AdminUpiVerificationsScreen(),
+            ),
+            GoRoute(
+              path: 'admin-payment-disputes',
+              builder: (context, state) =>
+                  const AdminPaymentDisputesScreen(),
             ),
             GoRoute(
               path: 'admin-maintenance-actions',

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/notification_model.dart';
@@ -112,12 +113,14 @@ class NotificationRepository {
     }
   }
 
-  /// Delete notification — backend has no DELETE endpoint; this is a local-only
-  /// dismiss. The notification will reappear on the next full fetch but the UI
-  /// removes it immediately for a snappy UX.
+  /// Delete notification from the server inbox.
   Future<void> deleteNotification(String notificationId) async {
-    // No-op: backend does not expose DELETE /notifications/:id.
-    // The provider removes it from local state.
+    try {
+      await _dio.delete(ApiEndpoints.deleteNotification(notificationId));
+    } on DioException catch (e) {
+      if (_isNotFound(e)) return;
+      throw mapDioException(e, 'Failed to dismiss notification');
+    }
   }
 
   /// Get unread count (backend embeds `unreadCount` on `GET /notifications`).

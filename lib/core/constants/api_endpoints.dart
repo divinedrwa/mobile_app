@@ -315,6 +315,7 @@ class ApiEndpoints {
   // Admin — Reconciliation
   static const String reconciliationSummary = '/reconciliation/summary';
   static const String reconciliationAlerts = '/reconciliation/alerts';
+  static const String reconciliationRun = '/reconciliation/run';
   static String reconciliationAlertResolve(String id) =>
       '/reconciliation/alerts/$id/resolve';
 
@@ -458,8 +459,10 @@ class ApiEndpoints {
       '/guard-patrols/$id/status';
 
   // ── Admin / Guard: Incidents ────────────────────────────────────────
+  static const String residentIncidents = '/residents/incidents';
   static const String incidents = '/incidents';
   static String incidentResolve(String id) => '/incidents/$id/resolve';
+  static String deleteNotification(String id) => '/notifications/$id';
 
   // ── Special Projects ──────────────────────────────────────────────
   // Resident

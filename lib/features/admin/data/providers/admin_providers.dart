@@ -25,6 +25,7 @@ import '../repositories/admin_society_settings_repository.dart';
 import '../repositories/admin_gate_analytics_repository.dart';
 import '../repositories/admin_app_analytics_repository.dart';
 import '../repositories/admin_reconciliation_repository.dart';
+import '../repositories/admin_payment_disputes_repository.dart';
 import '../repositories/admin_complaint_analytics_repository.dart';
 import '../repositories/admin_parking_repository.dart';
 import '../repositories/admin_data_tools_repository.dart';
@@ -539,6 +540,24 @@ final adminReconciliationSummaryProvider =
 final adminReconciliationAlertsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref.watch(adminReconciliationRepositoryProvider).getAlerts();
+});
+
+// ── Payment disputes (admin) ─────────────────────────────────────────
+
+final adminPaymentDisputesRepositoryProvider =
+    Provider<AdminPaymentDisputesRepository>(
+        (ref) => AdminPaymentDisputesRepository());
+
+final adminPaymentDisputesStatusFilterProvider =
+    StateProvider.autoDispose<String>((ref) => 'OPEN');
+
+final adminPaymentDisputesProvider =
+    FutureProvider.autoDispose<({List<Map<String, dynamic>> disputes, int openCount})>(
+        (ref) async {
+  final status = ref.watch(adminPaymentDisputesStatusFilterProvider);
+  return ref.watch(adminPaymentDisputesRepositoryProvider).getDisputes(
+        status: status.isEmpty ? null : status,
+      );
 });
 
 // ── Complaint Analytics (Advanced) ───────────────────────────────────

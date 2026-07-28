@@ -8,7 +8,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
-import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../data/providers/admin_providers.dart';
 import '../widgets/analytics/analytics_bar_chart.dart';
 import '../widgets/analytics/analytics_tab_switcher.dart';
@@ -24,9 +24,56 @@ class AdminReconciliationScreen extends ConsumerStatefulWidget {
 
 class _AdminReconciliationScreenState
     extends ConsumerState<AdminReconciliationScreen> {
+  bool _running = false;
+
   Future<void> _refresh() async {
     ref.invalidate(adminReconciliationSummaryProvider);
     ref.invalidate(adminReconciliationAlertsProvider);
+  }
+
+  Future<void> _runReconciliation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Run reconciliation?'),
+        content: const Text(
+          'This recalculates society ledger totals and auto-resolves expected variances. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Run now'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _running = true);
+    try {
+      await ref.read(adminReconciliationRepositoryProvider).runReconciliation();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reconciliation completed')),
+      );
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is AppException ? e.message : 'Reconciliation failed',
+          ),
+          backgroundColor: DesignColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
   }
 
   @override
@@ -47,6 +94,20 @@ class _AdminReconciliationScreenState
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Run reconciliation',
+            icon: _running
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: DesignColors.textSecondary,
+                    ),
+                  )
+                : Icon(Icons.play_arrow_rounded, color: DesignColors.primary),
+            onPressed: _running ? null : _runReconciliation,
+          ),
           IconButton(
             tooltip: 'Refresh',
             icon: Icon(Icons.refresh, color: DesignColors.textSecondary),
@@ -440,7 +501,9 @@ class _AdminReconciliationScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userFacingMessage(e))),
+          SnackBar(
+            content: Text(e is AppException ? e.message : 'Could not resolve alert'),
+          ),
         );
       }
     }

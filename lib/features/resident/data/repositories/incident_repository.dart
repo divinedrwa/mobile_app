@@ -11,7 +11,7 @@ class IncidentRepository {
   Future<List<IncidentModel>> getIncidents({int limit = 50}) async {
     try {
       final response = await _dioClient.get(
-        ApiEndpoints.incidents,
+        ApiEndpoints.residentIncidents,
         queryParameters: {'limit': limit},
       );
       final data = response.data;

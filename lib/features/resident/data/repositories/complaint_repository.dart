@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../models/complaint_list_item.dart';
@@ -78,6 +79,24 @@ class ComplaintRepository {
       );
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to submit complaint');
+    }
+  }
+
+  Future<ComplaintListItem> getComplaintById(String id) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.complaintById(id),
+      );
+      final data = res.data ?? {};
+      final raw = data['complaint'];
+      if (raw is! Map) {
+        throw AppException(message: 'Complaint not found');
+      }
+      return ComplaintListItem.fromJson(
+        Map<String, dynamic>.from(raw),
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load complaint');
     }
   }
 }

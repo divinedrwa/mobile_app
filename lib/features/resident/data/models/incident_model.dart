@@ -38,6 +38,9 @@ class IncidentModel {
           ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
           : DateTime.now(),
       reportedByName: json['reportedByName'] as String? ??
+          (json['guard'] is Map
+              ? (json['guard'] as Map)['name']?.toString()
+              : null) ??
           (json['reportedBy'] is Map
               ? (json['reportedBy'] as Map)['name']?.toString()
               : null),
