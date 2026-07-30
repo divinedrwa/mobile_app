@@ -13,6 +13,7 @@ import '../../../../theme/context_extensions.dart';
 import '../../../../core/telemetry/business_analytics.dart';
 import '../../data/models/poll_model.dart';
 import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_date_format.dart';
 
 /// Poll Detail & Voting Screen
 class PollDetailScreen extends ConsumerStatefulWidget {
@@ -128,7 +129,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        DateFormat('dd MMM yyyy').format(widget.poll.createdAt),
+                        DateFormat('dd MMM yyyy').format(widget.poll.createdAt.toLocal()),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -202,7 +203,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                             child: Text(
                               widget.poll.isExpired
                                   ? 'This poll has ended'
-                                  : 'Ends on ${DateFormat('dd MMM yyyy, hh:mm a').format(widget.poll.expiresAt!)}',
+                                  : 'Ends on ${formatCommunityCalendarDateLong(widget.poll.expiresAt!)}',
                               style: TextStyle(
                                 color: widget.poll.isExpired
                                     ? Colors.red

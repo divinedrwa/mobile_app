@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/utils/banner_image_url.dart';
+import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/society_banner_type.dart';
 
@@ -11,6 +14,7 @@ Future<void> showEventBannerDetailSheet(
 ) {
   final type = event['bannerType'] as SocietyBannerType? ?? SocietyBannerType.event;
   final actionUrl = event['actionUrl']?.toString();
+  final imageUrl = resolveBannerImageUrl(event['imageUrl']?.toString());
 
   return showModalBottomSheet<void>(
     context: context,
@@ -43,6 +47,31 @@ Future<void> showEventBannerDetailSheet(
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => const ShimmerWrap(
+                          child: ShimmerBox(height: 180, borderRadius: 16),
+                        ),
+                        errorWidget: (_, _, _) => Container(
+                          color: type.accentColor.withValues(alpha: 0.08),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: type.accentColor,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Row(
                   children: [
                     Container(

@@ -24,7 +24,9 @@ List<PreApprovedVisitorModel>? readPreApprovedVisitorsSeed() {
     for (final item in json as List) {
       if (item is! Map) continue;
       try {
-        out.add(PreApprovedVisitorModel.fromJson(Map<String, dynamic>.from(item)));
+        out.add(
+          PreApprovedVisitorModel.fromJson(Map<String, dynamic>.from(item)),
+        );
       } catch (_) {
         // Skip malformed row; rest of cache still seeds.
       }
@@ -41,9 +43,10 @@ class VisitorRepository {
 
   bool _isResidentVillaMissing(DioException e) {
     if (e.response?.statusCode != 404) return false;
-    return parseApiErrorMessage(e.response?.data, '')
-        .toLowerCase()
-        .contains('villa not assigned');
+    return parseApiErrorMessage(
+      e.response?.data,
+      '',
+    ).toLowerCase().contains('villa not assigned');
   }
 
   /// Pre-approve a visitor
@@ -64,13 +67,18 @@ class VisitorRepository {
       final pre = map['preApproved'];
       if (pre is! Map) {
         throw ServerException(
-          message: map['message'] as String? ?? 'Pre-approve response missing data',
+          message:
+              map['message'] as String? ?? 'Pre-approve response missing data',
         );
       }
       final normalized = Map<String, dynamic>.from(pre);
       final otp = map['otp']?.toString();
       if (otp != null && otp.isNotEmpty && normalized['otp'] == null) {
         normalized['otp'] = otp;
+      }
+      final publicPassUrl = map['publicPassUrl']?.toString();
+      if (publicPassUrl != null && publicPassUrl.isNotEmpty) {
+        normalized['publicPassUrl'] = publicPassUrl;
       }
       return PreApprovedVisitorModel.fromJson(normalized);
     } on DioException catch (e) {
@@ -92,7 +100,9 @@ class VisitorRepository {
       );
 
       final data = response.data;
-      final map = data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+      final map = data is Map
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
       final visitorsList = map['preApproved'] as List? ?? [];
 
       final out = <PreApprovedVisitorModel>[];
@@ -100,9 +110,7 @@ class VisitorRepository {
         if (item is! Map) continue;
         try {
           out.add(
-            PreApprovedVisitorModel.fromJson(
-              Map<String, dynamic>.from(item),
-            ),
+            PreApprovedVisitorModel.fromJson(Map<String, dynamic>.from(item)),
           );
         } catch (_) {
           // Skip malformed row; rest of list still renders.
@@ -128,6 +136,29 @@ class VisitorRepository {
     }
   }
 
+  /// Issue (or rotate) a public browser-pass URL for sharing from history.
+  Future<String> issuePreApprovedShareLink(String id) async {
+    try {
+      final response = await _dioClient.post(
+        ApiEndpoints.preApprovedShareLink(id),
+      );
+      final raw = response.data;
+      if (raw is! Map) {
+        throw ServerException(message: 'Invalid share-link response');
+      }
+      final map = Map<String, dynamic>.from(raw);
+      final url = map['publicPassUrl']?.toString().trim();
+      if (url == null || url.isEmpty) {
+        throw ServerException(
+          message: map['message'] as String? ?? 'Could not create visitor pass link',
+        );
+      }
+      return url;
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to create visitor pass link');
+    }
+  }
+
   /// Delete pre-approved visitor
   Future<void> deletePreApprovedVisitor(String id) async {
     try {
@@ -138,7 +169,8 @@ class VisitorRepository {
   }
 
   /// Today's visitor counts for the resident hub summary card.
-  Future<({int total, int checkedIn, int checkedOut})> getVisitorsTodaySummary() async {
+  Future<({int total, int checkedIn, int checkedOut})>
+  getVisitorsTodaySummary() async {
     try {
       final response = await _dioClient.get(ApiEndpoints.visitorsToday);
       final data = response.data is Map
@@ -165,7 +197,9 @@ class VisitorRepository {
     try {
       final response = await _dioClient.get(ApiEndpoints.myVisitors);
       final raw = response.data;
-      final data = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final data = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
       final list = data['visitors'] as List? ?? [];
       return _parseVisitors(list);
     } on DioException catch (e) {
@@ -176,10 +210,7 @@ class VisitorRepository {
 
   /// Paginated visitor history
   Future<({List<VisitorModel> items, int total, bool hasMore})>
-      getVisitorHistoryPaginated({
-    int limit = 20,
-    int offset = 0,
-  }) async {
+  getVisitorHistoryPaginated({int limit = 20, int offset = 0}) async {
     try {
       final response = await _dioClient.get(
         ApiEndpoints.myVisitors,
@@ -247,7 +278,9 @@ class VisitorRepository {
         queryParameters: {'filter': filter},
       );
       final raw = response.data;
-      final data = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final data = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
       final list = data['visitors'] as List? ?? [];
       return list
           .whereType<Map>()

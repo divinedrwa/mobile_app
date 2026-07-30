@@ -792,6 +792,8 @@ class _PreApprovedAdmitRow extends StatelessWidget {
     switch (api.trim().toUpperCase()) {
       case 'DELIVERY':
         return 'Delivery';
+      case 'CAB':
+        return 'Cab';
       case 'SERVICE_PROVIDER':
         return 'Service';
       case 'VENDOR':

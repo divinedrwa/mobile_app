@@ -10,6 +10,9 @@ import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
+import '../../data/models/visitor_model.dart';
+import '../../data/pre_approved_visitor_eligibility.dart';
+import '../../data/visitor_today_summary.dart';
 import '../../data/providers/visitor_history_provider.dart';
 import '../providers/visitor_provider.dart';
 
@@ -70,8 +73,12 @@ class _VisitorHubScreenState extends ConsumerState<VisitorHubScreen> {
                 delegate: SliverChildListDelegate([
                   _TodaySummaryCard(
                     summaryAsync: todaySummaryAsync,
+                    historyAsync: historyAsync,
                     seed: todaySummarySeed,
-                    onRetry: () => ref.invalidate(visitorTodaySummaryProvider),
+                    onRetry: () {
+                      ref.invalidate(visitorTodaySummaryProvider);
+                      ref.invalidate(visitorHistoryProvider);
+                    },
                   ),
                   const SizedBox(height: 16),
                   _QuickActionsRow(
@@ -230,11 +237,13 @@ class _HubAppBar extends StatelessWidget {
 class _TodaySummaryCard extends StatelessWidget {
   const _TodaySummaryCard({
     required this.summaryAsync,
+    required this.historyAsync,
     required this.onRetry,
     this.seed,
   });
 
   final AsyncValue<VisitorTodaySummary> summaryAsync;
+  final AsyncValue<List<VisitorModel>> historyAsync;
   final VoidCallback onRetry;
 
   /// Persisted counts from the last session — painted on a cold start while the
@@ -322,8 +331,15 @@ class _TodaySummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Builder(builder: (context) {
-            final summary = summaryAsync.valueOrNull ?? seed;
-            if (summaryAsync.isLoading && summary == null) {
+            final apiSummary = summaryAsync.valueOrNull ?? seed;
+            final history = historyAsync.valueOrNull;
+            final summary = resolveVisitorTodaySummary(
+              apiSummary: apiSummary,
+              history: history,
+            );
+            if (summaryAsync.isLoading &&
+                historyAsync.isLoading &&
+                summary == null) {
               return Row(
                 children: [
                   for (var i = 0; i < 3; i++) ...[
@@ -540,15 +556,13 @@ class _QuickActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    // Active pre-approvals = non-expired ones
     final activePreApproved = preApprovedAsync.valueOrNull
-            ?.where((v) =>
-                v.passcodeExpiry == null || v.passcodeExpiry!.toLocal().isAfter(now))
+            ?.where((v) => isPreApprovalUpcoming(v, now: now))
             .length ??
         0;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Quick Actions',
@@ -559,50 +573,58 @@ class _QuickActionsRow extends StatelessWidget {
             letterSpacing: -0.3,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Invite guests, manage passes, and approve gate entries',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: DesignColors.textSecondary,
+            height: 1.3,
+          ),
+        ),
         const SizedBox(height: 12),
+        _QuickActionHeroCard(
+          bgColor: _kPurple.withValues(alpha: 0.08),
+          borderColor: _kPurple.withValues(alpha: 0.2),
+          iconBg: _kPurple.withValues(alpha: 0.14),
+          icon: Icons.person_add_alt_1_rounded,
+          iconColor: _kPurple,
+          title: 'Invite Guest',
+          subtitle: 'Pre-approve a visitor and share the gate pass',
+          onTap: () => context.push('/resident/pre-approve-visitor'),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
-            // Invite Guest — primary (50% width, featured star)
-            _QuickActionCard(
-              flex: 2,
-              bgColor: _kPurple.withValues(alpha: 0.09),
-              borderColor: _kPurple.withValues(alpha: 0.22),
-              iconBg: _kPurple.withValues(alpha: 0.15),
-              icon: Icons.person_add_alt_1_rounded,
-              iconColor: _kPurple,
-              title: 'Invite Guest',
-              subtitle: 'Send invitation quickly',
-              showStar: true,
-              onTap: () => context.push('/resident/pre-approve-visitor'),
+            Expanded(
+              child: _QuickActionTile(
+                bgColor: _kGreenLight,
+                borderColor: _kGreen.withValues(alpha: 0.2),
+                iconBg: _kGreen.withValues(alpha: 0.15),
+                icon: Icons.verified_user_outlined,
+                iconColor: _kGreen,
+                title: 'Pre-Approve',
+                subtitle: 'Manage active passes',
+                badge: activePreApproved > 0 ? activePreApproved : null,
+                onTap: () =>
+                    context.push('/resident/my-pre-approved-visitors'),
+              ),
             ),
             const SizedBox(width: 10),
-            // Pre-Approve — badge = active pre-approvals count
-            _QuickActionCard(
-              flex: 1,
-              bgColor: _kGreenLight,
-              borderColor: _kGreen.withValues(alpha: 0.2),
-              iconBg: _kGreen.withValues(alpha: 0.15),
-              icon: Icons.verified_user_outlined,
-              iconColor: _kGreen,
-              title: 'Pre-Approve',
-              subtitle: 'Manage passes',
-              badge: activePreApproved > 0 ? activePreApproved : null,
-              onTap: () => context.push('/resident/my-pre-approved-visitors'),
-            ),
-            const SizedBox(width: 10),
-            // Gate Requests — badge = pending gate approvals count
-            _QuickActionCard(
-              flex: 1,
-              bgColor: _kBlue.withValues(alpha: 0.07),
-              borderColor: _kBlue.withValues(alpha: 0.2),
-              iconBg: _kBlue.withValues(alpha: 0.13),
-              icon: Icons.door_front_door_outlined,
-              iconColor: _kBlue,
-              title: 'Gate Requests',
-              subtitle: 'Approve visitors',
-              badge: pendingCount > 0 ? pendingCount : null,
-              badgeColor: DesignColors.error,
-              onTap: () => context.push('/resident/visitor-requests'),
+            Expanded(
+              child: _QuickActionTile(
+                bgColor: _kBlue.withValues(alpha: 0.07),
+                borderColor: _kBlue.withValues(alpha: 0.2),
+                iconBg: _kBlue.withValues(alpha: 0.13),
+                icon: Icons.door_front_door_outlined,
+                iconColor: _kBlue,
+                title: 'Gate Requests',
+                subtitle: 'Approve walk-in visitors',
+                badge: pendingCount > 0 ? pendingCount : null,
+                badgeColor: DesignColors.error,
+                onTap: () => context.push('/resident/visitor-requests'),
+              ),
             ),
           ],
         ),
@@ -611,9 +633,8 @@ class _QuickActionsRow extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.flex,
+class _QuickActionHeroCard extends StatelessWidget {
+  const _QuickActionHeroCard({
     required this.bgColor,
     required this.borderColor,
     required this.iconBg,
@@ -622,12 +643,8 @@ class _QuickActionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.showStar = false,
-    this.badge,
-    this.badgeColor,
   });
 
-  final int flex;
   final Color bgColor;
   final Color borderColor;
   final Color iconBg;
@@ -636,119 +653,195 @@ class _QuickActionCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool showStar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          DesignHaptics.selection();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: DesignColors.textPrimary,
+                        letterSpacing: -0.2,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: DesignColors.textSecondary,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: iconColor,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
+    required this.bgColor,
+    required this.borderColor,
+    required this.iconBg,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.badge,
+    this.badgeColor,
+  });
+
+  final Color bgColor;
+  final Color borderColor;
+  final Color iconBg;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
   final int? badge;
   final Color? badgeColor;
 
   @override
   Widget build(BuildContext context) {
     final effectiveBadgeColor = badgeColor ?? iconColor;
-    return Expanded(
-      flex: flex,
-      child: GestureDetector(
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           DesignHaptics.selection();
           onTap();
         },
         child: Container(
-          height: 118,
-          padding: const EdgeInsets.all(12),
+          constraints: const BoxConstraints(minHeight: 112),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: iconBg,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                    child: Icon(icon, color: iconColor, size: 19),
+                    child: Icon(icon, color: iconColor, size: 20),
                   ),
                   const Spacer(),
-                  if (showStar)
+                  if (badge != null && badge! > 0)
                     Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: iconColor,
-                        borderRadius: BorderRadius.circular(6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
                       ),
-                      child: const Icon(Icons.star_rounded, size: 12, color: Colors.white),
-                    )
-                  else if (badge != null && badge! > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: effectiveBadgeColor,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '$badge',
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                           height: 1,
                         ),
                       ),
+                    )
+                  else
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: iconColor.withValues(alpha: 0.7),
                     ),
                 ],
               ),
-              const Spacer(),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: flex == 1 ? 11.5 : 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: DesignColors.textPrimary,
-                            letterSpacing: -0.2,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w500,
-                            color: DesignColors.textSecondary,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.chevron_right_rounded, size: 14, color: iconColor),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.visible,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: DesignColors.textPrimary,
+                  letterSpacing: -0.2,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.visible,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: DesignColors.textSecondary,
+                  height: 1.25,
+                ),
               ),
             ],
           ),
@@ -784,9 +877,10 @@ class _LiveVisitorsSection extends StatelessWidget {
     }
     if (visitors == null) return const SizedBox.shrink();
     return Builder(builder: (context) {
-        final live = visitors
-            .where((v) => (v.status as String).toUpperCase() == 'CHECKED_IN')
-            .toList();
+        final live = visitors.where((v) {
+          if (v is! VisitorModel) return false;
+          return visitorIsInside(v);
+        }).toList();
         if (live.isEmpty) return const SizedBox.shrink();
 
         return Padding(
@@ -1055,8 +1149,7 @@ class _UpcomingVisitorsSection extends StatelessWidget {
         final now = DateTime.now();
         // Non-expired active pre-approvals (all of them, not just today)
         final upcoming = list
-            .where((v) =>
-                v.passcodeExpiry == null || v.passcodeExpiry!.toLocal().isAfter(now))
+            .where((v) => isPreApprovalUpcoming(v, now: now))
             .take(4)
             .toList();
 
@@ -1115,6 +1208,8 @@ class _UpcomingRow extends StatelessWidget {
         return Icons.person_rounded;
       case VisitorType.delivery:
         return Icons.local_shipping_outlined;
+      case VisitorType.cab:
+        return Icons.local_taxi_outlined;
       case VisitorType.service:
         return Icons.home_repair_service_outlined;
       case VisitorType.vendor:
@@ -1128,6 +1223,8 @@ class _UpcomingRow extends StatelessWidget {
         return _kPurple;
       case VisitorType.delivery:
         return const Color(0xFF0891B2);
+      case VisitorType.cab:
+        return const Color(0xFFF59E0B);
       case VisitorType.service:
         return const Color(0xFF7C3AED);
       case VisitorType.vendor:
@@ -1141,6 +1238,8 @@ class _UpcomingRow extends StatelessWidget {
         return 'Guest';
       case VisitorType.delivery:
         return 'Delivery';
+      case VisitorType.cab:
+        return 'Cab';
       case VisitorType.service:
         return 'Service';
       case VisitorType.vendor:

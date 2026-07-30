@@ -380,9 +380,13 @@ enum SOSStatus {
 
 /// Visitor Types — single source of truth for labels shown across resident
 /// and guard screens.
+///
+/// Primary gate types (Phase 1): [guest], [delivery], [cab].
+/// [service] / [vendor] remain for existing flows.
 enum VisitorType {
   guest('GUEST', 'Guest', 'Friends, family, or social visitors'),
   delivery('DELIVERY', 'Delivery', 'Packages, food, or courier drop-offs'),
+  cab('CAB', 'Cab', 'Ola, Uber, or taxi pickup / drop-off'),
   /// Matches backend Prisma `VisitorType.SERVICE_PROVIDER` and `/residents/pre-approve-visitor` zod schema.
   service('SERVICE_PROVIDER', 'Service', 'Repairs, cleaning, or one-off appointments'),
   vendor('VENDOR', 'Vendor', 'Regular suppliers or contracted staff');
@@ -391,6 +395,55 @@ enum VisitorType {
   final String label;
   final String description;
   const VisitorType(this.value, this.label, this.description);
+
+  /// Guest / Delivery / Cab — shown first on pre-approve.
+  bool get isPrimaryGateType =>
+      this == guest || this == delivery || this == cab;
+
+  /// Default pass lifetime when the resident has not customized expiry.
+  Duration get defaultValidity {
+    switch (this) {
+      case VisitorType.cab:
+        return const Duration(hours: 2);
+      case VisitorType.delivery:
+        return const Duration(hours: 4);
+      case VisitorType.service:
+        return const Duration(hours: 8);
+      case VisitorType.guest:
+      case VisitorType.vendor:
+        return const Duration(hours: 24);
+    }
+  }
+
+  /// Frequent / recurring passes only make sense for longer-lived visit types.
+  bool get allowsFrequentPass =>
+      this == guest || this == service || this == vendor;
+
+  String get purposeHint {
+    switch (this) {
+      case VisitorType.guest:
+        return 'e.g. Dinner, birthday visit';
+      case VisitorType.delivery:
+        return 'e.g. Amazon, Swiggy, Flipkart';
+      case VisitorType.cab:
+        return 'e.g. Uber pickup, Ola drop-off';
+      case VisitorType.service:
+        return 'e.g. AC service, plumber';
+      case VisitorType.vendor:
+        return 'e.g. Weekly grocery supply';
+    }
+  }
+
+  String get nameFieldLabel {
+    switch (this) {
+      case VisitorType.cab:
+        return 'Driver name';
+      case VisitorType.delivery:
+        return 'Courier / delivery name';
+      default:
+        return 'Full name';
+    }
+  }
 }
 
 /// Booking Status

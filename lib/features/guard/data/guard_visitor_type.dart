@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 enum GuardCheckInVisitorType {
   guest('GUEST'),
   delivery('DELIVERY'),
+  cab('CAB'),
   serviceProvider('SERVICE_PROVIDER'),
   vendor('VENDOR');
 
@@ -20,6 +21,8 @@ enum GuardCheckInVisitorType {
         return VisitorType.guest.label;
       case delivery:
         return VisitorType.delivery.label;
+      case cab:
+        return VisitorType.cab.label;
       case serviceProvider:
         return VisitorType.service.label;
       case vendor:

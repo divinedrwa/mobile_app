@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/society_banner_type.dart';
 import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_date_format.dart';
 import '../widgets/community/community_ui.dart';
 import '../widgets/community/event_banner_detail_sheet.dart';
 import '../widgets/premium_society_banner_card.dart';
@@ -161,17 +161,14 @@ class EventsListScreen extends ConsumerWidget {
     final isUpcoming = !isPastByEnd;
 
     final bannerType = SocietyBannerType.fromApi(event['type']);
-    final endsLabel = endDate != null
-        ? DateFormat('MMM d, y').format(endDate.toLocal())
-        : null;
+    final endsLabel =
+        endDate != null ? formatCommunityCalendarDate(endDate) : null;
 
     return {
       'id': event['id']?.toString() ?? '',
       'title': event['title']?.toString() ?? 'Community Event',
       'description': event['description']?.toString(),
-      'date': startDate != null
-          ? DateFormat('MMM d, y • h:mm a').format(startDate.toLocal())
-          : 'TBA',
+      'date': startDate != null ? formatCommunityCalendarDate(startDate) : 'TBA',
       'location': 'Your society',
       'priority': (event['priority'] as num?)?.toInt() ?? 0,
       'isUpcoming': isUpcoming,

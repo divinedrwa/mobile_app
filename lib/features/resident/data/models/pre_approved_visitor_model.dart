@@ -16,8 +16,17 @@ class PreApprovedVisitorModel {
   final int? visitTimeMinute;
   final String? passcode;
   final String? qrCode;
+
+  /// Unguessable browser pass URL returned only when a public link is issued.
+  final String? publicPassUrl;
   final DateTime? passcodeExpiry;
   final bool isFrequent;
+  final bool isUsed;
+  final bool isActive;
+  final int usedCount;
+  final int? maxUses;
+  final DateTime? validFrom;
+  final DateTime? usedAt;
   final String? notes;
   final DateTime? createdAt;
 
@@ -36,8 +45,15 @@ class PreApprovedVisitorModel {
     this.visitTimeMinute,
     this.passcode,
     this.qrCode,
+    this.publicPassUrl,
     this.passcodeExpiry,
     this.isFrequent = false,
+    this.isUsed = false,
+    this.isActive = true,
+    this.usedCount = 0,
+    this.maxUses,
+    this.validFrom,
+    this.usedAt,
     this.notes,
     this.createdAt,
     this.flatLabel,
@@ -46,9 +62,7 @@ class PreApprovedVisitorModel {
   factory PreApprovedVisitorModel.fromJson(Map<String, dynamic> json) {
     final typeRaw = json['visitorType'] ?? json['type'];
     final typeStr = typeRaw is String ? typeRaw : typeRaw?.toString();
-    final normalized = typeStr == 'SERVICE'
-        ? 'SERVICE_PROVIDER'
-        : typeStr;
+    final normalized = typeStr == 'SERVICE' ? 'SERVICE_PROVIDER' : typeStr;
     final type = VisitorType.values.firstWhere(
       (e) => e.value == normalized,
       orElse: () => VisitorType.guest,
@@ -76,6 +90,7 @@ class PreApprovedVisitorModel {
       visitTime: json['visitTime'] as String?,
       passcode: json['otp'] as String? ?? json['passcode'] as String?,
       qrCode: json['qrCode'] as String?,
+      publicPassUrl: json['publicPassUrl']?.toString(),
       visitTimeHour: null,
       visitTimeMinute: null,
       passcodeExpiry: json['passcodeExpiry'] != null
@@ -84,6 +99,16 @@ class PreApprovedVisitorModel {
                 ? DateTime.tryParse(json['validUntil'].toString())
                 : null),
       isFrequent: (json['isFrequent'] ?? json['isRecurring']) as bool? ?? false,
+      isUsed: json['isUsed'] as bool? ?? false,
+      isActive: json['isActive'] as bool? ?? true,
+      usedCount: (json['usedCount'] as num?)?.toInt() ?? 0,
+      maxUses: (json['maxUses'] as num?)?.toInt(),
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'].toString())
+          : null,
+      usedAt: json['usedAt'] != null
+          ? DateTime.tryParse(json['usedAt'].toString())
+          : null,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -117,6 +142,13 @@ class PreApprovedVisitorModel {
       'isFrequent': isFrequent,
       if (notes != null) 'notes': notes,
       if (passcode != null) 'passcode': passcode,
+      if (publicPassUrl != null) 'publicPassUrl': publicPassUrl,
+      'isUsed': isUsed,
+      'isActive': isActive,
+      'usedCount': usedCount,
+      if (maxUses != null) 'maxUses': maxUses,
+      if (validFrom != null) 'validFrom': validFrom!.toIso8601String(),
+      if (usedAt != null) 'usedAt': usedAt!.toIso8601String(),
     };
   }
 
@@ -185,8 +217,15 @@ class PreApprovedVisitorModel {
     int? visitTimeMinute,
     String? passcode,
     String? qrCode,
+    String? publicPassUrl,
     DateTime? passcodeExpiry,
     bool? isFrequent,
+    bool? isUsed,
+    bool? isActive,
+    int? usedCount,
+    int? maxUses,
+    DateTime? validFrom,
+    DateTime? usedAt,
     String? notes,
     DateTime? createdAt,
     String? flatLabel,
@@ -204,8 +243,15 @@ class PreApprovedVisitorModel {
       visitTimeMinute: visitTimeMinute ?? this.visitTimeMinute,
       passcode: passcode ?? this.passcode,
       qrCode: qrCode ?? this.qrCode,
+      publicPassUrl: publicPassUrl ?? this.publicPassUrl,
       passcodeExpiry: passcodeExpiry ?? this.passcodeExpiry,
       isFrequent: isFrequent ?? this.isFrequent,
+      isUsed: isUsed ?? this.isUsed,
+      isActive: isActive ?? this.isActive,
+      usedCount: usedCount ?? this.usedCount,
+      maxUses: maxUses ?? this.maxUses,
+      validFrom: validFrom ?? this.validFrom,
+      usedAt: usedAt ?? this.usedAt,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       flatLabel: flatLabel ?? this.flatLabel,

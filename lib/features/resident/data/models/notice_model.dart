@@ -60,7 +60,9 @@ class NoticeModel {
           ? DateTime.tryParse(json['expiresAt'] as String)
           : null,
       // Backend uses 'fileUrl', mobile expects 'attachmentUrl'
-      attachmentUrl: json['attachmentUrl'] as String? ?? json['fileUrl'] as String?,
+      attachmentUrl: json['attachmentUrl'] as String? ??
+          json['fileUrl'] as String? ??
+          json['imageUrl'] as String?,
       isUrgent: json['isUrgent'] as bool? ?? false,
       isPinned: json['isPinned'] as bool? ?? false,
       publishedBy: json['publishedBy'] as String? ?? json['uploadedBy'] as String?,

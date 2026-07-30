@@ -40,6 +40,8 @@ class _PreApproveVisitorScreenState
   TimeOfDay _selectedTime = TimeOfDay.now();
   bool _isFrequent = false;
   bool _isSubmitting = false;
+  /// Once the resident edits date/time, type presets no longer overwrite expiry.
+  bool _validityTouched = false;
 
   static const int _stepCount = 4;
 
@@ -47,6 +49,10 @@ class _PreApproveVisitorScreenState
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    // Guest default: 24h from now (matches backend preset).
+    final until = DateTime.now().add(VisitorType.guest.defaultValidity);
+    _selectedDate = DateTime(until.year, until.month, until.day);
+    _selectedTime = TimeOfDay(hour: until.hour, minute: until.minute);
   }
 
   @override
@@ -96,11 +102,29 @@ class _PreApproveVisitorScreenState
         return Icons.groups_2_outlined;
       case VisitorType.delivery:
         return Icons.local_shipping_outlined;
+      case VisitorType.cab:
+        return Icons.local_taxi_outlined;
       case VisitorType.service:
         return Icons.home_repair_service_outlined;
       case VisitorType.vendor:
         return Icons.storefront_outlined;
     }
+  }
+
+  void _applyTypePreset(VisitorType type) {
+    if (_validityTouched) {
+      setState(() => _selectedType = type);
+      return;
+    }
+    final until = DateTime.now().add(type.defaultValidity);
+    setState(() {
+      _selectedType = type;
+      _selectedDate = DateTime(until.year, until.month, until.day);
+      _selectedTime = TimeOfDay(hour: until.hour, minute: until.minute);
+      if (!type.allowsFrequentPass) {
+        _isFrequent = false;
+      }
+    });
   }
 
   (String title, String? subtitle) _headerForStep(int step) {
@@ -202,6 +226,22 @@ class _PreApproveVisitorScreenState
   }
 
   Widget _buildTypePage() {
+    final primary = VisitorType.values.where((t) => t.isPrimaryGateType);
+    final more = VisitorType.values.where((t) => !t.isPrimaryGateType);
+
+    Widget typeCard(VisitorType type) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: DesignSpacing.md),
+        child: DivineChoiceCard(
+          selected: _selectedType == type,
+          icon: _typeIcon(type),
+          title: _getVisitorTypeLabel(type),
+          subtitle: _getVisitorTypeDescription(type),
+          onTap: () => _applyTypePreset(type),
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         DesignSpacing.screenPaddingH,
@@ -210,19 +250,13 @@ class _PreApproveVisitorScreenState
         DesignSpacing.xl,
       ),
       children: [
-        const DivineFlowSectionLabel('Visitor category'),
-        ...VisitorType.values.map((type) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: DesignSpacing.md),
-            child: DivineChoiceCard(
-              selected: _selectedType == type,
-              icon: _typeIcon(type),
-              title: _getVisitorTypeLabel(type),
-              subtitle: _getVisitorTypeDescription(type),
-              onTap: () => setState(() => _selectedType = type),
-            ),
-          );
-        }),
+        const DivineFlowSectionLabel('Common at gate'),
+        ...primary.map(typeCard),
+        if (more.isNotEmpty) ...[
+          const SizedBox(height: DesignSpacing.sm),
+          const DivineFlowSectionLabel('Other'),
+          ...more.map(typeCard),
+        ],
       ],
     );
   }
@@ -243,7 +277,7 @@ class _PreApproveVisitorScreenState
           textInputAction: TextInputAction.next,
           textCapitalization: TextCapitalization.words,
           decoration: DesignComponents.inputDecoration(
-            label: 'Full name',
+            label: _selectedType.nameFieldLabel,
             hint: 'As it should appear at the gate',
             prefixIcon: Icon(
               Icons.person_outline_rounded,
@@ -291,7 +325,7 @@ class _PreApproveVisitorScreenState
           textInputAction: TextInputAction.done,
           decoration: DesignComponents.inputDecoration(
             label: 'Purpose',
-            hint: 'e.g. Dinner, parcel pickup, AC service',
+            hint: _selectedType.purposeHint,
             prefixIcon: Icon(
               Icons.subject_rounded,
               color: DesignColors.textSecondary.withValues(alpha: 0.9),
@@ -323,7 +357,7 @@ class _PreApproveVisitorScreenState
           icon: Icons.calendar_today_rounded,
           label: 'Valid until',
           value: DateFormat('EEE, d MMM yyyy').format(_selectedDate),
-          helper: 'The pass works now and expires on this date',
+          helper: _validityHelperText(),
           onTap: () async {
             final date = await showDatePicker(
               context: context,
@@ -331,7 +365,12 @@ class _PreApproveVisitorScreenState
               firstDate: DateTime.now(),
               lastDate: DateTime.now().add(const Duration(days: 30)),
             );
-            if (date != null) setState(() => _selectedDate = date);
+            if (date != null) {
+              setState(() {
+                _validityTouched = true;
+                _selectedDate = date;
+              });
+            }
           },
         ),
         const SizedBox(height: DesignSpacing.md),
@@ -345,35 +384,42 @@ class _PreApproveVisitorScreenState
               context: context,
               initialTime: _selectedTime,
             );
-            if (time != null) setState(() => _selectedTime = time);
+            if (time != null) {
+              setState(() {
+                _validityTouched = true;
+                _selectedTime = time;
+              });
+            }
           },
         ),
-        const SizedBox(height: DesignSpacing.lg),
-        Material(
-          color: DesignColors.surface,
-          borderRadius: DesignRadius.borderLG,
-          child: SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: DesignSpacing.md,
-              vertical: DesignSpacing.xs,
+        if (_selectedType.allowsFrequentPass) ...[
+          const SizedBox(height: DesignSpacing.lg),
+          Material(
+            color: DesignColors.surface,
+            borderRadius: DesignRadius.borderLG,
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: DesignSpacing.md,
+                vertical: DesignSpacing.xs,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: DesignRadius.borderLG,
+                side: BorderSide(color: DesignColors.borderLight),
+              ),
+              title: Text(
+                'Frequent visitor',
+                style: DesignTypography.label.copyWith(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Enable for household help or regular vendors',
+                style: DesignTypography.caption,
+              ),
+              value: _isFrequent,
+              activeThumbColor: DesignColors.primary,
+              onChanged: (v) => setState(() => _isFrequent = v),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: DesignRadius.borderLG,
-              side: BorderSide(color: DesignColors.borderLight),
-            ),
-            title: Text(
-              'Frequent visitor',
-              style: DesignTypography.label.copyWith(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Enable for household help or regular vendors',
-              style: DesignTypography.caption,
-            ),
-            value: _isFrequent,
-            activeThumbColor: DesignColors.primary,
-            onChanged: (v) => setState(() => _isFrequent = v),
           ),
-        ),
+        ],
         const SizedBox(height: DesignSpacing.lg),
         const DivineFlowSectionLabel('Notes for security (optional)'),
         TextFormField(
@@ -381,7 +427,9 @@ class _PreApproveVisitorScreenState
           textInputAction: TextInputAction.done,
           decoration: DesignComponents.inputDecoration(
             label: 'Additional notes',
-            hint: 'Vehicle number, escort name, special instructions…',
+            hint: _selectedType == VisitorType.cab
+                ? 'Vehicle number, colour, Uber/Ola…'
+                : 'Vehicle number, escort name, special instructions…',
             prefixIcon: Icon(
               Icons.notes_rounded,
               color: DesignColors.textSecondary.withValues(alpha: 0.9),
@@ -392,6 +440,24 @@ class _PreApproveVisitorScreenState
         ),
       ],
     );
+  }
+
+  String _validityHelperText() {
+    if (_validityTouched) {
+      return 'The pass works now and expires on this date';
+    }
+    switch (_selectedType) {
+      case VisitorType.cab:
+        return 'Default for cab: 2 hours from now (edit if needed)';
+      case VisitorType.delivery:
+        return 'Default for delivery: 4 hours from now (edit if needed)';
+      case VisitorType.guest:
+        return 'Default for guest: 24 hours from now (edit if needed)';
+      case VisitorType.service:
+        return 'Default for service: 8 hours from now (edit if needed)';
+      case VisitorType.vendor:
+        return 'Default for vendor: 24 hours from now (edit if needed)';
+    }
   }
 
   Widget _buildReviewPage() {
@@ -438,10 +504,11 @@ class _PreApproveVisitorScreenState
                 value:
                     '${DateFormat('EEE, d MMM yyyy').format(_selectedDate)} · ${_selectedTime.format(context)}',
               ),
-              DivineSummaryRow(
-                label: 'Frequent',
-                value: _isFrequent ? 'Yes' : 'No',
-              ),
+              if (_selectedType.allowsFrequentPass)
+                DivineSummaryRow(
+                  label: 'Frequent',
+                  value: _isFrequent ? 'Yes' : 'No',
+                ),
               if (_notesController.text.trim().isNotEmpty)
                 DivineSummaryRow(
                   label: 'Notes',
@@ -475,7 +542,7 @@ class _PreApproveVisitorScreenState
         visitTime: _selectedTime.format(context),
         visitTimeHour: _selectedTime.hour,
         visitTimeMinute: _selectedTime.minute,
-        isFrequent: _isFrequent,
+        isFrequent: _selectedType.allowsFrequentPass && _isFrequent,
         notes: _notesController.text.isNotEmpty
             ? _notesController.text.trim()
             : null,

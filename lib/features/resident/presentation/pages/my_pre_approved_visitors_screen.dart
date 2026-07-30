@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -13,6 +12,8 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/async_animated_switcher.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
+import '../../data/pre_approved_visitor_eligibility.dart';
+import '../../data/visitor_pass_share.dart';
 import '../providers/visitor_provider.dart';
 import '../widgets/list_skeleton.dart';
 import '../widgets/visitor_management_ui.dart';
@@ -49,6 +50,8 @@ class _MyPreApprovedVisitorsScreenState
         return 'Guest';
       case VisitorType.delivery:
         return 'Delivery';
+      case VisitorType.cab:
+        return 'Cab';
       case VisitorType.service:
         return 'Service';
       case VisitorType.vendor:
@@ -62,6 +65,8 @@ class _MyPreApprovedVisitorsScreenState
         return Icons.person_rounded;
       case VisitorType.delivery:
         return Icons.local_shipping_outlined;
+      case VisitorType.cab:
+        return Icons.local_taxi_outlined;
       case VisitorType.service:
         return Icons.home_repair_service_outlined;
       case VisitorType.vendor:
@@ -75,6 +80,8 @@ class _MyPreApprovedVisitorsScreenState
         return DesignColors.primary;
       case VisitorType.delivery:
         return const Color(0xFF0891B2);
+      case VisitorType.cab:
+        return const Color(0xFFF59E0B);
       case VisitorType.service:
         return DesignColors.primary;
       case VisitorType.vendor:
@@ -82,10 +89,22 @@ class _MyPreApprovedVisitorsScreenState
     }
   }
 
-  static bool _isExpired(PreApprovedVisitorModel v) {
-    final u = v.passcodeExpiry;
-    if (u == null) return false;
-    return !u.toLocal().isAfter(DateTime.now());
+  static bool _isInactive(PreApprovedVisitorModel v) {
+    return !isPreApprovalUpcoming(v);
+  }
+
+  static String _inactiveStatusLabel(PreApprovedVisitorModel v) {
+    if (v.isUsed && !v.isFrequent) return 'Used';
+    if (v.isFrequent &&
+        v.maxUses != null &&
+        v.usedCount >= v.maxUses!) {
+      return 'Limit reached';
+    }
+    final end = v.passcodeExpiry;
+    if (end != null && !end.toLocal().isAfter(DateTime.now())) {
+      return 'Expired';
+    }
+    return 'Inactive';
   }
 
   String _validityLine(PreApprovedVisitorModel v, DateFormat dtf) {
@@ -101,23 +120,26 @@ class _MyPreApprovedVisitorsScreenState
     await ref.read(preApprovedVisitorsProvider.future);
   }
 
-  String _buildShareMessage(PreApprovedVisitorModel v) {
-    final otp = v.passcode?.trim() ?? '';
-    final expiry = v.passcodeExpiry != null
-        ? '\nValid until: ${DateFormat('dd MMM yyyy, hh:mm a').format(v.passcodeExpiry!.toLocal())}'
-        : '';
-    return 'Visitor Pass for ${v.name}\n\n'
-        'Passcode: $otp\n\n'
-        'Date: ${DateFormat('dd MMM yyyy').format(v.visitDate)}'
-        '$expiry\n\n'
-        'Please show this code at the gate.\n'
-        '- ${AppConstants.appName}';
-  }
-
-  void _sharePasscode(BuildContext context, PreApprovedVisitorModel v) {
+  Future<void> _sharePassRecord(
+    BuildContext context,
+    PreApprovedVisitorModel v,
+  ) async {
     final pass = v.passcode?.trim();
     if (pass == null || pass.isEmpty) return;
-    Share.share(_buildShareMessage(v));
+    try {
+      await shareVisitorPassRecord(
+        ref.read(visitorRepositoryProvider),
+        v,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(userFacingMessage(e, 'Could not share visitor pass')),
+        ),
+      );
+    }
   }
 
   Future<void> _shareViaWhatsApp(
@@ -126,18 +148,30 @@ class _MyPreApprovedVisitorsScreenState
   ) async {
     final pass = v.passcode?.trim();
     if (pass == null || pass.isEmpty) return;
-    final message = Uri.encodeComponent(_buildShareMessage(v));
-    final phone = v.phone.replaceAll(RegExp(r'\D'), '');
-    final waUri = phone.length >= 10
-        ? Uri.parse('https://wa.me/$phone?text=$message')
-        : Uri.parse('https://wa.me/?text=$message');
-    if (await canLaunchUrl(waUri)) {
-      await launchUrl(waUri, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
+    try {
+      final ready = await ensureVisitorPassShareUrl(
+        ref.read(visitorRepositoryProvider),
+        v,
+      );
+      final message = Uri.encodeComponent(buildVisitorPassShareMessage(ready));
+      // No phone pre-fill — resident can pick any WhatsApp contact.
+      final waUri = Uri.parse('https://wa.me/?text=$message');
+      if (await canLaunchUrl(waUri)) {
+        await launchUrl(waUri, mode: LaunchMode.externalApplication);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('WhatsApp not installed'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('WhatsApp not installed'),
+          content: Text(userFacingMessage(e, 'Could not share visitor pass')),
         ),
       );
     }
@@ -179,22 +213,46 @@ class _MyPreApprovedVisitorsScreenState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(color: DesignColors.borderLight, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: DesignColors.borderLight,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(color: DesignColors.warning.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: Icon(Icons.no_meeting_room_outlined, color: DesignColors.warning, size: 28),
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: DesignColors.warning.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.no_meeting_room_outlined,
+                    color: DesignColors.warning,
+                    size: 28,
+                  ),
                 ),
                 SizedBox(height: 16),
-                Text('Remove pre-approval?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: DesignColors.textPrimary)),
+                Text(
+                  'Remove pre-approval?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: DesignColors.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Guards will no longer see ${v.name} under expected visitors.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: DesignColors.textSecondary, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: DesignColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -202,7 +260,12 @@ class _MyPreApprovedVisitorsScreenState
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(sheetCtx, false),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: DesignRadius.borderMD,
+                          ),
+                        ),
                         child: const Text('Cancel'),
                       ),
                     ),
@@ -210,8 +273,17 @@ class _MyPreApprovedVisitorsScreenState
                     Expanded(
                       child: FilledButton(
                         onPressed: () => Navigator.pop(sheetCtx, true),
-                        style: FilledButton.styleFrom(backgroundColor: DesignColors.warning, padding: EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: DesignRadius.borderMD)),
-                        child: const Text('Remove', style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DesignColors.warning,
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: DesignRadius.borderMD,
+                          ),
+                        ),
+                        child: const Text(
+                          'Remove',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],
@@ -229,9 +301,9 @@ class _MyPreApprovedVisitorsScreenState
       await ref.read(visitorRepositoryProvider).deletePreApprovedVisitor(id);
       ref.invalidate(preApprovedVisitorsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pre-approval removed')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Pre-approval removed')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -257,7 +329,11 @@ class _MyPreApprovedVisitorsScreenState
         leading: IconButton(
           tooltip: 'Go back',
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.text.primary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: context.text.primary,
+          ),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +349,7 @@ class _MyPreApprovedVisitorsScreenState
               ),
             ),
             Text(
-              'Share OTP passes for gate entry',
+              'Share visitor pass link + OTP',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -304,7 +380,7 @@ class _MyPreApprovedVisitorsScreenState
         ],
         bottom: async.maybeWhen(
           data: (list) {
-            final active = list.where((v) => !_isExpired(v)).length;
+            final active = list.where((v) => !_isInactive(v)).length;
             final expired = list.length - active;
             return PreferredSize(
               preferredSize: const Size.fromHeight(48),
@@ -314,7 +390,7 @@ class _MyPreApprovedVisitorsScreenState
                   controller: _tab,
                   tabs: [
                     Tab(text: 'Active · $active'),
-                    Tab(text: 'Expired · $expired'),
+                    Tab(text: 'Used & expired · $expired'),
                   ],
                 ),
               ),
@@ -391,7 +467,7 @@ class _MyPreApprovedVisitorsScreenState
                   const SizedBox(height: DesignSpacing.sm),
                   Text(
                     "Add someone you're expecting so security can admit them quickly "
-                    'with the gate passcode.',
+                    'with the visitor pass link or OTP.',
                     style: DesignTypography.body.copyWith(
                       color: DesignColors.textSecondary,
                       height: 1.45,
@@ -421,8 +497,8 @@ class _MyPreApprovedVisitorsScreenState
             );
           }
 
-          final activeList = list.where((v) => !_isExpired(v)).toList();
-          final expiredList = list.where((v) => _isExpired(v)).toList();
+          final activeList = list.where((v) => !_isInactive(v)).toList();
+          final expiredList = list.where((v) => _isInactive(v)).toList();
 
           Widget tabBody(List<PreApprovedVisitorModel> rows, bool expiredTab) {
             if (rows.isEmpty) {
@@ -433,9 +509,7 @@ class _MyPreApprovedVisitorsScreenState
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(DesignSpacing.xl),
                   children: [
-                    SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.18,
-                    ),
+                    SizedBox(height: MediaQuery.sizeOf(context).height * 0.18),
                     Icon(
                       expiredTab
                           ? Icons.history_rounded
@@ -485,13 +559,16 @@ class _MyPreApprovedVisitorsScreenState
                   return _PreApprovalVisitorCard(
                     visitor: rows[i],
                     expired: expiredTab,
+                    statusLabel: expiredTab
+                        ? _inactiveStatusLabel(rows[i])
+                        : 'Active',
                     validityLine: _validityLine(rows[i], dtf),
                     typeLabel: _typeLabel(rows[i].type),
                     typeIcon: _typeIcon(rows[i].type),
                     typeAccent: _typeAccent(rows[i].type),
                     onDelete: () => _confirmDelete(context, rows[i]),
                     onCopyPasscode: (code) => _copyPasscode(context, code),
-                    onShare: () => _sharePasscode(context, rows[i]),
+                    onShare: () => _sharePassRecord(context, rows[i]),
                     onWhatsApp: () => _shareViaWhatsApp(context, rows[i]),
                   );
                 },
@@ -501,10 +578,7 @@ class _MyPreApprovedVisitorsScreenState
 
           return TabBarView(
             controller: _tab,
-            children: [
-              tabBody(activeList, false),
-              tabBody(expiredList, true),
-            ],
+            children: [tabBody(activeList, false), tabBody(expiredList, true)],
           );
         },
       ),
@@ -516,6 +590,7 @@ class _PreApprovalVisitorCard extends StatelessWidget {
   const _PreApprovalVisitorCard({
     required this.visitor,
     required this.expired,
+    required this.statusLabel,
     required this.validityLine,
     required this.typeLabel,
     required this.typeIcon,
@@ -528,6 +603,7 @@ class _PreApprovalVisitorCard extends StatelessWidget {
 
   final PreApprovedVisitorModel visitor;
   final bool expired;
+  final String statusLabel;
   final String validityLine;
   final String typeLabel;
   final IconData typeIcon;
@@ -557,236 +633,233 @@ class _PreApprovalVisitorCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            DesignSpacing.md + 2,
-            DesignSpacing.md + 2,
-            DesignSpacing.sm,
-            DesignSpacing.md + 2,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: typeAccent.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(typeIcon, color: typeAccent, size: 26),
+        padding: const EdgeInsets.fromLTRB(
+          DesignSpacing.md + 2,
+          DesignSpacing.md + 2,
+          DesignSpacing.sm,
+          DesignSpacing.md + 2,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: typeAccent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: DesignSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  alignment: Alignment.center,
+                  child: Icon(typeIcon, color: typeAccent, size: 26),
+                ),
+                const SizedBox(width: DesignSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              v.name,
+                              style: DesignTypography.headingM.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: expired
+                                  ? DesignColors.error.withValues(alpha: 0.12)
+                                  : DesignColors.success.withValues(
+                                      alpha: 0.14,
+                                    ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: expired
+                                    ? DesignColors.error.withValues(alpha: 0.35)
+                                    : DesignColors.success.withValues(
+                                        alpha: 0.35,
+                                      ),
+                              ),
+                            ),
+                            child: Text(
+                              statusLabel,
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: expired
+                                    ? DesignColors.error
+                                    : DesignColors.success,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _MiniChip(
+                            icon: Icons.phone_iphone_rounded,
+                            label: v.phone,
+                          ),
+                          _MiniChip(icon: typeIcon, label: typeLabel),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Remove',
+                  style: IconButton.styleFrom(
+                    foregroundColor: DesignColors.error,
+                    backgroundColor: DesignColors.error.withValues(alpha: 0.08),
+                  ),
+                  onPressed: v.id == null ? null : onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 22),
+                ),
+              ],
+            ),
+            if (v.flatLabel != null && v.flatLabel!.isNotEmpty) ...[
+              const SizedBox(height: DesignSpacing.md),
+              _MetaLine(
+                icon: Icons.apartment_rounded,
+                text: 'Flat ${v.flatLabel}',
+                strong: true,
+              ),
+            ],
+            const SizedBox(height: DesignSpacing.sm + 2),
+            _MetaLine(
+              icon: Icons.schedule_rounded,
+              text: validityLine,
+              muted: true,
+            ),
+            if (v.purpose != null && v.purpose!.trim().isNotEmpty) ...[
+              const SizedBox(height: DesignSpacing.sm),
+              _MetaLine(
+                icon: Icons.topic_outlined,
+                text: v.purpose!.trim(),
+                muted: false,
+                maxLines: 3,
+              ),
+            ],
+            if (v.notes != null && v.notes!.trim().isNotEmpty) ...[
+              const SizedBox(height: DesignSpacing.sm),
+              _MetaLine(
+                icon: Icons.sticky_note_2_outlined,
+                text: v.notes!.trim(),
+                muted: true,
+                maxLines: 2,
+              ),
+            ],
+            if (hasPass) ...[
+              const SizedBox(height: DesignSpacing.md),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      DesignColors.primary.withValues(alpha: 0.1),
+                      DesignColors.primaryDark.withValues(alpha: 0.06),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: DesignRadius.borderMD,
+                  border: Border.all(
+                    color: DesignColors.primary.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: DesignSpacing.md,
+                    vertical: DesignSpacing.sm + 2,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.vpn_key_rounded,
+                        size: 22,
+                        color: DesignColors.primaryDark,
+                      ),
+                      const SizedBox(width: DesignSpacing.sm),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                v.name,
-                                style: DesignTypography.headingM.copyWith(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.25,
-                                ),
+                            Text(
+                              'GATE PASSCODE',
+                              style: DesignTypography.labelSmall.copyWith(
+                                color: DesignColors.primaryDark,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                                fontSize: 10,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: expired
-                                    ? DesignColors.error.withValues(
-                                        alpha: 0.12,
-                                      )
-                                    : DesignColors.success.withValues(
-                                        alpha: 0.14,
-                                      ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: expired
-                                      ? DesignColors.error.withValues(
-                                          alpha: 0.35,
-                                        )
-                                      : DesignColors.success.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                ),
-                              ),
-                              child: Text(
-                                expired ? 'Expired' : 'Active',
-                                style: DesignTypography.labelSmall.copyWith(
-                                  color: expired
-                                      ? DesignColors.error
-                                      : DesignColors.success,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
-                                ),
+                            const SizedBox(height: 4),
+                            Text(
+                              passDisplay,
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3,
+                                color: DesignColors.primaryDark,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _MiniChip(
-                              icon: Icons.phone_iphone_rounded,
-                              label: v.phone,
-                            ),
-                            _MiniChip(icon: typeIcon, label: typeLabel),
-                          ],
+                      ),
+                      IconButton.filledTonal(
+                        tooltip: 'Copy',
+                        onPressed: () => onCopyPasscode(passDisplay),
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        style: IconButton.styleFrom(
+                          backgroundColor: DesignColors.surface,
+                          foregroundColor: DesignColors.primary,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton.filledTonal(
+                        tooltip: 'WhatsApp',
+                        onPressed: expired ? null : onWhatsApp,
+                        icon: const Icon(Icons.chat_rounded, size: 18),
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF25D366,
+                          ).withValues(alpha: 0.15),
+                          foregroundColor: const Color(0xFF25D366),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton.filledTonal(
+                        tooltip: 'Share pass',
+                        onPressed: expired ? null : onShare,
+                        icon: const Icon(Icons.ios_share_rounded, size: 18),
+                        style: IconButton.styleFrom(
+                          backgroundColor: DesignColors.surface,
+                          foregroundColor: DesignColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Remove',
-                    style: IconButton.styleFrom(
-                      foregroundColor: DesignColors.error,
-                      backgroundColor:
-                          DesignColors.error.withValues(alpha: 0.08),
-                    ),
-                    onPressed: v.id == null ? null : onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 22),
-                  ),
-                ],
+                ),
               ),
-              if (v.flatLabel != null && v.flatLabel!.isNotEmpty) ...[
-                const SizedBox(height: DesignSpacing.md),
-                _MetaLine(
-                  icon: Icons.apartment_rounded,
-                  text: 'Flat ${v.flatLabel}',
-                  strong: true,
-                ),
-              ],
-              const SizedBox(height: DesignSpacing.sm + 2),
-              _MetaLine(
-                icon: Icons.schedule_rounded,
-                text: validityLine,
-                muted: true,
-              ),
-              if (v.purpose != null && v.purpose!.trim().isNotEmpty) ...[
-                const SizedBox(height: DesignSpacing.sm),
-                _MetaLine(
-                  icon: Icons.topic_outlined,
-                  text: v.purpose!.trim(),
-                  muted: false,
-                  maxLines: 3,
-                ),
-              ],
-              if (v.notes != null && v.notes!.trim().isNotEmpty) ...[
-                const SizedBox(height: DesignSpacing.sm),
-                _MetaLine(
-                  icon: Icons.sticky_note_2_outlined,
-                  text: v.notes!.trim(),
-                  muted: true,
-                  maxLines: 2,
-                ),
-              ],
-              if (hasPass) ...[
-                const SizedBox(height: DesignSpacing.md),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        DesignColors.primary.withValues(alpha: 0.1),
-                        DesignColors.primaryDark.withValues(alpha: 0.06),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: DesignRadius.borderMD,
-                    border: Border.all(
-                      color: DesignColors.primary.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DesignSpacing.md,
-                      vertical: DesignSpacing.sm + 2,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.vpn_key_rounded,
-                          size: 22,
-                          color: DesignColors.primaryDark,
-                        ),
-                        const SizedBox(width: DesignSpacing.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'GATE PASSCODE',
-                                style: DesignTypography.labelSmall.copyWith(
-                                  color: DesignColors.primaryDark,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8,
-                                  fontSize: 10,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                passDisplay,
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 3,
-                                  color: DesignColors.primaryDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          tooltip: 'Copy',
-                          onPressed: () => onCopyPasscode(passDisplay),
-                          icon: const Icon(Icons.copy_rounded, size: 18),
-                          style: IconButton.styleFrom(
-                            backgroundColor: DesignColors.surface,
-                            foregroundColor: DesignColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton.filledTonal(
-                          tooltip: 'WhatsApp',
-                          onPressed: expired ? null : onWhatsApp,
-                          icon: const Icon(Icons.chat_rounded, size: 18),
-                          style: IconButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.15),
-                            foregroundColor: const Color(0xFF25D366),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton.filledTonal(
-                          tooltip: 'Share',
-                          onPressed: expired ? null : onShare,
-                          icon: const Icon(Icons.ios_share_rounded, size: 18),
-                          style: IconButton.styleFrom(
-                            backgroundColor: DesignColors.surface,
-                            foregroundColor: DesignColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -852,8 +925,7 @@ class _MetaLine extends StatelessWidget {
         Icon(
           icon,
           size: 18,
-          color:
-              muted ? DesignColors.textTertiary : DesignColors.textSecondary,
+          color: muted ? DesignColors.textTertiary : DesignColors.textSecondary,
         ),
         const SizedBox(width: 8),
         Expanded(

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/banner_image_url.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/society_banner_type.dart';
@@ -40,7 +41,25 @@ bool _hasImage(Map<String, dynamic> event) {
   return u != null && u.toString().trim().isNotEmpty;
 }
 
-String _imageUrl(Map<String, dynamic> event) => event['imageUrl'].toString().trim();
+String _imageUrl(Map<String, dynamic> event) {
+  final resolved = resolveBannerImageUrl(event['imageUrl']?.toString());
+  return resolved ?? '';
+}
+
+Widget _optionalHeroImage({
+  required Map<String, dynamic> event,
+  required SocietyBannerType type,
+  required List<Color> fallbackGradient,
+  BorderRadius borderRadius = const BorderRadius.vertical(top: Radius.circular(20)),
+}) {
+  if (!_hasImage(event)) return const SizedBox.shrink();
+  return _heroImageOrGradient(
+    event: event,
+    type: type,
+    fallbackGradient: fallbackGradient,
+    borderRadius: borderRadius,
+  );
+}
 
 Widget _statusPill(bool live) {
   return Container(
@@ -496,6 +515,14 @@ class _AnnouncementPremiumCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _optionalHeroImage(
+              event: event,
+              type: type,
+              fallbackGradient: [
+                accent,
+                accent.withValues(alpha: 0.55),
+              ],
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
               child: Row(

@@ -380,6 +380,8 @@ class _RequestCard extends StatelessWidget {
         return 'Guest';
       case 'DELIVERY':
         return 'Delivery';
+      case 'CAB':
+        return 'Cab';
       case 'SERVICE':
       case 'SERVICE_PROVIDER':
         return 'Service';
@@ -396,6 +398,8 @@ class _RequestCard extends StatelessWidget {
     switch ((raw ?? '').toUpperCase()) {
       case 'DELIVERY':
         return Icons.local_shipping_outlined;
+      case 'CAB':
+        return Icons.local_taxi_outlined;
       case 'SERVICE':
         return Icons.build_outlined;
       case 'VENDOR':

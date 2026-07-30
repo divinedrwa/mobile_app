@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/utils/banner_image_url.dart';
 import '../../../../../core/utils/media_url.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../data/models/banner_model.dart';
@@ -134,8 +135,11 @@ class _BannerCarouselWidgetState extends State<_BannerCarouselWidget> {
                           if (banner.imageUrl != null &&
                               banner.imageUrl!.isNotEmpty)
                             CachedNetworkImage(
-                              imageUrl: resolveServerFileUrl(
-                                      banner.imageUrl!) ??
+                              imageUrl: resolveBannerImageUrl(
+                                    banner.imageUrl,
+                                    width: 1080,
+                                  ) ??
+                                  resolveServerFileUrl(banner.imageUrl!) ??
                                   banner.imageUrl!,
                               fit: BoxFit.cover,
                               placeholder: (_, __) => Container(

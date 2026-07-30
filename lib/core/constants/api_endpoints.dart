@@ -8,16 +8,20 @@ class ApiEndpoints {
   // Public (no auth)
   /// App version check for iOS update prompts (`GET ?platform=IOS`).
   static const String appVersionCheck = '/public/app-version';
+
   /// Society theme colors (`GET`). Returns `{ themeColors: {...} | null }`.
   static const String societyTheme = '/public/society-theme';
+
   /// Society appearance (theme + splash) by id, no auth (`GET`). Used pre-login.
   static String societyAppearance(String societyId) =>
       '/public/society-appearance/$societyId';
 
   // Authentication
   static const String login = '/auth/login';
+
   /// Public societies for login picker (`GET`).
   static const String publicSocieties = '/public/societies';
+
   /// Public: complete onboarding with admin-issued invitation token (`POST`).
   static const String registerWithInvitation = '/auth/register-with-invitation';
   static const String logout = '/auth/logout';
@@ -26,34 +30,40 @@ class ApiEndpoints {
   // Legal — consent & terms versioning (L2)
   /// Authenticated: `GET` current legal versions + this user's acceptance state.
   static const String legalStatus = '/legal/status';
+
   /// Authenticated: `POST` body `{ termsVersion, privacyVersion, appVersion? }` to record acceptance.
   static const String legalAccept = '/legal/accept';
+
   /// Public: `GET` current legal versions + hosted URLs (no auth).
   static const String publicLegalVersion = '/public/legal-version';
 
   /// Per-category push preferences (L3). `GET` list, `PUT` body `{ category, pushEnabled }`.
   static const String notificationPreferences = '/notifications/preferences';
+
   /// Register or refresh FCM token (authenticated). Keeps token in sync after refresh.
   static const String notificationsRegisterDevice = '/notifications/devices';
-  static const String notificationsRemoveDevice = '/notifications/devices/remove';
+  static const String notificationsRemoveDevice =
+      '/notifications/devices/remove';
+
   /// Backend: GET/PATCH/PUT/DELETE `/residents/me` — profile & soft-deactivate (DELETE).
   static const String profile = '/residents/me';
 
   /// Authenticated resident: `PATCH` body `{ currentPassword, newPassword }`.
   static const String changePassword = '/residents/change-password';
-  
+
   // Resident - Dashboard
   static const String dashboard = '/residents/dashboard';
   static const String banners = '/banners/active/list';
   static String bannerRegister(String id) => '/banners/$id/register';
   static const String vendors = '/vendors';
-  
+
   // Resident - Maintenance
   static const String myMaintenance = '/residents/my-maintenance';
   static const String maintenanceHistory = '/residents/my-maintenance';
   static const String paymentHistory = '/residents/my-maintenance';
   static const String maintenanceDashboard = '/residents/maintenance-dashboard';
-  static const String maintenanceDashboardReportPdf = '/residents/maintenance-dashboard/report-pdf';
+  static const String maintenanceDashboardReportPdf =
+      '/residents/maintenance-dashboard/report-pdf';
   static const String maintenanceStatementPdf =
       '/residents/maintenance-statement/pdf';
   static const String residentPaymentDisputes = '/residents/payment-disputes';
@@ -61,10 +71,12 @@ class ApiEndpoints {
   static const String maintenancePending = '/residents/maintenance-pending';
   static const String maintenancePayments = '/maintenance/payments';
   static const String maintenanceMarkPaid = '/maintenance-management/mark-paid';
-  static const String sendDuesReminders = '/maintenance-management/send-dues-reminders';
+  static const String sendDuesReminders =
+      '/maintenance-management/send-dues-reminders';
   static const String applyCredit = '/maintenance-management/apply-credit';
   static const String outstandingDues = '/residents/outstanding-dues';
-  static const String sendVillaReminder = '/maintenance-management/send-villa-reminder';
+  static const String sendVillaReminder =
+      '/maintenance-management/send-villa-reminder';
   static const String paymentMethods = '/residents/payment-methods';
 
   /// SaaS billing cycle (UTC windows; status from server): `GET /v1/cycles/current?societyId=&billingCycleId=`
@@ -87,13 +99,15 @@ class ApiEndpoints {
   static const String paymentReceiptPdf = '/v1/payments/receipt.pdf';
 
   /// Razorpay order status poll (`GET`) — reconciles after SDK success.
-  static String razorpayStatus(String orderId) => '/v1/payments/razorpay/status/$orderId';
+  static String razorpayStatus(String orderId) =>
+      '/v1/payments/razorpay/status/$orderId';
 
   /// PhonePe payment initiation (`POST`).
   static const String phonePeInitiate = '/v1/payments/phonepe/initiate';
 
   /// PhonePe payment status poll (`GET`).
-  static String phonePeStatus(String txnId) => '/v1/payments/phonepe/status/$txnId';
+  static String phonePeStatus(String txnId) =>
+      '/v1/payments/phonepe/status/$txnId';
 
   /// Financial years for billing (`GET /v1/financial-years`) — admin + resident.
   static const String billingFinancialYears = '/v1/financial-years';
@@ -103,78 +117,93 @@ class ApiEndpoints {
 
   /// Resolve cycle → financial year (`GET /v1/billing-cycles/context?billingCycleId=`).
   static const String billingCycleContext = '/v1/billing-cycles/context';
-  
+
   // Resident - Complaints
   static const String myComplaints = '/residents/my-complaints';
   static const String createComplaint = '/residents/complaints';
   static String complaintById(String id) => '/residents/complaints/$id';
-  
+
   // Resident - Visitors
   static const String myVisitors = '/residents/my-visitors';
   static const String visitorsToday = '/residents/visitors-today';
+
   /// Guard walk-in requests pending resident approve/reject.
-  static const String visitorApprovalRequests = '/residents/visitor-approval-requests';
+  static const String visitorApprovalRequests =
+      '/residents/visitor-approval-requests';
   static String visitorApprovalRequestDetail(String id) =>
       '/residents/visitor-approval-requests/$id';
   static String visitorApprovalApprove(String id) =>
       '/residents/visitor-approval-requests/$id/approve';
   static String visitorApprovalReject(String id) =>
       '/residents/visitor-approval-requests/$id/reject';
+
   /// GET list — backend: `GET /residents/my-pre-approved-visitors` (alias `/my-pre-approved`).
   /// Optional query: `limit` (1–500, default 200). Scoped to authenticated resident’s villa via JWT.
-  static const String preApprovedVisitors = '/residents/my-pre-approved-visitors';
+  static const String preApprovedVisitors =
+      '/residents/my-pre-approved-visitors';
+
   /// POST body: `name`, `phone` (≥10 digits), optional `purpose`, optional `validUntil` (ISO-8601, future),
   /// optional `visitorType` enum. Villa comes from JWT — do not send `villaId` / resident id in body.
   static const String preApproveVisitor = '/residents/pre-approve-visitor';
+
   /// DELETE — backend: DELETE /residents/pre-approved/:id
   static String preApprovedById(String id) => '/residents/pre-approved/$id';
-  
+
+  /// POST — rotate/issue a public browser-pass URL for an active pre-approval.
+  static String preApprovedShareLink(String id) =>
+      '/residents/pre-approved/$id/share-link';
+
   // Resident - Parcels
   static const String myParcels = '/residents/my-parcels';
   static const String parcelsPending = '/residents/parcels-pending';
   static String parcelById(String id) => '/residents/my-parcels/$id';
   static String parcelCollect(String id) => '/residents/parcels/$id/collected';
-  
+
   // Resident - Amenities
   static const String amenities = '/residents/my-amenities';
   static const String myBookings = '/residents/my-bookings';
   static const String createBooking = '/residents/book-amenity';
   static String cancelBooking(String id) => '/residents/bookings/$id/cancel';
-  
+
   // Resident - SOS
   /// List SOS history for the signed-in resident.
   static const String sosAlerts = '/residents/my-sos';
+
   /// Current open SOS for the resident (`GET`).
   static const String sosActive = '/residents/sos/active';
+
   /// Create SOS — backend module is mounted at `/sos-alerts`.
   static const String createSOS = '/sos-alerts';
   static String sosById(String id) => '/residents/my-sos/$id';
   static String sosCancel(String id) => '/sos-alerts/$id/cancel';
   static String sosAlertStart(String id) => '/sos-alerts/$id/start';
-  
+
   // Resident - Notices
   static const String notices = '/residents/my-notices';
-  
+
   // Resident - Profile & Family
   static const String residentSecurityContacts = '/residents/security-contacts';
   static const String familyMembers = '/residents/my-family';
   static const String addFamilyMember = '/residents/add-family-member';
   static String updateFamilyMember(String id) => '/residents/family/$id';
   static String deleteFamilyMember(String id) => '/residents/family/$id';
-  
+
   static const String emergencyContacts = '/residents/emergency-contacts';
-  static String updateEmergencyContact(String id) => '/residents/emergency-contacts/$id';
-  static String deleteEmergencyContact(String id) => '/residents/emergency-contacts/$id';
-  
+  static String updateEmergencyContact(String id) =>
+      '/residents/emergency-contacts/$id';
+  static String deleteEmergencyContact(String id) =>
+      '/residents/emergency-contacts/$id';
+
   static const String vehicles = '/residents/my-vehicles';
   static const String registerVehicle = '/residents/register-vehicle';
   static String updateVehicle(String id) => '/residents/vehicles/$id';
   static String deleteVehicle(String id) => '/residents/vehicles/$id';
-  
+
   // Resident - Daily Help / Staff
   static const String myStaff = '/residents/my-staff';
   static const String addStaff = '/residents/add-staff';
-  static String removeStaff(String assignmentId) => '/residents/staff/$assignmentId';
+  static String removeStaff(String assignmentId) =>
+      '/residents/staff/$assignmentId';
 
   // Resident - Vehicle Log
   static const String myVehicleLog = '/residents/my-vehicle-log';
@@ -189,13 +218,15 @@ class ApiEndpoints {
   static const String societyExpenses = '/residents/society-expenses';
   static const String societyExpensesGroupedByBillingCycle =
       '/residents/society-expenses/grouped-by-billing-cycle';
-  static const String societyExpenseCategories = '/residents/society-expenses/categories';
-  static String societyExpenseById(String id) => '/residents/society-expenses/$id';
+  static const String societyExpenseCategories =
+      '/residents/society-expenses/categories';
+  static String societyExpenseById(String id) =>
+      '/residents/society-expenses/$id';
 
   // Resident - Polls
   static const String polls = '/residents/my-polls';
   static String votePoll(String pollId) => '/polls/$pollId/vote';
-  
+
   // Resident — UPI Payments
   static const String upiConfig = '/residents/upi-config';
   static const String upiPaymentSubmit = '/residents/upi-payment-submit';
@@ -211,8 +242,10 @@ class ApiEndpoints {
   static const String adminVisitors = '/visitors';
   static const String adminParcels = '/parcels';
   static const String adminComplaints = '/complaints';
-  static const String complaintAnalyticsSummary = '/complaint-analytics/summary';
-  static String complaintAnalyticsQuickUpdate(String id) => '/complaint-analytics/quick-update/$id';
+  static const String complaintAnalyticsSummary =
+      '/complaint-analytics/summary';
+  static String complaintAnalyticsQuickUpdate(String id) =>
+      '/complaint-analytics/quick-update/$id';
   static const String adminFinancialDashboard =
       '/maintenance-management/financial-dashboard';
 
@@ -273,16 +306,20 @@ class ApiEndpoints {
   static String adminStaffById(String id) => '/staff/$id';
 
   // Admin — Resident Management
-  static const String residentManagementOverview = '/resident-management/overview';
-  static const String residentManagementStatistics = '/resident-management/statistics';
-  static const String residentManagementMoveOut = '/resident-management/move-out';
+  static const String residentManagementOverview =
+      '/resident-management/overview';
+  static const String residentManagementStatistics =
+      '/resident-management/statistics';
+  static const String residentManagementMoveOut =
+      '/resident-management/move-out';
   static String residentManagementReactivate(String id) =>
       '/resident-management/$id/reactivate';
 
   // Admin — Villa / Property Management
   static const String adminVillas = '/villas';
   static String adminVillaById(String id) => '/villas/$id';
-  static const String adminVillaBulkMaintenance = '/villas/bulk-maintenance-amount';
+  static const String adminVillaBulkMaintenance =
+      '/villas/bulk-maintenance-amount';
 
   // Admin — Invitations
   static const String adminInvitations = '/invitations';
@@ -305,10 +342,13 @@ class ApiEndpoints {
   static const String appAnalyticsErrors = '/app-analytics/errors';
   static const String appAnalyticsInsights = '/app-analytics/insights';
   static const String appAnalyticsActiveUsers = '/app-analytics/active-users';
-  static const String appAnalyticsUserEngagement = '/app-analytics/user-engagement';
-  static const String appAnalyticsGrowthDashboard = '/app-analytics/growth-dashboard';
+  static const String appAnalyticsUserEngagement =
+      '/app-analytics/user-engagement';
+  static const String appAnalyticsGrowthDashboard =
+      '/app-analytics/growth-dashboard';
   static const String appAnalyticsRoleAdoption = '/app-analytics/role-adoption';
-  static const String gateAnalyticsVisitorStats = '/gate-analytics/visitor-statistics';
+  static const String gateAnalyticsVisitorStats =
+      '/gate-analytics/visitor-statistics';
   static const String gateAnalyticsPeakHours = '/gate-analytics/peak-hours';
   static const String gateAnalyticsDailyTrend = '/gate-analytics/daily-trend';
 
@@ -320,8 +360,10 @@ class ApiEndpoints {
       '/reconciliation/alerts/$id/resolve';
 
   // Admin — Complaint Analytics (extended)
-  static const String complaintAnalyticsByCategory = '/complaint-analytics/by-category';
-  static const String complaintAnalyticsPending = '/complaint-analytics/pending-list';
+  static const String complaintAnalyticsByCategory =
+      '/complaint-analytics/by-category';
+  static const String complaintAnalyticsPending =
+      '/complaint-analytics/pending-list';
   static const String complaintAnalyticsTrend = '/complaint-analytics/trend';
 
   // Admin — Parking Management
@@ -356,10 +398,14 @@ class ApiEndpoints {
       '/maintenance-management/villa-history/$villaId';
 
   // Admin — Water Supply Analytics
-  static const String waterSupplyAnalyticsOverview = '/water-supply-analytics/overview';
-  static const String waterSupplyAnalyticsDailyUsage = '/water-supply-analytics/daily-usage';
-  static const String waterSupplyAnalyticsHourlyPattern = '/water-supply-analytics/hourly-pattern';
-  static const String waterSupplyAnalyticsGatePerformance = '/water-supply-analytics/gate-performance';
+  static const String waterSupplyAnalyticsOverview =
+      '/water-supply-analytics/overview';
+  static const String waterSupplyAnalyticsDailyUsage =
+      '/water-supply-analytics/daily-usage';
+  static const String waterSupplyAnalyticsHourlyPattern =
+      '/water-supply-analytics/hourly-pattern';
+  static const String waterSupplyAnalyticsGatePerformance =
+      '/water-supply-analytics/gate-performance';
 
   // Admin — User / Role management
   static const String adminUsers = '/users';
@@ -386,10 +432,8 @@ class ApiEndpoints {
   // Admin — Push notifications
   static const String adminNotificationsDiagnostics =
       '/notifications/diagnostics';
-  static const String adminNotificationsBroadcast =
-      '/notifications/broadcast';
-  static const String adminNotificationsSendTest =
-      '/notifications/send-test';
+  static const String adminNotificationsBroadcast = '/notifications/broadcast';
+  static const String adminNotificationsSendTest = '/notifications/send-test';
 
   // Admin — Documents & Banners (CRUD)
   static const String adminDocuments = '/documents';
@@ -407,8 +451,10 @@ class ApiEndpoints {
   static const String guardSosResponse = '/guards/sos-response';
 
   static const String guardVisitorCheckIn = '/guards/visitor-checkin';
+
   /// After residents approve (status APPROVED), guard confirms guest entered.
-  static const String guardVisitorConfirmEntry = '/guards/visitor-confirm-entry';
+  static const String guardVisitorConfirmEntry =
+      '/guards/visitor-confirm-entry';
   static const String guardVisitorCheckOut = '/guards/visitor-checkout';
   static const String guardMyVisitors = '/guards/my-visitors';
   static const String guardPendingVisitors = '/guards/pending-visitors';
@@ -416,7 +462,8 @@ class ApiEndpoints {
 
   static const String guardParcelReceived = '/guards/parcel-received';
   static const String guardParcelsPending = '/guards/parcels-pending';
-  static String guardParcelDelivered(String id) => '/guards/parcels/$id/delivered';
+  static String guardParcelDelivered(String id) =>
+      '/guards/parcels/$id/delivered';
   static const String guardMyParcels = '/guards/my-parcels';
 
   static const String guardStartPatrol = '/guards/start-patrol';
@@ -428,7 +475,8 @@ class ApiEndpoints {
 
   /// Gate vehicle ledger (see [GateVehicleLedger] in Prisma).
   static const String guardGateVehicleEntry = '/guards/gate-vehicle/entry';
-  static String guardGateVehicleExit(String id) => '/guards/gate-vehicle/$id/exit';
+  static String guardGateVehicleExit(String id) =>
+      '/guards/gate-vehicle/$id/exit';
   static const String guardGateVehicleToday = '/guards/gate-vehicle/today';
 
   static const String guardSocBroadcast = '/guards/soc-broadcast';
@@ -439,8 +487,13 @@ class ApiEndpoints {
   static const String guardIncidents = '/guards/incidents';
 
   static const String guardVisitorOtpVerify = '/guards/visitor-otp-verify';
-  static const String guardVisitorApproveEntry = '/guards/visitor-approve-entry';
+
+  /// Resolve a public browser-pass QR token within the guard's society.
+  static const String guardVisitorPassResolve = '/guards/visitor-pass-resolve';
+  static const String guardVisitorApproveEntry =
+      '/guards/visitor-approve-entry';
   static const String guardVisitorEntryNotify = '/guards/visitor-entry-notify';
+
   /// Society-wide pre-approvals not yet admitted (`GET`); one-tap admit (`POST`).
   static const String guardPreApprovedEntries = '/guards/pre-approved-entries';
   static const String guardPreApprovedAdmit = '/guards/pre-approved-admit';
@@ -450,6 +503,7 @@ class ApiEndpoints {
 
   /// Guard / admin — notify residents (`POST` body: gateId, turnedOn, reason?).
   static const String waterSupplyToggle = '/water-supply/toggle';
+
   /// Guard / admin — log collector entry (`POST` body: gateId, notes?).
   static const String garbageCollectionEntry = '/garbage-collection/entry';
 
@@ -476,21 +530,25 @@ class ApiEndpoints {
   static const String adminSpecialProjects = '/special-projects';
   static const String adminSpecialProjectsAdHocCharge =
       '/special-projects/ad-hoc-charge';
-  static String adminSpecialProjectDetail(String id) =>
-      '/special-projects/$id';
+  static String adminSpecialProjectDetail(String id) => '/special-projects/$id';
   static String adminSpecialProjectStatus(String id) =>
       '/special-projects/$id/status';
   static String adminSpecialProjectPayment(
-          String projectId, String contribId) =>
-      '/special-projects/$projectId/contributions/$contribId/payments';
+    String projectId,
+    String contribId,
+  ) => '/special-projects/$projectId/contributions/$contribId/payments';
   static String adminSpecialProjectExpenses(String id) =>
       '/special-projects/$id/expenses';
   static String adminSpecialProjectExpenseDetail(
-          String projectId, String expId) =>
-      '/special-projects/$projectId/expenses/$expId';
+    String projectId,
+    String expId,
+  ) => '/special-projects/$projectId/expenses/$expId';
   static String adminSpecialProjectContributions(String id) =>
       '/special-projects/$id/contributions';
   static String adminSpecialProjectPaymentDetail(
-          String projectId, String contribId, String paymentId) =>
+    String projectId,
+    String contribId,
+    String paymentId,
+  ) =>
       '/special-projects/$projectId/contributions/$contribId/payments/$paymentId';
 }

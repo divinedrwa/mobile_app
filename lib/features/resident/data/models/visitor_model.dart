@@ -28,7 +28,8 @@ class VisitorModel {
 
   factory VisitorModel.fromJson(Map<String, dynamic> json) {
     final purposeRaw = json['purpose']?.toString().trim();
-    final checkInStr = json['checkInTime']?.toString();
+    final checkInStr =
+        json['checkInTime']?.toString() ?? json['checkInAt']?.toString();
     final checkInParsed = checkInStr != null
         ? DateTime.tryParse(checkInStr)
         : null;
@@ -46,10 +47,15 @@ class VisitorModel {
       purpose:
           (purposeRaw != null && purposeRaw.isNotEmpty) ? purposeRaw : null,
       status: (json['status'] as String? ?? 'pending').trim(),
-      checkInTime: checkInParsed,
+      checkInTime: checkInParsed ??
+          (json['checkInAt'] != null
+              ? DateTime.tryParse(json['checkInAt'].toString())
+              : null),
       checkOutTime: json['checkOutTime'] != null
           ? DateTime.tryParse(json['checkOutTime'].toString())
-          : null,
+          : (json['checkOutAt'] != null
+                ? DateTime.tryParse(json['checkOutAt'].toString())
+                : null),
       vehicleNumber: json['vehicleNumber'] as String?,
       photo: json['photo'] as String?,
     );

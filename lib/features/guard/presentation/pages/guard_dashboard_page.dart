@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/telemetry/business_analytics.dart';
 import '../../../../core/utils/foreground_polling_mixin.dart';
+import '../../data/guard_public_pass_qr.dart';
+import '../widgets/guard_public_pass_admit_sheet.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -106,10 +108,9 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0.5,
-        backgroundColor:
-            Theme.of(context).brightness == Brightness.dark
-                ? GuardTokens.darkCard
-                : Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? GuardTokens.darkCard
+            : Colors.white,
         surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
@@ -123,9 +124,9 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
             const SizedBox(width: 10),
             Text(
               'Security · Gate',
-              style: GuardTokens.headingStyle(context).copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: GuardTokens.headingStyle(
+                context,
+              ).copyWith(fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -140,10 +141,15 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
     final isInitialLoad = dashAsync.isLoading && data == null;
     final hasError = dashAsync.hasError && data == null;
 
-    if (isInitialLoad) { return const GuardDashboardSkeleton(); }
+    if (isInitialLoad) {
+      return const GuardDashboardSkeleton();
+    }
     if (hasError) {
       return GuardDashboardError(
-        message: userFacingMessage(dashAsync.error!, 'Could not load dashboard.'),
+        message: userFacingMessage(
+          dashAsync.error!,
+          'Could not load dashboard.',
+        ),
         onRetry: _refreshAll,
       );
     }
@@ -251,9 +257,7 @@ class _DashboardContent extends ConsumerWidget {
           onOpenDetail: () => context.push(GuardRoutes.todaySummary),
         ),
         const SizedBox(height: GuardTokens.sectionGap),
-        GuardViewVisitorsCta(
-          onTap: () => context.go(GuardRoutes.entries),
-        ),
+        GuardViewVisitorsCta(onTap: () => context.go(GuardRoutes.entries)),
         const SizedBox(height: GuardTokens.sectionGap),
         SizedBox(
           width: double.infinity,
@@ -271,7 +275,7 @@ class _DashboardContent extends ConsumerWidget {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                onRefreshInvalidate();
+                await onRefreshInvalidate();
               }
             },
             icon: const Icon(Icons.password_rounded, size: 18),
@@ -286,8 +290,56 @@ class _DashboardContent extends ConsumerWidget {
             if (!context.mounted || raw == null || raw.trim().isEmpty) {
               return;
             }
-            final extra = _scanPayload(raw);
+            Map<String, String>? extra;
+            final publicPassToken = parseVisitorPublicPassToken(raw);
+            if (publicPassToken != null) {
+              try {
+                final response = await ref
+                    .read(guardRepositoryProvider)
+                    .resolveVisitorPublicPass(publicPassToken);
+                if (!context.mounted) return;
+                if (response['verified'] == true) {
+                  unawaited(BusinessAnalytics.track(BusinessAnalytics.guardQrScan));
+                  final admitted = await showPublicPassAdmitSheet(
+                    context,
+                    ref,
+                    response,
+                  );
+                  if (admitted && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Visitor admitted.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    await onRefreshInvalidate();
+                  }
+                  return;
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('This visitor pass is no longer valid.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                return;
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(userFacingMessage(error)),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+            } else {
+              extra = _scanPayload(raw);
+            }
             if (extra == null) return;
+            if (!context.mounted) return;
             unawaited(BusinessAnalytics.track(BusinessAnalytics.guardQrScan));
             await context.push(
               GuardRoutes.visitorApprovalWithQuery('qr-scan', extra),
@@ -299,8 +351,7 @@ class _DashboardContent extends ConsumerWidget {
           onPreApprovedVisitors: () =>
               context.push(GuardRoutes.preApprovedList),
           onPatrol: () => context.push(GuardRoutes.patrol),
-          onApprovedVehicles: () =>
-              context.push(GuardRoutes.approvedVehicles),
+          onApprovedVehicles: () => context.push(GuardRoutes.approvedVehicles),
         ),
         const SizedBox(height: GuardTokens.sectionGap + 6),
         GuardGateUtilitiesCard(

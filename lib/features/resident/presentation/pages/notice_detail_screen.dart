@@ -1,14 +1,16 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/utils/banner_image_url.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/notice_model.dart';
+import '../widgets/community/community_date_format.dart';
 import '../widgets/community/community_ui.dart';
 
 /// Modern Professional Notice Detail Screen
@@ -123,7 +125,7 @@ class NoticeDetailScreen extends ConsumerWidget {
                 Icon(Icons.calendar_today, size: 16, color: DesignColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(
-                  DateFormat('MMM d, y • h:mm a').format(notice.publishedAt),
+                  formatCommunityTimestamp(notice.publishedAt),
                   style: TextStyle(
                     fontSize: 14,
                     color: context.text.secondary,
@@ -161,7 +163,23 @@ class NoticeDetailScreen extends ConsumerWidget {
               ),
             ),
 
-            // Attachment
+            if (notice.attachmentUrl != null &&
+                isLikelyImageUrl(notice.attachmentUrl)) ...[
+              const SizedBox(height: 24),
+              ClipRRect(
+                borderRadius: DesignRadius.borderXL,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: CachedNetworkImage(
+                    imageUrl: resolveBannerImageUrl(notice.attachmentUrl)!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ],
+
+            // Attachment link (non-image or tap-to-open)
             if (notice.attachmentUrl != null) ...[
               const SizedBox(height: 32),
               Material(
@@ -191,7 +209,9 @@ class NoticeDetailScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Attachment',
+                                isLikelyImageUrl(notice.attachmentUrl)
+                                    ? 'Image attachment'
+                                    : 'Attachment',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,

@@ -525,6 +525,8 @@ IconData _visitorTypeDetailIcon(String? raw) {
   switch ((raw ?? '').toUpperCase()) {
     case 'DELIVERY':
       return Icons.local_shipping_outlined;
+    case 'CAB':
+      return Icons.local_taxi_outlined;
     case 'SERVICE':
     case 'SERVICE_PROVIDER':
       return Icons.build_outlined;
@@ -879,6 +881,8 @@ String _visitorTypeLabel(String? raw) {
       return 'Guest';
     case 'DELIVERY':
       return 'Delivery';
+    case 'CAB':
+      return 'Cab';
     case 'SERVICE_PROVIDER':
       return 'Service / repair';
     case 'VENDOR':

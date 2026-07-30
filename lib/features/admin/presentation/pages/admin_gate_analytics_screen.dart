@@ -280,6 +280,8 @@ class _AdminGateAnalyticsScreenState
         return 'Guest';
       case 'DELIVERY':
         return 'Delivery';
+      case 'CAB':
+        return 'Cab';
       case 'SERVICE_PROVIDER':
         return 'Service';
       case 'VENDOR':

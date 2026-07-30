@@ -52,25 +52,32 @@ class GuardRepository {
         map = Map<String, dynamic>.from(data);
       }
       if (map == null) {
-        if (kDebugMode) debugPrint('[GuardDash] response is not a Map — aborting');
+        if (kDebugMode)
+          debugPrint('[GuardDash] response is not a Map — aborting');
         throw const FormatException('Invalid dashboard response');
       }
-      if (kDebugMode) debugPrint('[GuardDash] top-level keys=${map.keys.toList()}');
+      if (kDebugMode)
+        debugPrint('[GuardDash] top-level keys=${map.keys.toList()}');
       final payload = _resolveDashboardMap(map);
-      if (kDebugMode) debugPrint('[GuardDash] resolved keys=${payload.keys.toList()}');
+      if (kDebugMode)
+        debugPrint('[GuardDash] resolved keys=${payload.keys.toList()}');
       final result = GuardDashboardData.fromJson(payload);
       if (kDebugMode) {
-        debugPrint('[GuardDash] parsed: guard=${result.guardName}, '
-            'gate=${result.gateName}, gateId=${result.gateId}, '
-            'stats=(v:${result.todayStats.visitors},p:${result.todayStats.parcels},'
-            'i:${result.todayStats.incidents},pat:${result.todayStats.patrols}), '
-            'sos=${result.activeSos.length}');
+        debugPrint(
+          '[GuardDash] parsed: guard=${result.guardName}, '
+          'gate=${result.gateName}, gateId=${result.gateId}, '
+          'stats=(v:${result.todayStats.visitors},p:${result.todayStats.parcels},'
+          'i:${result.todayStats.incidents},pat:${result.todayStats.patrols}), '
+          'sos=${result.activeSos.length}',
+        );
       }
       return result;
     } on DioException catch (e) {
       if (kDebugMode) {
-        debugPrint('[GuardDash] DioException: ${e.message} '
-            'status=${e.response?.statusCode} body=${e.response?.data}');
+        debugPrint(
+          '[GuardDash] DioException: ${e.message} '
+          'status=${e.response?.statusCode} body=${e.response?.data}',
+        );
       }
       throw mapDioException(e, 'Failed to load guard dashboard');
     } on FormatException catch (e) {
@@ -90,8 +97,7 @@ class GuardRepository {
       final response = await _dio.get(ApiEndpoints.guardMyGate);
       final data = response.data;
       if (data is! Map) return null;
-      final parsed =
-          GuardMyGateData.fromJson(Map<String, dynamic>.from(data));
+      final parsed = GuardMyGateData.fromJson(Map<String, dynamic>.from(data));
       if (parsed.gateId.isEmpty) return null;
       return parsed;
     } on DioException catch (e) {
@@ -218,7 +224,8 @@ class GuardRepository {
     Map<String, dynamic>? villaMap;
     if (villaDyn is Map) villaMap = Map<String, dynamic>.from(villaDyn);
 
-    final reg = raw['registrationNumber']?.toString() ??
+    final reg =
+        raw['registrationNumber']?.toString() ??
         raw['plate']?.toString() ??
         raw['vehicleNumber']?.toString() ??
         '';
@@ -233,7 +240,10 @@ class GuardRepository {
     };
   }
 
-  Future<List<GuardVisitorRow>> getTodayVisitors({DateTime? from, DateTime? to}) async {
+  Future<List<GuardVisitorRow>> getTodayVisitors({
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
       final qp = <String, dynamic>{
         if (from != null) 'from': _ymd(from),
@@ -243,17 +253,14 @@ class GuardRepository {
         ApiEndpoints.guardMyVisitors,
         queryParameters: qp.isEmpty ? null : qp,
       );
-      final maps = _takeMapList(
-        response.data,
-        const [
-          'visitors',
-          'pendingVisitors',
-          'records',
-          'items',
-          'results',
-          'rows',
-        ],
-      );
+      final maps = _takeMapList(response.data, const [
+        'visitors',
+        'pendingVisitors',
+        'records',
+        'items',
+        'results',
+        'rows',
+      ]);
       return _visitorRows(maps);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load visitors');
@@ -263,17 +270,14 @@ class GuardRepository {
   Future<List<GuardVisitorRow>> getPendingVisitors() async {
     try {
       final response = await _dio.get(ApiEndpoints.guardPendingVisitors);
-      final maps = _takeMapList(
-        response.data,
-        const [
-          'visitors',
-          'pendingVisitors',
-          'records',
-          'items',
-          'results',
-          'rows',
-        ],
-      );
+      final maps = _takeMapList(response.data, const [
+        'visitors',
+        'pendingVisitors',
+        'records',
+        'items',
+        'results',
+        'rows',
+      ]);
       return _visitorRows(maps);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load pending visitors');
@@ -303,8 +307,10 @@ class GuardRepository {
     required String visitorTypeApi,
     String? purpose,
     String? vehicleNumber,
+
     /// Optional data URL (`data:image/...;base64,...`) or server-supported reference.
     String? photo,
+
     /// When true, residents must approve before the guest is admitted (`APPROVED` then guard confirms).
     bool awaitResidentApproval = true,
     String? clientMutationId,
@@ -317,7 +323,8 @@ class GuardRepository {
           'phone': phone,
           'visitTargets': visitTargets,
           'visitorType': visitorTypeApi,
-          if (purpose != null && purpose.trim().isNotEmpty) 'purpose': purpose.trim(),
+          if (purpose != null && purpose.trim().isNotEmpty)
+            'purpose': purpose.trim(),
           if (vehicleNumber != null && vehicleNumber.trim().isNotEmpty)
             'vehicleNumber': vehicleNumber.trim(),
           if (photo != null && photo.trim().isNotEmpty) 'photo': photo.trim(),
@@ -375,13 +382,16 @@ class GuardRepository {
         data: {
           'gateId': gateId,
           'turnedOn': turnedOn,
-          if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+          if (reason != null && reason.trim().isNotEmpty)
+            'reason': reason.trim(),
         },
       );
     } on DioException catch (e) {
       throw mapDioException(
         e,
-        turnedOn ? 'Could not turn water supply on' : 'Could not turn water supply off',
+        turnedOn
+            ? 'Could not turn water supply on'
+            : 'Could not turn water supply off',
       );
     }
   }
@@ -472,7 +482,10 @@ class GuardRepository {
     }
   }
 
-  Future<List<ParcelModel>> getTodayParcels({DateTime? from, DateTime? to}) async {
+  Future<List<ParcelModel>> getTodayParcels({
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
       final qp = <String, dynamic>{
         if (from != null) 'from': _ymd(from),
@@ -482,17 +495,14 @@ class GuardRepository {
         ApiEndpoints.guardMyParcels,
         queryParameters: qp.isEmpty ? null : qp,
       );
-      final maps = _takeMapList(
-        response.data,
-        const [
-          'parcels',
-          'pendingParcels',
-          'parcelList',
-          'pending',
-          'items',
-          'results',
-        ],
-      );
+      final maps = _takeMapList(response.data, const [
+        'parcels',
+        'pendingParcels',
+        'parcelList',
+        'pending',
+        'items',
+        'results',
+      ]);
       return _parcelModels(maps);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load parcels');
@@ -502,17 +512,14 @@ class GuardRepository {
   Future<List<ParcelModel>> getPendingParcels() async {
     try {
       final response = await _dio.get(ApiEndpoints.guardParcelsPending);
-      final maps = _takeMapList(
-        response.data,
-        const [
-          'parcels',
-          'pendingParcels',
-          'parcelList',
-          'pending',
-          'items',
-          'results',
-        ],
-      );
+      final maps = _takeMapList(response.data, const [
+        'parcels',
+        'pendingParcels',
+        'parcelList',
+        'pending',
+        'items',
+        'results',
+      ]);
       return _parcelModels(maps);
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load pending parcels');
@@ -646,8 +653,10 @@ class GuardRepository {
         data: {
           'title': title,
           'description': description,
-          if (location != null && location.trim().isNotEmpty) 'location': location.trim(),
-          if (severity != null && severity.trim().isNotEmpty) 'severity': severity.trim(),
+          if (location != null && location.trim().isNotEmpty)
+            'location': location.trim(),
+          if (severity != null && severity.trim().isNotEmpty)
+            'severity': severity.trim(),
         },
       );
       final data = response.data;
@@ -657,10 +666,7 @@ class GuardRepository {
     }
   }
 
-  Future<void> postSocBroadcast({
-    required String kind,
-    String? note,
-  }) async {
+  Future<void> postSocBroadcast({required String kind, String? note}) async {
     try {
       await _dio.post(
         ApiEndpoints.guardSocBroadcast,
@@ -686,7 +692,8 @@ class GuardRepository {
         data: {
           'registrationNumber': registrationNumber,
           'kind': kind,
-          if (villaId != null && villaId.trim().isNotEmpty) 'villaId': villaId.trim(),
+          if (villaId != null && villaId.trim().isNotEmpty)
+            'villaId': villaId.trim(),
           if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
         },
       );
@@ -705,7 +712,10 @@ class GuardRepository {
     }
   }
 
-  Future<List<GuardVehicleEntry>> getGateVehicleToday({DateTime? from, DateTime? to}) async {
+  Future<List<GuardVehicleEntry>> getGateVehicleToday({
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
       final qp = <String, dynamic>{
         if (from != null) 'from': _ymd(from),
@@ -715,17 +725,14 @@ class GuardRepository {
         ApiEndpoints.guardGateVehicleToday,
         queryParameters: qp.isEmpty ? null : qp,
       );
-      final maps = _takeMapList(
-        response.data,
-        const [
-          'entries',
-          'records',
-          'vehicles',
-          'gateVehicleLedger',
-          'items',
-          'results',
-        ],
-      );
+      final maps = _takeMapList(response.data, const [
+        'entries',
+        'records',
+        'vehicles',
+        'gateVehicleLedger',
+        'items',
+        'results',
+      ]);
       final normalized = maps.map(_normalizeGateVehicleEntry).toList();
       final out = <GuardVehicleEntry>[];
       for (final m in normalized) {
@@ -739,7 +746,9 @@ class GuardRepository {
     }
   }
 
-  Future<List<ResidentDirectoryRow>> getResidentsDirectory({String? query}) async {
+  Future<List<ResidentDirectoryRow>> getResidentsDirectory({
+    String? query,
+  }) async {
     try {
       final response = await _dio.get(
         ApiEndpoints.guardResidentsDirectory,
@@ -753,7 +762,9 @@ class GuardRepository {
       final list = map['residents'] as List? ?? [];
       return list
           .whereType<Map>()
-          .map((e) => ResidentDirectoryRow.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => ResidentDirectoryRow.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList();
     } on DioException catch (e) {
       throw mapDioException(e, 'Could not load directory');
@@ -789,7 +800,10 @@ class GuardRepository {
       final list = map['vehicles'] as List? ?? [];
       final vehicles = list
           .whereType<Map>()
-          .map((e) => GuardApprovedVehicleRow.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) =>
+                GuardApprovedVehicleRow.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList();
       return GuardApprovedVehiclesData(
         vehicles: vehicles,
@@ -833,6 +847,21 @@ class GuardRepository {
     }
   }
 
+  Future<Map<String, dynamic>> resolveVisitorPublicPass(String token) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.guardVisitorPassResolve,
+        data: {'token': token},
+      );
+      final data = response.data;
+      return data is Map
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Visitor pass verification failed');
+    }
+  }
+
   Future<Map<String, dynamic>> approveVisitorEntry({
     required String otp,
     String? villaId,
@@ -852,7 +881,8 @@ class GuardRepository {
             'visitorName': visitorName.trim(),
           if (visitorPhone != null && visitorPhone.trim().isNotEmpty)
             'visitorPhone': visitorPhone.trim(),
-          if (purpose != null && purpose.trim().isNotEmpty) 'purpose': purpose.trim(),
+          if (purpose != null && purpose.trim().isNotEmpty)
+            'purpose': purpose.trim(),
           if (vehicleNumber != null && vehicleNumber.trim().isNotEmpty)
             'vehicleNumber': vehicleNumber.trim(),
         },
@@ -886,7 +916,8 @@ class GuardRepository {
           'villaId': villaId,
           'visitorName': visitorName,
           'visitorPhone': visitorPhone,
-          if (message != null && message.trim().isNotEmpty) 'message': message.trim(),
+          if (message != null && message.trim().isNotEmpty)
+            'message': message.trim(),
         },
       );
     } on DioException catch (e) {
@@ -905,16 +936,13 @@ class GuardRepository {
       );
       final data = response.data;
       if (data == null) return [];
-      final maps = _takeMapList(
-        data,
-        const [
-          'preApproved',
-          'preApprovedVisitors',
-          'visitors',
-          'items',
-          'results',
-        ],
-      );
+      final maps = _takeMapList(data, const [
+        'preApproved',
+        'preApprovedVisitors',
+        'visitors',
+        'items',
+        'results',
+      ]);
       final out = <GuardPreApprovedEntry>[];
       for (final raw in maps) {
         try {
@@ -931,7 +959,9 @@ class GuardRepository {
     }
   }
 
-  Future<Map<String, dynamic>> admitPreApprovedEntry(String preApprovedId) async {
+  Future<Map<String, dynamic>> admitPreApprovedEntry(
+    String preApprovedId,
+  ) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.guardPreApprovedAdmit,

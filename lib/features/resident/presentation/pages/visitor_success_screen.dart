@@ -3,35 +3,43 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/pre_approved_visitor_model.dart';
+import '../../data/visitor_pass_share.dart';
+import '../providers/visitor_provider.dart';
 
 /// Success screen after pre-approving visitor
-class VisitorSuccessScreen extends StatefulWidget {
+class VisitorSuccessScreen extends ConsumerStatefulWidget {
   const VisitorSuccessScreen({super.key, required this.visitor});
 
   final PreApprovedVisitorModel visitor;
 
   @override
-  State<VisitorSuccessScreen> createState() => _VisitorSuccessScreenState();
+  ConsumerState<VisitorSuccessScreen> createState() =>
+      _VisitorSuccessScreenState();
 }
 
-class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
+class _VisitorSuccessScreenState extends ConsumerState<VisitorSuccessScreen> {
   PreApprovedVisitorModel get visitor => widget.visitor;
+  bool _autoShareTriggered = false;
 
   bool get _hasPasscode {
     final otp = visitor.passcode?.trim();
     return otp != null && otp.isNotEmpty;
+  }
+
+  bool get _hasPublicPassUrl {
+    final url = visitor.publicPassUrl?.trim();
+    return url != null && url.isNotEmpty;
   }
 
   @override
@@ -39,6 +47,13 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       DesignHaptics.success();
+      if (_hasPasscode && !_autoShareTriggered) {
+        _autoShareTriggered = true;
+        // Let the success route settle before presenting the platform share sheet.
+        Future<void>.delayed(const Duration(milliseconds: 450), () {
+          if (mounted) _sharePassRecord();
+        });
+      }
     });
   }
 
@@ -55,7 +70,11 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
         backgroundColor: context.surface.defaultSurface,
         title: Text(
           'Visitor approved',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.text.primary),
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: context.text.primary,
+          ),
         ),
         leading: IconButton(
           tooltip: 'Close',
@@ -68,7 +87,9 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
         child: Column(
           children: [
             Icon(
-              _hasPasscode ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+              _hasPasscode
+                  ? Icons.check_circle_rounded
+                  : Icons.warning_amber_rounded,
               size: 80,
               color: _hasPasscode ? DesignColors.success : DesignColors.warning,
             ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
@@ -86,7 +107,7 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
             const SizedBox(height: DesignSpacing.sm),
             Text(
               _hasPasscode
-                  ? 'Share the passcode with ${visitor.name}'
+                  ? 'Share the visitor pass with ${visitor.name}'
                   : 'The visitor was saved, but no passcode came back from the server.',
               style: DesignTypography.body.copyWith(
                 color: DesignColors.textSecondary,
@@ -95,196 +116,232 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
             ).animate().fadeIn(delay: 300.ms),
             const SizedBox(height: DesignSpacing.xl),
             Container(
-              decoration: DesignComponents.cardDecoration(boxShadow: DesignElevation.md),
-              padding: const EdgeInsets.all(DesignSpacing.lg),
-              child: Column(
-                children: [
-                  Text(
-                    '6-digit passcode',
-                    style: DesignTypography.headingM.copyWith(fontSize: 16),
+                  decoration: DesignComponents.cardDecoration(
+                    boxShadow: DesignElevation.md,
                   ),
-                  const SizedBox(height: DesignSpacing.md),
-                  Text(
-                    _hasPasscode ? visitor.passcode!.trim() : 'Unavailable',
-                    style: DesignTypography.headingXL.copyWith(
-                      fontSize: 32,
-                      letterSpacing: _hasPasscode ? 8 : 1,
-                      color: _hasPasscode
-                          ? DesignColors.primary
-                          : DesignColors.warning,
-                    ),
-                  ),
-                  const SizedBox(height: DesignSpacing.md),
-                  if (visitor.passcodeExpiry != null)
-                    _InfoStrip(
-                      icon: Icons.schedule_rounded,
-                      text:
-                          'Valid until ${DateFormat('dd MMM yyyy, hh:mm a').format(visitor.passcodeExpiry!.toLocal())}',
-                    ),
-                  if (!_hasPasscode) ...[
-                    if (visitor.passcodeExpiry != null)
-                      const SizedBox(height: DesignSpacing.md),
-                    const _InfoStrip(
-                      icon: Icons.info_outline_rounded,
-                      text:
-                          'Ask security to use visitor name and flat details until passcode sync is fixed.',
-                      warning: true,
-                    ),
-                  ],
-                  const SizedBox(height: DesignSpacing.md),
-                  Row(
+                  padding: const EdgeInsets.all(DesignSpacing.lg),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.copy_rounded, size: 20),
-                          label: const Text('Copy'),
-                          onPressed: _hasPasscode
-                              ? () {
-                                  Clipboard.setData(
-                                    ClipboardData(
-                                      text: visitor.passcode!.trim(),
-                                    ),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      behavior: SnackBarBehavior.floating,
-                                      content: Text('Passcode copied'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                }
-                              : null,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: DesignColors.textPrimary,
-                            side: BorderSide(color: DesignColors.border),
-                            padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: DesignRadius.borderMD,
-                            ),
-                          ),
+                      Text(
+                        '6-digit passcode',
+                        style: DesignTypography.headingM.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: DesignSpacing.md),
+                      Text(
+                        _hasPasscode ? visitor.passcode!.trim() : 'Unavailable',
+                        style: DesignTypography.headingXL.copyWith(
+                          fontSize: 32,
+                          letterSpacing: _hasPasscode ? 8 : 1,
+                          color: _hasPasscode
+                              ? DesignColors.primary
+                              : DesignColors.warning,
                         ),
                       ),
-                      const SizedBox(width: DesignSpacing.md),
-                      Expanded(
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.ios_share_rounded, size: 20),
-                          label: const Text('Share'),
-                          onPressed: _hasPasscode ? _sharePasscode : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: DesignColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: DesignRadius.borderMD,
-                            ),
-                          ),
+                      const SizedBox(height: DesignSpacing.md),
+                      if (visitor.passcodeExpiry != null)
+                        _InfoStrip(
+                          icon: Icons.schedule_rounded,
+                          text:
+                              'Valid until ${DateFormat('dd MMM yyyy, hh:mm a').format(visitor.passcodeExpiry!.toLocal())}',
                         ),
-                      ),
-                    ],
-                  ),
-                  if (_hasPasscode) ...[
-                    const SizedBox(height: DesignSpacing.sm),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.chat_rounded, size: 18),
-                            label: const Text('WhatsApp'),
-                            onPressed: () => _shareViaWhatsApp(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF25D366),
-                              side: const BorderSide(color: Color(0xFF25D366)),
-                              padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm + 2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: DesignRadius.borderMD,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: DesignSpacing.md),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.sms_rounded, size: 18),
-                            label: const Text('SMS'),
-                            onPressed: () => _shareViaSms(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: DesignColors.textPrimary,
-                              side: BorderSide(color: DesignColors.border),
-                              padding: const EdgeInsets.symmetric(vertical: DesignSpacing.sm + 2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: DesignRadius.borderMD,
-                              ),
-                            ),
-                          ),
+                      if (!_hasPasscode) ...[
+                        if (visitor.passcodeExpiry != null)
+                          const SizedBox(height: DesignSpacing.md),
+                        const _InfoStrip(
+                          icon: Icons.info_outline_rounded,
+                          text:
+                              'Ask security to use visitor name and flat details until passcode sync is fixed.',
+                          warning: true,
                         ),
                       ],
-                    ),
-                  ],
-                ],
-              ),
-            ).animate().fadeIn(delay: 400.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
-            const SizedBox(height: DesignSpacing.lg),
-            Container(
-              decoration: DesignComponents.cardDecoration(boxShadow: DesignElevation.md),
-              padding: const EdgeInsets.all(DesignSpacing.lg),
-              child: Column(
-                children: [
-                  Text(
-                    'QR code',
-                    style: DesignTypography.headingM.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: DesignSpacing.md),
-                  if (_hasPasscode)
-                    Container(
-                      padding: const EdgeInsets.all(DesignSpacing.md),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: DesignRadius.borderMD,
-                        border: Border.all(color: DesignColors.borderLight),
-                      ),
-                      child: QrImageView(
-                        data: qrData!,
-                        version: QrVersions.auto,
-                        size: 200,
-                        backgroundColor: Colors.white,
-                        errorCorrectionLevel: QrErrorCorrectLevel.H,
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 200,
-                      padding: const EdgeInsets.all(DesignSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: DesignColors.surfaceSoft,
-                        borderRadius: DesignRadius.borderMD,
-                        border: Border.all(color: DesignColors.borderLight),
-                      ),
-                      child: Column(
+                      const SizedBox(height: DesignSpacing.md),
+                      Row(
                         children: [
-                          Icon(
-                            Icons.qr_code_2_rounded,
-                            size: 44,
-                            color: DesignColors.textTertiary,
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.copy_rounded, size: 20),
+                              label: const Text('Copy'),
+                              onPressed: _hasPasscode
+                                  ? () {
+                                      Clipboard.setData(
+                                        ClipboardData(
+                                          text: visitor.passcode!.trim(),
+                                        ),
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          behavior: SnackBarBehavior.floating,
+                                          content: Text('Passcode copied'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: DesignColors.textPrimary,
+                                side: BorderSide(color: DesignColors.border),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: DesignSpacing.md,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: DesignRadius.borderMD,
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: DesignSpacing.sm),
-                          Text(
-                            'QR unavailable until a passcode is issued.',
-                            textAlign: TextAlign.center,
-                            style: DesignTypography.bodySmall,
+                          const SizedBox(width: DesignSpacing.md),
+                          Expanded(
+                            child: FilledButton.icon(
+                              icon: const Icon(
+                                Icons.ios_share_rounded,
+                                size: 20,
+                              ),
+                          label: const Text('Share pass'),
+                          onPressed: _hasPasscode ? _sharePassRecord : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: DesignColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: DesignSpacing.md,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: DesignRadius.borderMD,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  const SizedBox(height: DesignSpacing.sm),
-                  Text(
-                    _hasPasscode
-                        ? 'Guards can scan this at the gate'
-                        : 'QR appears once a passcode exists',
-                    style: DesignTypography.caption,
+                      if (_hasPasscode) ...[
+                        const SizedBox(height: DesignSpacing.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.chat_rounded, size: 18),
+                                label: const Text('WhatsApp'),
+                                onPressed: () => _shareViaWhatsApp(context),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF25D366),
+                                  side: const BorderSide(
+                                    color: Color(0xFF25D366),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: DesignSpacing.sm + 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: DesignRadius.borderMD,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: DesignSpacing.md),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.sms_rounded, size: 18),
+                                label: const Text('SMS'),
+                                onPressed: () => _shareViaSms(context),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: DesignColors.textPrimary,
+                                  side: BorderSide(color: DesignColors.border),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: DesignSpacing.sm + 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: DesignRadius.borderMD,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 500.ms).slideY(begin: DesignAnimations.slideNormal, end: 0),
+                )
+                .animate()
+                .fadeIn(delay: 400.ms)
+                .slideY(begin: DesignAnimations.slideNormal, end: 0),
+            const SizedBox(height: DesignSpacing.lg),
+            Container(
+                  decoration: DesignComponents.cardDecoration(
+                    boxShadow: DesignElevation.md,
+                  ),
+                  padding: const EdgeInsets.all(DesignSpacing.lg),
+                  child: Column(
+                    children: [
+                      Text(
+                        'QR code',
+                        style: DesignTypography.headingM.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: DesignSpacing.md),
+                      if (_hasPasscode)
+                        Container(
+                          padding: const EdgeInsets.all(DesignSpacing.md),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: DesignRadius.borderMD,
+                            border: Border.all(color: DesignColors.borderLight),
+                          ),
+                          child: QrImageView(
+                            data: qrData!,
+                            version: QrVersions.auto,
+                            size: 200,
+                            backgroundColor: Colors.white,
+                            errorCorrectionLevel: QrErrorCorrectLevel.H,
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 200,
+                          padding: const EdgeInsets.all(DesignSpacing.lg),
+                          decoration: BoxDecoration(
+                            color: DesignColors.surfaceSoft,
+                            borderRadius: DesignRadius.borderMD,
+                            border: Border.all(color: DesignColors.borderLight),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.qr_code_2_rounded,
+                                size: 44,
+                                color: DesignColors.textTertiary,
+                              ),
+                              const SizedBox(height: DesignSpacing.sm),
+                              Text(
+                                'QR unavailable until a passcode is issued.',
+                                textAlign: TextAlign.center,
+                                style: DesignTypography.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: DesignSpacing.sm),
+                      Text(
+                        _hasPasscode
+                            ? 'Guards can scan this at the gate'
+                            : 'QR appears once a passcode exists',
+                        style: DesignTypography.caption,
+                      ),
+                      if (_hasPublicPassUrl) ...[
+                        const SizedBox(height: DesignSpacing.md),
+                        OutlinedButton.icon(
+                          onPressed: _openWebPass,
+                          icon: const Icon(
+                            Icons.open_in_browser_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Preview browser pass'),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+                .animate()
+                .fadeIn(delay: 500.ms)
+                .slideY(begin: DesignAnimations.slideNormal, end: 0),
             const SizedBox(height: DesignSpacing.lg),
             Container(
               decoration: DesignComponents.cardDecoration(),
@@ -333,7 +390,9 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DesignColors.textPrimary,
                   side: BorderSide(color: DesignColors.border),
-                  padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: DesignSpacing.md + 2,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: DesignRadius.borderMD,
                   ),
@@ -348,7 +407,9 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: DesignColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: DesignSpacing.md + 2),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: DesignSpacing.md + 2,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: DesignRadius.borderMD,
                   ),
@@ -406,66 +467,96 @@ class _VisitorSuccessScreenState extends State<VisitorSuccessScreen> {
     context.go('/resident');
   }
 
-  String _shareMessage() {
-    final otp = visitor.passcode!.trim();
-    final expiry = visitor.passcodeExpiry != null
-        ? '\nValid until: ${DateFormat('dd MMM yyyy, hh:mm a').format(visitor.passcodeExpiry!.toLocal())}'
-        : '';
-    return '''
-Visitor Pass for ${visitor.name}
-
-Passcode: $otp
-
-Date: ${DateFormat('dd MMM yyyy').format(visitor.visitDate)}
-${visitor.visitTime != null ? 'Time: ${visitor.visitTime}\n' : ''}$expiry
-
-Please show this code at the gate.
-- ${AppConstants.appName}
-''';
-  }
-
-  void _sharePasscode() {
-    Share.share(_shareMessage());
+  Future<void> _sharePassRecord() async {
+    if (!_hasPasscode) return;
+    try {
+      await shareVisitorPassRecord(
+        ref.read(visitorRepositoryProvider),
+        visitor,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      await Share.share(buildVisitorPassShareMessage(visitor));
+    }
   }
 
   Future<void> _shareViaWhatsApp(BuildContext context) async {
-    final message = Uri.encodeComponent(_shareMessage());
-    final phone = visitor.phone.replaceAll(RegExp(r'\D'), '');
-    // Try opening WhatsApp with the visitor's phone pre-filled
-    final waUri = phone.length >= 10
-        ? Uri.parse('https://wa.me/$phone?text=$message')
-        : Uri.parse('https://wa.me/?text=$message');
-    if (await canLaunchUrl(waUri)) {
-      await launchUrl(waUri, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
+    if (!_hasPasscode) return;
+    try {
+      final ready = await ensureVisitorPassShareUrl(
+        ref.read(visitorRepositoryProvider),
+        visitor,
+      );
+      final message = Uri.encodeComponent(buildVisitorPassShareMessage(ready));
+      final waUri = Uri.parse('https://wa.me/?text=$message');
+      if (await canLaunchUrl(waUri)) {
+        await launchUrl(waUri, mode: LaunchMode.externalApplication);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('WhatsApp not installed'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('WhatsApp not installed'),
+          content: Text('Could not open WhatsApp'),
         ),
       );
     }
   }
 
   Future<void> _shareViaSms(BuildContext context) async {
-    final body = Uri.encodeComponent(_shareMessage());
-    final phone = visitor.phone.replaceAll(RegExp(r'\D'), '');
-    final smsUri = phone.length >= 10
-        ? Uri.parse('sms:$phone?body=$body')
-        : Uri.parse('sms:?body=$body');
-    if (await canLaunchUrl(smsUri)) {
-      await launchUrl(smsUri);
-    } else if (context.mounted) {
+    if (!_hasPasscode) return;
+    try {
+      final ready = await ensureVisitorPassShareUrl(
+        ref.read(visitorRepositoryProvider),
+        visitor,
+      );
+      final body = Uri.encodeComponent(buildVisitorPassShareMessage(ready));
+      final smsUri = Uri.parse('sms:?body=$body');
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Cannot open SMS'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      await _sharePassRecord();
+    }
+  }
+
+  Future<void> _openWebPass() async {
+    final raw = visitor.publicPassUrl?.trim();
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Cannot open SMS'),
+          content: Text('Could not open visitor pass'),
         ),
       );
     }
   }
 
   String? _qrPayload() {
+    final publicPassUrl = visitor.publicPassUrl?.trim();
+    if (publicPassUrl != null && publicPassUrl.isNotEmpty) {
+      return publicPassUrl;
+    }
+
     final otp = visitor.passcode?.trim();
     if (otp == null || otp.isEmpty) return null;
 

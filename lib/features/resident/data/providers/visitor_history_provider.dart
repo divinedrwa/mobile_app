@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/paginated_state.dart';
 import '../../../../shared/utils/persistent_list_cache.dart';
-import '../../../../shared/utils/provider_cache.dart';
 import '../models/visitor_model.dart';
 import '../repositories/visitor_repository.dart';
 import '../../presentation/providers/visitor_provider.dart';
@@ -35,7 +34,6 @@ final visitorTodaySummarySeedProvider = Provider<VisitorTodaySummary?>((ref) {
 
 final visitorTodaySummaryProvider =
     FutureProvider.autoDispose<VisitorTodaySummary>((ref) async {
-  cacheFor(ref, const Duration(minutes: 2));
   final summary =
       await ref.watch(visitorRepositoryProvider).getVisitorsTodaySummary();
   final key = PersistentListCache.scopedKey(_visitorSummaryCacheName);

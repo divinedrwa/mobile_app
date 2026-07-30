@@ -8,6 +8,7 @@ import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/providers/content_provider.dart';
+import '../widgets/community/community_date_format.dart';
 import '../widgets/community/community_ui.dart';
 
 class PollsListScreen extends ConsumerStatefulWidget {
@@ -450,11 +451,10 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
       'votes': totalVotes,
       'myOptionId': myOptionId,
       'hasVoted': hasVoted,
-      'endDate': poll['endDate'] != null
-          ? DateTime.tryParse(
-              poll['endDate'].toString(),
-            )?.toLocal().toString().split(' ').first
-          : null,
+      'endDate': () {
+        final parsed = DateTime.tryParse(poll['endDate']?.toString() ?? '');
+        return parsed != null ? formatCommunityCalendarDate(parsed) : null;
+      }(),
       'options': options,
     };
   }
