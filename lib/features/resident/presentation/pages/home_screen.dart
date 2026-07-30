@@ -136,12 +136,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const HomeUtilityStatusStrip().animateSection(0),
                     // Urgent gate approvals (hidden when no pending)
                     const HomeGateVisitorRequests().animateSection(1),
-                    // Quick Actions — GatePass+ hero + 5-slot icon rows
-                    const HomeQuickActions().animateSection(2),
-                    const SizedBox(height: kHomeSectionGap),
-                    // Society banners (hidden when empty)
-                    const HomeBannerCarousel().animateSection(3),
-                    // Notices (hidden when empty after load)
+                    // Society banners — campaigns & events (hidden when empty)
+                    const HomeBannerCarousel().animateSection(2),
+                    // Important notices — below banner, above shortcuts (hidden when empty)
                     if (hasImportantNotices) ...[
                       HomeImportantNotices(
                         noticesState: noticesState,
@@ -150,17 +147,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                       const SizedBox(height: kHomeSectionGap),
                     ],
+                    // Quick Actions — GatePass+ hero + icon rows
+                    const HomeQuickActions().animateSection(3),
+                    const SizedBox(height: kHomeSectionGap),
+                    // Personal maintenance — actionable dues before society-wide stats
+                    if (!isBillingExcluded) ...[
+                      const HomeMaintenanceCard(),
+                      const SizedBox(height: kHomeSectionGap),
+                    ],
                     // Society finances — owners only, not billing-excluded
                     if (showSocietyFinances) ...[
                       HomeSocietyFinances(
                         dashboardAsync: dashboardAsync,
                         seed: ref.watch(residentDashboardSeedProvider),
                       ),
-                      const SizedBox(height: kHomeSectionGap),
-                    ],
-                    // Personal maintenance card
-                    if (!isBillingExcluded) ...[
-                      const HomeMaintenanceCard(),
                       const SizedBox(height: kHomeSectionGap),
                     ],
                     // Special projects (hidden when no active projects)
@@ -188,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 extension _SectionAnimate on Widget {
   Widget animateSection(int index) {
-    if (index > 2) return this;
+    if (index > 3) return this;
     return animate(
       delay: DesignAnimations.sectionStaggerFor(index),
     )
