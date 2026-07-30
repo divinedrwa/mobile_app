@@ -387,7 +387,6 @@ class _GuardDeliveryQuickPageState
 
     setState(() => _submitting = true);
     final noteParts = <String>[
-      if (leftAtGate) 'Left at gate',
       if (_description.text.trim().isNotEmpty) _description.text.trim(),
     ];
     final trackingNumber =
@@ -407,6 +406,7 @@ class _GuardDeliveryQuickPageState
             trackingNumber: trackingNumber,
             senderName: senderName,
             description: description,
+            leftAtGate: leftAtGate,
           ),
         );
         logged++;

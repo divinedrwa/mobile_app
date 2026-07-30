@@ -153,6 +153,14 @@ class ApiEndpoints {
   static String preApprovedShareLink(String id) =>
       '/residents/pre-approved/$id/share-link';
 
+  /// POST — invalidate shared browser URL without cancelling the pass.
+  static String preApprovedRevokeShareLink(String id) =>
+      '/residents/pre-approved/$id/revoke-link';
+
+  /// GET — audit log of public pass page opens.
+  static String preApprovedPassViews(String id) =>
+      '/residents/pre-approved/$id/pass-views';
+
   // Resident - Parcels
   static const String myParcels = '/residents/my-parcels';
   static const String parcelsPending = '/residents/parcels-pending';

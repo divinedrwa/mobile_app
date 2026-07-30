@@ -95,6 +95,7 @@ final guardDeliverySubmitProvider =
                 trackingNumber: params.trackingNumber,
                 senderName: params.senderName,
                 description: params.description,
+                leftAtGate: params.leftAtGate,
               );
           span.complete();
         } catch (e) {
@@ -111,6 +112,7 @@ class GuardDeliverySubmitParams {
     this.trackingNumber,
     this.senderName,
     this.description,
+    this.leftAtGate = false,
   });
 
   final String villaId;
@@ -118,6 +120,7 @@ class GuardDeliverySubmitParams {
   final String? trackingNumber;
   final String? senderName;
   final String? description;
+  final bool leftAtGate;
 }
 
 /// Maps errors to guard-friendly, actionable messages.

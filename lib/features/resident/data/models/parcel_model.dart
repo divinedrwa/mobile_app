@@ -9,6 +9,7 @@ class ParcelModel {
   final String? collectedBy;
   final String? notes;
   final String? photo;
+  final bool leftAtGate;
 
   ParcelModel({
     this.id,
@@ -20,6 +21,7 @@ class ParcelModel {
     this.collectedBy,
     this.notes,
     this.photo,
+    this.leftAtGate = false,
   });
 
   factory ParcelModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class ParcelModel {
       collectedBy: json['collectedBy'] as String?,
       notes: json['notes'] as String?,
       photo: json['photo'] as String?,
+      leftAtGate: json['leftAtGate'] == true,
     );
   }
 
@@ -60,6 +63,7 @@ class ParcelModel {
       if (collectedBy != null) 'collectedBy': collectedBy,
       if (notes != null) 'notes': notes,
       if (photo != null) 'photo': photo,
+      'leftAtGate': leftAtGate,
     };
   }
 }

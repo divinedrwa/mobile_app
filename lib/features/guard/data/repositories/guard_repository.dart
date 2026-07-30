@@ -532,6 +532,7 @@ class GuardRepository {
     String? trackingNumber,
     String? senderName,
     String? description,
+    bool leftAtGate = false,
   }) async {
     try {
       await _dio.post(
@@ -546,6 +547,7 @@ class GuardRepository {
             'senderName': senderName.trim(),
           if (description != null && description.trim().isNotEmpty)
             'description': description.trim(),
+          'leftAtGate': leftAtGate,
         },
       );
     } on DioException catch (e) {

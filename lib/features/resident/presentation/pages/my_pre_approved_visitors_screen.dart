@@ -120,6 +120,120 @@ class _MyPreApprovedVisitorsScreenState
     await ref.read(preApprovedVisitorsProvider.future);
   }
 
+  Future<void> _regenerateLink(
+    BuildContext context,
+    PreApprovedVisitorModel v,
+  ) async {
+    final id = v.id;
+    if (id == null) return;
+    try {
+      await shareVisitorPassRecord(
+        ref.read(visitorRepositoryProvider),
+        v,
+        rotateLink: true,
+      );
+      ref.invalidate(preApprovedVisitorsProvider);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(userFacingMessage(e, 'Could not regenerate link')),
+        ),
+      );
+    }
+  }
+
+  Future<void> _revokeLink(
+    BuildContext context,
+    PreApprovedVisitorModel v,
+  ) async {
+    final id = v.id;
+    if (id == null) return;
+    try {
+      await revokeVisitorPassShareUrl(
+        ref.read(visitorRepositoryProvider),
+        v,
+      );
+      ref.invalidate(preApprovedVisitorsProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Share link removed — passcode still works at gate'),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(userFacingMessage(e, 'Could not revoke link')),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showPassViewAudit(
+    BuildContext context,
+    PreApprovedVisitorModel v,
+  ) async {
+    final id = v.id;
+    if (id == null) return;
+    try {
+      final audit = await ref
+          .read(visitorRepositoryProvider)
+          .fetchPreApprovedPassViews(id);
+      if (!context.mounted) return;
+      final dtf = DateFormat('dd MMM · h:mm a');
+      final lines = audit.viewedAt
+          .map((d) => dtf.format(d.toLocal()))
+          .take(5)
+          .join('\n');
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pass link opens',
+                style: DesignTypography.headingM.copyWith(fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                audit.total == 0
+                    ? 'No one has opened the shared link yet.'
+                    : 'Opened ${audit.total} time${audit.total == 1 ? '' : 's'}',
+                style: DesignTypography.bodySmall.copyWith(
+                  color: DesignColors.textSecondary,
+                ),
+              ),
+              if (lines.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  lines,
+                  style: DesignTypography.bodySmall,
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(userFacingMessage(e, 'Could not load pass views')),
+        ),
+      );
+    }
+  }
+
   Future<void> _sharePassRecord(
     BuildContext context,
     PreApprovedVisitorModel v,
@@ -570,6 +684,9 @@ class _MyPreApprovedVisitorsScreenState
                     onCopyPasscode: (code) => _copyPasscode(context, code),
                     onShare: () => _sharePassRecord(context, rows[i]),
                     onWhatsApp: () => _shareViaWhatsApp(context, rows[i]),
+                    onRegenerateLink: () => _regenerateLink(context, rows[i]),
+                    onRevokeLink: () => _revokeLink(context, rows[i]),
+                    onShowPassViews: () => _showPassViewAudit(context, rows[i]),
                   );
                 },
               ),
@@ -599,6 +716,9 @@ class _PreApprovalVisitorCard extends StatelessWidget {
     required this.onCopyPasscode,
     required this.onShare,
     required this.onWhatsApp,
+    required this.onRegenerateLink,
+    required this.onRevokeLink,
+    required this.onShowPassViews,
   });
 
   final PreApprovedVisitorModel visitor;
@@ -612,6 +732,9 @@ class _PreApprovalVisitorCard extends StatelessWidget {
   final void Function(String code) onCopyPasscode;
   final VoidCallback onShare;
   final VoidCallback onWhatsApp;
+  final VoidCallback onRegenerateLink;
+  final VoidCallback onRevokeLink;
+  final VoidCallback onShowPassViews;
 
   @override
   Widget build(BuildContext context) {
@@ -619,6 +742,8 @@ class _PreApprovalVisitorCard extends StatelessWidget {
     final pass = v.passcode?.trim();
     final hasPass = pass != null && pass.isNotEmpty;
     final passDisplay = pass ?? '';
+    final hasShareLink =
+        v.publicPassUrl != null && v.publicPassUrl!.trim().isNotEmpty;
 
     return Material(
       color: DesignColors.surface,
@@ -855,6 +980,32 @@ class _PreApprovalVisitorCard extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ],
+            if (!expired && hasPass) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  TextButton.icon(
+                    onPressed: onRegenerateLink,
+                    icon: const Icon(Icons.link_rounded, size: 16),
+                    label: const Text('New link'),
+                  ),
+                  if (hasShareLink)
+                    TextButton.icon(
+                      onPressed: onRevokeLink,
+                      icon: const Icon(Icons.link_off_rounded, size: 16),
+                      label: const Text('Stop sharing'),
+                    ),
+                  if (hasShareLink)
+                    TextButton.icon(
+                      onPressed: onShowPassViews,
+                      icon: const Icon(Icons.visibility_outlined, size: 16),
+                      label: const Text('Link opens'),
+                    ),
+                ],
               ),
             ],
           ],

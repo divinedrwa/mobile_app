@@ -253,6 +253,31 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
                         fontFamily: 'monospace',
                       ),
                     ),
+                    if (parcel.leftAtGate &&
+                        parcel.status == ParcelStatus.pending) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Text(
+                          'Waiting at gate — please collect',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFE65100),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

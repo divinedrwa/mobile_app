@@ -35,24 +35,41 @@ String buildVisitorPassShareMessage(PreApprovedVisitorModel visitor) {
   return lines.join('\n').trim();
 }
 
-/// Ensures a fresh public pass URL exists (issues one when listing omits it).
+/// Ensures a public pass URL exists. When [rotate] is true, always issues a new link.
 Future<PreApprovedVisitorModel> ensureVisitorPassShareUrl(
   VisitorRepository repository,
-  PreApprovedVisitorModel visitor,
-) async {
+  PreApprovedVisitorModel visitor, {
+  bool rotate = false,
+}) async {
   final existing = visitor.publicPassUrl?.trim();
-  if (existing != null && existing.isNotEmpty) return visitor;
+  if (!rotate && existing != null && existing.isNotEmpty) return visitor;
   final id = visitor.id?.trim();
   if (id == null || id.isEmpty) return visitor;
   final url = await repository.issuePreApprovedShareLink(id);
   return visitor.copyWith(publicPassUrl: url);
 }
 
-/// Opens the native share sheet with the complete pass record (any app / contact).
+/// Rotates the share link and opens the native share sheet.
 Future<void> shareVisitorPassRecord(
+  VisitorRepository repository,
+  PreApprovedVisitorModel visitor, {
+  bool rotateLink = false,
+}) async {
+  final ready = await ensureVisitorPassShareUrl(
+    repository,
+    visitor,
+    rotate: rotateLink,
+  );
+  await Share.share(buildVisitorPassShareMessage(ready));
+}
+
+/// Revokes the public share link (OTP still works at gate).
+Future<PreApprovedVisitorModel> revokeVisitorPassShareUrl(
   VisitorRepository repository,
   PreApprovedVisitorModel visitor,
 ) async {
-  final ready = await ensureVisitorPassShareUrl(repository, visitor);
-  await Share.share(buildVisitorPassShareMessage(ready));
+  final id = visitor.id?.trim();
+  if (id == null || id.isEmpty) return visitor;
+  await repository.revokePreApprovedShareLink(id);
+  return visitor.copyWith(publicPassUrl: null);
 }

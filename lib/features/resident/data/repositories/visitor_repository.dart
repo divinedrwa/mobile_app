@@ -159,6 +159,42 @@ class VisitorRepository {
     }
   }
 
+  /// Invalidate the shared browser URL without cancelling the pass.
+  Future<void> revokePreApprovedShareLink(String id) async {
+    try {
+      await _dioClient.post(ApiEndpoints.preApprovedRevokeShareLink(id));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to revoke share link');
+    }
+  }
+
+  /// Recent opens of the public pass page (privacy-safe audit).
+  Future<({int total, List<DateTime> viewedAt})> fetchPreApprovedPassViews(
+    String id,
+  ) async {
+    try {
+      final response = await _dioClient.get(
+        ApiEndpoints.preApprovedPassViews(id),
+        queryParameters: {'limit': 10},
+      );
+      final raw = response.data;
+      if (raw is! Map) {
+        return (total: 0, viewedAt: const []);
+      }
+      final map = Map<String, dynamic>.from(raw);
+      final total = (map['total'] as num?)?.toInt() ?? 0;
+      final viewsRaw = map['views'] as List? ?? const [];
+      final viewedAt = viewsRaw
+          .whereType<Map>()
+          .map((v) => DateTime.tryParse(v['viewedAt']?.toString() ?? ''))
+          .whereType<DateTime>()
+          .toList();
+      return (total: total, viewedAt: viewedAt);
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load pass views');
+    }
+  }
+
   /// Delete pre-approved visitor
   Future<void> deletePreApprovedVisitor(String id) async {
     try {
