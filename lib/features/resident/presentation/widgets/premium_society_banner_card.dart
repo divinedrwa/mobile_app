@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../../../../core/utils/banner_action_url.dart';
 
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -90,17 +90,7 @@ Widget _statusPill(bool live) {
 }
 
 Future<void> _openLink(BuildContext context, String url) async {
-  final uri = Uri.tryParse(url.trim());
-  if (uri != null && await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } else if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not open link'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  await openBannerActionUrl(context, url);
 }
 
 Widget _linkChip(BuildContext context, String url) {

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../../core/utils/banner_action_url.dart';
 
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../../../core/utils/banner_image_url.dart';
@@ -170,12 +171,7 @@ Future<void> showEventBannerDetailSheet(
                 if (actionUrl != null && actionUrl.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () async {
-                      final uri = Uri.tryParse(actionUrl);
-                      if (uri != null && await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
+                    onPressed: () => openBannerActionUrl(ctx, actionUrl),
                     icon: const Icon(Icons.open_in_new_rounded),
                     label: const Text('Open link'),
                     style: FilledButton.styleFrom(

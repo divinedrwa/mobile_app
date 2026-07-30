@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../../../../core/utils/banner_action_url.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
@@ -113,10 +113,9 @@ class _BannerCarouselWidgetState extends State<_BannerCarouselWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: GestureDetector(
                     onTap: () {
-                      if (banner.actionUrl != null &&
-                          banner.actionUrl!.isNotEmpty) {
-                        launchUrl(Uri.parse(banner.actionUrl!),
-                            mode: LaunchMode.externalApplication);
+                      final url = banner.actionUrl;
+                      if (url != null && url.isNotEmpty) {
+                        openBannerActionUrl(context, url);
                       }
                     },
                     child: Container(
