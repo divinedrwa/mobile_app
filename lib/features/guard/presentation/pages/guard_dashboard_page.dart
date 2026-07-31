@@ -23,6 +23,7 @@ import '../widgets/guard_admit_by_otp_sheet.dart';
 import '../widgets/guard_sos_strip.dart';
 import '../widgets/guard_summary_strip.dart';
 import '../widgets/guard_view_visitors_cta.dart';
+import '../../data/guard_data_refresh.dart';
 
 /// Premium guard dashboard — summary, visitors entry point, quick actions (Flutter).
 class GuardDashboardPage extends ConsumerStatefulWidget {
@@ -45,6 +46,7 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
 
   @override
   void onPollTick() {
+    refreshGuardShiftContext(ref);
     ref.invalidate(guardDashboardProvider);
     ref.invalidate(guardPendingVisitorsProvider);
     ref.invalidate(guardActiveVisitorsTabProvider);
@@ -66,8 +68,7 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
 
   /// Reloads dashboard + satellite sections; awaits network so pull-to-refresh works.
   Future<void> _refreshAll() async {
-    ref.invalidate(guardDashboardProvider);
-    ref.invalidate(guardMyGateProvider);
+    refreshGuardShiftContext(ref);
     ref.invalidate(guardActiveAlertsProvider);
     ref.invalidate(guardTodayVisitorsProvider);
     ref.invalidate(guardPendingVisitorsProvider);
@@ -87,6 +88,7 @@ class _GuardDashboardPageState extends ConsumerState<GuardDashboardPage>
 
     await Future.wait<void>([
       silent(ref.read(guardMyGateProvider.future)),
+      silent(ref.read(guardMyShiftsProvider.future)),
       silent(ref.read(guardActiveAlertsProvider.future)),
       silent(ref.read(guardTodayVisitorsProvider.future)),
       silent(ref.read(guardPendingVisitorsProvider.future)),
@@ -247,6 +249,7 @@ class _DashboardContent extends ConsumerWidget {
           guardName: dash.guardName ?? 'Officer',
           gateName: effectiveGateName,
           gateLocation: gateLocation,
+          dutyPhone: myGate.asData?.value?.dutyPhone,
           onNotificationsTap: () {
             context.push(GuardRoutes.notifications);
           },

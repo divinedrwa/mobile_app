@@ -253,6 +253,10 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
       gp_theme.refreshSocietyThemeFromServer(ref);
       if (ref.read(authProvider).isAuthenticated) {
         unawaited(AppAnalyticsService.heartbeat());
+        final role = ref.read(authProvider).user?.role;
+        if (role == UserRole.guard) {
+          requestGuardDataRefresh();
+        }
       }
     } else if (state == AppLifecycleState.paused) {
       if (ref.read(authProvider).isAuthenticated) {

@@ -86,6 +86,8 @@ class GuardMyGateData {
     this.location,
     this.shiftStart,
     this.shiftEnd,
+    this.shiftType,
+    this.dutyPhone,
   });
 
   final String gateId;
@@ -93,6 +95,9 @@ class GuardMyGateData {
   final String? location;
   final DateTime? shiftStart;
   final DateTime? shiftEnd;
+  final String? shiftType;
+  /// Duty handset for the active shift (`dutyPhone` API or shift `contactPhone`).
+  final String? dutyPhone;
 
   factory GuardMyGateData.fromJson(Map<String, dynamic> json) {
     final gateRaw = json['gate'];
@@ -106,12 +111,17 @@ class GuardMyGateData {
       return DateTime.tryParse(v.toString());
     }
 
+    final duty = _jsonString(json['dutyPhone']) ??
+        _jsonString(shift?['contactPhone']);
+
     return GuardMyGateData(
       gateId: gate['id']?.toString() ?? '',
       name: gate['name'] as String? ?? '',
       location: gate['location'] as String?,
       shiftStart: parseT(shift?['startTime']),
       shiftEnd: parseT(shift?['endTime']),
+      shiftType: _jsonString(shift?['shiftType']),
+      dutyPhone: duty,
     );
   }
 }

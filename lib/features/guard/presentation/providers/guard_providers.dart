@@ -39,7 +39,6 @@ final guardDashboardProvider =
 /// Current shift gate (`GET /guards/my-gate`). `null` when no assignment.
 final guardMyGateProvider =
     FutureProvider.autoDispose<GuardMyGateData?>((ref) async {
-  cacheFor(ref, const Duration(minutes: 15));
   return ref.read(guardRepositoryProvider).getMyGate();
 });
 
@@ -249,6 +248,5 @@ final guardMyPatrolsProvider =
 
 final guardMyShiftsProvider =
     FutureProvider.autoDispose<List<GuardShiftRow>>((ref) async {
-  cacheFor(ref, const Duration(minutes: 30));
   return ref.read(guardRepositoryProvider).getMyShifts();
 });

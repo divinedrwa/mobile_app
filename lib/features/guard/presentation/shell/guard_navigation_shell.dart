@@ -14,6 +14,7 @@ import '../../../../core/utils/responsive.dart';
 import '../../../resident/data/providers/notification_provider.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_offline_sync_notifier.dart';
+import '../../data/guard_data_refresh.dart';
 import '../providers/guard_providers.dart';
 
 /// Bottom navigation shell for guard — separate from [ResidentShell].
@@ -34,6 +35,7 @@ class _GuardNavigationShellState extends ConsumerState<GuardNavigationShell>
 
   @override
   void onPollTick() {
+    refreshGuardShiftContext(ref);
     ref.invalidate(guardActiveVisitorsTabProvider);
   }
 

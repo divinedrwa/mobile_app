@@ -11,12 +11,14 @@ class GuardHomeHero extends StatelessWidget {
     required this.guardName,
     this.gateName,
     this.gateLocation,
+    this.dutyPhone,
     this.onNotificationsTap,
   });
 
   final String guardName;
   final String? gateName;
   final String? gateLocation;
+  final String? dutyPhone;
   final VoidCallback? onNotificationsTap;
 
   String _greeting() {
@@ -174,6 +176,19 @@ class GuardHomeHero extends StatelessWidget {
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.88),
                                 fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          if (dutyPhone != null && dutyPhone!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Duty line: ${dutyPhone!.trim()}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.78),
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
