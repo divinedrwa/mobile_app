@@ -143,7 +143,8 @@ class _AdminGuardShiftsScreenState
     final shiftType = shift['shiftType']?.toString() ?? '';
     final startDt = DateTime.tryParse(shift['startTime']?.toString() ?? '');
     final endDt = DateTime.tryParse(shift['endTime']?.toString() ?? '');
-    final isRecurring = shift['isRecurring'] == true;
+    final isRecurring = shift['recurringDaily'] == true;
+    final contactPhone = shift['contactPhone']?.toString();
 
     final typeConfig = _shiftTypeConfig(shiftType);
 
@@ -213,6 +214,15 @@ class _AdminGuardShiftsScreenState
                       Text('Recurring',
                           style: DesignTypography.captionSmall
                               .copyWith(color: DesignColors.textTertiary)),
+                    ],
+                    if (contactPhone != null && contactPhone.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Icon(Icons.phone,
+                          size: 12, color: DesignColors.textTertiary),
+                      const SizedBox(width: 2),
+                      Text(contactPhone,
+                          style: DesignTypography.captionSmall
+                              .copyWith(color: DesignColors.textSecondary)),
                     ],
                   ],
                 ),
@@ -383,15 +393,26 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
   String _shiftType = 'MORNING';
   TimeOfDay _startTime = const TimeOfDay(hour: 6, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 14, minute: 0);
-  bool _isRecurring = false;
+  bool _isRecurring = true;
+  bool _rosterMode = true;
+  int _shiftDurationHours = 8;
+  final _contactPhone = TextEditingController();
+  final List<TextEditingController> _rosterPhones = [
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+  ];
   bool _submitting = false;
 
   bool get _isEdit => widget.shift != null;
+
+  int get _rosterSlotCount => 24 ~/ _shiftDurationHours;
 
   @override
   void initState() {
     super.initState();
     if (_isEdit) {
+      _rosterMode = false;
       final s = widget.shift!;
       _guardId = (s['guard'] as Map?)?['id']?.toString() ?? s['guardId']?.toString();
       _gateId = (s['gate'] as Map?)?['id']?.toString() ?? s['gateId']?.toString();
@@ -406,9 +427,33 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
         final local = endDt.toLocal();
         _endTime = TimeOfDay(hour: local.hour, minute: local.minute);
       }
-      _isRecurring = s['isRecurring'] == true;
+      _isRecurring = s['recurringDaily'] == true;
+      _contactPhone.text = s['contactPhone']?.toString() ?? '';
     }
   }
+
+  @override
+  void dispose() {
+    _contactPhone.dispose();
+    for (final c in _rosterPhones) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onRosterDurationChanged(int hours) {
+    setState(() {
+      _shiftDurationHours = hours;
+      while (_rosterPhones.length < _rosterSlotCount) {
+        _rosterPhones.add(TextEditingController());
+      }
+      while (_rosterPhones.length > _rosterSlotCount) {
+        _rosterPhones.removeLast().dispose();
+      }
+    });
+  }
+
+  int _timeOfDayToMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
   /// Convert a [TimeOfDay] to an ISO 8601 datetime string using today's date.
   String _timeToIso(TimeOfDay t) {
@@ -455,16 +500,28 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
           shiftType: _shiftType,
           startTime: _timeToIso(_startTime),
           endTime: _timeToIso(_endTime),
+          contactPhone: _contactPhone.text.trim(),
           isRecurring: _isRecurring,
+        );
+      } else if (_rosterMode) {
+        await repo.generateRoster(
+          guardId: _guardId!,
+          gateId: _gateId!,
+          shiftDurationHours: _shiftDurationHours,
+          dayStartMinutes: _timeOfDayToMinutes(_startTime),
+          contactPhones: _rosterPhones.map((c) => c.text.trim()).toList(),
         );
       } else {
         await repo.createShift(
           guardId: _guardId!,
           gateId: _gateId!,
           shiftType: _shiftType,
-          startTime: _timeToIso(_startTime),
-          endTime: _timeToIso(_endTime),
-          isRecurring: _isRecurring,
+          recurringDaily: _isRecurring,
+          recurringStartMinutes: _timeOfDayToMinutes(_startTime),
+          recurringEndMinutes: _timeOfDayToMinutes(_endTime),
+          contactPhone: _contactPhone.text.trim(),
+          startTime: _isRecurring ? null : _timeToIso(_startTime),
+          endTime: _isRecurring ? null : _timeToIso(_endTime),
         );
       }
 
@@ -472,7 +529,11 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
       Navigator.of(context).pop();
       widget.onSaved();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_isEdit ? 'Shift updated' : 'Shift created'),
+        content: Text(_isEdit
+            ? 'Shift updated'
+            : _rosterMode
+                ? '$_rosterSlotCount shifts created'
+                : 'Shift created'),
         backgroundColor: DesignColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
@@ -524,6 +585,18 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                 const SizedBox(height: 16),
                 Text(_isEdit ? 'Edit Shift' : 'Create Shift',
                     style: DesignTypography.headingM),
+                if (!_isEdit) ...[
+                  const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: true, label: Text('24h roster')),
+                      ButtonSegment(value: false, label: Text('Single shift')),
+                    ],
+                    selected: {_rosterMode},
+                    onSelectionChanged: (s) =>
+                        setState(() => _rosterMode = s.first),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Guard dropdown
@@ -568,54 +641,88 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                 ),
                 const SizedBox(height: 16),
 
-                // Shift type chips
-                Text('Shift Type', style: DesignTypography.labelSmall),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: ['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT']
-                      .map((t) => ChoiceChip(
-                            label: Text(t[0] + t.substring(1).toLowerCase()),
-                            selected: _shiftType == t,
-                            onSelected: (_) =>
-                                setState(() => _shiftType = t),
-                            selectedColor: DesignColors.info,
-                            labelStyle: TextStyle(
-                              color: _shiftType == t
-                                  ? Colors.white
-                                  : DesignColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                            showCheckmark: false,
-                            visualDensity: VisualDensity.compact,
-                          ))
-                      .toList(),
-                ),
-                const SizedBox(height: 16),
-
-                // Time pickers
-                Row(
-                  children: [
-                    Expanded(
-                      child: _timePicker('Start', _startTime, () => _pickTime(true)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _timePicker('End', _endTime, () => _pickTime(false)),
+                if (_rosterMode && !_isEdit) ...[
+                  Text('Shift length', style: DesignTypography.labelSmall),
+                  const SizedBox(height: 6),
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 8, label: Text('8h (3/day)')),
+                      ButtonSegment(value: 12, label: Text('12h (2/day)')),
+                    ],
+                    selected: {_shiftDurationHours},
+                    onSelectionChanged: (s) => _onRosterDurationChanged(s.first),
+                  ),
+                  const SizedBox(height: 16),
+                  _timePicker('Day starts at', _startTime, () => _pickTime(true)),
+                  const SizedBox(height: 12),
+                  Text('Duty phone per shift (optional)',
+                      style: DesignTypography.labelSmall),
+                  const SizedBox(height: 8),
+                  for (var i = 0; i < _rosterSlotCount; i++) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TextField(
+                        controller: _rosterPhones[i],
+                        keyboardType: TextInputType.phone,
+                        decoration: DesignComponents.inputDecoration(
+                          hint: 'Shift ${i + 1} contact',
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-
-                // Recurring toggle
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Recurring', style: DesignTypography.label),
-                  value: _isRecurring,
-                  onChanged: (v) => setState(() => _isRecurring = v),
-                  activeTrackColor: DesignColors.info,
-                ),
+                ] else ...[
+                  Text('Shift Type', style: DesignTypography.labelSmall),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: ['MORNING', 'EVENING', 'NIGHT']
+                        .map((t) => ChoiceChip(
+                              label: Text(t[0] + t.substring(1).toLowerCase()),
+                              selected: _shiftType == t,
+                              onSelected: (_) =>
+                                  setState(() => _shiftType = t),
+                              selectedColor: DesignColors.info,
+                              labelStyle: TextStyle(
+                                color: _shiftType == t
+                                    ? Colors.white
+                                    : DesignColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                              showCheckmark: false,
+                              visualDensity: VisualDensity.compact,
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _timePicker('Start', _startTime, () => _pickTime(true)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _timePicker('End', _endTime, () => _pickTime(false)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _contactPhone,
+                    keyboardType: TextInputType.phone,
+                    decoration: DesignComponents.inputDecoration(
+                      hint: 'Duty contact phone (optional)',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Repeat daily', style: DesignTypography.label),
+                    value: _isRecurring,
+                    onChanged: (v) => setState(() => _isRecurring = v),
+                    activeTrackColor: DesignColors.info,
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 SizedBox(
@@ -629,8 +736,14 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(_isEdit ? 'Update Shift' : 'Create Shift',
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        : Text(
+                            _isEdit
+                                ? 'Update Shift'
+                                : _rosterMode
+                                    ? 'Generate $_rosterSlotCount shifts'
+                                    : 'Create Shift',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                          ),
                   ),
                 ),
               ],

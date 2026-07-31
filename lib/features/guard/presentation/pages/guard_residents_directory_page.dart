@@ -29,6 +29,8 @@ class _DirectoryFlatGroup {
   final List<ResidentDirectoryRow> residents;
 }
 
+enum _DirectoryView { list, byFlat }
+
 class GuardResidentsDirectoryPage extends ConsumerStatefulWidget {
   const GuardResidentsDirectoryPage({super.key});
 
@@ -43,6 +45,7 @@ class _GuardResidentsDirectoryPageState
   String _debouncedQuery = '';
   String? _blockFilter;
   Timer? _debounceTimer;
+  _DirectoryView _view = _DirectoryView.list;
 
   @override
   void initState() {
@@ -137,6 +140,43 @@ class _GuardResidentsDirectoryPageState
     }).toList();
   }
 
+  List<ResidentDirectoryRow> _sortedResidents(List<ResidentDirectoryRow> rows) {
+    final list = [...rows];
+    list.sort((a, b) {
+      final flat = a.flatLabel.compareTo(b.flatLabel);
+      if (flat != 0) return flat;
+      return a.name.compareTo(b.name);
+    });
+    return list;
+  }
+
+  List<ResidentDirectoryRow> _filterResidents(List<ResidentDirectoryRow> rows) {
+    final q = _debouncedQuery.trim().toLowerCase();
+    return rows.where((r) {
+      if (q.isNotEmpty) {
+        final inFlat = r.flatLabel.toLowerCase().contains(q);
+        final inName = r.name.toLowerCase().contains(q);
+        final inPhone = (r.phoneMasked ?? r.phone ?? '')
+            .toLowerCase()
+            .contains(q);
+        if (!inFlat && !inName && !inPhone) return false;
+      }
+      if (_blockFilter != null) {
+        return _blockFromLabel(r.flatLabel) == _blockFilter;
+      }
+      return true;
+    }).toList();
+  }
+
+  List<String> _blocksFromResidents(List<ResidentDirectoryRow> rows) {
+    final set = <String>{};
+    for (final r in rows) {
+      final b = _blockFromLabel(r.flatLabel);
+      if (b != null && b.isNotEmpty) set.add(b);
+    }
+    return set.toList()..sort();
+  }
+
   Future<void> _openFlatSheet(_DirectoryFlatGroup flat) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -177,6 +217,7 @@ class _GuardResidentsDirectoryPageState
                         row: r,
                         initials: _initials(r.name),
                         index: i,
+                        popSheetOnCheckIn: true,
                       );
                     },
                   ),
@@ -223,7 +264,25 @@ class _GuardResidentsDirectoryPageState
                     icon: Icons.apartment_rounded,
                     title: 'Directory',
                     subtitle:
-                        'Search by name or flat — tap a flat tile for approval or call',
+                        'Search by name, flat, or phone — tap Call to dial',
+                  ),
+                  const SizedBox(height: GuardTokens.g2),
+                  SegmentedButton<_DirectoryView>(
+                    segments: const [
+                      ButtonSegment(
+                        value: _DirectoryView.list,
+                        label: Text('List'),
+                        icon: Icon(Icons.format_list_bulleted_rounded, size: 18),
+                      ),
+                      ButtonSegment(
+                        value: _DirectoryView.byFlat,
+                        label: Text('By flat'),
+                        icon: Icon(Icons.grid_view_rounded, size: 18),
+                      ),
+                    ],
+                    selected: {_view},
+                    onSelectionChanged: (s) =>
+                        setState(() => _view = s.first),
                   ),
                   const SizedBox(height: GuardTokens.g2),
                   TextField(
@@ -246,7 +305,9 @@ class _GuardResidentsDirectoryPageState
             ),
             Expanded(
               child: async.when(
-                loading: () => const GuardDirectorySkeleton(),
+                loading: () => _view == _DirectoryView.list
+                    ? const GuardDirectoryListSkeleton()
+                    : const GuardDirectorySkeleton(),
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(GuardTokens.padScreen),
                   child: Center(
@@ -286,6 +347,91 @@ class _GuardResidentsDirectoryPageState
                             ),
                           ],
                         ),
+                      ),
+                    );
+                  }
+
+                  if (_view == _DirectoryView.list) {
+                    final visibleResidents =
+                        _sortedResidents(_filterResidents(rows));
+                    final blocks = _blocksFromResidents(rows);
+
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(
+                          guardResidentsDirectoryProvider(_debouncedQuery),
+                        );
+                        await ref.read(
+                          guardResidentsDirectoryProvider(_debouncedQuery).future,
+                        );
+                      },
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          GuardTokens.padScreen,
+                          GuardTokens.g2,
+                          GuardTokens.padScreen,
+                          GuardTokens.g3,
+                        ),
+                        children: [
+                          if (_debouncedQuery.isEmpty && blocks.isNotEmpty) ...[
+                            SizedBox(
+                              height: 34,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: const Text('All'),
+                                      selected: _blockFilter == null,
+                                      onSelected: (_) =>
+                                          setState(() => _blockFilter = null),
+                                    ),
+                                  ),
+                                  for (final b in blocks)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: ChoiceChip(
+                                        label: Text(b),
+                                        selected: _blockFilter == b,
+                                        onSelected: (_) =>
+                                            setState(() => _blockFilter = b),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: GuardTokens.g2),
+                          ],
+                          if (visibleResidents.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: Text(
+                                  'No residents match your search.',
+                                  style: GuardTokens.bodyStyle(context),
+                                ),
+                              ),
+                            )
+                          else
+                            ...visibleResidents.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final r = entry.value;
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: i < visibleResidents.length - 1
+                                      ? GuardTokens.g2
+                                      : 0,
+                                ),
+                                child: _ResidentActionCard(
+                                  row: r,
+                                  initials: _initials(r.name),
+                                  index: i,
+                                  flatLabel: r.flatLabel,
+                                ),
+                              );
+                            }),
+                        ],
                       ),
                     );
                   }
@@ -399,11 +545,15 @@ class _ResidentActionCard extends StatelessWidget {
     required this.row,
     required this.initials,
     required this.index,
+    this.flatLabel,
+    this.popSheetOnCheckIn = false,
   });
 
   final ResidentDirectoryRow row;
   final String initials;
   final int index;
+  final String? flatLabel;
+  final bool popSheetOnCheckIn;
 
   @override
   Widget build(BuildContext context) {
@@ -456,6 +606,13 @@ class _ResidentActionCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (flatLabel != null && flatLabel!.trim().isNotEmpty)
+                    Text(
+                      flatLabel!,
+                      style: GuardTokens.captionStyle(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   if (row.phoneMasked != null &&
                       row.phoneMasked!.trim().isNotEmpty)
                     Text(
@@ -475,7 +632,9 @@ class _ResidentActionCard extends StatelessWidget {
                     'villaId': row.villaId!,
                   if (residentPhone.isNotEmpty) 'residentPhone': residentPhone,
                 };
-                Navigator.of(context).pop();
+                if (popSheetOnCheckIn) {
+                  Navigator.of(context).pop();
+                }
                 context.push(GuardRoutes.visitorApprovalWithQuery('dir', q));
               },
               icon: Icon(

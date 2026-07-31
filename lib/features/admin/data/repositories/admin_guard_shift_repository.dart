@@ -19,15 +19,17 @@ class AdminGuardShiftRepository {
     }
   }
 
-  /// Create a new guard shift.
-  /// [startTime] and [endTime] are ISO 8601 datetime strings.
+  /// Create a new guard shift (single).
   Future<void> createShift({
     required String guardId,
     required String gateId,
     required String shiftType,
-    required String startTime,
-    required String endTime,
-    bool isRecurring = false,
+    required int recurringStartMinutes,
+    required int recurringEndMinutes,
+    String? contactPhone,
+    bool recurringDaily = true,
+    String? startTime,
+    String? endTime,
   }) async {
     try {
       await _dio.post(
@@ -36,13 +38,52 @@ class AdminGuardShiftRepository {
           'guardId': guardId,
           'gateId': gateId,
           'shiftType': shiftType,
-          'startTime': startTime,
-          'endTime': endTime,
-          'isRecurring': isRecurring,
+          'recurringDaily': recurringDaily,
+          if (recurringDaily) ...{
+            'recurringStartMinutes': recurringStartMinutes,
+            'recurringEndMinutes': recurringEndMinutes,
+          } else ...{
+            'startTime': startTime,
+            'endTime': endTime,
+          },
+          if (contactPhone != null && contactPhone.trim().isNotEmpty)
+            'contactPhone': contactPhone.trim(),
         },
       );
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to create shift');
+    }
+  }
+
+  /// Generate full 24h roster (8h → 3 shifts, 12h → 2 shifts).
+  Future<List<Map<String, dynamic>>> generateRoster({
+    required String guardId,
+    required String gateId,
+    required int shiftDurationHours,
+    required int dayStartMinutes,
+    List<String?>? contactPhones,
+    String? notes,
+    bool replaceExisting = true,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '${ApiEndpoints.adminGuardShifts}/generate-roster',
+        data: {
+          'guardId': guardId,
+          'gateId': gateId,
+          'shiftDurationHours': shiftDurationHours,
+          'dayStartMinutes': dayStartMinutes,
+          if (contactPhones != null)
+            'contactPhones':
+                contactPhones.map((p) => p?.trim().isEmpty == true ? null : p?.trim()).toList(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+          'replaceExisting': replaceExisting,
+        },
+      );
+      final list = res.data?['shifts'] as List? ?? [];
+      return list.cast<Map<String, dynamic>>();
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to generate roster');
     }
   }
 
@@ -54,6 +95,7 @@ class AdminGuardShiftRepository {
     String? shiftType,
     String? startTime,
     String? endTime,
+    String? contactPhone,
     bool? isRecurring,
   }) async {
     try {
@@ -65,7 +107,8 @@ class AdminGuardShiftRepository {
           if (shiftType != null) 'shiftType': shiftType,
           if (startTime != null) 'startTime': startTime,
           if (endTime != null) 'endTime': endTime,
-          if (isRecurring != null) 'isRecurring': isRecurring,
+          if (contactPhone != null) 'contactPhone': contactPhone.trim(),
+          if (isRecurring != null) 'recurringDaily': isRecurring,
         },
       );
     } on DioException catch (e) {

@@ -115,6 +115,23 @@ class _ShiftCardSkeleton extends StatelessWidget {
   }
 }
 
+/// Skeleton for the residents directory list.
+class GuardDirectoryListSkeleton extends StatelessWidget {
+  const GuardDirectoryListSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerWrap(
+      child: ListView.separated(
+        padding: const EdgeInsets.all(GuardTokens.padScreen),
+        itemCount: 10,
+        separatorBuilder: (_, __) => const SizedBox(height: GuardTokens.g2),
+        itemBuilder: (_, __) => const _DirectoryCardSkeleton(),
+      ),
+    );
+  }
+}
+
 /// Skeleton for the residents directory flat grid.
 class GuardDirectorySkeleton extends StatelessWidget {
   const GuardDirectorySkeleton({super.key});

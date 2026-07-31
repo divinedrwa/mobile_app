@@ -261,6 +261,22 @@ class _DashboardContent extends ConsumerWidget {
         const SizedBox(height: GuardTokens.sectionGap),
         SizedBox(
           width: double.infinity,
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: GuardTokens.guardAccentDeep,
+              side: BorderSide(
+                color: GuardTokens.guardAccent.withValues(alpha: 0.45),
+              ),
+            ),
+            onPressed: () => context.push(GuardRoutes.directory),
+            icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
+            label: const Text('Call residents'),
+          ),
+        ),
+        const SizedBox(height: GuardTokens.g2),
+        SizedBox(
+          width: double.infinity,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: GuardTokens.guardAccentDeep,
@@ -352,6 +368,7 @@ class _DashboardContent extends ConsumerWidget {
               context.push(GuardRoutes.preApprovedList),
           onPatrol: () => context.push(GuardRoutes.patrol),
           onApprovedVehicles: () => context.push(GuardRoutes.approvedVehicles),
+          onCallResidents: () => context.push(GuardRoutes.directory),
         ),
         const SizedBox(height: GuardTokens.sectionGap + 6),
         GuardGateUtilitiesCard(

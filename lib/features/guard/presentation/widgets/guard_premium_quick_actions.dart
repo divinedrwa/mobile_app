@@ -13,6 +13,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
     required this.onPreApprovedVisitors,
     required this.onPatrol,
     required this.onApprovedVehicles,
+    required this.onCallResidents,
   });
 
   final VoidCallback onAddVisitor;
@@ -22,6 +23,7 @@ class GuardPremiumQuickActions extends StatelessWidget {
   final VoidCallback onPreApprovedVisitors;
   final VoidCallback onPatrol;
   final VoidCallback onApprovedVehicles;
+  final VoidCallback onCallResidents;
 
   @override
   Widget build(BuildContext context) {
@@ -118,13 +120,30 @@ class GuardPremiumQuickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        _QuickTile(
-          icon: Icons.verified_user_rounded,
-          label: 'Approved vehicles',
-          subtitle: 'Verify internal plates at gate',
-          accent: GuardTokens.success,
-          isDark: isDark,
-          onTap: onApprovedVehicles,
+        Row(
+          children: [
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.phone_in_talk_rounded,
+                label: 'Call residents',
+                subtitle: 'Directory & dial',
+                accent: const Color(0xFF2563EB),
+                isDark: isDark,
+                onTap: onCallResidents,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.verified_user_rounded,
+                label: 'Vehicles',
+                subtitle: 'Approved plates',
+                accent: GuardTokens.success,
+                isDark: isDark,
+                onTap: onApprovedVehicles,
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -699,6 +699,7 @@ class GuardShiftRow {
     this.recurringDaily = false,
     this.recurringStartMinutes,
     this.recurringEndMinutes,
+    this.contactPhone,
   });
 
   final String id;
@@ -710,6 +711,7 @@ class GuardShiftRow {
   final bool recurringDaily;
   final int? recurringStartMinutes;
   final int? recurringEndMinutes;
+  final String? contactPhone;
 
   /// Build the raw map that ShiftActiveHelper expects.
   Map<String, dynamic> toRawMap() => {
@@ -744,6 +746,7 @@ class GuardShiftRow {
       recurringEndMinutes: json['recurringEndMinutes'] != null
           ? _jsonInt(json['recurringEndMinutes'])
           : null,
+      contactPhone: json['contactPhone']?.toString(),
     );
   }
 }

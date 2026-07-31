@@ -181,6 +181,27 @@ class GuardShiftDetailsPage extends ConsumerWidget {
                                           line,
                                           style: GuardTokens.captionStyle(context),
                                         ),
+                                        if (shift.contactPhone != null &&
+                                            shift.contactPhone!.trim().isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.phone_outlined,
+                                                  size: 14,
+                                                  color: GuardTokens.textSecondary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Duty: ${shift.contactPhone}',
+                                                    style: GuardTokens.captionStyle(context),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
