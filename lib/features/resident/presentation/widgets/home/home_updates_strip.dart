@@ -2,43 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/design_animations.dart';
 import '../../../../../core/theme/design_tokens.dart';
 import '../../../data/models/parcel_model.dart';
-import '../../../data/providers/maintenance_provider.dart';
 import '../../../data/providers/parcel_provider.dart';
-import '../../../data/providers/utilities_provider.dart';
-import '../../providers/visitor_provider.dart';
 import 'home_shared.dart';
 
-/// MyGate-style priority feed — additive layer only; does not replace other home sections.
+/// Priority feed for home items that do not already have a dedicated section below.
+/// Water/garbage → [HomeUtilityStatusStrip]; visitors → [HomeGateVisitorRequests];
+/// maintenance → [HomeMaintenanceCard].
 class HomeUpdatesStrip extends ConsumerWidget {
   const HomeUpdatesStrip({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cards = <_HomeUpdateCardData>[];
-
-    final pendingVisitors =
-        ref.watch(visitorApprovalRequestsProvider('pending')).valueOrNull;
-    if (pendingVisitors != null && pendingVisitors.isNotEmpty) {
-      final first = pendingVisitors.first;
-      final name = (first['name'] as String?)?.trim();
-      cards.add(
-        _HomeUpdateCardData(
-          badge: 'ACTION',
-          title: 'Visitor at gate',
-          subtitle: name != null && name.isNotEmpty
-              ? '$name · Approve or deny'
-              : '${pendingVisitors.length} waiting for approval',
-          icon: Icons.how_to_reg_rounded,
-          color: DesignColors.primary,
-          onTap: () => context.push('/resident/visitor-requests'),
-        ),
-      );
-    }
 
     final parcels = ref.watch(parcelProvider).valueOrNull ?? const <ParcelModel>[];
     final atGate = parcels
@@ -56,62 +35,6 @@ class HomeUpdatesStrip extends ConsumerWidget {
           onTap: () => context.push('/resident/parcels'),
         ),
       );
-    }
-
-    final waterGates = ref.watch(waterSupplyStatusProvider).valueOrNull ?? [];
-    final onGate = waterGates.where((g) => g.isOn).toList();
-    if (onGate.isNotEmpty) {
-      final gateName =
-          onGate.first.gateName.isNotEmpty ? onGate.first.gateName : 'Main Gate';
-      cards.add(
-        _HomeUpdateCardData(
-          badge: 'LIVE',
-          title: 'Water supply ON',
-          subtitle: 'at $gateName',
-          icon: Icons.water_drop_rounded,
-          color: DesignColors.success,
-          onTap: () => context.push('/resident/utilities'),
-        ),
-      );
-    }
-
-    if (ref.watch(garbageCollectionActiveProvider).valueOrNull?.isInside == true) {
-      cards.add(
-        _HomeUpdateCardData(
-          badge: 'ACTIVE',
-          title: 'Garbage collection',
-          subtitle: 'Collector inside society',
-          icon: Icons.delete_outline_rounded,
-          color: DesignColors.warning,
-          onTap: () => context.push('/resident/utilities'),
-        ),
-      );
-    }
-
-    final pendingDues =
-        ref.watch(pendingMaintenanceProvider).valueOrNull ??
-            ref.watch(pendingMaintenanceSeedProvider);
-    if (pendingDues != null && pendingDues.isNotEmpty) {
-      final total =
-          pendingDues.fold<double>(0, (sum, m) => sum + m.remainingDue);
-      if (total > 0) {
-        final earliest = pendingDues
-            .map((m) => m.dueDate)
-            .reduce((a, b) => a.isBefore(b) ? a : b);
-        final dueLabel = earliest.isBefore(DateTime.now())
-            ? 'Overdue'
-            : 'Due ${DateFormat('d MMM').format(earliest.toLocal())}';
-        cards.add(
-          _HomeUpdateCardData(
-            badge: 'DUE',
-            title: 'Maintenance ${NumberFormat.compactCurrency(symbol: '₹', decimalDigits: 0).format(total)}',
-            subtitle: dueLabel,
-            icon: Icons.receipt_long_outlined,
-            color: DesignColors.error,
-            onTap: () => context.push('/resident/maintenance/dues'),
-          ),
-        );
-      }
     }
 
     if (cards.isEmpty) {

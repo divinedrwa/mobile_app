@@ -15,6 +15,7 @@ import 'home_skeletons.dart';
 
 const EdgeInsets _kInnerPanelMargin = EdgeInsets.fromLTRB(14, 12, 14, 14);
 const double _kInnerPanelRadius = 14;
+const double _kMaintenanceCardRadius = 18;
 
 enum _MaintenanceDueState { caughtUp, dueSoon, overdue }
 
@@ -94,34 +95,44 @@ class HomeMaintenanceCard extends ConsumerWidget {
 
     final shell = _resolveShellStyle(pendingData);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            shell.palette.shellTop,
-            Colors.white,
-          ],
-          stops: const [0.0, 0.55],
+    return Material(
+      color: Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: 0.045),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_kMaintenanceCardRadius),
+        side: BorderSide(
+          color: shell.palette.shellBorder.withValues(alpha: 0.8),
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: shell.palette.shellBorder.withValues(alpha: 0.8)),
-        boxShadow: homeCardShadow(0.045),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _MaintenanceStatusHeader(
-            pending: pendingData,
-            dueState: shell.dueState,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              shell.palette.shellTop,
+              Colors.white,
+            ],
+            stops: const [0.0, 0.55],
           ),
-          _MaintenanceInnerPanel(
-            outstandingAsync: outstandingAsync,
-            navIconColor: shell.palette.navIcon,
-          ),
-        ],
+          borderRadius: BorderRadius.circular(_kMaintenanceCardRadius),
+          boxShadow: homeCardShadow(0.045),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _MaintenanceStatusHeader(
+              pending: pendingData,
+              dueState: shell.dueState,
+            ),
+            _MaintenanceInnerPanel(
+              outstandingAsync: outstandingAsync,
+              navIconColor: shell.palette.navIcon,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -434,17 +445,21 @@ class _CaughtUpHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = DueStatePalette.of(DueVisualState.caughtUp);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 16, 10, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [palette.gradientTop, palette.gradientBottom],
-        ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(_kMaintenanceCardRadius),
       ),
-      child: Row(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 16, 10, 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [palette.gradientTop, palette.gradientBottom],
+          ),
+        ),
+        child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
@@ -518,6 +533,7 @@ class _CaughtUpHeader extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -572,6 +588,12 @@ class _DueHeader extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(_kMaintenanceCardRadius),
+        ),
+      ),
       child: InkWell(
         onTap: () {
           DesignHaptics.selection();

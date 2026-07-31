@@ -26,7 +26,7 @@ class HomeQuickActions extends ConsumerStatefulWidget {
 }
 
 class _HomeQuickActionsState extends ConsumerState<HomeQuickActions> {
-  bool _moreExpanded = false;
+  bool _moreExpanded = true;
 
   void _toggleMoreRow() {
     DesignHaptics.selection();
