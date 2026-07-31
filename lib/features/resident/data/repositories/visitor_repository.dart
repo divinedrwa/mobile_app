@@ -179,7 +179,7 @@ class VisitorRepository {
       );
       final raw = response.data;
       if (raw is! Map) {
-        return (total: 0, viewedAt: const []);
+        return (total: 0, viewedAt: const <DateTime>[]);
       }
       final map = Map<String, dynamic>.from(raw);
       final total = (map['total'] as num?)?.toInt() ?? 0;
