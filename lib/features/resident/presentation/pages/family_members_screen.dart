@@ -329,6 +329,32 @@ class _FamilyMemberCard extends StatelessWidget {
                           ),
                     ),
                   ],
+                  if (member.canApproveVisitors) ...[
+                    SizedBox(height: context.spacing.s8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: member.visitorApprovalLinked
+                            ? DesignColors.successLight
+                            : DesignColors.warningLight,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        member.visitorApprovalLinked
+                            ? 'Visitor approval · linked to ${member.linkedUserName ?? 'app account'}'
+                            : 'Visitor approval enabled · add matching phone app account',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: member.visitorApprovalLinked
+                                  ? DesignColors.success
+                                  : DesignColors.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

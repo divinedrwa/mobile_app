@@ -35,6 +35,7 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
     String? phone,
     String? email,
     DateTime? dateOfBirth,
+    bool canApproveVisitors = false,
   }) async {
     try {
       await _repository.addFamilyMember(
@@ -43,6 +44,7 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
         phone: phone,
         email: email,
         dateOfBirth: dateOfBirth,
+        canApproveVisitors: canApproveVisitors,
       );
       await fetchFamilyMembers();
       return null;
@@ -60,6 +62,7 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
     String? phone,
     String? email,
     DateTime? dateOfBirth,
+    bool? canApproveVisitors,
   }) async {
     try {
       await _repository.updateFamilyMember(
@@ -69,6 +72,7 @@ class FamilyMemberNotifier extends StateNotifier<AsyncValue<List<FamilyMemberMod
         phone: phone,
         email: email,
         dateOfBirth: dateOfBirth,
+        canApproveVisitors: canApproveVisitors,
       );
       await fetchFamilyMembers();
       return null;

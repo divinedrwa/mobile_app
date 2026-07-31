@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../shared/models/paginated_state.dart';
 import '../../../../shared/utils/provider_cache.dart';
@@ -15,6 +16,7 @@ class ComplaintSubmitNotifier extends StateNotifier<AsyncValue<void>> {
     required String description,
     required String category,
     required String priority,
+    XFile? photo,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -23,6 +25,7 @@ class ComplaintSubmitNotifier extends StateNotifier<AsyncValue<void>> {
         description: description,
         category: category,
         priority: priority,
+        photo: photo,
       );
       state = const AsyncValue.data(null);
       return null;

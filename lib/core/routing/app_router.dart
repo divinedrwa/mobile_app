@@ -30,6 +30,7 @@ import '../../features/resident/presentation/pages/amenities_screen.dart';
 import '../../features/resident/presentation/pages/complaint_screen.dart';
 import '../../features/resident/presentation/pages/my_complaints_screen.dart';
 import '../../features/resident/presentation/pages/complaint_detail_screen.dart';
+import '../../features/resident/presentation/pages/notifications_center_screen.dart';
 import '../../features/resident/presentation/pages/edit_profile_screen.dart';
 import '../../features/resident/presentation/pages/family_members_screen.dart';
 import '../../features/resident/presentation/pages/emergency_contacts_screen.dart';
@@ -477,6 +478,10 @@ class AppRouter {
             GoRoute(
               path: 'notices',
               builder: (context, state) => const NoticesListScreen(),
+            ),
+            GoRoute(
+              path: 'notifications',
+              builder: (context, state) => residentNotificationsEntry,
             ),
             GoRoute(
               path: 'parcels',

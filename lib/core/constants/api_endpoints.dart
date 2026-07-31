@@ -161,6 +161,10 @@ class ApiEndpoints {
   static String preApprovedPassViews(String id) =>
       '/residents/pre-approved/$id/pass-views';
 
+  /// POST — resident reports unexpected / wrong-flat visitor check-in.
+  static String visitorWrongEntry(String id) =>
+      '/residents/visitors/$id/wrong-entry';
+
   // Resident - Parcels
   static const String myParcels = '/residents/my-parcels';
   static const String parcelsPending = '/residents/parcels-pending';

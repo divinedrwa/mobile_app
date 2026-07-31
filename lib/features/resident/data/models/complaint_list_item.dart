@@ -1,4 +1,30 @@
 /// Resident complaint row from GET /residents/my-complaints
+class ComplaintSlaTimelineEvent {
+  const ComplaintSlaTimelineEvent({
+    required this.key,
+    required this.label,
+    required this.at,
+    required this.state,
+    this.detail,
+  });
+
+  final String key;
+  final String label;
+  final DateTime at;
+  final String state;
+  final String? detail;
+
+  factory ComplaintSlaTimelineEvent.fromJson(Map<String, dynamic> json) {
+    return ComplaintSlaTimelineEvent(
+      key: json['key']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      at: DateTime.tryParse(json['at']?.toString() ?? '') ?? DateTime.now(),
+      state: json['state']?.toString() ?? 'upcoming',
+      detail: json['detail']?.toString(),
+    );
+  }
+}
+
 class ComplaintListItem {
   const ComplaintListItem({
     required this.id,
@@ -9,6 +35,12 @@ class ComplaintListItem {
     required this.createdAt,
     this.priority,
     this.resolvedAt,
+    this.slaDeadline,
+    this.slaBreachNotifiedAt,
+    this.photoUrl,
+    this.adminNotes,
+    this.updatedAt,
+    this.slaTimeline = const [],
   });
 
   final String id;
@@ -19,10 +51,21 @@ class ComplaintListItem {
   final DateTime createdAt;
   final String? priority;
   final DateTime? resolvedAt;
+  final DateTime? slaDeadline;
+  final DateTime? slaBreachNotifiedAt;
+  final String? photoUrl;
+  final String? adminNotes;
+  final DateTime? updatedAt;
+  final List<ComplaintSlaTimelineEvent> slaTimeline;
 
   factory ComplaintListItem.fromJson(Map<String, dynamic> json) {
     final created = json['createdAt'];
     final resolved = json['resolvedAt'];
+    final updated = json['updatedAt'];
+    final slaDeadlineRaw = json['slaDeadline'];
+    final slaBreachRaw = json['slaBreachNotifiedAt'];
+    final timelineRaw = json['slaTimeline'];
+
     return ComplaintListItem(
       id: json['id']?.toString() ?? '',
       title: (json['title'] as String?) ?? '',
@@ -34,6 +77,21 @@ class ComplaintListItem {
           : DateTime.now(),
       priority: json['priority'] as String?,
       resolvedAt: resolved is String ? DateTime.tryParse(resolved) : null,
+      slaDeadline:
+          slaDeadlineRaw is String ? DateTime.tryParse(slaDeadlineRaw) : null,
+      slaBreachNotifiedAt:
+          slaBreachRaw is String ? DateTime.tryParse(slaBreachRaw) : null,
+      photoUrl: json['photoUrl'] as String?,
+      adminNotes: json['adminNotes'] as String?,
+      updatedAt: updated is String ? DateTime.tryParse(updated) : null,
+      slaTimeline: timelineRaw is List
+          ? timelineRaw
+              .whereType<Map>()
+              .map((e) => ComplaintSlaTimelineEvent.fromJson(
+                    Map<String, dynamic>.from(e),
+                  ))
+              .toList()
+          : const [],
     );
   }
 }

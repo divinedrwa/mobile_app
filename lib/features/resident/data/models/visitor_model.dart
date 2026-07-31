@@ -11,6 +11,10 @@ class VisitorModel {
   final DateTime? checkOutTime;
   final String? vehicleNumber;
   final String? photo;
+  final DateTime? expectedCheckoutAt;
+  final DateTime? overstayNotifiedAt;
+  final bool? isOverstay;
+  final bool wrongEntryReported;
 
   VisitorModel({
     this.id,
@@ -24,7 +28,22 @@ class VisitorModel {
     this.checkOutTime,
     this.vehicleNumber,
     this.photo,
+    this.expectedCheckoutAt,
+    this.overstayNotifiedAt,
+    this.isOverstay,
+    this.wrongEntryReported = false,
   });
+
+  /// True when still inside and past expected checkout (server flag or local).
+  bool get overstayActive {
+    if (isOverstay == true) return true;
+    if (checkOutTime != null) return false;
+    final statusNorm = status.trim().toUpperCase();
+    if (statusNorm != 'CHECKED_IN') return false;
+    final expected = expectedCheckoutAt;
+    if (expected == null) return overstayNotifiedAt != null;
+    return expected.toLocal().isBefore(DateTime.now());
+  }
 
   factory VisitorModel.fromJson(Map<String, dynamic> json) {
     final purposeRaw = json['purpose']?.toString().trim();
@@ -33,6 +52,11 @@ class VisitorModel {
     final checkInParsed = checkInStr != null
         ? DateTime.tryParse(checkInStr)
         : null;
+
+    DateTime? parseDt(dynamic raw) {
+      if (raw == null) return null;
+      return DateTime.tryParse(raw.toString());
+    }
 
     return VisitorModel(
       id: json['id'] as String?,
@@ -58,6 +82,11 @@ class VisitorModel {
                 : null),
       vehicleNumber: json['vehicleNumber'] as String?,
       photo: json['photo'] as String?,
+      expectedCheckoutAt: parseDt(json['expectedCheckoutAt']),
+      overstayNotifiedAt: parseDt(json['overstayNotifiedAt']),
+      isOverstay: json['isOverstay'] is bool ? json['isOverstay'] as bool : null,
+      wrongEntryReported: json['wrongEntryReported'] == true ||
+          json['wrongEntryReport'] != null,
     );
   }
 
@@ -74,6 +103,35 @@ class VisitorModel {
       if (checkOutTime != null) 'checkOutTime': checkOutTime!.toIso8601String(),
       if (vehicleNumber != null) 'vehicleNumber': vehicleNumber,
       if (photo != null) 'photo': photo,
+      if (expectedCheckoutAt != null)
+        'expectedCheckoutAt': expectedCheckoutAt!.toIso8601String(),
+      if (overstayNotifiedAt != null)
+        'overstayNotifiedAt': overstayNotifiedAt!.toIso8601String(),
+      if (isOverstay != null) 'isOverstay': isOverstay,
+      'wrongEntryReported': wrongEntryReported,
     };
+  }
+
+  VisitorModel copyWith({
+    bool? wrongEntryReported,
+    bool? isOverstay,
+  }) {
+    return VisitorModel(
+      id: id,
+      name: name,
+      phone: phone,
+      visitDate: visitDate,
+      visitTime: visitTime,
+      purpose: purpose,
+      status: status,
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime,
+      vehicleNumber: vehicleNumber,
+      photo: photo,
+      expectedCheckoutAt: expectedCheckoutAt,
+      overstayNotifiedAt: overstayNotifiedAt,
+      isOverstay: isOverstay ?? this.isOverstay,
+      wrongEntryReported: wrongEntryReported ?? this.wrongEntryReported,
+    );
   }
 }

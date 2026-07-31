@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/services/multipart_file_factory.dart';
 import '../models/complaint_list_item.dart';
 
 class ComplaintRepository {
@@ -30,7 +32,6 @@ class ComplaintRepository {
     }
   }
 
-  /// Paginated variant: returns `{items, total, hasMore}`.
   Future<({List<ComplaintListItem> items, int total, bool hasMore})>
       getMyComplaintsPaginated({
     String? status,
@@ -66,8 +67,25 @@ class ComplaintRepository {
     required String description,
     required String category,
     required String priority,
+    XFile? photo,
   }) async {
     try {
+      if (photo != null) {
+        final formData = FormData.fromMap({
+          'title': title,
+          'description': description,
+          'category': category,
+          'priority': priority,
+          'image': await createMultipartFile(photo),
+        });
+        await _dio.post(
+          ApiEndpoints.createComplaint,
+          data: formData,
+          options: Options(contentType: 'multipart/form-data'),
+        );
+        return;
+      }
+
       await _dio.post(
         ApiEndpoints.createComplaint,
         data: {
@@ -87,14 +105,12 @@ class ComplaintRepository {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.complaintById(id),
       );
-      final data = res.data ?? {};
-      final raw = data['complaint'];
+      final data = res.data;
+      final raw = data?['complaint'];
       if (raw is! Map) {
-        throw AppException(message: 'Complaint not found');
+        throw ServerException(message: 'Invalid complaint response');
       }
-      return ComplaintListItem.fromJson(
-        Map<String, dynamic>.from(raw),
-      );
+      return ComplaintListItem.fromJson(Map<String, dynamic>.from(raw));
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load complaint');
     }

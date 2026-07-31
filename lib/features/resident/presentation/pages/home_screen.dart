@@ -13,6 +13,7 @@ import '../../data/providers/notification_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/security_contact_provider.dart';
 import '../../data/providers/banner_provider.dart';
+import '../../data/providers/parcel_provider.dart';
 import '../../data/providers/utilities_provider.dart';
 import '../providers/resident_tab_provider.dart';
 import '../providers/visitor_provider.dart';
@@ -27,6 +28,7 @@ import '../widgets/home/home_shared.dart';
 import '../widgets/home/home_society_finances.dart';
 import '../widgets/home/home_special_projects_card.dart';
 import '../widgets/home/home_support_strip.dart';
+import '../widgets/home/home_updates_strip.dart';
 import '../widgets/home/home_utility_status_strip.dart';
 
 // Re-export so existing `import 'home_screen.dart'` still provides currentTabProvider.
@@ -73,6 +75,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ref.invalidate(activeBannersProvider);
     ref.invalidate(waterSupplyStatusProvider);
     ref.invalidate(garbageCollectionActiveProvider);
+    ref.invalidate(parcelProvider);
+    ref.invalidate(pendingMaintenanceProvider);
   }
 
   @override
@@ -132,6 +136,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Unified priority feed (additive — existing sections unchanged)
+                    const HomeUpdatesStrip(),
                     // Live ops — water / garbage (hidden when inactive)
                     const HomeUtilityStatusStrip().animateSection(0),
                     // Urgent gate approvals (hidden when no pending)

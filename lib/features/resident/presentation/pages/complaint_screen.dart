@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/design_haptics.dart';
 import '../../../../core/telemetry/business_analytics.dart';
@@ -10,6 +11,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/flow_layout_widgets.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../../../theme/context_extensions.dart';
+import '../../../../core/utils/xfile_image_provider.dart';
 import '../../data/providers/complaint_provider.dart' show
     complaintSubmitProvider, myComplaintsProvider;
 
@@ -28,8 +30,22 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
   String? _selectedCategory;
   String _selectedPriority = 'MEDIUM';
   bool _isSubmitting = false;
+  XFile? _photo;
+
+  final _imagePicker = ImagePicker();
 
   final categories = FormOptions.complaintCategories;
+
+  Future<void> _pickPhoto() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 82,
+    );
+    if (picked != null && mounted) {
+      setState(() => _photo = picked);
+    }
+  }
 
   @override
   void dispose() {
@@ -164,6 +180,52 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
               },
             ),
             const SizedBox(height: DesignSpacing.lg),
+            const DivineFlowSectionLabel('Photo (optional)'),
+            Row(
+              children: [
+                if (_photo != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image(
+                      image: xfileImageProvider(_photo!),
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: DesignColors.surfaceSoft,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DesignColors.borderLight),
+                    ),
+                    child: Icon(
+                      Icons.add_a_photo_outlined,
+                      color: DesignColors.textTertiary,
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickPhoto,
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: Text(_photo == null ? 'Add photo' : 'Change photo'),
+                  ),
+                ),
+                if (_photo != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Remove photo',
+                    onPressed: () => setState(() => _photo = null),
+                    icon: Icon(Icons.close_rounded, color: DesignColors.error),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: DesignSpacing.lg),
             const DivineFlowSectionLabel('Priority'),
             DivineChoiceCard(
               selected: _selectedPriority == 'HIGH',
@@ -261,6 +323,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
           description: _descriptionController.text.trim(),
           category: _selectedCategory!,
           priority: _selectedPriority,
+          photo: _photo,
         );
 
     if (mounted) {

@@ -367,4 +367,26 @@ class VisitorRepository {
       throw mapDioException(e, 'Reject failed');
     }
   }
+
+  /// Report unexpected / wrong-flat visitor check-in.
+  Future<Map<String, dynamic>> reportWrongEntry({
+    required String visitorId,
+    required String reason,
+    String? residentNote,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        ApiEndpoints.visitorWrongEntry(visitorId),
+        data: {
+          'reason': reason,
+          if (residentNote != null && residentNote.trim().isNotEmpty)
+            'residentNote': residentNote.trim(),
+        },
+      );
+      final src = response.data;
+      return src is Map ? Map<String, dynamic>.from(src) : {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not submit wrong-entry report');
+    }
+  }
 }

@@ -785,6 +785,20 @@ class NotificationService {
           router.push('/resident/visitor-hub');
           return true;
         }
+        if (type == 'VISITOR_OVERSTAY') {
+          requestResidentDataRefresh(force: true);
+          router.push('/resident/visitor-history?status=CHECKED_IN');
+          return true;
+        }
+        if (type == 'VISITOR_WRONG_ENTRY') {
+          if (_isGuardSession()) {
+            router.go('/guard/entries');
+          } else {
+            requestResidentDataRefresh(force: true);
+            router.push('/resident/visitor-history');
+          }
+          return true;
+        }
         if (type == 'VISITOR_VILLA_RESPONSE') {
           if (_isGuardSession()) {
             router.go('/guard/entries');
@@ -916,6 +930,8 @@ class NotificationService {
       'VISITOR_PRE_APPROVED_CREATED',
       'VISITOR_PRE_APPROVED_ARRIVED',
       'VISITOR_VILLA_RESPONSE',
+      'VISITOR_OVERSTAY',
+      'VISITOR_WRONG_ENTRY',
       'SOS_CREATED',
       'SOS_ESCALATION',
       'SOS_ESCALATION_ADMIN',

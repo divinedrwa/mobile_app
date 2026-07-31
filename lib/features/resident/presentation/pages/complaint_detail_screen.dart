@@ -1,9 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/banner_image_url.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/screen_skeletons.dart';
 import '../../../../theme/context_extensions.dart';
@@ -99,6 +101,7 @@ class _Body extends StatelessWidget {
     final color = ComplaintDetailScreen._statusColor(complaint.status);
     final statusLabel = ComplaintDetailScreen._statusLabel(complaint.status);
     final dateFmt = DateFormat('dd MMM yyyy, hh:mm a');
+    final photoUrl = resolveBannerImageUrl(complaint.photoUrl);
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(context.spacing.s16),
@@ -162,6 +165,23 @@ class _Body extends StatelessWidget {
               ],
             ),
           ),
+          if (photoUrl != null) ...[
+            SizedBox(height: context.spacing.s16),
+            EnterpriseSectionHeader(
+              title: 'Photo',
+              subtitle: 'Attached when you filed this complaint',
+            ),
+            SizedBox(height: context.spacing.s8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(context.radius.md),
+              child: CachedNetworkImage(
+                imageUrl: photoUrl,
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
           SizedBox(height: context.spacing.s16),
           EnterpriseSectionHeader(
             title: 'Description',
@@ -177,6 +197,31 @@ class _Body extends StatelessWidget {
                   ),
             ),
           ),
+          if (complaint.adminNotes != null &&
+              complaint.adminNotes!.trim().isNotEmpty) ...[
+            SizedBox(height: context.spacing.s16),
+            EnterpriseSectionHeader(
+              title: 'Admin response',
+              subtitle: 'Notes from the society office',
+            ),
+            SizedBox(height: context.spacing.s8),
+            EnterprisePanel(
+              child: Text(
+                complaint.adminNotes!.trim(),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: context.text.primary,
+                      height: 1.5,
+                    ),
+              ),
+            ),
+          ],
+          SizedBox(height: context.spacing.s16),
+          EnterpriseSectionHeader(
+            title: 'SLA timeline',
+            subtitle: 'Expected response milestones for this complaint',
+          ),
+          SizedBox(height: context.spacing.s8),
+          _SlaTimeline(events: complaint.slaTimeline),
           SizedBox(height: context.spacing.s16),
           const EnterpriseInfoBanner(
             icon: Icons.info_outline,
@@ -209,6 +254,108 @@ class _Body extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlaTimeline extends StatelessWidget {
+  const _SlaTimeline({required this.events});
+
+  final List<ComplaintSlaTimelineEvent> events;
+
+  Color _dotColor(String state) {
+    switch (state) {
+      case 'done':
+        return DesignColors.success;
+      case 'active':
+        return DesignColors.warning;
+      case 'breached':
+        return DesignColors.error;
+      default:
+        return DesignColors.textTertiary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return const EnterpriseInfoBanner(
+        icon: Icons.timeline_outlined,
+        title: 'Timeline pending',
+        message: 'SLA milestones will appear once the complaint is processed.',
+        tone: EnterpriseTone.info,
+      );
+    }
+
+    final dateFmt = DateFormat('dd MMM, hh:mm a');
+    return EnterprisePanel(
+      child: Column(
+        children: [
+          for (int i = 0; i < events.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _dotColor(events[i].state),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    if (i < events.length - 1)
+                      Container(
+                        width: 2,
+                        height: 42,
+                        color: DesignColors.borderLight,
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          events[i].label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: context.text.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          dateFmt.format(events[i].at.toLocal()),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.text.secondary,
+                          ),
+                        ),
+                        if (events[i].detail != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            events[i].detail!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.text.tertiary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -32,17 +32,19 @@ class FamilyMemberRepository {
     String? email,
     DateTime? dateOfBirth,
     String? photo,
+    bool canApproveVisitors = false,
   }) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.addFamilyMember,
         data: {
           'name': name,
-          'relationship': relationship, // Backend zod + Prisma `relation`
-          'phone': ?phone,
-          'email': ?email,
+          'relationship': relationship,
+          if (phone != null) 'phone': phone,
+          if (email != null) 'email': email,
           if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
-          'photo': ?photo,
+          if (photo != null) 'photo': photo,
+          'canApproveVisitors': canApproveVisitors,
         },
       );
 
@@ -61,17 +63,20 @@ class FamilyMemberRepository {
     String? email,
     DateTime? dateOfBirth,
     String? photo,
+    bool? canApproveVisitors,
   }) async {
     try {
       final response = await _dio.patch(
         ApiEndpoints.updateFamilyMember(id),
         data: {
-          'name': ?name,
-          'relationship': ?relationship,
-          'phone': ?phone,
-          'email': ?email,
+          if (name != null) 'name': name,
+          if (relationship != null) 'relationship': relationship,
+          if (phone != null) 'phone': phone,
+          if (email != null) 'email': email,
           if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
-          'photo': ?photo,
+          if (photo != null) 'photo': photo,
+          if (canApproveVisitors != null)
+            'canApproveVisitors': canApproveVisitors,
         },
       );
 

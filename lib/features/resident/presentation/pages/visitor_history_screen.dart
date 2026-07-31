@@ -11,6 +11,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../theme/context_extensions.dart';
 import '../../data/models/visitor_model.dart';
 import '../../data/providers/visitor_history_provider.dart';
+import '../providers/visitor_provider.dart';
 import '../widgets/list_skeleton.dart';
 import '../widgets/visitor_management_ui.dart';
 
@@ -381,6 +382,8 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final vehicle = visitor.vehicleNumber?.trim();
     final hasVehicle = vehicle != null && vehicle.isNotEmpty;
     final hasCheckout = visitor.checkOutTime != null;
+    final overstay = visitor.overstayActive;
+    final expected = visitor.expectedCheckoutAt;
 
     return Material(
       color: context.surface.defaultSurface,
@@ -388,7 +391,11 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
       shadowColor: Colors.black.withValues(alpha: 0.06),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: context.surface.border),
+        side: BorderSide(
+          color: overstay
+              ? DesignColors.warning.withValues(alpha: 0.45)
+              : context.surface.border,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -430,7 +437,47 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                VisitorMgmtStatusChip(statusRaw: visitor.status),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    VisitorMgmtStatusChip(statusRaw: visitor.status),
+                    if (overstay) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: DesignColors.warningLight,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: DesignColors.warning.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.timer_off_rounded,
+                              size: 12,
+                              color: DesignColors.warning,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Overstay',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: DesignColors.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -448,6 +495,12 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                   icon: Icons.schedule_outlined,
                   label: timeStr,
                 ),
+                if (expected != null && !hasCheckout)
+                  VisitorMgmtMetaChip(
+                    icon: Icons.alarm_outlined,
+                    label:
+                        'Expected by ${DateFormat('h:mm a').format(expected.toLocal())}',
+                  ),
                 if (hasVehicle)
                   VisitorMgmtMetaChip(
                     icon: Icons.directions_car_outlined,
@@ -482,10 +535,183 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                 ],
               ),
             ],
+            if (visitor.id != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: visitor.wrongEntryReported
+                    ? Text(
+                        'Wrong entry reported',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: context.text.tertiary,
+                        ),
+                      )
+                    : TextButton.icon(
+                        onPressed: () => _showWrongEntrySheet(visitor),
+                        icon: Icon(
+                          Icons.flag_outlined,
+                          size: 16,
+                          color: DesignColors.error,
+                        ),
+                        label: Text(
+                          'Report wrong entry',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: DesignColors.error,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+              ),
+            ],
           ],
         ),
       ),
     ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms);
+  }
+
+  Future<void> _showWrongEntrySheet(VisitorModel visitor) async {
+    final id = visitor.id;
+    if (id == null) return;
+
+    final reasonController = TextEditingController();
+    final noteController = TextEditingController();
+    String? errorText;
+    var submitting = false;
+
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.surface.defaultSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final bottom = MediaQuery.viewInsetsOf(ctx).bottom;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: context.surface.border,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Report wrong entry',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: context.text.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Tell the gate if ${_titleCaseName(visitor.name)} was checked in to the wrong flat or arrived unexpectedly.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: context.text.secondary,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: reasonController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLength: 200,
+                    decoration: InputDecoration(
+                      labelText: 'Reason',
+                      hintText: 'e.g. Wrong flat number',
+                      errorText: errorText,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: noteController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLines: 2,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      labelText: 'Note (optional)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: submitting
+                        ? null
+                        : () async {
+                            final reason = reasonController.text.trim();
+                            if (reason.length < 3) {
+                              setModalState(() {
+                                errorText = 'Enter at least 3 characters';
+                              });
+                              return;
+                            }
+                            setModalState(() {
+                              submitting = true;
+                              errorText = null;
+                            });
+                            try {
+                              await ref
+                                  .read(visitorRepositoryProvider)
+                                  .reportWrongEntry(
+                                    visitorId: id,
+                                    reason: reason,
+                                    residentNote: noteController.text.trim(),
+                                  );
+                              if (ctx.mounted) Navigator.of(ctx).pop(true);
+                            } catch (e) {
+                              setModalState(() {
+                                submitting = false;
+                                errorText = e.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    );
+                              });
+                            }
+                          },
+                    child: Text(submitting ? 'Submitting…' : 'Submit report'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    reasonController.dispose();
+    noteController.dispose();
+
+    if (submitted == true && mounted) {
+      await ref.read(paginatedVisitorHistoryProvider.notifier).refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wrong entry reported to the gate')),
+      );
+    }
   }
 
   String _formatDateHeader(DateTime date) {

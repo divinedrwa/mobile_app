@@ -7,6 +7,10 @@ class FamilyMemberModel {
   final String? email;
   final DateTime? dateOfBirth;
   final String? photo;
+  final bool canApproveVisitors;
+  final String? linkedUserId;
+  final String? linkedUserName;
+  final bool visitorApprovalLinked;
 
   FamilyMemberModel({
     this.id,
@@ -16,13 +20,16 @@ class FamilyMemberModel {
     this.email,
     this.dateOfBirth,
     this.photo,
+    this.canApproveVisitors = false,
+    this.linkedUserId,
+    this.linkedUserName,
+    this.visitorApprovalLinked = false,
   });
 
   factory FamilyMemberModel.fromJson(Map<String, dynamic> json) {
     return FamilyMemberModel(
       id: json['id'] as String?,
       name: json['name'] as String? ?? '',
-      // Backend uses 'relation', mobile uses 'relationship' - handle both
       relationship: (json['relationship'] ?? json['relation']) as String? ?? '',
       phone: json['phone'] as String?,
       email: json['email'] as String?,
@@ -30,6 +37,10 @@ class FamilyMemberModel {
           ? DateTime.tryParse(json['dateOfBirth'] as String)
           : null,
       photo: json['photo'] as String?,
+      canApproveVisitors: json['canApproveVisitors'] == true,
+      linkedUserId: json['linkedUserId'] as String?,
+      linkedUserName: json['linkedUserName'] as String?,
+      visitorApprovalLinked: json['visitorApprovalLinked'] == true,
     );
   }
 
@@ -42,6 +53,32 @@ class FamilyMemberModel {
       if (email != null) 'email': email,
       if (dateOfBirth != null) 'dateOfBirth': dateOfBirth!.toIso8601String(),
       if (photo != null) 'photo': photo,
+      'canApproveVisitors': canApproveVisitors,
+      if (linkedUserId != null) 'linkedUserId': linkedUserId,
+      if (linkedUserName != null) 'linkedUserName': linkedUserName,
+      'visitorApprovalLinked': visitorApprovalLinked,
     };
+  }
+
+  FamilyMemberModel copyWith({
+    bool? canApproveVisitors,
+    String? linkedUserId,
+    String? linkedUserName,
+    bool? visitorApprovalLinked,
+  }) {
+    return FamilyMemberModel(
+      id: id,
+      name: name,
+      relationship: relationship,
+      phone: phone,
+      email: email,
+      dateOfBirth: dateOfBirth,
+      photo: photo,
+      canApproveVisitors: canApproveVisitors ?? this.canApproveVisitors,
+      linkedUserId: linkedUserId ?? this.linkedUserId,
+      linkedUserName: linkedUserName ?? this.linkedUserName,
+      visitorApprovalLinked:
+          visitorApprovalLinked ?? this.visitorApprovalLinked,
+    );
   }
 }

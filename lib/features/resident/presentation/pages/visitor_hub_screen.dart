@@ -892,7 +892,7 @@ class _LiveVisitorsSection extends StatelessWidget {
                 context,
                 'Live Visitors',
                 'View all',
-                () => context.push('/resident/visitor-requests'),
+                () => context.push('/resident/visitor-history?status=CHECKED_IN'),
                 badge: '${live.length} Inside',
               ),
               const SizedBox(height: 10),
@@ -914,7 +914,7 @@ class _LiveVisitorsSection extends StatelessWidget {
                     for (int i = 0; i < live.length && i < 3; i++) ...[
                       if (i > 0)
                         Divider(height: 1, color: DesignColors.borderLight),
-                      _LiveVisitorRow(visitor: live[i]),
+                      _LiveVisitorRow(visitor: live[i] as VisitorModel),
                     ],
                   ],
                 ),
@@ -929,18 +929,19 @@ class _LiveVisitorsSection extends StatelessWidget {
 class _LiveVisitorRow extends StatelessWidget {
   const _LiveVisitorRow({required this.visitor});
 
-  final dynamic visitor;
+  final VisitorModel visitor;
 
   @override
   Widget build(BuildContext context) {
-    final name = (visitor.name as String? ?? '').trim();
+    final name = visitor.name.trim();
     final displayName = name.isEmpty ? 'Visitor' : name;
-    final phone = (visitor.phone as String? ?? '').trim();
-    final checkInTime = visitor.checkInTime as DateTime?;
+    final phone = visitor.phone.trim();
+    final checkInTime = visitor.checkInTime;
     final timeFmt = checkInTime != null
         ? 'Since ${DateFormat('h:mm a').format(checkInTime.toLocal())}'
         : null;
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final overstay = visitor.overstayActive;
 
     Future<void> callVisitor() async {
       if (phone.isEmpty) return;
@@ -948,10 +949,8 @@ class _LiveVisitorRow extends StatelessWidget {
       if (await canLaunchUrl(uri)) await launchUrl(uri);
     }
 
-    // Residents cannot check out visitors (guard action).
-    // Row taps → gate requests screen (live status view).
     return InkWell(
-      onTap: () => context.push('/resident/visitor-requests'),
+      onTap: () => context.push('/resident/visitor-history?status=CHECKED_IN'),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
         child: Row(
@@ -1000,15 +999,17 @@ class _LiveVisitorRow extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _kPurple.withValues(alpha: 0.1),
+                          color: overstay
+                              ? DesignColors.warning.withValues(alpha: 0.12)
+                              : _kPurple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          'Inside',
+                          overstay ? 'Overstay' : 'Inside',
                           style: TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
-                            color: _kPurple,
+                            color: overstay ? DesignColors.warning : _kPurple,
                             height: 1,
                           ),
                         ),

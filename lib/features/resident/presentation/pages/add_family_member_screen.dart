@@ -30,6 +30,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
   String _selectedRelationship = 'Spouse';
   DateTime? _dateOfBirth;
   bool _isSubmitting = false;
+  bool _canApproveVisitors = false;
 
   final List<String> _relationships = FormOptions.familyRelationships;
 
@@ -42,6 +43,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
       _phoneController.text = widget.member!.phone ?? '';
       _emailController.text = widget.member!.email ?? '';
       _dateOfBirth = widget.member!.dateOfBirth;
+      _canApproveVisitors = widget.member!.canApproveVisitors;
     }
   }
 
@@ -148,6 +150,19 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: DesignSpacing.lg),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _canApproveVisitors,
+              onChanged: (v) => setState(() => _canApproveVisitors = v),
+              title: const Text(
+                'Can approve gate visitors',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Links to a family app account with the same phone number in your villa. They will receive visitor approval pushes.',
+              ),
+            ),
           ],
         ),
       ),
@@ -215,6 +230,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 ? null
                 : _emailController.text.trim(),
             dateOfBirth: _dateOfBirth,
+            canApproveVisitors: _canApproveVisitors,
           )
         : await notifier.updateFamilyMember(
             id: widget.member!.id!,
@@ -227,6 +243,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                 ? null
                 : _emailController.text.trim(),
             dateOfBirth: _dateOfBirth,
+            canApproveVisitors: _canApproveVisitors,
           );
 
     if (mounted) {
