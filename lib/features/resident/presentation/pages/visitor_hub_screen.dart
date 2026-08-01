@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/utils/society_time.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -1253,12 +1255,10 @@ class _UpcomingRow extends StatelessWidget {
     final icon = _typeIcon(visitor.type);
     final color = _typeColor(visitor.type);
     final label = _typeLabel(visitor.type);
-    final timeFmt = DateFormat('d MMM · h:mm a').format(visitor.visitDate);
+    final timeFmt = DateFormat('d MMM · h:mm a').format(visitor.visitDate.toLocal());
     final flat = visitor.flatLabel ?? '';
     final hasExpiry = visitor.passcodeExpiry != null;
-    final isToday = visitor.visitDate.toLocal().day == DateTime.now().day &&
-        visitor.visitDate.toLocal().month == DateTime.now().month &&
-        visitor.visitDate.toLocal().year == DateTime.now().year;
+    final isToday = isSocietyLocalToday(visitor.visitDate);
 
     return InkWell(
       onTap: () => context.push('/resident/my-pre-approved-visitors'),

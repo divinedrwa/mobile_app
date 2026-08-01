@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/utils/society_time.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/maintenance_due_model.dart';
@@ -85,7 +86,7 @@ class HomeOutstandingDues extends StatelessWidget {
                   : earliestDue;
         }
 
-        final now = DateTime.now();
+        final now = DateTime.now().toUtc();
 
         final String statusLabel;
         final Color accent;
@@ -97,7 +98,7 @@ class HomeOutstandingDues extends StatelessWidget {
           accent = DesignColors.primary;
           badgeBg = DesignColors.primary.withValues(alpha: 0.12);
           badgeFg = DesignColors.primary;
-        } else if (earliestDue.isBefore(now)) {
+        } else if (compareSocietyLocalDays(earliestDue, now) < 0) {
           statusLabel = 'Overdue';
           accent = DesignColors.error;
           badgeBg = const Color(0xFFFEE2E2);
@@ -112,16 +113,14 @@ class HomeOutstandingDues extends StatelessWidget {
         final String scheduleLine;
         if (earliestDue == null) {
           scheduleLine = 'Tap to review and pay';
-        } else if (earliestDue.isBefore(now)) {
-          final overdueDays =
-              now.difference(earliestDue).inDays.abs();
+        } else if (compareSocietyLocalDays(earliestDue, now) < 0) {
+          final overdueDays = societyLocalDayDifference(earliestDue, now).abs();
           scheduleLine =
-              '$overdueDays day${overdueDays == 1 ? '' : 's'} overdue · ${DateFormat('dd MMM yyyy').format(earliestDue)}';
+              '$overdueDays day${overdueDays == 1 ? '' : 's'} overdue · ${DateFormat('dd MMM yyyy').format(earliestDue.toLocal())}';
         } else {
-          final daysLeft =
-              earliestDue.difference(now).inDays + 1;
+          final daysLeft = societyLocalDayDifference(now, earliestDue) + 1;
           scheduleLine =
-              '${DateFormat('dd MMM yyyy').format(earliestDue)} · $daysLeft day${daysLeft == 1 ? '' : 's'} left';
+              '${DateFormat('dd MMM yyyy').format(earliestDue.toLocal())} · $daysLeft day${daysLeft == 1 ? '' : 's'} left';
         }
 
         final countHint = count > 1 ? ' · $count charges' : '';

@@ -128,7 +128,7 @@ class PaymentListTile extends StatelessWidget {
                     Text(
                       paidDate != null
                           ? 'Paid ${dateFmt.format(paidDate!)}'
-                          : 'Due ${dateFmt.format(dueDate!)}',
+                          : 'Due ${dateFmt.format(dueDate!.toLocal())}',
                       style: DesignTypography.caption.copyWith(
                         color: DesignColors.textTertiary,
                       ),

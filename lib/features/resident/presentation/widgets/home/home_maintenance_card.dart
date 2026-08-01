@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
 import '../../../../../core/theme/design_tokens.dart';
+import '../../../../../core/utils/society_time.dart';
 import '../../../../../core/theme/semantic_colors.dart';
 import '../../../../../core/widgets/shimmer_box.dart';
 import '../../../../../theme/context_extensions.dart';
@@ -63,7 +64,7 @@ _MaintenanceShellStyle _resolveShellStyle(List<MaintenanceDueModel>? pending) {
     }
   }
 
-  if (earliestDue != null && earliestDue.isBefore(DateTime.now())) {
+  if (earliestDue != null && compareSocietyLocalDays(earliestDue, DateTime.now().toUtc()) < 0) {
     return _MaintenanceShellStyle(
       dueState: _MaintenanceDueState.overdue,
       palette: DueStatePalette.of(DueVisualState.overdue),
@@ -563,7 +564,7 @@ class _DueHeader extends StatelessWidget {
         earliestDue = item.dueDate;
       }
     }
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final count = pending.length;
 
     final palette = DueStatePalette.of(_toVisualState(dueState));
@@ -576,14 +577,14 @@ class _DueHeader extends StatelessWidget {
     final String scheduleLine;
     if (earliestDue == null) {
       scheduleLine = '$count pending bill${count != 1 ? 's' : ''}';
-    } else if (earliestDue.isBefore(now)) {
-      final overdueDays = now.difference(earliestDue).inDays;
+    } else if (compareSocietyLocalDays(earliestDue, now) < 0) {
+      final overdueDays = societyLocalDayDifference(earliestDue, now).abs();
       scheduleLine =
           '$count bill${count != 1 ? 's' : ''} \u2022 $overdueDays day${overdueDays == 1 ? '' : 's'} overdue';
     } else {
-      final daysLeft = earliestDue.difference(now).inDays + 1;
+      final daysLeft = societyLocalDayDifference(now, earliestDue) + 1;
       scheduleLine =
-          '$count bill${count != 1 ? 's' : ''} \u2022 due ${DateFormat('dd MMM').format(earliestDue)} ($daysLeft day${daysLeft == 1 ? '' : 's'})';
+          '$count bill${count != 1 ? 's' : ''} \u2022 due ${DateFormat('dd MMM').format(earliestDue.toLocal())} ($daysLeft day${daysLeft == 1 ? '' : 's'})';
     }
 
     return Material(
