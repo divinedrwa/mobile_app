@@ -15,7 +15,7 @@ class PlatformHelpScreen extends StatelessWidget {
     ('Visitor approval', true, false, true),
     ('Guard walk-in check-in', true, false, true),
     ('Reconciliation', true, false, true),
-    ('Push notifications', true, false, true),
+    ('Push notifications', true, true, true),
   ];
 
   @override

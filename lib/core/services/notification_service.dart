@@ -877,6 +877,14 @@ class NotificationService {
           }
           return true;
         }
+        if (type == 'RESIDENT_ONLINE_PAYMENT_RECEIVED') {
+          if (_isAdminLikeSession()) {
+            router.push('/resident/admin-maintenance-actions');
+          } else {
+            router.push('/resident/maintenance');
+          }
+          return true;
+        }
         if (type == 'UPI_PAYMENT_VERIFIED' || type == 'UPI_PAYMENT_REJECTED') {
           router.push('/resident/maintenance');
           return true;
@@ -957,6 +965,7 @@ class NotificationService {
       'WATER_SUPPLY_OFF',
       'GARBAGE_COLLECTOR_ARRIVED',
       'UPI_PAYMENT_SUBMITTED',
+      'RESIDENT_ONLINE_PAYMENT_RECEIVED',
       'UPI_PAYMENT_VERIFIED',
       'UPI_PAYMENT_REJECTED',
       'SPECIAL_PROJECT_CREATED',
@@ -989,6 +998,7 @@ class NotificationService {
       'billing_due_reminder',
       'BILLING_GRACE_REMINDER',
       'UPI_PAYMENT_SUBMITTED',
+      'RESIDENT_ONLINE_PAYMENT_RECEIVED',
       'UPI_PAYMENT_VERIFIED',
       'UPI_PAYMENT_REJECTED',
       'WATER_SUPPLY_REQUEST',
