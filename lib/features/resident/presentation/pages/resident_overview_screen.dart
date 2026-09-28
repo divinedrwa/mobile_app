@@ -29,8 +29,9 @@ class ResidentOverviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userExcluded = ref.watch(authProvider).user?.isBillingExcluded ?? false;
+    // Non-paying villas keep maintenance counters only while old dues remain.
     final billingExcludedFromCycle = ref.watch(residentBillingCycleProvider).maybeWhen(
-      data: (c) => c.maintenanceBillingExcluded,
+      data: (c) => c.maintenanceBillingExcluded || c.villaFullyExempt,
       orElse: () => false,
     );
     final isBillingExcluded = userExcluded || billingExcludedFromCycle;

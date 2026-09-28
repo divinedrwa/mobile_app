@@ -98,8 +98,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final billingAsync = ref.watch(residentBillingCycleProvider);
     final securityContactsAsync = ref.watch(securityContactsProvider);
     final user = authState.user;
+    // Non-paying villas keep the maintenance card only while old dues remain.
     final billingExcludedFromCycle = billingAsync.maybeWhen(
-      data: (c) => c.maintenanceBillingExcluded,
+      data: (c) => c.maintenanceBillingExcluded || c.villaFullyExempt,
       orElse: () => false,
     );
     final isBillingExcluded =

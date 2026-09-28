@@ -53,6 +53,7 @@ class BillingCycleCurrent {
     this.pendingDues = const [],
     this.maintenanceBillingRole,
     this.maintenanceBillingExcluded = false,
+    this.villaMaintenanceExemptFrom,
   });
 
   final String? cycleId;
@@ -79,7 +80,28 @@ class BillingCycleCurrent {
   final String? maintenanceBillingRole;
   final bool maintenanceBillingExcluded;
 
+  /// "YYYY-MM" from which the resident's villa is not billed (null = villa pays).
+  /// Dues raised before that month stay payable.
+  final String? villaMaintenanceExemptFrom;
+
   bool get hasCycle => cycleId != null && cycleId!.isNotEmpty;
+
+  bool get villaNotPaying => villaMaintenanceExemptFrom != null;
+
+  /// Villa is not paying maintenance and has nothing left to pay.
+  bool get villaFullyExempt =>
+      villaNotPaying &&
+      (remainingDue ?? 0) <= 0.5 &&
+      !pendingDues.any((d) => d.amount > 0.5);
+
+  /// True while the current month is still billed and billing stops later.
+  bool get villaExemptionUpcoming {
+    final from = villaMaintenanceExemptFrom;
+    if (from == null) return false;
+    final now = DateTime.now();
+    final current = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    return from.compareTo(current) > 0;
+  }
 
   factory BillingCycleCurrent.fromJson(Map<String, dynamic> json) {
     double? dv(dynamic x) =>
@@ -116,6 +138,7 @@ class BillingCycleCurrent {
       pendingDues: pendingDues,
       maintenanceBillingRole: json['maintenanceBillingRole']?.toString(),
       maintenanceBillingExcluded: json['maintenanceBillingExcluded'] == true,
+      villaMaintenanceExemptFrom: json['villaMaintenanceExemptFrom']?.toString(),
     );
   }
 
@@ -142,6 +165,7 @@ class BillingCycleCurrent {
         pendingDues: pendingDues,
         maintenanceBillingRole: maintenanceBillingRole,
         maintenanceBillingExcluded: maintenanceBillingExcluded,
+        villaMaintenanceExemptFrom: villaMaintenanceExemptFrom,
       );
 }
 

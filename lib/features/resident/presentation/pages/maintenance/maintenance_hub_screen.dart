@@ -255,6 +255,24 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
             .fold<double>(0, (acc, e) => acc + e.remainingDue);
         final hasDues = totalActionable > 0.5;
         final windowText = _cycleWindowText(cycle);
+        final exemptLabel = _periodLabel(cycle.villaMaintenanceExemptFrom);
+
+        if (cycle.villaNotPaying && !hasDues && !cycle.villaExemptionUpcoming) {
+          return MaintenanceHeroCard(
+            kind: MaintenanceHeroKind.excluded,
+            title: 'Your villa isn\'t billed for maintenance',
+            subtitle:
+                'Since $exemptLabel your villa is not part of maintenance billing. '
+                'Visitors, parcels and all other features work as usual. '
+                'Past receipts stay available here.',
+          );
+        }
+        // Old dues are still payable after billing stops; say so on the due card.
+        final exemptNote = !cycle.villaNotPaying
+            ? null
+            : cycle.villaExemptionUpcoming
+                ? 'Maintenance billing for your villa stops from $exemptLabel.'
+                : 'Your villa is not billed from $exemptLabel. Please clear the dues raised before that.';
 
         if (!hasDues && cycle.isPaid) {
           final paid = (cycle.paidAmount ?? 0) > 0
@@ -264,12 +282,14 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
             kind: MaintenanceHeroKind.paid,
             badgeLabel: 'Paid',
             title: cycle.title ?? 'Maintenance',
-            subtitle: 'You\'re all set! This cycle is fully paid.',
+            subtitle: exemptNote == null
+                ? 'You\'re all set! This cycle is fully paid.'
+                : 'You\'re all set! This cycle is fully paid. $exemptNote',
             primaryLabel: 'Amount paid',
             primaryValue: _inr.format(paid),
-            secondaryLabel: 'Next due on',
+            secondaryLabel: cycle.villaNotPaying ? null : 'Next due on',
             onViewDetails: viewDetails,
-            secondaryValue: cycle.dueDateUtc != null
+            secondaryValue: !cycle.villaNotPaying && cycle.dueDateUtc != null
                 ? _dateFmt.format(cycle.dueDateUtc!)
                 : null,
             windowText: windowText,
@@ -280,7 +300,8 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
           return MaintenanceHeroCard(
             kind: MaintenanceHeroKind.upcoming,
             title: cycle.title ?? 'No dues right now',
-            subtitle: 'Nothing is due — we\'ll notify you when the next cycle opens.',
+            subtitle: exemptNote ??
+                'Nothing is due — we\'ll notify you when the next cycle opens.',
             secondaryLabel: 'Next window opens',
             secondaryValue: cycle.paymentStartUtc != null
                 ? _dateFmt.format(cycle.paymentStartUtc!)
@@ -297,9 +318,10 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
               : MaintenanceHeroKind.due,
           badgeLabel: isOverdue ? 'Overdue' : 'Due',
           title: cycle.title ?? 'Maintenance',
-          subtitle: isOverdue
-              ? 'Payment is past due — please clear it soon.'
-              : 'You have an outstanding maintenance balance.',
+          subtitle: exemptNote ??
+              (isOverdue
+                  ? 'Payment is past due — please clear it soon.'
+                  : 'You have an outstanding maintenance balance.'),
           primaryLabel: 'Amount due',
           primaryValue: _inr.format(totalActionable),
           secondaryLabel: isOverdue ? 'Was due on' : 'Due on',
@@ -311,6 +333,16 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
         );
       },
     );
+  }
+
+  /// "2026-10" → "Oct 2026"
+  String _periodLabel(String? period) {
+    if (period == null) return '';
+    final parts = period.split('-');
+    final y = int.tryParse(parts.first);
+    final m = parts.length > 1 ? int.tryParse(parts[1]) : null;
+    if (y == null || m == null) return period;
+    return DateFormat('MMM yyyy').format(DateTime(y, m));
   }
 
   String? _cycleWindowText(BillingCycleCurrent cycle) {
