@@ -31,8 +31,10 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
       expect(find.byType(BrandedSplashScreen), findsOneWidget);
 
-      // Loading dots use a repeating animation — pumpAndSettle never completes.
-      // Advance past the splash hold timer so pending timers are drained.
+      // Unmount before the splash hands off to the (network-backed) society
+      // picker, then advance past the splash hold timer so pending timers drain.
+      // (Loading dots repeat forever — pumpAndSettle never completes.)
+      await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 2300));
       await tester.pump();
     },

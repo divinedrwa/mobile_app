@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_error_message.dart';
+import '../../../core/network/session_refresher.dart';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/storage_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -644,42 +645,17 @@ class AuthRepository {
   /// (no internet, timeout, server 500, etc.) so the caller can keep the
   /// session alive with cached data instead of force-logging out.
   Future<RefreshResult> refreshTokens() async {
-    final refreshToken = await StorageService.getRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) {
-      return RefreshResult.rejected;
-    }
-    try {
-      // Use a fresh Dio to avoid interceptor loops.
-      final freshDio = Dio(BaseOptions(
-        baseUrl: DioClient.dio.options.baseUrl,
-        connectTimeout: DioClient.dio.options.connectTimeout,
-        receiveTimeout: DioClient.dio.options.receiveTimeout,
-        headers: {'Content-Type': 'application/json'},
-      ));
-      final response = await freshDio.post(
-        ApiEndpoints.refreshToken,
-        data: {'refreshToken': refreshToken},
-      );
-      final data = response.data as Map<String, dynamic>;
-      final newToken = data['token'] as String?;
-      final newRefresh = data['refreshToken'] as String?;
-      if (newToken == null || newRefresh == null) {
+    final result = await SessionRefresher.refresh();
+    switch (result.status) {
+      case SessionRefreshStatus.success:
+        if (result.data != null) {
+          await _persistLegalFlag(result.data!['legal']);
+        }
+        return RefreshResult.success;
+      case SessionRefreshStatus.rejected:
         return RefreshResult.rejected;
-      }
-      await StorageService.saveToken(newToken);
-      await StorageService.saveRefreshToken(newRefresh);
-      await _persistLegalFlag(data['legal']);
-      return RefreshResult.success;
-    } on DioException catch (e) {
-      // Server explicitly rejected the refresh token → session is dead.
-      final status = e.response?.statusCode;
-      if (status == 401 || status == 403) {
-        return RefreshResult.rejected;
-      }
-      // Network/timeout/5xx — transient failure; session may still be valid.
-      return RefreshResult.networkError;
-    } catch (_) {
-      return RefreshResult.networkError;
+      case SessionRefreshStatus.transient:
+        return RefreshResult.networkError;
     }
   }
 

@@ -6,11 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/network/dio_client.dart';
 import '../../../../core/theme/society_theme_cache.dart';
 import '../../../../core/utils/storage_service.dart';
 import '../../../../theme/theme_controller.dart';
 import '../../../../theme/app_colors.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/auth_brand_logo.dart';
 
 /// GatePass+ brand colors on the default splash (from [AppColorPalette] anchors).
@@ -129,48 +129,31 @@ class _BrandedSplashScreenState extends ConsumerState<BrandedSplashScreen>
       await _prefetchSocietyAppearance().timeout(const Duration(seconds: 8));
     } catch (_) {}
 
-    // Never let a storage read block navigation. Secure storage can throw
-    // (e.g. AEADBadTagException after a reinstall with a different signing
-    // key); treat any failure as "no session" and continue to login.
-    String? token;
-    try {
-      token = await StorageService.getToken();
-    } catch (_) {
-      token = null;
-    }
-    final hasSession = token != null && token.isNotEmpty;
+    if (!mounted) return;
+    // Decide from the restored auth state (restored synchronously from the
+    // cached profile at startup), not the raw token.
+    final auth = ref.read(authProvider);
 
     final preferredSid = StorageService.getPreferredLoginSocietyId()?.trim() ?? '';
     String target = preferredSid.isNotEmpty ? '/login' : '/society-select';
-    if (hasSession) {
-      final rawRole = StorageService.getUserRole();
-      if (rawRole != null && rawRole.isNotEmpty) {
-        switch (UserRole.fromString(rawRole)) {
-          case UserRole.superAdmin:
-            await StorageService.clearAuthUserSession();
-            DioClient.reset();
-            break;
-          case UserRole.resident:
-            target = '/resident';
-            break;
-          case UserRole.guard:
-            target = '/guard/dashboard';
-            break;
-          case UserRole.admin:
-            target = '/resident';
-            break;
-          case UserRole.residentCumAdmin:
-            target = '/resident';
-            break;
-        }
-      } else {
-        target = '/resident';
+    final role = auth.user?.role;
+    if (role != null) {
+      switch (role) {
+        case UserRole.superAdmin:
+          // AuthNotifier logs super-admins out; stay on login.
+          break;
+        case UserRole.guard:
+          target = '/guard/dashboard';
+          break;
+        case UserRole.resident:
+        case UserRole.admin:
+        case UserRole.residentCumAdmin:
+          target = '/resident';
+          break;
       }
     }
 
-    if (mounted) {
-      context.go(target);
-    }
+    context.go(target);
   }
 
   bool get _showCustomSplash =>

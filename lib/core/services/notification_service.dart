@@ -86,6 +86,9 @@ class NotificationService {
 
   Map<String, String>? _pendingPushData;
 
+  /// Set by the app shell: true once a signed-in user has left the splash.
+  static bool Function()? isNavigationReady;
+
   Future<void> initialize() async {
     if (kIsWeb) {
       return _initializeWeb();
@@ -909,6 +912,14 @@ class NotificationService {
         fcmDiag('NAV_ERR', 'go() failed type="$type"', e, st);
         return false;
       }
+    }
+
+    // Until the signed-in user is on their home screen (cold start from a tap,
+    // splash still up), keep the tap and replay it via [flushPendingNavigation].
+    if (!(isNavigationReady?.call() ?? true)) {
+      fcmDiag('NAV', 'defer: app not ready (auth/splash) → pending type=$type');
+      _pendingPushData = Map<String, String>.from(navData);
+      return false;
     }
 
     final ctx = appRootNavigatorKey.currentContext;

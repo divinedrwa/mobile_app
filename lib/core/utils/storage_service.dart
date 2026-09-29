@@ -24,34 +24,60 @@ class StorageService {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  /// Self-healing secure-storage read.
+  static const _secureRetryDelays = [
+    Duration(milliseconds: 150),
+    Duration(milliseconds: 400),
+  ];
+
+  /// True only when the store can never be decrypted again (reinstall with a
+  /// different signing key, restored backup, reset keystore). Everything else —
+  /// concurrent access, keychain locked after a reboot, keystore busy — is
+  /// transient and must never wipe the saved login.
+  static bool _isUnrecoverableSecureStorageError(Object e) {
+    final s = e.toString();
+    return s.contains('AEADBadTagException') ||
+        s.contains('BadPaddingException') ||
+        s.contains('VERIFICATION_FAILED') ||
+        s.contains('InvalidProtocolBufferException');
+  }
+
+  /// Secure-storage read that survives transient failures.
   ///
-  /// After the app is reinstalled with a different signing key (sideloaded ↔
-  /// Play build), restored from backup, or the device keystore is reset,
-  /// Android's EncryptedSharedPreferences can no longer decrypt its data and
-  /// throws `AEADBadTagException` / keystore `VERIFICATION_FAILED`. The data is
-  /// unrecoverable, so we wipe the corrupted store and return null (the user
-  /// simply logs in again) instead of letting the exception propagate — an
-  /// unguarded throw here froze the app on the splash (getToken during boot).
+  /// Retries a few times; wipes the store only for unrecoverable decryption
+  /// errors (the user then logs in again). A transient failure returns null
+  /// for this read but leaves the stored session intact.
   static Future<String?> _secureRead(String key) async {
-    try {
-      return await _secure.read(key: key);
-    } catch (e) {
-      await _healCorruptSecureStorage();
-      return null;
+    for (var attempt = 0; ; attempt++) {
+      try {
+        return await _secure.read(key: key);
+      } catch (e) {
+        if (_isUnrecoverableSecureStorageError(e)) {
+          await _healCorruptSecureStorage();
+          return null;
+        }
+        if (attempt >= _secureRetryDelays.length) return null;
+        await Future<void>.delayed(_secureRetryDelays[attempt]);
+      }
     }
   }
 
   static Future<void> _secureWrite(String key, String value) async {
-    try {
-      await _secure.write(key: key, value: value);
-    } catch (e) {
-      // A corrupt store can also fail writes; wipe and retry once on a fresh one.
-      await _healCorruptSecureStorage();
+    for (var attempt = 0; ; attempt++) {
       try {
         await _secure.write(key: key, value: value);
-      } catch (_) {
-        // Give up silently — never crash the caller over token persistence.
+        return;
+      } catch (e) {
+        if (_isUnrecoverableSecureStorageError(e)) {
+          // Corrupt store: wipe and write once on a fresh one.
+          await _healCorruptSecureStorage();
+          try {
+            await _secure.write(key: key, value: value);
+          } catch (_) {}
+          return;
+        }
+        // Never crash the caller over token persistence.
+        if (attempt >= _secureRetryDelays.length) return;
+        await Future<void>.delayed(_secureRetryDelays[attempt]);
       }
     }
   }
@@ -59,8 +85,10 @@ class StorageService {
   static Future<void> _secureDelete(String key) async {
     try {
       await _secure.delete(key: key);
-    } catch (_) {
-      await _healCorruptSecureStorage();
+    } catch (e) {
+      if (_isUnrecoverableSecureStorageError(e)) {
+        await _healCorruptSecureStorage();
+      }
     }
   }
 

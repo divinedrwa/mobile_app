@@ -145,8 +145,9 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    NotificationService.isNavigationReady = _isReadyForPushNavigation;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService().flushPendingNavigation();
+      _flushPendingPushIfReady();
       AccountDeactivatedHandler.register(() async {
         try {
           await ref.read(authProvider.notifier).logout();
@@ -210,6 +211,26 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
     }
   }
 
+  static const _preHomePaths = {'/', '/login', '/society-select', '/legal-consent'};
+
+  /// Push taps navigate only once a signed-in user is on their home tree, so a
+  /// tap that cold-starts the app goes splash → home → target (never login).
+  bool _isReadyForPushNavigation() {
+    final auth = ref.read(authProvider);
+    if (!auth.isInitialized || auth.user == null) return false;
+    final path = _currentRouterPath();
+    return path != null && !_preHomePaths.contains(path);
+  }
+
+  /// Opens a notification that was tapped before the app was ready. Runs on
+  /// every route change, so it fires as soon as the user reaches home (after
+  /// the splash, and after login if they were signed out).
+  void _flushPendingPushIfReady() {
+    if (_isReadyForPushNavigation()) {
+      NotificationService().flushPendingNavigation();
+    }
+  }
+
   void _registerResidentDataRefresh() {
     onResidentDataRefreshRequested = () {
       unawaited(ref.read(authProvider.notifier).refreshProfile());
@@ -268,6 +289,7 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _router?.routerDelegate.removeListener(_flushPendingPushIfReady);
     _router?.dispose();
     _routerRefresh.dispose();
     super.dispose();
@@ -275,7 +297,10 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    _router ??= AppRouter.router(ref, refreshListenable: _routerRefresh);
+    if (_router == null) {
+      _router = AppRouter.router(ref, refreshListenable: _routerRefresh);
+      _router!.routerDelegate.addListener(_flushPendingPushIfReady);
+    }
 
     // Refresh the router when the user logs in/out, or when the L2 legal-consent
     // gate opens/closes (so the redirect re-runs while already authenticated).
@@ -284,7 +309,8 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
       final nowAuth = next.isAuthenticated;
       final legalChanged = (prev?.requiresLegalAcceptance ?? false) !=
           next.requiresLegalAcceptance;
-      if (wasAuth != nowAuth || legalChanged) {
+      final initChanged = (prev?.isInitialized ?? false) != next.isInitialized;
+      if (wasAuth != nowAuth || legalChanged || initChanged) {
         _routerRefresh.notify();
       }
       if (wasAuth && !nowAuth) {

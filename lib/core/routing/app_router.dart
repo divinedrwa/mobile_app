@@ -114,7 +114,8 @@ class AppRouter {
       refreshListenable: refreshListenable,
       redirect: (context, state) {
         try {
-          final user = ref.read(authProvider).user;
+          final auth = ref.read(authProvider);
+          final user = auth.user;
           final isAuthenticated = user != null;
           final loc = state.matchedLocation;
           final isSplash = loc == '/';
@@ -125,6 +126,10 @@ class AppRouter {
           final isResidentRoute = loc.startsWith('/resident');
 
           if (isSplash) return null;
+
+          // Saved session not read yet: "no user" is unknown, not logged out.
+          // Hold on the splash, which moves on once auth is ready.
+          if (!auth.isInitialized) return '/';
 
           if (!isAuthenticated) {
             final preferredSid = StorageService.getPreferredLoginSocietyId()?.trim();
@@ -205,6 +210,9 @@ class AppRouter {
           return null;
         } catch (e) {
           debugPrint('GoRouter redirect error: $e');
+          // Never bounce a signed-in user to login because of a routing error.
+          final user = ref.read(authProvider).user;
+          if (user != null) return null;
           final sid = StorageService.getPreferredLoginSocietyId()?.trim() ?? '';
           return sid.isNotEmpty ? '/login' : '/society-select';
         }

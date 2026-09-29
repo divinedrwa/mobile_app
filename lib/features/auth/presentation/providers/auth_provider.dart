@@ -19,11 +19,17 @@ class AuthState {
   /// The router redirects authenticated users to `/legal-consent` while true.
   final bool requiresLegalAcceptance;
 
+  /// False until the saved session has been read at startup. Until then
+  /// `user == null` means "not known yet", not "logged out", so nothing may
+  /// send the user to the login screen.
+  final bool isInitialized;
+
   const AuthState({
     this.user,
     this.isLoading = false,
     this.errorMessage,
     this.requiresLegalAcceptance = false,
+    this.isInitialized = true,
   });
 
   AuthState copyWith({
@@ -32,6 +38,7 @@ class AuthState {
     String? errorMessage,
     bool clearUser = false,
     bool? requiresLegalAcceptance,
+    bool? isInitialized,
   }) {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
@@ -39,6 +46,7 @@ class AuthState {
       errorMessage: errorMessage,
       requiresLegalAcceptance:
           requiresLegalAcceptance ?? this.requiresLegalAcceptance,
+      isInitialized: isInitialized ?? this.isInitialized,
     );
   }
 
@@ -58,49 +66,61 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final Ref ref;
   bool _loggingOut = false;
 
-  AuthNotifier(this._authRepository, this.ref) : super(const AuthState()) {
+  AuthNotifier(this._authRepository, this.ref)
+      : super(const AuthState(isInitialized: false)) {
     _init();
   }
 
+  /// Restores the signed-in user from the cached profile (SharedPreferences —
+  /// no platform-channel or network wait), so a logged-in user goes straight
+  /// to their home screen, also when the app is opened from a notification.
+  /// The token check and refresh run in the background; only a server
+  /// rejection of the session logs the user out.
   Future<void> _init() async {
-    final isLoggedIn = await _authRepository.isLoggedIn();
-    if (isLoggedIn) {
-      // Proactively refresh the access token on app launch if it's expired
-      // (or close to expiry). The user stays logged in seamlessly as long as
-      // their refresh token is still valid.
-      if (await _authRepository.isTokenExpired()) {
+    UserModel? cachedUser;
+    try {
+      cachedUser = _authRepository.getCachedUser();
+    } catch (_) {
+      cachedUser = null;
+    }
+    if (cachedUser == null) {
+      state = const AuthState();
+      return;
+    }
+    if (cachedUser.role == UserRole.superAdmin) {
+      state = const AuthState();
+      unawaited(_authRepository.logout());
+      return;
+    }
+    state = AuthState(
+      user: cachedUser,
+      requiresLegalAcceptance: _cachedRequiresLegal(),
+    );
+    unawaited(_restoreSessionInBackground());
+  }
+
+  Future<void> _restoreSessionInBackground() async {
+    try {
+      await _authRepository.repairCachedUserDataIfNeeded();
+      // Refresh proactively only when a stored token exists and has expired.
+      // If the token can't be read right now, API calls refresh on demand.
+      if (await _authRepository.isLoggedIn() &&
+          await _authRepository.isTokenExpired()) {
         final result = await _authRepository.refreshTokens();
         if (result == RefreshResult.rejected) {
-          // Server explicitly rejected the refresh token (revoked, expired,
-          // password changed) — force a clean logout.
-          await _authRepository.logout();
-          state = const AuthState();
+          // Refresh token revoked or expired (logout elsewhere, password change).
+          await logout();
           return;
         }
-        // On [RefreshResult.networkError] we proceed with cached user data
-        // and the stale access token. The TokenRefreshInterceptor will
-        // transparently retry the refresh on the next API call once the
-        // network is back. The user stays logged in.
+        // networkError: keep the session; the next API call retries the refresh.
       }
-
-      await _authRepository.repairCachedUserDataIfNeeded();
-      final cachedUser = _authRepository.getCachedUser();
-      if (cachedUser != null) {
-        if (cachedUser.role == UserRole.superAdmin) {
-          await _authRepository.logout();
-          state = const AuthState();
-          return;
-        }
-        state = state.copyWith(
-          user: cachedUser,
-          requiresLegalAcceptance: _cachedRequiresLegal(),
-        );
-        unawaited(_refreshProfile());
-        // Authoritative re-check in case legal versions were bumped while the
-        // access token was still valid (no login/refresh happened this launch).
-        unawaited(_refreshLegalStatus());
-      }
+    } catch (_) {
+      // Never sign the user out over a local read failure.
     }
+    unawaited(_refreshProfile());
+    // Authoritative re-check in case legal versions were bumped while the
+    // access token was still valid (no login/refresh happened this launch).
+    unawaited(_refreshLegalStatus());
   }
 
   Future<void> _refreshProfile() async {
