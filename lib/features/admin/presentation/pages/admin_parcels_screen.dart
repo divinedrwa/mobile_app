@@ -11,6 +11,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/admin_search_field.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/admin_villa_picker_field.dart';
 
 /// Admin screen for viewing all society parcels.
 ///
@@ -84,6 +85,13 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        backgroundColor: DesignColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.inventory_2_outlined),
+        label: const Text('Log parcel'),
+      ),
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _refresh,
@@ -150,7 +158,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xxl),
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 96),
       children: [
         // ── Hero ──
         _buildHero(allParcels.length, pendingCount),
@@ -296,6 +304,7 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
+      onTap: () => _openForm(existing: parcel),
       child: Row(
         children: [
           // Status indicator
@@ -376,6 +385,25 @@ class _AdminParcelsScreenState extends ConsumerState<AdminParcelsScreen>
         ],
       ),
     ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
+  }
+
+  Future<void> _openForm({_AdminParcel? existing}) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ParcelFormSheet(existing: existing),
+    );
+    if (result == null || !mounted) return;
+    _refresh();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(switch (result) {
+        'deleted' => 'Parcel deleted',
+        'updated' => 'Parcel updated',
+        _ => 'Parcel logged — the resident has been notified',
+      }),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   void _showStatusSheet(_AdminParcel parcel) {
@@ -467,6 +495,160 @@ class _AdminParcel {
       villaNumber: villa?['villaNumber']?.toString() ?? '',
       ownerName: villa?['ownerName']?.toString() ?? '',
       receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? ''),
+    );
+  }
+}
+
+/// Pops 'created', 'updated' or 'deleted' on success.
+class _ParcelFormSheet extends ConsumerStatefulWidget {
+  const _ParcelFormSheet({this.existing});
+
+  final _AdminParcel? existing;
+
+  @override
+  ConsumerState<_ParcelFormSheet> createState() => _ParcelFormSheetState();
+}
+
+class _ParcelFormSheetState extends ConsumerState<_ParcelFormSheet> {
+  late final _description =
+      TextEditingController(text: widget.existing?.description ?? '');
+  String? _villaId;
+  bool _busy = false;
+  String? _error;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final desc = _description.text.trim();
+    if (desc.length < 3) {
+      setState(() => _error = 'Description must be at least 3 characters');
+      return;
+    }
+    if (!_isEdit && _villaId == null) {
+      setState(() => _error = 'Select the villa');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final repo = ref.read(adminParcelRepositoryProvider);
+    try {
+      if (_isEdit) {
+        await repo.updateParcel(widget.existing!.id, description: desc);
+      } else {
+        await repo.createParcel(villaId: _villaId!, description: desc);
+      }
+      if (mounted) Navigator.pop(context, _isEdit ? 'updated' : 'created');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete parcel?'),
+        content: const Text('This removes the parcel record permanently.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(adminParcelRepositoryProvider).deleteParcel(widget.existing!.id);
+      if (mounted) Navigator.pop(context, 'deleted');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final villas = ref.watch(adminVillasProvider).valueOrNull ??
+        const <Map<String, dynamic>>[];
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(DesignRadius.xl),
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(_isEdit ? 'Edit parcel' : 'Log parcel',
+                style: DesignTypography.headingM),
+            const SizedBox(height: 16),
+            if (_isEdit)
+              Text(
+                'Villa ${widget.existing!.villaNumber}',
+                style: DesignTypography.bodySmall
+                    .copyWith(color: DesignColors.textSecondary),
+              )
+            else
+              AdminVillaPickerField(
+                villas: villas,
+                selectedVillaId: _villaId,
+                required: true,
+                onSelected: (id) => setState(() => _villaId = id),
+              ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Description *',
+                hintText: 'e.g. Amazon box, Swiggy order',
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: DesignColors.error)),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? 'Saving…' : (_isEdit ? 'Save changes' : 'Log parcel')),
+            ),
+            if (_isEdit)
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: DesignColors.error),
+                onPressed: _busy ? null : _delete,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text('Delete parcel'),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

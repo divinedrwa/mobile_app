@@ -353,6 +353,26 @@ class GuardRepository {
     }
   }
 
+  /// [reason] is one of RESIDENT_CONFIRMED_BY_CALL, NO_RESPONSE_GUARD_VERIFIED, EMERGENCY.
+  Future<void> overrideVisitorEntry({
+    required String visitorId,
+    required String reason,
+    String? note,
+  }) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.guardVisitorOverrideEntry,
+        data: {
+          'visitorId': visitorId,
+          'reason': reason,
+          if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not allow entry');
+    }
+  }
+
   Future<void> checkOutVisitor(
     String visitorId, {
     String? clientMutationId,

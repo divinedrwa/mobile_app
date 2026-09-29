@@ -502,6 +502,10 @@ class _ShiftFormSheetState extends ConsumerState<_ShiftFormSheet> {
           endTime: _timeToIso(_endTime),
           contactPhone: _contactPhone.text.trim(),
           isRecurring: _isRecurring,
+          recurringStartMinutes:
+              _isRecurring ? _timeOfDayToMinutes(_startTime) : null,
+          recurringEndMinutes:
+              _isRecurring ? _timeOfDayToMinutes(_endTime) : null,
         );
       } else if (_rosterMode) {
         await repo.generateRoster(

@@ -51,6 +51,13 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        backgroundColor: DesignColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_task_rounded),
+        label: const Text('Schedule patrol'),
+      ),
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _refresh,
@@ -71,7 +78,7 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
                 child: EmptyStateWidget(
                   icon: Icons.shield_outlined,
                   title: 'No patrols yet',
-                  subtitle: 'Guard patrols will appear here once logged.',
+                  subtitle: 'Tap "Schedule patrol" to assign one to a guard.',
                 ),
               );
             }
@@ -126,11 +133,12 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                           itemCount: filtered.length,
                           itemBuilder: (_, i) => _PatrolCard(
                             patrol: filtered[i],
                             onStatusUpdated: _refresh,
+                            onTap: () => _openForm(existing: filtered[i]),
                           ).animate(delay: DesignAnimations.staggerFor(i)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance),
                         ),
                 ),
@@ -140,6 +148,25 @@ class _AdminPatrolsScreenState extends ConsumerState<AdminPatrolsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? existing}) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PatrolFormSheet(existing: existing),
+    );
+    if (result == null || !mounted) return;
+    ref.invalidate(adminPatrolsProvider);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(switch (result) {
+        'deleted' => 'Patrol deleted',
+        'updated' => 'Patrol updated',
+        _ => 'Patrol scheduled',
+      }),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   Widget _filterChip(String label, String? status) {
@@ -183,10 +210,12 @@ class _PatrolCard extends ConsumerWidget {
   const _PatrolCard({
     required this.patrol,
     required this.onStatusUpdated,
+    this.onTap,
   });
 
   final Map<String, dynamic> patrol;
   final Future<void> Function() onStatusUpdated;
+  final VoidCallback? onTap;
 
   bool get _canUpdateStatus {
     final status = (patrol['status'] ?? '').toString().toUpperCase();
@@ -313,7 +342,7 @@ class _PatrolCard extends ConsumerWidget {
     final timeRaw = patrol['scheduledTime'] ?? patrol['actualTime'];
     String timeStr = '';
     if (timeRaw != null) {
-      final dt = DateTime.tryParse(timeRaw.toString());
+      final dt = DateTime.tryParse(timeRaw.toString())?.toLocal();
       if (dt != null) {
         timeStr =
             '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
@@ -323,6 +352,7 @@ class _PatrolCard extends ConsumerWidget {
 
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 12),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -443,6 +473,240 @@ class _PatrolCard extends ConsumerWidget {
       default:
         return status;
     }
+  }
+}
+
+/// Pops 'created', 'updated' or 'deleted' on success. Guard and gate are
+/// fixed once scheduled (same as the web panel).
+class _PatrolFormSheet extends ConsumerStatefulWidget {
+  const _PatrolFormSheet({this.existing});
+
+  final Map<String, dynamic>? existing;
+
+  @override
+  ConsumerState<_PatrolFormSheet> createState() => _PatrolFormSheetState();
+}
+
+class _PatrolFormSheetState extends ConsumerState<_PatrolFormSheet> {
+  late final _checkpoint = TextEditingController(
+      text: widget.existing?['checkpointName']?.toString() ?? '');
+  late final _location = TextEditingController(
+      text: widget.existing?['checkpointLocation']?.toString() ?? '');
+  late final _notes =
+      TextEditingController(text: widget.existing?['notes']?.toString() ?? '');
+  late DateTime _scheduled = DateTime.tryParse(
+              widget.existing?['scheduledTime']?.toString() ?? '')
+          ?.toLocal() ??
+      DateTime.now().add(const Duration(hours: 1));
+  String? _guardId;
+  String? _gateId;
+  bool _busy = false;
+  String? _error;
+
+  bool get _isEdit => widget.existing != null;
+  String get _id => widget.existing?['id']?.toString() ?? '';
+
+  @override
+  void dispose() {
+    _checkpoint.dispose();
+    _location.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDateTime() async {
+    final earliest = DateTime.now().subtract(const Duration(days: 30));
+    final latest = DateTime.now().add(const Duration(days: 365));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _scheduled,
+      firstDate: _scheduled.isBefore(earliest) ? _scheduled : earliest,
+      lastDate: _scheduled.isAfter(latest) ? _scheduled : latest,
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_scheduled),
+    );
+    if (time == null) return;
+    setState(() => _scheduled =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  Future<void> _save() async {
+    if (_checkpoint.text.trim().length < 2) {
+      setState(() => _error = 'Enter the checkpoint name');
+      return;
+    }
+    if (!_isEdit && (_guardId == null || _gateId == null)) {
+      setState(() => _error = 'Select a guard and a gate');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final repo = ref.read(adminPatrolRepositoryProvider);
+    final when = _scheduled.toUtc().toIso8601String();
+    try {
+      if (_isEdit) {
+        await repo.updatePatrol(
+          _id,
+          checkpointName: _checkpoint.text.trim(),
+          checkpointLocation: _location.text,
+          scheduledTime: when,
+          notes: _notes.text,
+        );
+      } else {
+        await repo.createPatrol(
+          guardId: _guardId!,
+          gateId: _gateId!,
+          checkpointName: _checkpoint.text.trim(),
+          checkpointLocation: _location.text,
+          scheduledTime: when,
+          notes: _notes.text,
+        );
+      }
+      if (mounted) Navigator.pop(context, _isEdit ? 'updated' : 'created');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete patrol?'),
+        content: const Text('This removes the patrol permanently.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(adminPatrolRepositoryProvider).deletePatrol(_id);
+      if (mounted) Navigator.pop(context, 'deleted');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final guards = ref.watch(adminGuardsProvider).valueOrNull ??
+        const <Map<String, dynamic>>[];
+    final gates = ref.watch(adminGatesProvider).valueOrNull ??
+        const <Map<String, dynamic>>[];
+    final when =
+        '${_scheduled.day.toString().padLeft(2, '0')}/${_scheduled.month.toString().padLeft(2, '0')}/${_scheduled.year} '
+        '${_scheduled.hour.toString().padLeft(2, '0')}:${_scheduled.minute.toString().padLeft(2, '0')}';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(DesignRadius.xl),
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(_isEdit ? 'Edit patrol' : 'Schedule patrol',
+                style: DesignTypography.headingM),
+            const SizedBox(height: 16),
+            if (!_isEdit) ...[
+              DropdownButtonFormField<String>(
+                initialValue: _guardId,
+                decoration: const InputDecoration(labelText: 'Guard *'),
+                items: guards
+                    .map((g) => DropdownMenuItem(
+                          value: g['id']?.toString(),
+                          child: Text(g['name']?.toString() ?? 'Guard'),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _guardId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _gateId,
+                decoration: const InputDecoration(labelText: 'Gate *'),
+                items: gates
+                    .map((g) => DropdownMenuItem(
+                          value: g['id']?.toString(),
+                          child: Text(g['name']?.toString() ?? 'Gate'),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _gateId = v),
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: _checkpoint,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Checkpoint *'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _location,
+              decoration: const InputDecoration(labelText: 'Location'),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.schedule_rounded),
+              title: const Text('Scheduled for'),
+              subtitle: Text(when),
+              trailing: const Icon(Icons.edit_calendar_outlined),
+              onTap: _pickDateTime,
+            ),
+            TextField(
+              controller: _notes,
+              decoration: const InputDecoration(labelText: 'Notes'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: DesignColors.error)),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy
+                  ? 'Saving…'
+                  : (_isEdit ? 'Save changes' : 'Schedule patrol')),
+            ),
+            if (_isEdit)
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: DesignColors.error),
+                onPressed: _busy ? null : _delete,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text('Delete patrol'),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

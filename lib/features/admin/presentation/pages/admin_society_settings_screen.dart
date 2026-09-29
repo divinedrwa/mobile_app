@@ -7,6 +7,7 @@ import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../data/providers/admin_providers.dart';
+import '../widgets/admin_society_settings_sections.dart';
 
 /// Admin screen for viewing and updating society settings.
 class AdminSocietySettingsScreen extends ConsumerStatefulWidget {
@@ -204,7 +205,7 @@ class _AdminSocietySettingsScreenState
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Visitors must be approved by residents before entry',
+                      'Every walk-in visitor sends an approval request to the flat',
                       style: DesignTypography.captionSmall
                           .copyWith(color: DesignColors.textSecondary),
                     ),
@@ -245,7 +246,8 @@ class _AdminSocietySettingsScreenState
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Allow guards to approve visitor entry directly',
+                      'Guards may let a visitor in when residents do not respond. '
+                      'When off, guards need a phone confirmation or an emergency.',
                       style: DesignTypography.captionSmall
                           .copyWith(color: DesignColors.textSecondary),
                     ),
@@ -307,7 +309,7 @@ class _AdminSocietySettingsScreenState
                   activeColor: DesignColors.primary,
                   onChanged: (v) => _updateSetting(
                     visitorMultiVillaApprovalMode:
-                        v ? 'ALL_MUST_APPROVE' : 'ANY_ONE_APPROVAL',
+                        v ? 'ALL_VILLAS_REQUIRED' : 'ANY_ONE_APPROVAL',
                   ),
                 ),
             ],
@@ -373,6 +375,27 @@ class _AdminSocietySettingsScreenState
               ],
             ],
           ),
+        ),
+        const SizedBox(height: 24),
+
+        EnterpriseSectionHeader(title: 'Maintenance Billing'),
+        const SizedBox(height: 8),
+        SocietyBillingPanel(settings: settings, onSaved: _refresh),
+        const SizedBox(height: 24),
+
+        EnterpriseSectionHeader(title: 'Late Fees'),
+        const SizedBox(height: 8),
+        SocietyLateFeePanel(settings: settings, onSaved: _refresh),
+        const SizedBox(height: 24),
+
+        EnterpriseSectionHeader(title: 'Branding & Documents'),
+        const SizedBox(height: 8),
+        SocietyBrandingPanel(settings: settings, onChanged: _refresh),
+        const SizedBox(height: 8),
+        Text(
+          'App theme colours are set from the web admin panel.',
+          style: DesignTypography.captionSmall
+              .copyWith(color: DesignColors.textTertiary),
         ),
       ],
     );

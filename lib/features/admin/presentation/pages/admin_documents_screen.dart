@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -141,6 +142,7 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                 return EnterprisePanel(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(14),
+                  onTap: () => _showCreateSheet(existing: d),
                   child: Row(
                     children: [
                       Container(
@@ -215,16 +217,20 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(userFacingMessage(e))));
       }
     }
   }
 
-  void _showCreateSheet() {
-    final titleCtl = TextEditingController();
+  void _showCreateSheet({Map<String, dynamic>? existing}) {
+    final isEdit = existing != null;
+    final titleCtl =
+        TextEditingController(text: existing?['title']?.toString() ?? '');
     final urlCtl = TextEditingController();
-    final descCtl = TextEditingController();
-    var category = 'OTHER';
+    final descCtl =
+        TextEditingController(text: existing?['description']?.toString() ?? '');
+    var category = existing?['category']?.toString() ?? 'OTHER';
+    if (!_categories.contains(category)) category = 'OTHER';
     var submitting = false;
 
     showModalBottomSheet<void>(
@@ -249,7 +255,7 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('Add Document',
+                      Text(isEdit ? 'Edit Document' : 'Add Document',
                           style: DesignTypography.headingM.copyWith(
                             fontWeight: FontWeight.w700,
                           )),
@@ -262,23 +268,25 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: urlCtl,
-                        decoration: const InputDecoration(
-                          labelText: 'File URL (https://…)',
-                          border: OutlineInputBorder(),
+                      if (!isEdit) ...[
+                        TextField(
+                          controller: urlCtl,
+                          decoration: const InputDecoration(
+                            labelText: 'File URL (https://…)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.url,
                         ),
-                        keyboardType: TextInputType.url,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Paste a link to the hosted file (e.g. a shared '
-                        'Google Drive or Dropbox link).',
-                        style: DesignTypography.captionSmall.copyWith(
-                          color: DesignColors.textSecondary,
+                        const SizedBox(height: 6),
+                        Text(
+                          'Paste a link to the hosted file (e.g. a shared '
+                          'Google Drive or Dropbox link).',
+                          style: DesignTypography.captionSmall.copyWith(
+                            color: DesignColors.textSecondary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
                       TextField(
                         controller: descCtl,
                         decoration: const InputDecoration(
@@ -316,7 +324,8 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                                   );
                                   return;
                                 }
-                                if (!urlCtl.text.trim().startsWith('http')) {
+                                if (!isEdit &&
+                                    !urlCtl.text.trim().startsWith('http')) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     const SnackBar(
                                         content: Text('Enter a valid file URL')),
@@ -325,21 +334,31 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                                 }
                                 setLocal(() => submitting = true);
                                 try {
-                                  await ref
-                                      .read(adminDocumentRepositoryProvider)
-                                      .createDocument(
-                                        title: titleCtl.text.trim(),
-                                        fileUrl: urlCtl.text.trim(),
-                                        category: category,
-                                        description: descCtl.text.trim(),
-                                      );
+                                  final repo =
+                                      ref.read(adminDocumentRepositoryProvider);
+                                  if (isEdit) {
+                                    await repo.updateDocument(
+                                      existing?['id']?.toString() ?? '',
+                                      title: titleCtl.text.trim(),
+                                      category: category,
+                                      description: descCtl.text.trim(),
+                                    );
+                                  } else {
+                                    await repo.createDocument(
+                                      title: titleCtl.text.trim(),
+                                      fileUrl: urlCtl.text.trim(),
+                                      category: category,
+                                      description: descCtl.text.trim(),
+                                    );
+                                  }
                                   if (ctx.mounted) Navigator.pop(ctx);
                                   _refresh();
                                 } catch (e) {
                                   if (ctx.mounted) {
                                     setLocal(() => submitting = false);
                                     ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(content: Text(e.toString())),
+                                      SnackBar(
+                                          content: Text(userFacingMessage(e))),
                                     );
                                   }
                                 }
@@ -351,7 +370,7 @@ class _AdminDocumentsScreenState extends ConsumerState<AdminDocumentsScreen> {
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text('Add'),
+                            : Text(isEdit ? 'Save' : 'Add'),
                       ),
                     ],
                   ),

@@ -525,7 +525,9 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Checked out · ${DateFormat('h:mm a').format(visitor.checkOutTime!.toLocal())}',
+                    visitor.exitNotMarked
+                        ? 'Exit not marked by security'
+                        : 'Checked out · ${DateFormat('h:mm a').format(visitor.checkOutTime!.toLocal())}',
                     style: TextStyle(
                       fontSize: 12,
                       color: context.text.tertiary,

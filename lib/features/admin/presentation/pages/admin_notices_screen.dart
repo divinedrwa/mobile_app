@@ -208,6 +208,7 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
       onDismissed: (_) => _deleteNotice(notice.id),
       child: EnterprisePanel(
         padding: const EdgeInsets.all(14),
+        onTap: () => _showCreateSheet(existing: notice),
         tone: notice.isUrgent ? EnterpriseTone.danger : EnterpriseTone.neutral,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,12 +292,12 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
     );
   }
 
-  void _showCreateSheet() {
+  void _showCreateSheet({NoticeModel? existing}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _CreateNoticeSheet(onCreated: _refresh),
+      builder: (_) => _CreateNoticeSheet(onCreated: _refresh, existing: existing),
     );
   }
 
@@ -441,9 +442,12 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
 // ═══════════════════════════════════════════════════════════════════════
 
 class _CreateNoticeSheet extends ConsumerStatefulWidget {
-  const _CreateNoticeSheet({required this.onCreated});
+  const _CreateNoticeSheet({required this.onCreated, this.existing});
 
   final VoidCallback onCreated;
+
+  /// When set, the sheet edits this notice instead of creating one.
+  final NoticeModel? existing;
 
   @override
   ConsumerState<_CreateNoticeSheet> createState() =>
@@ -477,6 +481,21 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
     'URGENT': 'Urgent',
   };
 
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final n = widget.existing;
+    if (n != null) {
+      _titleCtl.text = n.title;
+      _contentCtl.text = n.content;
+      _selectedCategory = n.category.value;
+      _selectedPriority = n.priority.value;
+      _isUrgent = n.isUrgent;
+    }
+  }
+
   @override
   void dispose() {
     _titleCtl.dispose();
@@ -488,6 +507,39 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_submitting) return;
     setState(() => _submitting = true);
+
+    if (_isEdit) {
+      try {
+        await ref.read(adminNoticeRepositoryProvider).updateNotice(
+              widget.existing!.id,
+              title: _titleCtl.text.trim(),
+              content: _contentCtl.text.trim(),
+              category: _selectedCategory,
+              priority: _selectedPriority,
+              isUrgent: _isUrgent,
+            );
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notice updated'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onCreated();
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userFacingMessage(e, 'Update failed')),
+            backgroundColor: DesignColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     try {
       await ref.read(adminNoticeRepositoryProvider).createNotice(
@@ -519,7 +571,7 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Something went wrong. Please try again.'),
+          content: Text(userFacingMessage(e, 'Could not send notice')),
           backgroundColor: DesignColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -564,7 +616,8 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
               ),
               const SizedBox(height: 16),
 
-              Text('Broadcast Notice', style: DesignTypography.headingM),
+              Text(_isEdit ? 'Edit Notice' : 'Broadcast Notice',
+                  style: DesignTypography.headingM),
               const SizedBox(height: 20),
 
               // Title
@@ -674,18 +727,19 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                  Expanded(
-                    child: SwitchListTile(
-                      title: Text('Push Notify',
-                          style: DesignTypography.labelSmall),
-                      value: _notifyResidents,
-                      onChanged: (v) =>
-                          setState(() => _notifyResidents = v),
-                      activeTrackColor: DesignColors.primary,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
+                  if (!_isEdit)
+                    Expanded(
+                      child: SwitchListTile(
+                        title: Text('Push Notify',
+                            style: DesignTypography.labelSmall),
+                        value: _notifyResidents,
+                        onChanged: (v) =>
+                            setState(() => _notifyResidents = v),
+                        activeTrackColor: DesignColors.primary,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -702,7 +756,10 @@ class _CreateNoticeSheetState extends ConsumerState<_CreateNoticeSheet> {
                   onPressed: _submitting ? null : _submit,
                   child: _submitting
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(_notifyResidents ? 'Send Notice' : 'Save Notice',
+                      : Text(
+                          _isEdit
+                              ? 'Save Changes'
+                              : (_notifyResidents ? 'Send Notice' : 'Save Notice'),
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
               ),

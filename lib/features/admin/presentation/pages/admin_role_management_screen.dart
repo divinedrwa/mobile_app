@@ -383,7 +383,7 @@ class _AdminRoleManagementScreenState
               InkWell(
                 onTap: () => _showChangeRoleSheet(user),
                 child: Text(
-                  'Change Role',
+                  'Manage',
                   style: DesignTypography.captionSmall.copyWith(
                     color: DesignColors.primary,
                     fontWeight: FontWeight.w600,
@@ -400,6 +400,7 @@ class _AdminRoleManagementScreenState
   void _showChangeRoleSheet(UserModel user) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _ChangeRoleSheet(
         user: user,
@@ -657,6 +658,7 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
 
   static const _roles = <String, String>{
     'ADMIN': 'Admin',
+    'RESIDENT_CUM_ADMIN': 'Resident + Admin',
     'RESIDENT': 'Resident',
     'GUARD': 'Guard',
   };
@@ -665,6 +667,49 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
   void initState() {
     super.initState();
     _selected = widget.user.role.value;
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete user?'),
+        content: Text(
+          'Permanently delete ${widget.user.name}? They will lose access '
+          'immediately. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _submitting = true);
+    try {
+      await ref.read(adminUserRepositoryProvider).deleteUser(widget.user.id);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${widget.user.name} deleted'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      widget.onUpdated();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(userFacingMessage(e, 'Delete failed')),
+        backgroundColor: DesignColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Future<void> _submit() async {
@@ -715,7 +760,7 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
         color: DesignColors.surface,
         borderRadius: BorderRadius.circular(DesignRadius.xl),
       ),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -732,7 +777,7 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Change Role', style: DesignTypography.headingM),
+            Text('Manage User', style: DesignTypography.headingM),
             const SizedBox(height: 4),
             Text(
               '${widget.user.name} (${widget.user.email})',
@@ -771,6 +816,15 @@ class _ChangeRoleSheetState extends ConsumerState<_ChangeRoleSheet> {
                 child: _submitting
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('Confirm Change', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: DesignColors.error),
+                onPressed: _submitting ? null : _delete,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text('Delete user'),
               ),
             ),
           ],

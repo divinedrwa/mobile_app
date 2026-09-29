@@ -9,6 +9,8 @@ class AdminDashboardModel {
     required this.collectionRate,
     required this.paidCount,
     required this.unpaidCount,
+    this.activeResidents = 0,
+    this.activeGuards = 0,
   });
 
   final int todayVisitors;
@@ -19,4 +21,8 @@ class AdminDashboardModel {
   final double collectionRate;
   final int paidCount;
   final int unpaidCount;
+
+  /// From `/users/stats`; 0 when unavailable.
+  final int activeResidents;
+  final int activeGuards;
 }

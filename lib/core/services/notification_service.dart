@@ -784,7 +784,9 @@ class NotificationService {
         if (type == 'VISITOR_PRE_APPROVED_ARRIVED' ||
             type == 'VISITOR_CHECKED_IN' ||
             type == 'VISITOR_CHECKED_OUT' ||
-            type == 'VISITOR_REJECTED') {
+            type == 'VISITOR_REJECTED' ||
+            type == 'VISITOR_EMERGENCY_OVERRIDE' ||
+            type == 'VISITOR_UPDATE') {
           router.push('/resident/visitor-hub');
           return true;
         }

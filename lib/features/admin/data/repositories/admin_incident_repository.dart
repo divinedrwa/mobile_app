@@ -21,6 +21,59 @@ class AdminIncidentRepository {
     }
   }
 
+  /// [severity] is one of LOW, MEDIUM, HIGH, CRITICAL.
+  Future<void> createIncident({
+    required String title,
+    required String description,
+    required String severity,
+    String? location,
+  }) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.incidents,
+        data: {
+          'title': title,
+          'description': description,
+          'severity': severity,
+          if (location != null && location.trim().isNotEmpty)
+            'location': location.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to report incident');
+    }
+  }
+
+  Future<void> updateIncident(
+    String id, {
+    String? title,
+    String? description,
+    String? severity,
+    String? location,
+  }) async {
+    try {
+      await _dio.put(
+        ApiEndpoints.incidentById(id),
+        data: {
+          if (title != null) 'title': title,
+          if (description != null) 'description': description,
+          if (severity != null) 'severity': severity,
+          if (location != null) 'location': location.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update incident');
+    }
+  }
+
+  Future<void> deleteIncident(String id) async {
+    try {
+      await _dio.delete(ApiEndpoints.incidentById(id));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to delete incident');
+    }
+  }
+
   Future<void> resolveIncident(String id) async {
     try {
       await _dio.patch(

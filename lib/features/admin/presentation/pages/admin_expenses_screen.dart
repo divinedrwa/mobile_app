@@ -581,7 +581,7 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
             categoryId: _selectedCategoryId!,
             title: _titleCtl.text.trim(),
             amount: double.parse(_amountCtl.text.trim()),
-            paymentDate: _paymentDate.toIso8601String(),
+            paymentDate: _paymentDate,
             paymentMode: _selectedPaymentMode,
             paidTo: _paidToCtl.text.trim(),
             description: _descCtl.text.trim().isEmpty

@@ -60,6 +60,26 @@ class AdminDocumentRepository {
     }
   }
 
+  Future<void> updateDocument(
+    String id, {
+    String? title,
+    String? category,
+    String? description,
+  }) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.adminDocumentById(id),
+        data: {
+          if (title != null) 'title': title,
+          if (category != null) 'category': category,
+          if (description != null) 'description': description,
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update document');
+    }
+  }
+
   Future<void> deleteDocument(String id) async {
     try {
       await _dio.delete(ApiEndpoints.adminDocumentById(id));

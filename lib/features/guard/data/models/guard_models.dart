@@ -208,6 +208,7 @@ class GuardVisitorRow {
     this.villaLabel,
     this.visitorType,
     this.villaApprovals = const [],
+    this.exitNotMarked = false,
   });
 
   final String id;
@@ -219,6 +220,9 @@ class GuardVisitorRow {
   final DateTime? checkOutTime;
   final String? villaLabel;
   final String? visitorType;
+
+  /// Closed automatically because nobody marked exit; [checkOutTime] is not a real exit.
+  final bool exitNotMarked;
 
   /// Per-flat approval breakdown (one entry per villa on the visit).
   final List<GuardVillaApproval> villaApprovals;
@@ -311,6 +315,7 @@ class GuardVisitorRow {
       villaLabel: nums.isEmpty ? null : nums.join(', '),
       visitorType: json['visitorType']?.toString(),
       villaApprovals: approvals,
+      exitNotMarked: json['exitNotMarked'] == true,
     );
   }
 }
@@ -637,7 +642,10 @@ String guardVisitorStatusLabel(GuardVisitorRow v, {bool compact = false}) {
     return compact ? 'Approved · admit' : 'Approved · admit at gate';
   }
   if (v.awaitingCheckout && v.status == 'CHECKED_IN') return 'On premises';
-  if (v.checkOutTime != null) return 'Checked out';
+  if (v.checkOutTime != null) {
+    return v.exitNotMarked ? 'Exit not marked' : 'Checked out';
+  }
+  if (v.status.trim().toUpperCase() == 'CANCELLED') return 'Expired';
   return v.status;
 }
 

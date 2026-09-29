@@ -56,6 +56,37 @@ class AdminPollRepository {
     }
   }
 
+  /// Options can't be changed after creation (the backend keeps votes tied to them).
+  Future<void> updatePoll(
+    String id, {
+    String? title,
+    String? description,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      await _dio.put(
+        ApiEndpoints.adminPollById(id),
+        data: {
+          if (title != null) 'title': title,
+          if (description != null) 'description': description,
+          if (startDate != null) 'startDate': startDate,
+          if (endDate != null) 'endDate': endDate,
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update poll');
+    }
+  }
+
+  Future<void> deletePoll(String id) async {
+    try {
+      await _dio.delete(ApiEndpoints.adminPollById(id));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to delete poll');
+    }
+  }
+
   /// Close/end an active poll.
   Future<void> closePoll(String id) async {
     try {

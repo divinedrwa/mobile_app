@@ -30,6 +30,7 @@ class _GuardVisitorDetailPageState
   // confirmation dialog dismisses and trigger duplicate POSTs.
   bool _admitting = false;
   bool _exiting = false;
+  bool _overriding = false;
 
   GuardVisitorRow get visitor => widget.visitor;
 
@@ -258,7 +259,8 @@ class _GuardVisitorDetailPageState
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Residents were notified. Refresh active entries after they approve or reject.',
+                                'Residents were notified. If they don\'t respond, call them and use "Allow entry", '
+                                'or close the entry if the visitor leaves.',
                                 style: GuardTokens.captionStyle(context),
                               ),
                             ),
@@ -323,14 +325,18 @@ class _GuardVisitorDetailPageState
                             _VisitorDetailRowCompact(
                               icon: Icons.logout_rounded,
                               label: 'Check-out',
-                              value: _fmtCheckInTimeOnly(
-                                context,
-                                v.checkOutTime!,
-                              ),
-                              valueSub: _fmtCheckInSubline(
-                                context,
-                                v.checkOutTime!,
-                              ),
+                              value: v.exitNotMarked
+                                  ? 'Exit not marked'
+                                  : _fmtCheckInTimeOnly(
+                                      context,
+                                      v.checkOutTime!,
+                                    ),
+                              valueSub: v.exitNotMarked
+                                  ? 'Closed automatically'
+                                  : _fmtCheckInSubline(
+                                      context,
+                                      v.checkOutTime!,
+                                    ),
                             ),
                           ],
                           if (v.villaLabel == null &&
@@ -411,8 +417,8 @@ class _GuardVisitorDetailPageState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (v.awaitingCheckout &&
-                          v.status.trim().toUpperCase() ==
-                              'CHECKED_IN') ...[
+                          ['CHECKED_IN', 'PENDING_APPROVAL', 'APPROVED']
+                              .contains(v.status.trim().toUpperCase())) ...[
                         FilledButton.icon(
                           style: GuardTokens.primaryFilled(context).copyWith(
                             minimumSize: WidgetStateProperty.all(
@@ -432,7 +438,11 @@ class _GuardVisitorDetailPageState
                                 )
                               : Icon(Icons.logout_rounded),
                           label: Text(
-                            _exiting ? 'Marking exit…' : 'Mark exit',
+                            _exiting
+                                ? 'Marking exit…'
+                                : (v.status.trim().toUpperCase() == 'CHECKED_IN'
+                                    ? 'Mark exit'
+                                    : 'Visitor left'),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
@@ -508,6 +518,45 @@ class _GuardVisitorDetailPageState
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (v.needsResidentApproval && v.awaitingCheckout) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(
+                              double.infinity,
+                              GuardTokens.btnPrimaryH,
+                            ),
+                            foregroundColor: GuardTokens.warning,
+                            side: BorderSide(color: GuardTokens.warning),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                GuardTokens.radiusButton,
+                              ),
+                            ),
+                          ),
+                          onPressed: _overriding
+                              ? null
+                              : () => _overrideEntry(context, v),
+                          icon: _overriding
+                              ? SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: GuardTokens.warning,
+                                  ),
+                                )
+                              : const Icon(Icons.how_to_reg_rounded),
+                          label: Text(
+                            _overriding
+                                ? 'Allowing…'
+                                : 'No response? Allow entry',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -590,16 +639,105 @@ class _GuardVisitorDetailPageState
     }
   }
 
+  Future<void> _overrideEntry(BuildContext context, GuardVisitorRow v) async {
+    if (_overriding) return;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+              child: Text(
+                'Why are you allowing ${v.name} in?',
+                style: GuardTokens.headingStyle(ctx).copyWith(fontSize: 17),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                'This is recorded and the residents are informed.',
+                style: GuardTokens.captionStyle(ctx),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.phone_in_talk_rounded),
+              title: const Text('Resident confirmed on call'),
+              onTap: () => Navigator.pop(ctx, 'RESIDENT_CONFIRMED_BY_CALL'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.fact_check_outlined),
+              title: const Text('No response — I verified the visitor'),
+              subtitle: const Text('Allowed only if your society permits it'),
+              onTap: () => Navigator.pop(ctx, 'NO_RESPONSE_GUARD_VERIFIED'),
+            ),
+            ListTile(
+              leading: Icon(Icons.emergency_rounded, color: GuardTokens.dangerBrand),
+              title: const Text('Emergency (medical, fire, police)'),
+              onTap: () => Navigator.pop(ctx, 'EMERGENCY'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (reason == null || !context.mounted) return;
+
+    String? note;
+    if (reason == 'NO_RESPONSE_GUARD_VERIFIED') {
+      note = await showGuardTextPromptSheet(
+        context,
+        title: 'How did you verify?',
+        subtitle: 'E.g. checked ID, delivery app order, known regular visitor.',
+        fieldLabel: 'Note',
+        confirmLabel: 'Allow entry',
+      );
+      if (note == null || !context.mounted) return;
+    }
+
+    setState(() => _overriding = true);
+    try {
+      await ref.read(guardRepositoryProvider).overrideVisitorEntry(
+            visitorId: v.id,
+            reason: reason,
+            note: note,
+          );
+      ref.invalidate(guardPendingVisitorsProvider);
+      ref.invalidate(guardActiveVisitorsTabProvider);
+      ref.invalidate(guardTodayVisitorsProvider);
+      ref.invalidate(guardDashboardProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${v.name} allowed in')),
+      );
+      context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _overriding = false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    }
+  }
+
   Future<void> _confirmCheckout(
     BuildContext context,
     GuardVisitorRow v,
   ) async {
     if (_exiting) return;
+    final inside = v.status.trim().toUpperCase() == 'CHECKED_IN';
     final ok = await showGuardConfirmSheet(
       context,
-      title: 'Check out',
-      message: 'Mark ${v.name} as checked out?',
-      confirmLabel: 'Mark exit',
+      title: inside ? 'Check out' : 'Visitor left',
+      message: inside
+          ? 'Mark ${v.name} as checked out?'
+          : '${v.name} left without entering. Close this entry?',
+      confirmLabel: inside ? 'Mark exit' : 'Close entry',
       icon: Icons.logout_rounded,
     );
     if (ok != true || !context.mounted) return;

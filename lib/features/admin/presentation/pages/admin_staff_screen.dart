@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -35,9 +36,6 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
     'DRIVER',
     'NANNY',
     'GARDENER',
-    'PLUMBER',
-    'ELECTRICIAN',
-    'SECURITY',
     'OTHER',
   ];
 
@@ -70,6 +68,13 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
             onPressed: _refresh,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreateSheet,
+        backgroundColor: DesignColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        label: const Text('Add staff'),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
@@ -399,11 +404,105 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
                   }).toList(),
                 ),
               ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: isActive
+                    ? OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: DesignColors.error,
+                          side: BorderSide(color: DesignColors.error),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _removeStaff(staff);
+                        },
+                        icon: const Icon(Icons.person_remove_outlined),
+                        label: const Text('Remove staff'),
+                      )
+                    : FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _reactivateStaff(staff);
+                        },
+                        icon: const Icon(Icons.restart_alt_rounded),
+                        label: const Text('Reactivate'),
+                      ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _toast(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error ? DesignColors.error : null,
+      ),
+    );
+  }
+
+  Future<void> _removeStaff(Map<String, dynamic> staff) async {
+    final id = staff['id']?.toString();
+    if (id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove staff member?'),
+        content: Text(
+          '${staff['name'] ?? 'This staff member'} will be marked inactive and '
+          'unassigned from all villas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Remove', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(adminStaffRepositoryProvider).deactivateStaff(id);
+      ref.invalidate(adminStaffListProvider);
+      _toast('Staff member removed');
+    } catch (e) {
+      _toast(userFacingMessage(e), error: true);
+    }
+  }
+
+  Future<void> _reactivateStaff(Map<String, dynamic> staff) async {
+    final id = staff['id']?.toString();
+    if (id == null) return;
+    try {
+      await ref.read(adminStaffRepositoryProvider).updateStaff(id, isActive: true);
+      ref.invalidate(adminStaffListProvider);
+      _toast('Staff member reactivated. Assign villas again if needed.');
+    } catch (e) {
+      _toast(userFacingMessage(e), error: true);
+    }
+  }
+
+  Future<void> _openCreateSheet() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CreateStaffSheet(staffTypes: _staffTypes),
+    );
+    if (created == true) {
+      ref.invalidate(adminStaffListProvider);
+      _toast('Staff registered');
+    }
   }
 
   Widget _detailRow(IconData icon, String label, String value) {
@@ -443,14 +542,200 @@ class _AdminStaffScreenState extends ConsumerState<AdminStaffScreen> {
         return const Color(0xFFEC4899);
       case 'GARDENER':
         return DesignColors.success;
-      case 'PLUMBER':
-        return DesignColors.info;
-      case 'ELECTRICIAN':
-        return DesignColors.warning;
-      case 'SECURITY':
-        return DesignColors.secondary;
       default:
         return DesignColors.success;
     }
+  }
+}
+
+class _CreateStaffSheet extends ConsumerStatefulWidget {
+  const _CreateStaffSheet({required this.staffTypes});
+
+  final List<String> staffTypes;
+
+  @override
+  ConsumerState<_CreateStaffSheet> createState() => _CreateStaffSheetState();
+}
+
+class _CreateStaffSheetState extends ConsumerState<_CreateStaffSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _address = TextEditingController();
+  final _villaSearch = TextEditingController();
+  late String _type = widget.staffTypes.first;
+  final Set<String> _villaIds = {};
+  String _villaQuery = '';
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _address.dispose();
+    _villaSearch.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_villaIds.isEmpty) {
+      setState(() => _error = 'Select at least one villa');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(adminStaffRepositoryProvider).createStaff(
+            name: _name.text.trim(),
+            type: _type,
+            phone: _phone.text.trim(),
+            villaIds: _villaIds.toList(),
+            address: _address.text.trim(),
+          );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  static String _villaLabel(Map<String, dynamic> v) {
+    final num = v['villaNumber']?.toString().trim() ?? '';
+    final block = v['block']?.toString().trim() ?? '';
+    return block.isNotEmpty && num.isNotEmpty ? '$block · $num' : num;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final villasAsync = ref.watch(adminVillasProvider);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(DesignRadius.xl),
+        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text('Register staff', style: DesignTypography.headingM),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _name,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Name *'),
+                validator: (v) =>
+                    (v == null || v.trim().length < 2) ? 'Enter a name' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone *'),
+                validator: (v) {
+                  final t = v?.trim() ?? '';
+                  return (t.length < 10 || t.length > 15)
+                      ? 'Enter a 10–15 digit phone number'
+                      : null;
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _type,
+                decoration: const InputDecoration(labelText: 'Type *'),
+                items: widget.staffTypes
+                    .map((t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t[0] + t.substring(1).toLowerCase()),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _type = v ?? _type),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _address,
+                decoration: const InputDecoration(labelText: 'Address'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Villas * (${_villaIds.length} selected)',
+                style: DesignTypography.label.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              AdminSearchField(
+                controller: _villaSearch,
+                hint: 'Search villa…',
+                onChanged: (v) => setState(() => _villaQuery = v.trim().toLowerCase()),
+              ),
+              const SizedBox(height: 4),
+              villasAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Text(
+                  'Could not load villas',
+                  style: TextStyle(color: DesignColors.error),
+                ),
+                data: (villas) {
+                  final filtered = villas.where((v) {
+                    if (_villaQuery.isEmpty) return true;
+                    final hay = '${v['villaNumber']} ${v['block']} ${v['ownerName']}'
+                        .toLowerCase();
+                    return hay.contains(_villaQuery);
+                  }).toList();
+                  return ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: filtered.map((v) {
+                        final id = v['id']?.toString() ?? '';
+                        return CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          value: _villaIds.contains(id),
+                          title: Text(_villaLabel(v)),
+                          onChanged: (checked) => setState(() {
+                            if (checked == true) {
+                              _villaIds.add(id);
+                            } else {
+                              _villaIds.remove(id);
+                            }
+                          }),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: TextStyle(color: DesignColors.error)),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _submitting ? null : _submit,
+                child: Text(_submitting ? 'Saving…' : 'Register staff'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

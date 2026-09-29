@@ -25,6 +25,7 @@ class _AdminWaterAnalyticsScreenState
     ref.invalidate(adminWaterAnalyticsDailyProvider);
     ref.invalidate(adminWaterAnalyticsHourlyProvider);
     ref.invalidate(adminWaterAnalyticsGateProvider);
+    ref.invalidate(adminWaterRecentEventsProvider);
   }
 
   void _setPeriod(int days) {
@@ -215,7 +216,76 @@ class _AdminWaterAnalyticsScreenState
           error: (e, _) => const SizedBox.shrink(),
           data: (gates) => _gateList(gates),
         ),
+        const SizedBox(height: 16),
+        EnterpriseSectionHeader(title: 'Recent events'),
+        const SizedBox(height: 8),
+        ref.watch(adminWaterRecentEventsProvider).when(
+              loading: () => ShimmerWrap(
+                  child:
+                      ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
+              error: (e, _) => const SizedBox.shrink(),
+              data: (events) => _recentEvents(events),
+            ),
       ],
+    );
+  }
+
+  Widget _recentEvents(List<Map<String, dynamic>> events) {
+    if (events.isEmpty) {
+      return _emptyPanel('No water events recorded yet');
+    }
+    return EnterprisePanel(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: events.map((e) {
+          final on = e['action']?.toString() == 'ON' || e['turnedOn'] == true;
+          final gate = e['gate'] is Map ? (e['gate'] as Map)['name']?.toString() : null;
+          final reason = e['reason']?.toString() ?? '';
+          final minutesAgo = _toInt(e['minutesAgo']);
+          final ago = minutesAgo < 60
+              ? '${minutesAgo}m ago'
+              : minutesAgo < 1440
+                  ? '${minutesAgo ~/ 60}h ago'
+                  : '${minutesAgo ~/ 1440}d ago';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  on ? Icons.water_drop_rounded : Icons.water_drop_outlined,
+                  size: 16,
+                  color: on ? DesignColors.info : DesignColors.textTertiary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${on ? 'Turned ON' : 'Turned OFF'}${gate != null ? ' · $gate' : ''}',
+                        style: DesignTypography.label
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      if (reason.isNotEmpty)
+                        Text(
+                          reason,
+                          style: DesignTypography.captionSmall
+                              .copyWith(color: DesignColors.textSecondary),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  ago,
+                  style: DesignTypography.captionSmall
+                      .copyWith(color: DesignColors.textTertiary),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 

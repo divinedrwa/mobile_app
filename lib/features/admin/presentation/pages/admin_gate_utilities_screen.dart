@@ -245,6 +245,12 @@ class _AdminGateUtilitiesScreenState
         ),
         actions: [
           IconButton(
+            tooltip: 'Manage gates',
+            icon: Icon(Icons.door_sliding_outlined,
+                color: DesignColors.textSecondary),
+            onPressed: _openGateManager,
+          ),
+          IconButton(
             tooltip: 'Refresh',
             icon:
                 Icon(Icons.refresh, color: DesignColors.textSecondary),
@@ -287,6 +293,93 @@ class _AdminGateUtilitiesScreenState
     );
   }
 
+  // ── Gate management ─────────────────────────────────────────────────
+
+  Future<void> _openGateForm({Map<String, dynamic>? existing}) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _GateFormSheet(existing: existing),
+    );
+    if (saved == true && mounted) {
+      ref.invalidate(adminGatesProvider);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(existing == null ? 'Gate added' : 'Gate updated'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  Future<void> _openGateManager() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Consumer(
+        builder: (ctx, sheetRef, _) {
+          final gates = sheetRef.watch(adminGatesProvider).valueOrNull ??
+              const <Map<String, dynamic>>[];
+          return Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.8,
+            ),
+            decoration: BoxDecoration(
+              color: DesignColors.surface,
+              borderRadius: BorderRadius.circular(DesignRadius.xl),
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.all(16),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('Gates', style: DesignTypography.headingM),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        _openGateForm();
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add gate'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...gates.map((g) {
+                  final active = g['isActive'] != false;
+                  final location = g['location']?.toString() ?? '';
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.door_front_door_outlined,
+                      color: active
+                          ? DesignColors.primary
+                          : DesignColors.textTertiary,
+                    ),
+                    title: Text(g['name']?.toString() ?? 'Gate'),
+                    subtitle: Text([
+                      if (location.isNotEmpty) location,
+                      if (!active) 'Inactive',
+                    ].join(' · ')),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      _openGateForm(existing: g);
+                    },
+                  );
+                }),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // ── Body ────────────────────────────────────────────────────────────
 
   Widget _buildBody(List<Map<String, dynamic>> gates) {
@@ -297,7 +390,9 @@ class _AdminGateUtilitiesScreenState
           child: EmptyStateWidget(
             icon: Icons.door_front_door_outlined,
             title: 'No gates configured',
-            subtitle: 'Gates will appear here once added to your society.',
+            subtitle: 'Add your society gates to use water and garbage controls.',
+            actionLabel: 'Add gate',
+            onAction: () => _openGateForm(),
           ),
         ),
       ]);
@@ -1157,5 +1252,130 @@ class _AdminGateUtilitiesScreenState
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'just now';
+  }
+}
+
+/// Add or edit a gate. Gates can be deactivated but not deleted, because
+/// shifts, patrols and water history are linked to them.
+class _GateFormSheet extends ConsumerStatefulWidget {
+  const _GateFormSheet({this.existing});
+
+  final Map<String, dynamic>? existing;
+
+  @override
+  ConsumerState<_GateFormSheet> createState() => _GateFormSheetState();
+}
+
+class _GateFormSheetState extends ConsumerState<_GateFormSheet> {
+  late final _name =
+      TextEditingController(text: widget.existing?['name']?.toString() ?? '');
+  late final _location = TextEditingController(
+      text: widget.existing?['location']?.toString() ?? '');
+  late final _description = TextEditingController(
+      text: widget.existing?['description']?.toString() ?? '');
+  late bool _active = widget.existing?['isActive'] != false;
+  bool _busy = false;
+  String? _error;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _location.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = 'Gate name must be at least 2 characters');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final repo = ref.read(adminGateUtilitiesRepositoryProvider);
+    try {
+      if (_isEdit) {
+        await repo.updateGate(
+          widget.existing?['id']?.toString() ?? '',
+          name: _name.text.trim(),
+          location: _location.text,
+          description: _description.text,
+          isActive: _active,
+        );
+      } else {
+        await repo.createGate(
+          name: _name.text.trim(),
+          location: _location.text,
+          description: _description.text,
+        );
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(DesignRadius.xl),
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(_isEdit ? 'Edit gate' : 'Add gate',
+                style: DesignTypography.headingM),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _name,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Name *'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _location,
+              decoration: const InputDecoration(labelText: 'Location'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _description,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            if (_isEdit)
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                subtitle: const Text('Turn off for a gate that is no longer in use'),
+                value: _active,
+                onChanged: (v) => setState(() => _active = v),
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: DesignColors.error)),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? 'Saving…' : (_isEdit ? 'Save changes' : 'Add gate')),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

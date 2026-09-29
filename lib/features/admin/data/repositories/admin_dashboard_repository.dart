@@ -44,6 +44,20 @@ class AdminDashboardRepository {
         }
       }
 
+      // User counts are a nice-to-have; never fail the dashboard over them.
+      Map<String, dynamic> byRole = {};
+      try {
+        final statsRes = await _dio.get(ApiEndpoints.adminUserStats);
+        final raw = statsRes.data;
+        if (raw is Map && raw['byRole'] is Map) {
+          byRole = Map<String, dynamic>.from(raw['byRole'] as Map);
+        }
+      } on DioException catch (_) {}
+      int activeOf(String role) {
+        final r = byRole[role];
+        return r is Map ? (_extractInt(Map<String, dynamic>.from(r), 'active') ?? 0) : 0;
+      }
+
       // Visitors — extract todayCount from response
       final visitorsData = results[0].data;
       final todayVisitors = _extractInt(visitorsData, 'todayCount') ??
@@ -78,6 +92,8 @@ class AdminDashboardRepository {
         collectionRate: collectionRate,
         paidCount: _extractInt(summary, 'paidCount') ?? 0,
         unpaidCount: _extractInt(summary, 'unpaidCount') ?? 0,
+        activeResidents: activeOf('RESIDENT') + activeOf('RESIDENT_CUM_ADMIN'),
+        activeGuards: activeOf('GUARD'),
       );
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to fetch admin dashboard');

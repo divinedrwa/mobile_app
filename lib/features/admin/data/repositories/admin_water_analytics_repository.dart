@@ -136,4 +136,25 @@ class AdminWaterAnalyticsRepository {
       throw mapDioException(e, 'Failed to load gate performance');
     }
   }
+
+  /// Latest water ON/OFF toggles: `{action, timestamp, reason, gate{name}, minutesAgo}`.
+  Future<List<Map<String, dynamic>>> getRecentEvents({int limit = 30}) async {
+    try {
+      final res = await _dio.get(
+        ApiEndpoints.waterSupplyAnalyticsRecentEvents,
+        queryParameters: {'limit': limit},
+      );
+      final data = res.data;
+      final list = data is Map ? data['recentEvents'] : null;
+      if (list is List) {
+        return list
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load recent water events');
+    }
+  }
 }

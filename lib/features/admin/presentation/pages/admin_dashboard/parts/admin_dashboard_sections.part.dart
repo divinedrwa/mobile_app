@@ -513,6 +513,34 @@ extension _AdminDashboardSectionsPart on _AdminDashboardScreenState {
                       ],
                     ),
                   ),
+                  Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: borderColor.withValues(alpha: 0.65)),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _summaryCell(
+                            label: 'Active residents',
+                            value: d.activeResidents,
+                            icon: Icons.home_rounded,
+                            accent: DesignColors.success,
+                          ),
+                        ),
+                        AdminDashboardVLine(color: borderColor),
+                        Expanded(
+                          child: _summaryCell(
+                            label: 'Active guards',
+                            value: d.activeGuards,
+                            icon: Icons.shield_outlined,
+                            accent: DesignColors.info,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

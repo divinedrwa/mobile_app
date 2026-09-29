@@ -26,6 +26,30 @@ class AdminParkingRepository {
     }
   }
 
+  /// `{slots: [{slot, status, vehicleCount, vehicles}], unassignedVehicles, summary}`.
+  Future<Map<String, dynamic>> getSlotAnalysis() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.parkingSlotAnalysis,
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load parking slots');
+    }
+  }
+
+  /// `{villaVehicles: [{villaNumber, block, ownerName, vehicleCount, vehicles}], summary}`.
+  Future<Map<String, dynamic>> getVillaVehicles() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.parkingVillaVehicles,
+      );
+      return res.data ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load vehicles by villa');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getVehicles() async {
     try {
       final res = await _dio.get(ApiEndpoints.adminVehicles);
@@ -87,6 +111,43 @@ class AdminParkingRepository {
       return {};
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to register vehicle');
+    }
+  }
+
+  Future<void> updateVehicle(
+    String id, {
+    String? vehicleNumber,
+    String? vehicleType,
+    String? model,
+    String? color,
+    String? parkingSlot,
+    String? ownerLabel,
+    String? notes,
+  }) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.adminVehicleById(id),
+        data: {
+          if (vehicleNumber != null)
+            'vehicleNumber': vehicleNumber.trim().toUpperCase(),
+          if (vehicleType != null) 'vehicleType': vehicleType,
+          if (model != null) 'model': model.trim(),
+          if (color != null) 'color': color.trim(),
+          if (parkingSlot != null) 'parkingSlot': parkingSlot.trim(),
+          if (ownerLabel != null) 'ownerLabel': ownerLabel.trim(),
+          if (notes != null) 'notes': notes.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update vehicle');
+    }
+  }
+
+  Future<void> deleteVehicle(String id) async {
+    try {
+      await _dio.delete(ApiEndpoints.adminVehicleById(id));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to delete vehicle');
     }
   }
 }

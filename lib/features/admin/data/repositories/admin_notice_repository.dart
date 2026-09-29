@@ -45,6 +45,30 @@ class AdminNoticeRepository {
     }
   }
 
+  Future<void> updateNotice(
+    String id, {
+    String? title,
+    String? content,
+    String? category,
+    String? priority,
+    bool? isUrgent,
+  }) async {
+    try {
+      await _dio.patch(
+        ApiEndpoints.adminNoticeById(id),
+        data: {
+          if (title != null) 'title': title,
+          if (content != null) 'content': content,
+          if (category != null) 'category': category,
+          if (priority != null) 'priority': priority,
+          if (isUrgent != null) 'isUrgent': isUrgent,
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update notice');
+    }
+  }
+
   /// Delete a notice.
   Future<void> deleteNotice(String id) async {
     try {

@@ -70,6 +70,7 @@ class ApiEndpoints {
   static const String adminPaymentDisputes = '/payment-disputes';
   static const String maintenancePending = '/residents/maintenance-pending';
   static const String maintenancePayments = '/maintenance/payments';
+  static const String maintenanceManagement = '/maintenance-management';
   static const String maintenanceMarkPaid = '/maintenance-management/mark-paid';
   static const String sendDuesReminders =
       '/maintenance-management/send-dues-reminders';
@@ -272,6 +273,7 @@ class ApiEndpoints {
 
   // Admin — Parcels (status update)
   static String adminParcelStatus(String id) => '/parcels/$id/status';
+  static String adminParcelById(String id) => '/parcels/$id';
 
   // Admin — Gates
   static const String adminGates = '/gates';
@@ -381,9 +383,11 @@ class ApiEndpoints {
   // Admin — Parking Management
   static const String parkingOverview = '/parking-management/overview';
   static const String parkingSlotAnalysis = '/parking-management/slot-analysis';
+  static const String parkingVillaVehicles = '/parking-management/villa-vehicles';
 
   // Admin — Vehicles (admin scope)
   static const String adminVehicles = '/vehicles';
+  static String adminVehicleById(String id) => '/vehicles/$id';
 
   // Admin — Import / Export
   static const String importVillasCsv = '/import/villas-csv';
@@ -418,16 +422,23 @@ class ApiEndpoints {
       '/water-supply-analytics/hourly-pattern';
   static const String waterSupplyAnalyticsGatePerformance =
       '/water-supply-analytics/gate-performance';
+  static const String waterSupplyAnalyticsRecentEvents =
+      '/water-supply-analytics/recent-events';
 
   // Admin — User / Role management
   static const String adminUsers = '/users';
   static String adminUserById(String id) => '/users/$id';
+  static const String adminUserStats = '/users/stats';
 
   // Admin — Payment methods (gateway config)
   static const String adminPaymentMethods = '/payment-methods';
   static String adminPaymentMethodById(String id) => '/payment-methods/$id';
   static String adminPaymentMethodTest(String id) =>
       '/payment-methods/$id/test-connection';
+  static String adminPaymentMethodUploadQr(String id) =>
+      '/payment-methods/$id/upload-qr';
+  static String adminPaymentMethodVerifyVpa(String id) =>
+      '/payment-methods/$id/verify-vpa';
 
   // Admin — Billing cycles v1
   static const String adminBillingCycles = '/v1/admin/cycles';
@@ -468,6 +479,10 @@ class ApiEndpoints {
   static const String guardVisitorConfirmEntry =
       '/guards/visitor-confirm-entry';
   static const String guardVisitorCheckOut = '/guards/visitor-checkout';
+
+  /// Resident has not responded — guard lets the visitor in with a reason.
+  static const String guardVisitorOverrideEntry =
+      '/guards/visitor-override-entry';
   static const String guardMyVisitors = '/guards/my-visitors';
   static const String guardPendingVisitors = '/guards/pending-visitors';
   static const String guardVerifyPreApproved = '/guards/verify-pre-approved';
@@ -521,6 +536,7 @@ class ApiEndpoints {
 
   // ── Admin: Guard Patrols ────────────────────────────────────────────
   static const String adminGuardPatrols = '/guard-patrols';
+  static String adminGuardPatrolById(String id) => '/guard-patrols/$id';
   static String adminGuardPatrolStatus(String id) =>
       '/guard-patrols/$id/status';
 
@@ -528,6 +544,7 @@ class ApiEndpoints {
   static const String residentIncidents = '/residents/incidents';
   static const String incidents = '/incidents';
   static String incidentResolve(String id) => '/incidents/$id/resolve';
+  static String incidentById(String id) => '/incidents/$id';
   static String deleteNotification(String id) => '/notifications/$id';
 
   // ── Special Projects ──────────────────────────────────────────────

@@ -19,6 +19,49 @@ class AdminGateUtilitiesRepository {
     }
   }
 
+  Future<void> createGate({
+    required String name,
+    String? location,
+    String? description,
+  }) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.adminGates,
+        data: {
+          'name': name,
+          if (location != null && location.trim().isNotEmpty)
+            'location': location.trim(),
+          if (description != null && description.trim().isNotEmpty)
+            'description': description.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to add gate');
+    }
+  }
+
+  Future<void> updateGate(
+    String id, {
+    String? name,
+    String? location,
+    String? description,
+    bool? isActive,
+  }) async {
+    try {
+      await _dio.patch(
+        '${ApiEndpoints.adminGates}/$id',
+        data: {
+          if (name != null) 'name': name,
+          if (location != null) 'location': location.trim(),
+          if (description != null) 'description': description.trim(),
+          if (isActive != null) 'isActive': isActive,
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update gate');
+    }
+  }
+
   /// Get current water supply status for all active gates.
   Future<List<Map<String, dynamic>>> getWaterSupplyStatus() async {
     try {

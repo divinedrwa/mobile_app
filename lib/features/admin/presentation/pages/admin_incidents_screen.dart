@@ -50,6 +50,13 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        backgroundColor: DesignColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_alert_outlined),
+        label: const Text('Report incident'),
+      ),
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _refresh,
@@ -127,11 +134,12 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                           itemCount: filtered.length,
                           itemBuilder: (_, i) => _IncidentCard(
                             incident: filtered[i],
                             onResolved: _refresh,
+                            onTap: () => _openForm(existing: filtered[i]),
                           ).animate(delay: DesignAnimations.staggerFor(i)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance),
                         ),
                 ),
@@ -141,6 +149,25 @@ class _AdminIncidentsScreenState extends ConsumerState<AdminIncidentsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? existing}) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _IncidentFormSheet(existing: existing),
+    );
+    if (result == null || !mounted) return;
+    ref.invalidate(adminIncidentsProvider);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(switch (result) {
+        'deleted' => 'Incident deleted',
+        'updated' => 'Incident updated',
+        _ => 'Incident reported',
+      }),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   Widget _filterChip(String label, String? severity) {
@@ -167,10 +194,12 @@ class _IncidentCard extends ConsumerWidget {
   const _IncidentCard({
     required this.incident,
     required this.onResolved,
+    this.onTap,
   });
 
   final Map<String, dynamic> incident;
   final Future<void> Function() onResolved;
+  final VoidCallback? onTap;
 
   Future<void> _resolve(BuildContext context, WidgetRef ref) async {
     final id = incident['id']?.toString();
@@ -273,7 +302,7 @@ class _IncidentCard extends ConsumerWidget {
     String timeStr = '';
     final created = incident['createdAt'];
     if (created != null) {
-      final dt = DateTime.tryParse(created.toString());
+      final dt = DateTime.tryParse(created.toString())?.toLocal();
       if (dt != null) {
         timeStr =
             '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} '
@@ -283,6 +312,7 @@ class _IncidentCard extends ConsumerWidget {
 
     return EnterprisePanel(
       margin: const EdgeInsets.only(bottom: 12),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -426,6 +456,193 @@ class _IncidentCard extends ConsumerWidget {
       default:
         return 'Medium';
     }
+  }
+}
+
+/// Pops 'created', 'updated' or 'deleted' on success.
+class _IncidentFormSheet extends ConsumerStatefulWidget {
+  const _IncidentFormSheet({this.existing});
+
+  final Map<String, dynamic>? existing;
+
+  @override
+  ConsumerState<_IncidentFormSheet> createState() => _IncidentFormSheetState();
+}
+
+class _IncidentFormSheetState extends ConsumerState<_IncidentFormSheet> {
+  static const _severities = <String, String>{
+    'LOW': 'Low',
+    'MEDIUM': 'Medium',
+    'HIGH': 'High',
+    'CRITICAL': 'Critical',
+  };
+
+  final _formKey = GlobalKey<FormState>();
+  late final _title =
+      TextEditingController(text: widget.existing?['title']?.toString() ?? '');
+  late final _description = TextEditingController(
+      text: widget.existing?['description']?.toString() ?? '');
+  late final _location = TextEditingController(
+      text: widget.existing?['location']?.toString() ?? '');
+  late String _severity = _severities.containsKey(widget.existing?['severity'])
+      ? widget.existing!['severity'] as String
+      : 'MEDIUM';
+  bool _busy = false;
+  String? _error;
+
+  bool get _isEdit => widget.existing != null;
+  String get _id => widget.existing?['id']?.toString() ?? '';
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final repo = ref.read(adminIncidentRepositoryProvider);
+    try {
+      if (_isEdit) {
+        await repo.updateIncident(
+          _id,
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          severity: _severity,
+          location: _location.text,
+        );
+      } else {
+        await repo.createIncident(
+          title: _title.text.trim(),
+          description: _description.text.trim(),
+          severity: _severity,
+          location: _location.text,
+        );
+      }
+      if (mounted) Navigator.pop(context, _isEdit ? 'updated' : 'created');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete incident?'),
+        content: const Text('This removes the incident report permanently.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(adminIncidentRepositoryProvider).deleteIncident(_id);
+      if (mounted) Navigator.pop(context, 'deleted');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = userFacingMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: DesignColors.surface,
+          borderRadius: BorderRadius.circular(DesignRadius.xl),
+        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(_isEdit ? 'Edit incident' : 'Report incident',
+                  style: DesignTypography.headingM),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _title,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'Title *'),
+                validator: (v) => (v == null || v.trim().length < 3)
+                    ? 'At least 3 characters'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _description,
+                maxLines: 4,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'Description *'),
+                validator: (v) => (v == null || v.trim().length < 10)
+                    ? 'At least 10 characters'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _severity,
+                decoration: const InputDecoration(labelText: 'Severity'),
+                items: _severities.entries
+                    .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    .toList(),
+                onChanged: (v) => setState(() => _severity = v ?? _severity),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _location,
+                decoration: const InputDecoration(labelText: 'Location'),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: TextStyle(color: DesignColors.error)),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(_busy
+                    ? 'Saving…'
+                    : (_isEdit ? 'Save changes' : 'Report incident')),
+              ),
+              if (_isEdit)
+                TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: DesignColors.error),
+                  onPressed: _busy ? null : _delete,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Delete incident'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -28,6 +28,18 @@ class AdminAmenityRepository {
     }
   }
 
+  /// Returns true when the amenity had bookings and was deactivated instead of deleted.
+  Future<bool> deleteAmenity(String id) async {
+    try {
+      final res = await _dio.delete<Map<String, dynamic>>(
+        ApiEndpoints.adminAmenityById(id),
+      );
+      return res.data?['deactivated'] == true;
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to delete amenity');
+    }
+  }
+
   Future<Map<String, dynamic>> createAmenity({
     required String name,
     required String type,

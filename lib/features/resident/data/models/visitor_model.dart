@@ -16,6 +16,10 @@ class VisitorModel {
   final bool? isOverstay;
   final bool wrongEntryReported;
 
+  /// Closed automatically because the guard never marked exit; [checkOutTime] is
+  /// the closing time, not a real exit.
+  final bool exitNotMarked;
+
   VisitorModel({
     this.id,
     required this.name,
@@ -32,6 +36,7 @@ class VisitorModel {
     this.overstayNotifiedAt,
     this.isOverstay,
     this.wrongEntryReported = false,
+    this.exitNotMarked = false,
   });
 
   /// True when still inside and past expected checkout (server flag or local).
@@ -87,6 +92,7 @@ class VisitorModel {
       isOverstay: json['isOverstay'] is bool ? json['isOverstay'] as bool : null,
       wrongEntryReported: json['wrongEntryReported'] == true ||
           json['wrongEntryReport'] != null,
+      exitNotMarked: json['exitNotMarked'] == true,
     );
   }
 
@@ -109,6 +115,7 @@ class VisitorModel {
         'overstayNotifiedAt': overstayNotifiedAt!.toIso8601String(),
       if (isOverstay != null) 'isOverstay': isOverstay,
       'wrongEntryReported': wrongEntryReported,
+      'exitNotMarked': exitNotMarked,
     };
   }
 
@@ -132,6 +139,7 @@ class VisitorModel {
       overstayNotifiedAt: overstayNotifiedAt,
       isOverstay: isOverstay ?? this.isOverstay,
       wrongEntryReported: wrongEntryReported ?? this.wrongEntryReported,
+      exitNotMarked: exitNotMarked,
     );
   }
 }

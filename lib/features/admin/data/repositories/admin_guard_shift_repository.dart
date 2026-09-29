@@ -97,6 +97,8 @@ class AdminGuardShiftRepository {
     String? endTime,
     String? contactPhone,
     bool? isRecurring,
+    int? recurringStartMinutes,
+    int? recurringEndMinutes,
   }) async {
     try {
       await _dio.patch(
@@ -107,8 +109,15 @@ class AdminGuardShiftRepository {
           if (shiftType != null) 'shiftType': shiftType,
           if (startTime != null) 'startTime': startTime,
           if (endTime != null) 'endTime': endTime,
-          if (contactPhone != null) 'contactPhone': contactPhone.trim(),
+          // Backend accepts null to clear, but rejects an empty string.
+          if (contactPhone != null)
+            'contactPhone':
+                contactPhone.trim().isEmpty ? null : contactPhone.trim(),
           if (isRecurring != null) 'recurringDaily': isRecurring,
+          if (recurringStartMinutes != null)
+            'recurringStartMinutes': recurringStartMinutes,
+          if (recurringEndMinutes != null)
+            'recurringEndMinutes': recurringEndMinutes,
         },
       );
     } on DioException catch (e) {

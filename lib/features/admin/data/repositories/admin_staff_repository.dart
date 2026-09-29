@@ -31,12 +31,12 @@ class AdminStaffRepository {
     }
   }
 
-  /// Create a new staff member.
+  /// Create a new staff member. The backend requires at least one villa.
   Future<void> createStaff({
     required String name,
     required String type,
     required String phone,
-    List<String>? villaIds,
+    required List<String> villaIds,
     String? address,
   }) async {
     try {
@@ -46,7 +46,7 @@ class AdminStaffRepository {
           'name': name,
           'type': type,
           'phone': phone,
-          if (villaIds != null && villaIds.isNotEmpty) 'villaIds': villaIds,
+          'villaIds': villaIds,
           if (address != null && address.isNotEmpty) 'address': address,
         },
       );

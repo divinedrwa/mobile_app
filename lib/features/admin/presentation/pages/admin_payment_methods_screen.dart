@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/enterprise_ui.dart';
@@ -207,7 +209,53 @@ class _AdminPaymentMethodsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadQr(BuildContext sheetCtx, String id) async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2000,
+      maxHeight: 2000,
+    );
+    if (picked == null) return;
+    try {
+      final bytes = await picked.readAsBytes();
+      final validation = await ref
+          .read(adminPaymentMethodRepositoryProvider)
+          .uploadUpiQr(id, bytes, picked.name);
+      _refresh();
+      if (sheetCtx.mounted) {
+        final msg = validation['message']?.toString() ??
+            'QR uploaded. You can now enable this method.';
+        ScaffoldMessenger.of(sheetCtx).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (e) {
+      if (sheetCtx.mounted) {
+        ScaffoldMessenger.of(sheetCtx).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    }
+  }
+
+  Future<void> _verifyVpa(BuildContext sheetCtx, String id) async {
+    try {
+      final validation =
+          await ref.read(adminPaymentMethodRepositoryProvider).verifyVpa(id);
+      _refresh();
+      if (sheetCtx.mounted) {
+        ScaffoldMessenger.of(sheetCtx).showSnackBar(SnackBar(
+          content: Text(validation['message']?.toString() ?? 'UPI ID verified'),
+        ));
+      }
+    } catch (e) {
+      if (sheetCtx.mounted) {
+        ScaffoldMessenger.of(sheetCtx).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
         );
       }
     }
@@ -225,7 +273,7 @@ class _AdminPaymentMethodsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text(userFacingMessage(e))),
         );
       }
     }
@@ -310,12 +358,11 @@ class _AdminPaymentMethodsScreenState
                             labelText: 'Type',
                             border: OutlineInputBorder(),
                           ),
-                          // UPI_QR is intentionally not offered here: the
-                          // backend force-disables new UPI_QR methods until a
-                          // QR image is uploaded via the web admin.
                           items: const [
                             DropdownMenuItem(
                                 value: 'UPI_VPA', child: Text('UPI VPA')),
+                            DropdownMenuItem(
+                                value: 'UPI_QR', child: Text('UPI QR')),
                             DropdownMenuItem(
                                 value: 'RAZORPAY', child: Text('Razorpay')),
                             DropdownMenuItem(
@@ -336,13 +383,17 @@ class _AdminPaymentMethodsScreenState
                           },
                         ),
                       if (!isEdit) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'UPI QR methods are set up from the web admin.',
-                          style: DesignTypography.captionSmall.copyWith(
-                            color: DesignColors.textSecondary,
+                        if (selectedType == 'UPI_QR') ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Create the method, then open it to upload your '
+                            'bank UPI QR image. It stays disabled until a valid '
+                            'QR is uploaded.',
+                            style: DesignTypography.captionSmall.copyWith(
+                              color: DesignColors.textSecondary,
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 12),
                       ],
                       TextField(
@@ -389,7 +440,9 @@ class _AdminPaymentMethodsScreenState
                                         .updatePaymentMethod(
                                           id,
                                           displayName: nameCtl.text.trim(),
-                                          config: cfg,
+                                          // UPI QR config comes only from the
+                                          // decoded upload; never overwrite it.
+                                          config: type == 'UPI_QR' ? null : cfg,
                                         );
                                   } else {
                                     await ref
@@ -410,7 +463,8 @@ class _AdminPaymentMethodsScreenState
                                   if (ctx.mounted) {
                                     setLocal(() => submitting = false);
                                     ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(content: Text(e.toString())),
+                                      SnackBar(
+                                          content: Text(userFacingMessage(e))),
                                     );
                                   }
                                 }
@@ -424,6 +478,22 @@ class _AdminPaymentMethodsScreenState
                               )
                             : Text(isEdit ? 'Save' : 'Create'),
                       ),
+                      if (isEdit && type == 'UPI_QR') ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _uploadQr(ctx, id),
+                          icon: const Icon(Icons.qr_code_scanner_rounded),
+                          label: const Text('Upload QR image'),
+                        ),
+                      ],
+                      if (isEdit && type == 'UPI_VPA') ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _verifyVpa(ctx, id),
+                          icon: const Icon(Icons.verified_outlined),
+                          label: const Text('Verify saved UPI ID'),
+                        ),
+                      ],
                       if (isEdit &&
                           (type == 'RAZORPAY' || type == 'PHONEPE')) ...[
                         const SizedBox(height: 8),
@@ -465,7 +535,7 @@ class _AdminPaymentMethodsScreenState
                             } catch (e) {
                               if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
+                                  SnackBar(content: Text(userFacingMessage(e))),
                                 );
                               }
                             }
@@ -505,7 +575,7 @@ class _AdminPaymentMethodsScreenState
       case 'UPI_VPA':
         return ['vpa'];
       case 'UPI_QR':
-        return ['qrCodeUrl'];
+        return [];
       case 'RAZORPAY':
         return ['keyId', 'keySecret', 'webhookSecret', 'currency'];
       case 'PHONEPE':

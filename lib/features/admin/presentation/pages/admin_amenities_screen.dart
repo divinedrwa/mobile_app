@@ -206,6 +206,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
     final priceCtrl = TextEditingController(
         text: existing?['pricePerHour']?.toString() ?? '');
     var selectedType = existing?['type']?.toString() ?? 'OTHER';
+    var isActive = existing?['isActive'] != false;
     const amenityTypes = [
       'CLUBHOUSE',
       'GYM',
@@ -287,7 +288,15 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  StatefulBuilder(
+                    builder: (context, setLocal) => SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Available for booking'),
+                      value: isActive,
+                      onChanged: (v) => setLocal(() => isActive = v),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -301,10 +310,12 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                               selectedType,
                               descCtrl.text,
                               capCtrl.text,
-                              priceCtrl.text);
+                              priceCtrl.text,
+                              isActive);
                         } else {
                           _handleCreate(nameCtrl.text, selectedType,
-                              descCtrl.text, capCtrl.text, priceCtrl.text);
+                              descCtrl.text, capCtrl.text, priceCtrl.text,
+                              isActive);
                         }
                       },
                       style: FilledButton.styleFrom(
@@ -313,6 +324,21 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
                       child: Text(isEdit ? 'Update' : 'Create'),
                     ),
                   ),
+                  if (isEdit)
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: DesignColors.error,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _handleDelete(existing ?? const <String, dynamic>{});
+                        },
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: const Text('Delete amenity'),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -343,8 +369,53 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
     );
   }
 
+  Future<void> _handleDelete(Map<String, dynamic> amenity) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete amenity?'),
+        content: Text(
+          '${amenity['name'] ?? 'This amenity'} will be removed. If it has '
+          'bookings, it is deactivated instead so the booking history is kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final deactivated = await ref
+          .read(adminAmenityRepositoryProvider)
+          .deleteAmenity(amenity['id']?.toString() ?? '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(deactivated
+                ? 'Amenity has bookings, so it was deactivated'
+                : 'Amenity deleted'),
+          ),
+        );
+      }
+      _refresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userFacingMessage(e))),
+        );
+      }
+    }
+  }
+
   Future<void> _handleCreate(String name, String type, String desc,
-      String cap, String price) async {
+      String cap, String price, bool isActive) async {
     try {
       await ref.read(adminAmenityRepositoryProvider).createAmenity(
             name: name.trim(),
@@ -352,6 +423,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
             description: desc.trim().isNotEmpty ? desc.trim() : null,
             capacity: int.tryParse(cap),
             pricePerHour: double.tryParse(price),
+            isActive: isActive,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +441,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
   }
 
   Future<void> _handleUpdate(String id, String name, String type, String desc,
-      String cap, String price) async {
+      String cap, String price, bool isActive) async {
     try {
       await ref.read(adminAmenityRepositoryProvider).updateAmenity(
             id,
@@ -378,6 +450,7 @@ class _AdminAmenitiesScreenState extends ConsumerState<AdminAmenitiesScreen> {
             description: desc.trim(),
             capacity: int.tryParse(cap),
             pricePerHour: double.tryParse(price),
+            isActive: isActive,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -18,6 +18,39 @@ class AdminParcelRepository {
     }
   }
 
+  Future<void> createParcel({
+    required String villaId,
+    required String description,
+  }) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.adminParcels,
+        data: {'villaId': villaId, 'description': description},
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to log parcel');
+    }
+  }
+
+  Future<void> updateParcel(String id, {required String description}) async {
+    try {
+      await _dio.put(
+        ApiEndpoints.adminParcelById(id),
+        data: {'description': description},
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to update parcel');
+    }
+  }
+
+  Future<void> deleteParcel(String id) async {
+    try {
+      await _dio.delete(ApiEndpoints.adminParcelById(id));
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to delete parcel');
+    }
+  }
+
   /// Update parcel status.
   Future<void> updateParcelStatus(String id, {required String status}) async {
     try {

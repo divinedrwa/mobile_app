@@ -247,7 +247,8 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
 
           // Option bars
           ...options.map((o) {
-            final optionText = o['text']?.toString() ?? '';
+            final optionText =
+                (o['optionText'] ?? o['text'])?.toString() ?? '';
             final voteCount =
                 ((o['_count'] as Map?)?['votes'] as num?)?.toInt() ??
                     (o['voteCount'] as num?)?.toInt() ??
@@ -289,28 +290,39 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
             );
           }),
 
-          // Close action for active polls
-          if (isActive) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () => _confirmClose(id, title),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: DesignColors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(DesignRadius.full),
-                  ),
-                  child: Text('Close Poll',
-                      style: DesignTypography.labelSmall.copyWith(
-                          color: DesignColors.error,
-                          fontWeight: FontWeight.w600)),
-                ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () => _showCreateSheet(context, existing: poll),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit'),
               ),
-            ),
-          ],
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: DesignColors.error),
+                onPressed: () => _confirmDelete(id, title),
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                label: const Text('Delete'),
+              ),
+              if (isActive)
+                GestureDetector(
+                  onTap: () => _confirmClose(id, title),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: DesignColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DesignRadius.full),
+                    ),
+                    child: Text('Close Poll',
+                        style: DesignTypography.labelSmall.copyWith(
+                            color: DesignColors.error,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
@@ -383,12 +395,51 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
     );
   }
 
-  void _showCreateSheet(BuildContext context) {
+  Future<void> _confirmDelete(String id, String title) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete poll?'),
+        content: Text('Delete "$title" and all its votes? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: TextStyle(color: DesignColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(adminPollRepositoryProvider).deletePoll(id);
+      ref.invalidate(adminPollsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Poll deleted'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(userFacingMessage(e)),
+          backgroundColor: DesignColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  void _showCreateSheet(BuildContext context, {Map<String, dynamic>? existing}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _CreatePollSheet(onCreated: _refresh),
+      builder: (_) => _CreatePollSheet(onCreated: _refresh, existing: existing),
     );
   }
 }
@@ -398,8 +449,11 @@ class _AdminPollsScreenState extends ConsumerState<AdminPollsScreen> {
 // ═══════════════════════════════════════════════════════════════════════
 
 class _CreatePollSheet extends ConsumerStatefulWidget {
-  const _CreatePollSheet({required this.onCreated});
+  const _CreatePollSheet({required this.onCreated, this.existing});
   final VoidCallback onCreated;
+
+  /// When set, the sheet edits this poll (title, description, dates only).
+  final Map<String, dynamic>? existing;
 
   @override
   ConsumerState<_CreatePollSheet> createState() => _CreatePollSheetState();
@@ -416,6 +470,22 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
     TextEditingController(),
   ];
   bool _submitting = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.existing;
+    if (p != null) {
+      _titleCtrl.text = p['title']?.toString() ?? '';
+      _descCtrl.text = p['description']?.toString() ?? '';
+      _startDate = DateTime.tryParse(p['startDate']?.toString() ?? '')?.toLocal() ??
+          _startDate;
+      _endDate =
+          DateTime.tryParse(p['endDate']?.toString() ?? '')?.toLocal() ?? _endDate;
+    }
+  }
 
   @override
   void dispose() {
@@ -441,10 +511,11 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
 
   Future<void> _pickDate(bool isStart) async {
     final initial = isStart ? _startDate : _endDate;
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      firstDate: initial.isBefore(yesterday) ? initial : yesterday,
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) {
@@ -460,6 +531,35 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _submitting) return;
+    if (_isEdit) {
+      setState(() => _submitting = true);
+      try {
+        await ref.read(adminPollRepositoryProvider).updatePoll(
+              widget.existing!['id']?.toString() ?? '',
+              title: _titleCtrl.text.trim(),
+              description: _descCtrl.text.trim(),
+              startDate: _startDate.toUtc().toIso8601String(),
+              endDate: _endDate.toUtc().toIso8601String(),
+            );
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        widget.onCreated();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Poll updated'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      } catch (e) {
+        if (mounted) {
+          setState(() => _submitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(userFacingMessage(e)),
+            backgroundColor: DesignColors.error,
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+      }
+      return;
+    }
     final options = _optionCtrls
         .map((c) => c.text.trim())
         .where((t) => t.isNotEmpty)
@@ -536,15 +636,17 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Create Poll', style: DesignTypography.headingM),
+                Text(_isEdit ? 'Edit Poll' : 'Create Poll',
+                    style: DesignTypography.headingM),
                 const SizedBox(height: 20),
 
                 TextFormField(
                   controller: _titleCtrl,
                   decoration:
                       DesignComponents.inputDecoration(label: 'Title'),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().length < 5
+                      ? 'At least 5 characters'
+                      : null,
                 ),
                 const SizedBox(height: 12),
 
@@ -572,7 +674,14 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                 ),
                 const SizedBox(height: 16),
 
+                if (_isEdit)
+                  Text(
+                    'Options can\'t be changed after a poll is created.',
+                    style: DesignTypography.captionSmall
+                        .copyWith(color: DesignColors.textTertiary),
+                  ),
                 // Options
+                if (!_isEdit) ...[
                 Text('Options', style: DesignTypography.labelSmall),
                 const SizedBox(height: 8),
                 ..._optionCtrls.asMap().entries.map((entry) {
@@ -608,6 +717,7 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add Option'),
                 ),
+                ],
                 const SizedBox(height: 16),
 
                 SizedBox(
@@ -621,7 +731,8 @@ class _CreatePollSheetState extends ConsumerState<_CreatePollSheet> {
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Create Poll', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        : Text(_isEdit ? 'Save Changes' : 'Create Poll',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ),
                 ),
               ],

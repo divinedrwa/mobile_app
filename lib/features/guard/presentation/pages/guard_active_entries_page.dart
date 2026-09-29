@@ -574,7 +574,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
       );
     }
     final status = v.status.trim().toUpperCase();
-    if (v.awaitingCheckout && status == 'CHECKED_IN') {
+    if (v.awaitingCheckout && ['CHECKED_IN', 'PENDING_APPROVAL', 'APPROVED'].contains(status)) {
       return FilledButton.tonalIcon(
         style: FilledButton.styleFrom(
           visualDensity: VisualDensity.compact,
@@ -595,7 +595,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             ? SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2, color: GuardTokens.guardAccentDeep,))
             : Icon(Icons.logout_rounded, size: 18),
         label: Text(
-          busy ? 'Marking…' : 'Mark exit',
+          busy ? 'Marking…' : (status == 'CHECKED_IN' ? 'Mark exit' : 'Left'),
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
         ),
       );

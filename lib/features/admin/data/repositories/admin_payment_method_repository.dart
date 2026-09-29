@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
@@ -74,6 +76,50 @@ class AdminPaymentMethodRepository {
       await _dio.delete(ApiEndpoints.adminPaymentMethodById(id));
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to delete payment method');
+    }
+  }
+
+  /// Uploads the bank's UPI QR image; the backend decodes and validates it.
+  /// Returns the backend's `validation` block.
+  Future<Map<String, dynamic>> uploadUpiQr(
+    String id,
+    Uint8List bytes,
+    String filename,
+  ) async {
+    final lower = filename.toLowerCase();
+    final subtype = lower.endsWith('.png')
+        ? 'png'
+        : lower.endsWith('.webp')
+            ? 'webp'
+            : 'jpeg';
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiEndpoints.adminPaymentMethodUploadQr(id),
+        data: FormData.fromMap({
+          'qrImage': MultipartFile.fromBytes(
+            bytes,
+            filename: filename,
+            contentType: DioMediaType('image', subtype),
+          ),
+        }),
+      );
+      final validation = res.data?['validation'];
+      return validation is Map ? Map<String, dynamic>.from(validation) : {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Could not read the QR image');
+    }
+  }
+
+  /// Validates the saved UPI ID. Returns the backend's `validation` block.
+  Future<Map<String, dynamic>> verifyVpa(String id) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiEndpoints.adminPaymentMethodVerifyVpa(id),
+      );
+      final validation = res.data?['validation'];
+      return validation is Map ? Map<String, dynamic>.from(validation) : {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'UPI ID verification failed');
     }
   }
 

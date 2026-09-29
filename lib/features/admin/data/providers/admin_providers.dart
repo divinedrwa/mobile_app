@@ -29,6 +29,8 @@ import '../repositories/admin_payment_disputes_repository.dart';
 import '../repositories/admin_complaint_analytics_repository.dart';
 import '../repositories/admin_parking_repository.dart';
 import '../repositories/admin_data_tools_repository.dart';
+import '../repositories/admin_maintenance_hub_repository.dart';
+import '../repositories/admin_billing_cycles_repository.dart';
 import '../repositories/admin_amenity_repository.dart';
 import '../repositories/admin_bank_account_repository.dart';
 import '../repositories/admin_upi_payment_repository.dart';
@@ -124,7 +126,7 @@ final adminExpenseFilterProvider =
 final adminExpenseCategoriesProvider =
     FutureProvider.autoDispose<List<ExpenseCategoryModel>>((ref) async {
   final raw =
-      await ref.watch(adminExpenseRepositoryProvider).getAdminCategories();
+      await ref.watch(adminExpenseRepositoryProvider).getCategories();
   return raw.map((e) => ExpenseCategoryModel.fromJson(e)).toList();
 });
 
@@ -133,7 +135,7 @@ final adminExpensesProvider =
     FutureProvider.autoDispose<List<ExpenseModel>>((ref) async {
   final repo = ref.watch(adminExpenseRepositoryProvider);
   final filter = ref.watch(adminExpenseFilterProvider);
-  final raw = await repo.getAdminExpenses(categoryId: filter.categoryId);
+  final raw = await repo.getExpenses(categoryId: filter.categoryId);
   return raw.map((e) => ExpenseModel.fromJson(e)).toList();
 });
 
@@ -609,6 +611,16 @@ final adminParkingVehiclesProvider =
   return ref.watch(adminParkingRepositoryProvider).getVehicles();
 });
 
+final adminParkingSlotsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminParkingRepositoryProvider).getSlotAnalysis();
+});
+
+final adminParkingByVillaProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return ref.watch(adminParkingRepositoryProvider).getVillaVehicles();
+});
+
 // ═════════════════════════════════════════════════════════════════════
 // NEW FEATURES — Tier 3
 // ═════════════════════════════════════════════════════════════════════
@@ -677,6 +689,11 @@ final adminWaterAnalyticsGateProvider =
   return ref
       .watch(adminWaterAnalyticsRepositoryProvider)
       .getGatePerformance(days: 30);
+});
+
+final adminWaterRecentEventsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminWaterAnalyticsRepositoryProvider).getRecentEvents();
 });
 
 // ── UPI Payment Verifications ───────────────────────────────────────
@@ -799,4 +816,24 @@ final adminBannerRepositoryProvider =
 final adminBannersProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref.watch(adminBannerRepositoryProvider).getBanners();
+});
+
+// ── Maintenance Hub (Admin) ────────────────────────────────────────────
+
+final adminMaintenanceHubRepositoryProvider =
+    Provider<AdminMaintenanceHubRepository>(
+        (ref) => AdminMaintenanceHubRepository());
+
+final adminBillingCyclesRepositoryProvider =
+    Provider<AdminBillingCyclesRepository>(
+        (ref) => AdminBillingCyclesRepository());
+
+final adminHubBillingCyclesProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminBillingCyclesRepositoryProvider).getCycles();
+});
+
+final adminFinancialYearsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(adminBillingCyclesRepositoryProvider).getFinancialYears();
 });
