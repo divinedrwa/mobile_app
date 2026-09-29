@@ -8,6 +8,14 @@ import '../../../../core/network/dio_exception_mapper.dart';
 class AdminExpenseRepository {
   Dio get _dio => DioClient.dio;
 
+  /// The expense list endpoints return a plain JSON array; also accept
+  /// `{ <key>: [...] }` in case the API adds pagination metadata.
+  static List<Map<String, dynamic>> _mapList(dynamic data, String key) {
+    final list = data is List ? data : (data is Map ? data[key] : null);
+    if (list is! List) return const [];
+    return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
   Future<List<Map<String, dynamic>>> getExpenses({
     int page = 1,
     int limit = 50,
@@ -15,7 +23,7 @@ class AdminExpenseRepository {
     String? year,
   }) async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>(
+      final res = await _dio.get(
         ApiEndpoints.adminExpenses,
         queryParameters: {
           'page': page,
@@ -24,8 +32,7 @@ class AdminExpenseRepository {
           if (year != null) 'year': year,
         },
       );
-      final list = res.data?['expenses'] as List? ?? [];
-      return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      return _mapList(res.data, 'expenses');
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load expenses');
     }
@@ -214,11 +221,8 @@ class AdminExpenseRepository {
 
   Future<List<Map<String, dynamic>>> getCategories() async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        '${ApiEndpoints.adminExpenses}/categories',
-      );
-      final list = res.data?['chargeHeads'] as List? ?? [];
-      return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final res = await _dio.get(ApiEndpoints.adminExpenseCategories);
+      return _mapList(res.data, 'categories');
     } on DioException catch (e) {
       throw mapDioException(e, 'Failed to load categories');
     }
