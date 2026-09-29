@@ -263,7 +263,8 @@ class GuardShiftDetailsPage extends ConsumerWidget {
 
   static String _fmtTime(DateTime? dt) {
     if (dt == null) return '--';
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final t = dt.toLocal();
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 }
 

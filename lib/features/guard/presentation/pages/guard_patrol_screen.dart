@@ -314,7 +314,7 @@ class _PatrolCard extends StatelessWidget {
       statusLabel = 'Scheduled';
     }
 
-    final time = patrol.actualTime ?? patrol.scheduledTime;
+    final time = (patrol.actualTime ?? patrol.scheduledTime)?.toLocal();
     final timeStr = time != null
         ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
         : '--:--';

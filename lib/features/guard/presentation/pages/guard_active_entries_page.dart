@@ -948,9 +948,19 @@ String _vehicleKindLabel(String kind) {
   }
 }
 
+const _shortMonths = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// Local (device/IST) time; entries from an earlier day also show the date.
 String _fmtTime(DateTime? dt) {
   if (dt == null) return '--:--';
-  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  final t = dt.toLocal();
+  final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  final now = DateTime.now();
+  final today = t.year == now.year && t.month == now.month && t.day == now.day;
+  return today ? hm : '${t.day} ${_shortMonths[t.month - 1]} $hm';
 }
 
 class _DeliveryCard extends StatelessWidget {
