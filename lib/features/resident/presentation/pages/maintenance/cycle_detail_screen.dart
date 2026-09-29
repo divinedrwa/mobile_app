@@ -396,7 +396,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
   }
 
   void _navigateToPayment(MaintenanceDueModel cycle, double amount) {
-    final monthName = DateFormat('MMM yyyy').format(DateTime(cycle.year, cycle.month));
+    final monthName = DateFormat('MMM yyyy').format((DateTime(cycle.year, cycle.month)).toLocal());
     final remark = cycle.title.isNotEmpty
         ? cycle.title
         : 'Maintenance $monthName';

@@ -311,7 +311,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
     final groupedVisitors = <String, List<VisitorModel>>{};
     for (final visitor in visitors) {
       final local = visitor.visitDate.toLocal();
-      final dateKey = DateFormat('yyyy-MM-dd').format(local);
+      final dateKey = DateFormat('yyyy-MM-dd').format(local.toLocal());
       groupedVisitors.putIfAbsent(dateKey, () => []).add(visitor);
     }
 
@@ -355,7 +355,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
 
           final dateKey = sortedDates[index];
           final dateVisitors = groupedVisitors[dateKey]!;
-          final date = DateTime.parse(dateKey);
+          final date = DateTime.parse(dateKey).toLocal();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -487,9 +487,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
               children: [
                 VisitorMgmtMetaChip(
                   icon: Icons.calendar_today_outlined,
-                  label: DateFormat('EEE, MMM d, y').format(
-                    visitor.visitDate.toLocal(),
-                  ),
+                  label: DateFormat('EEE, MMM d, y').format(visitor.visitDate.toLocal()),
                 ),
                 VisitorMgmtMetaChip(
                   icon: Icons.schedule_outlined,
@@ -725,7 +723,7 @@ class _VisitorHistoryScreenState extends ConsumerState<VisitorHistoryScreen>
 
     if (dateOnly.isAtSameMomentAs(today)) return 'TODAY';
     if (dateOnly.isAtSameMomentAs(yesterday)) return 'YESTERDAY';
-    return DateFormat('EEEE, MMM d').format(local).toUpperCase();
+    return DateFormat('EEEE, MMM d').format(local.toLocal()).toUpperCase();
   }
 
   Widget _buildEmptyState() {

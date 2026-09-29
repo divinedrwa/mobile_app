@@ -99,6 +99,25 @@ import '../../features/resident/presentation/pages/special_projects/admin_specia
 import '../../features/resident/presentation/pages/special_projects/admin_create_special_project_screen.dart';
 import '../../features/guard/presentation/router/guard_routes.dart';
 
+/// First path segment under `/resident/` a visitor-only resident (non-paying villa) may open:
+/// visitor management, gate parcels, SOS, notifications and their own profile essentials.
+const _visitorOnlyResidentPaths = <String>{
+  'visitor-hub',
+  'visitor-requests',
+  'visitor-history',
+  'pre-approve-visitor',
+  'my-pre-approved-visitors',
+  'parcels',
+  'notifications',
+  'sos',
+  'edit-profile',
+  'family-members',
+  'emergency-contacts',
+  'vehicles',
+  'vendors-staff',
+  'settings',
+};
+
 /// App-wide router configuration with role-based navigation
 class AppRouter {
   /// Home route for a role once past the login/legal gates.
@@ -175,6 +194,14 @@ class AppRouter {
             }
             // Block non-admin roles from admin sub-screens inside resident shell.
             if (!role.isAdminLike && loc.startsWith('/resident/admin')) {
+              return '/resident';
+            }
+            // Residents of a non-paying villa get the visitor features only.
+            if (role == UserRole.resident &&
+                user.visitorOnlyAccess &&
+                loc.startsWith('/resident/') &&
+                !_visitorOnlyResidentPaths
+                    .contains(loc.substring('/resident/'.length).split('/').first.split('?').first)) {
               return '/resident';
             }
             // Block tenants from accessing society expenses.

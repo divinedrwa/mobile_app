@@ -110,7 +110,7 @@ class ExpenseBillingCycleGroup {
 
   static DateTime? _parseDate(dynamic raw) {
     if (raw == null) return null;
-    return DateTime.tryParse(raw.toString());
+    return DateTime.tryParse(raw.toString())?.toLocal();
   }
 
   static double _toDouble(dynamic v, [double fallback = 0]) {

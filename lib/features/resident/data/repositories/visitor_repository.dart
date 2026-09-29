@@ -186,7 +186,7 @@ class VisitorRepository {
       final viewsRaw = map['views'] as List? ?? const [];
       final viewedAt = viewsRaw
           .whereType<Map>()
-          .map((v) => DateTime.tryParse(v['viewedAt']?.toString() ?? ''))
+          .map((v) => DateTime.tryParse(v['viewedAt']?.toString() ?? '')?.toLocal())
           .whereType<DateTime>()
           .toList();
       return (total: total, viewedAt: viewedAt);
@@ -281,7 +281,7 @@ class VisitorRepository {
         json['checkOutTime'] = json['checkOutTime'] ?? json['checkOutAt'];
 
         final checkIn = checkInRaw != null
-            ? DateTime.tryParse(checkInRaw.toString())
+            ? DateTime.tryParse(checkInRaw.toString())?.toLocal()
             : null;
         if (checkIn != null) {
           json['visitTime'] = DateFormat('h:mm a').format(checkIn.toLocal());

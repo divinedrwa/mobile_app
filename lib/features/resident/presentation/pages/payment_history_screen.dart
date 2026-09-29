@@ -170,7 +170,7 @@ class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
     final record = widget.record;
     final paidDate = record.paidAt ?? record.dueDate;
     final monthLabel =
-        DateFormat('MMM yyyy').format(DateTime(record.year, record.month));
+        DateFormat('MMM yyyy').format((DateTime(record.year, record.month)).toLocal());
     final status = record.status.toUpperCase();
     final statusColor = switch (status) {
       'AUTO_SETTLED' => DesignColors.primary,
@@ -230,7 +230,7 @@ class _PaymentHistoryCardState extends ConsumerState<_PaymentHistoryCard> {
                       SizedBox(height: context.spacing.s4),
                       Text(
                         record.paidAt != null
-                            ? DateFormat('dd MMM yyyy').format(paidDate)
+                            ? DateFormat('dd MMM yyyy').format(paidDate.toLocal())
                             : status == 'AUTO_SETTLED'
                                 ? 'Adjusted from previous credit'
                                 : 'Remaining due INR ${record.remainingDue.toStringAsFixed(0)}',

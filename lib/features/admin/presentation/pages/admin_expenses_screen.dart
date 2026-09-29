@@ -366,7 +366,7 @@ class _AdminExpensesScreenState extends ConsumerState<AdminExpensesScreen>
                           Text(
                             [
                               paidTo,
-                              DateFormat('dd MMM yy').format(paymentDate),
+                              DateFormat('dd MMM yy').format(paymentDate.toLocal()),
                               if (catName.isNotEmpty) catName,
                             ].join(' \u00b7 '),
                             style: DesignTypography.captionSmall
@@ -757,7 +757,7 @@ class _AddExpenseSheetState extends ConsumerState<_AddExpenseSheet> {
                     children: [
                       Expanded(
                         child: Text(
-                          DateFormat('dd MMM yyyy').format(_paymentDate),
+                          DateFormat('dd MMM yyyy').format(_paymentDate.toLocal()),
                           style: DesignTypography.body,
                         ),
                       ),

@@ -26,11 +26,11 @@ class RecentPaymentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = item.title.isNotEmpty
         ? item.title
-        : DateFormat('MMMM y').format(DateTime(item.year, item.month));
+        : DateFormat('MMMM y').format((DateTime(item.year, item.month)).toLocal());
     final paidAmount =
         item.cashPaidAmount > 0 ? item.cashPaidAmount : item.paidAmount;
     final paidOn = item.paidAt != null
-        ? 'Paid on ${DateFormat('d MMM y').format(item.paidAt!)}'
+        ? 'Paid on ${DateFormat('d MMM y').format(item.paidAt!.toLocal())}'
         : 'Paid';
     final ref = item.cycleKey.isNotEmpty ? ' · ${item.cycleKey}' : '';
 

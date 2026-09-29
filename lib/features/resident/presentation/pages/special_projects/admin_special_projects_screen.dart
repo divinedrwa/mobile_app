@@ -281,7 +281,7 @@ class _AdminSpecialProjectsScreenState
                 _infoChip(Icons.home_rounded,
                     '${project.contributionCount} villas'),
                 _infoChip(Icons.calendar_today_rounded,
-                    DateFormat('dd MMM yy').format(project.createdAt)),
+                    DateFormat('dd MMM yy').format(project.createdAt.toLocal())),
               ],
             ),
             const SizedBox(height: AppSpacing.md),

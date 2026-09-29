@@ -369,7 +369,7 @@ class _RequestCard extends StatelessWidget {
 
   static DateTime? _parseTime(dynamic v) {
     if (v == null) return null;
-    if (v is String) return DateTime.tryParse(v);
+    if (v is String) return DateTime.tryParse(v)?.toLocal();
     return null;
   }
 

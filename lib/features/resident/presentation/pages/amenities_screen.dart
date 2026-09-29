@@ -101,7 +101,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${amenity.name} booked for ${DateFormat('dd MMM, hh:mm a').format(startDateTime)}',
+            '${amenity.name} booked for ${DateFormat('dd MMM, hh:mm a').format(startDateTime.toLocal())}',
           ),
           backgroundColor: DesignColors.success,
         ),

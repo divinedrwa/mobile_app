@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/design_haptics.dart';
+import '../../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../../theme/context_extensions.dart';
 import '../../../data/models/quick_action_model.dart';
 import '../../pages/amenities_screen.dart';
@@ -35,6 +36,9 @@ class _HomeQuickActionsState extends ConsumerState<HomeQuickActions> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(authProvider).user?.visitorOnlyAccess ?? false) {
+      return _buildVisitorOnly(context);
+    }
     final row1 = residentHomeIconRowBelowHero;
     final row2 = residentHomeIconRowExpand;
     assert(row1.length == kHomeQuickActionsRow1Count);
@@ -97,6 +101,40 @@ class _HomeQuickActionsState extends ConsumerState<HomeQuickActions> {
                   ),
                 )
               : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  /// Non-paying villa: visitor management only (GatePass+, SOS, visitor history, parcels).
+  Widget _buildVisitorOnly(BuildContext context) {
+    const ids = ['visitor_history', 'parcels'];
+    final tiles = [
+      for (final id in ids)
+        ...residentHomeQuickActionsGrid.where((a) => a.id == id).take(1),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildQuickActionsHeader(context),
+        const SizedBox(height: 10),
+        const HomeQuickActionsHeroRow(visitorOnly: true),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0) SizedBox(width: kHomeQuickActionRowGap),
+              Expanded(
+                child: HomeQuickActionIconTile(
+                  action: tiles[i],
+                  onTap: () {
+                    DesignHaptics.selection();
+                    _openQuickAction(context, ref, tiles[i]);
+                  },
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );

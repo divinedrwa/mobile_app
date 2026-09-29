@@ -171,7 +171,7 @@ class _MaintenancePaymentScreenState
     final filter = ref.watch(maintenanceDashboardFilterProvider);
     final tabs = const ['Overview', 'Year review', 'Outstanding', 'Shortfall'];
     final periodLabel =
-        '${DateFormat('MMMM').format(DateTime(filter.year, filter.month))} ${filter.year}';
+        '${DateFormat('MMMM').format((DateTime(filter.year, filter.month)).toLocal())} ${filter.year}';
 
     ref.listen(billingFinancialYearsProvider, (prev, next) {
       next.whenData((fys) {

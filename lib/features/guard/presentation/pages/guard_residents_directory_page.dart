@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
-import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
+import '../../../../core/utils/phone_launch.dart' show launchDial;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -16,6 +16,13 @@ import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_skeletons.dart';
+
+/// Guards see residents' full numbers so they can call or dial them by hand.
+String _displayPhone(ResidentDirectoryRow row) {
+  final full = row.phone?.trim() ?? '';
+  if (full.isNotEmpty) return full;
+  return row.phoneMasked?.trim() ?? '';
+}
 
 class _DirectoryFlatGroup {
   const _DirectoryFlatGroup({
@@ -156,7 +163,7 @@ class _GuardResidentsDirectoryPageState
       if (q.isNotEmpty) {
         final inFlat = r.flatLabel.toLowerCase().contains(q);
         final inName = r.name.toLowerCase().contains(q);
-        final inPhone = (r.phoneMasked ?? r.phone ?? '')
+        final inPhone = (r.phone ?? r.phoneMasked ?? '')
             .toLowerCase()
             .contains(q);
         if (!inFlat && !inName && !inPhone) return false;
@@ -613,11 +620,14 @@ class _ResidentActionCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  if (row.phoneMasked != null &&
-                      row.phoneMasked!.trim().isNotEmpty)
-                    Text(
-                      row.phoneMasked!,
-                      style: GuardTokens.captionStyle(context),
+                  // Full number so the guard can also dial it by hand.
+                  if (_displayPhone(row).isNotEmpty)
+                    SelectableText(
+                      _displayPhone(row),
+                      style: GuardTokens.captionStyle(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                 ],
               ),
@@ -646,9 +656,7 @@ class _ResidentActionCard extends StatelessWidget {
             IconButton.outlined(
               style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
               onPressed: () async {
-                final display = row.phoneMasked?.trim().isNotEmpty == true
-                    ? row.phoneMasked!
-                    : maskPhone(row.phone);
+                final display = _displayPhone(row);
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -674,9 +682,8 @@ class _ResidentActionCard extends StatelessWidget {
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
                       content: Text(
-                        row.phoneMasked != null &&
-                                row.phoneMasked!.trim().isNotEmpty
-                            ? 'Cannot dial — check number format (${row.phoneMasked})'
+                        _displayPhone(row).isNotEmpty
+                            ? 'Cannot dial — check number format (${_displayPhone(row)})'
                             : 'Phone not available',
                       ),
                     ),

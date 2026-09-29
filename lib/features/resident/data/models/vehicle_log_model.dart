@@ -30,10 +30,10 @@ class VehicleLogEntry {
       registrationNumber: (json['registrationNumber'] as String?) ?? '',
       kind: (json['kind'] as String?) ?? 'VISITOR',
       entryAt: json['entryAt'] is String
-          ? (DateTime.tryParse(json['entryAt'] as String) ?? DateTime.now())
+          ? (DateTime.tryParse(json['entryAt'] as String)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       exitAt: json['exitAt'] is String
-          ? DateTime.tryParse(json['exitAt'] as String)
+          ? DateTime.tryParse(json['exitAt'] as String)?.toLocal()
           : null,
       guardName: json['guardName'] as String?,
       notes: json['notes'] as String?,

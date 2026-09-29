@@ -34,6 +34,8 @@ class UserModel {
   final String? occupantRoleLabel;
   /// Maintenance billing role from `/residents/me` (PRIMARY, EXCLUDED, etc.).
   final String? maintenanceBillingRole;
+  /// Resident of a villa that does not pay maintenance: visitor management only.
+  final bool visitorOnlyAccess;
   /// Server path or absolute URL for profile image (`/uploads/avatars/...`).
   final String? photoUrl;
   final DateTime? moveInDate;
@@ -63,6 +65,7 @@ class UserModel {
     this.unitDisplayName,
     this.occupantRoleLabel,
     this.maintenanceBillingRole,
+    this.visitorOnlyAccess = false,
     this.photoUrl,
     this.moveInDate,
     this.moveOutDate,
@@ -110,6 +113,7 @@ class UserModel {
         unitDisplayName: json['unitDisplayName']?.toString(),
         occupantRoleLabel: json['occupantRoleLabel']?.toString(),
         maintenanceBillingRole: json['maintenanceBillingRole']?.toString(),
+        visitorOnlyAccess: json['visitorOnlyAccess'] == true,
         photoUrl: json['photoUrl']?.toString(),
         moveInDate: json['moveInDate'] != null
             ? DateTime.tryParse(json['moveInDate'] as String)
@@ -191,6 +195,7 @@ class UserModel {
       'unitDisplayName': unitDisplayName,
       'occupantRoleLabel': occupantRoleLabel,
       'maintenanceBillingRole': maintenanceBillingRole,
+      'visitorOnlyAccess': visitorOnlyAccess,
       'photoUrl': photoUrl,
       'moveInDate': moveInDate?.toIso8601String(),
       'moveOutDate': moveOutDate?.toIso8601String(),
@@ -221,6 +226,7 @@ class UserModel {
     String? unitDisplayName,
     String? occupantRoleLabel,
     String? maintenanceBillingRole,
+    bool? visitorOnlyAccess,
     String? photoUrl,
     DateTime? moveInDate,
     DateTime? moveOutDate,
@@ -249,6 +255,7 @@ class UserModel {
       unitDisplayName: unitDisplayName ?? this.unitDisplayName,
       occupantRoleLabel: occupantRoleLabel ?? this.occupantRoleLabel,
       maintenanceBillingRole: maintenanceBillingRole ?? this.maintenanceBillingRole,
+      visitorOnlyAccess: visitorOnlyAccess ?? this.visitorOnlyAccess,
       photoUrl: photoUrl ?? this.photoUrl,
       moveInDate: moveInDate ?? this.moveInDate,
       moveOutDate: moveOutDate ?? this.moveOutDate,

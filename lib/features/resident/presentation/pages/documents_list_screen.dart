@@ -355,6 +355,6 @@ class DocumentsListScreen extends ConsumerWidget {
     if (difference.inDays == 1) return 'Yesterday';
     if (difference.inDays < 7) return '${difference.inDays}d ago';
     if (difference.inDays < 30) return '${(difference.inDays / 7).floor()}w ago';
-    return DateFormat('MMM d').format(local);
+    return DateFormat('MMM d').format(local.toLocal());
   }
 }

@@ -227,6 +227,18 @@ bool _visitorMatch(GuardVisitorRow v, String q) {
       v.status.toLowerCase().contains(qq);
 }
 
+bool _isInside(GuardVisitorRow v) =>
+    v.checkOutTime == null && v.status.trim().toUpperCase() == 'CHECKED_IN';
+
+/// Short badge for a visit: inside, waiting on a decision/admission, left, or closed.
+String _visitorBadge(GuardVisitorRow v) {
+  if (v.checkOutTime != null) return 'OUT';
+  if (_isInside(v)) return 'IN';
+  if (v.needsResidentApproval || v.awaitingGuardAdmission) return 'WAIT';
+  if (v.entryDenied) return 'DENIED';
+  return 'CLOSED';
+}
+
 bool _parcelMatch(ParcelModel p, String q) {
   if (q.isEmpty) return true;
   final qq = q.toLowerCase();
@@ -289,23 +301,36 @@ class _VisitorLogs extends ConsumerWidget {
                   itemCount: filtered.length + 1,
                   itemBuilder: (_, i) {
                     if (i == 0) {
-                      final inside = filtered
-                          .where((v) => v.checkOutTime == null)
+                      // Only admitted visitors are inside; requests still waiting on a
+                      // resident or the guard are counted separately.
+                      final inside = filtered.where(_isInside).length;
+                      final exited =
+                          filtered.where((v) => v.checkOutTime != null).length;
+                      final waiting = filtered
+                          .where((v) =>
+                              v.checkOutTime == null &&
+                              (v.needsResidentApproval || v.awaitingGuardAdmission))
                           .length;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: GuardTokens.g2),
                         child: _LogSummaryChip(
-                          label:
-                              '${filtered.length} total · $inside inside · ${filtered.length - inside} exited',
+                          label: [
+                            '${filtered.length} total',
+                            '$inside inside',
+                            if (waiting > 0) '$waiting waiting',
+                            '$exited exited',
+                          ].join(' · '),
                         ),
                       );
                     }
                     final v = filtered[i - 1];
                     final rowIdx = i - 1;
-                    final inGate = v.checkOutTime == null;
-                    final tone = inGate
+                    final badge = _visitorBadge(v);
+                    final tone = badge == 'IN'
                         ? GuardTokens.success
-                        : GuardTokens.textSecondary;
+                        : badge == 'WAIT'
+                            ? GuardTokens.warning
+                            : GuardTokens.textSecondary;
                     final isDark = Theme.of(context).brightness == Brightness.dark;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -365,7 +390,7 @@ class _VisitorLogs extends ConsumerWidget {
                                     Text(
                                       [
                                         if (v.villaLabel != null) 'Flat ${v.villaLabel}',
-                                        v.status,
+                                        guardVisitorStatusLabel(v, compact: true),
                                       ].join(' · '),
                                       style: GuardTokens.captionStyle(context),
                                       maxLines: 1,
@@ -383,7 +408,7 @@ class _VisitorLogs extends ConsumerWidget {
                                   border: Border.all(color: tone.withValues(alpha: 0.30)),
                                 ),
                                 child: Text(
-                                  inGate ? 'IN' : 'OUT',
+                                  badge,
                                   style: TextStyle(
                                     color: tone,
                                     fontWeight: FontWeight.w800,

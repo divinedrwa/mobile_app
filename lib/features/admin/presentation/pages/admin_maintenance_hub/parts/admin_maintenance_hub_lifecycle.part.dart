@@ -8,8 +8,8 @@ extension _AdminMaintenanceHubLifecyclePart on _AdminMaintenanceHubScreenState {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     for (final fy in fys) {
-      final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
-      final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
+      final s = DateTime.tryParse(fy['startDate']?.toString() ?? '')?.toLocal();
+      final e = DateTime.tryParse(fy['endDate']?.toString() ?? '')?.toLocal();
       if (s == null || e == null) continue;
       final ds = DateTime(s.year, s.month, s.day);
       final de = DateTime(e.year, e.month, e.day);
@@ -28,10 +28,22 @@ extension _AdminMaintenanceHubLifecyclePart on _AdminMaintenanceHubScreenState {
       final py = (c['periodYear'] as num?)?.toInt();
       if (pm == now.month && py == now.year) return c;
     }
+    // Otherwise the most recent cycle up to this month (several can be OPEN at once;
+    // the oldest one is rarely what the admin wants to see first).
+    final nowKey = now.year * 100 + now.month;
+    Map<String, dynamic>? latest;
+    var latestKey = -1;
     for (final c in cycles) {
-      if ((c['status']?.toString() ?? '').toUpperCase() == 'OPEN') return c;
+      final pm = (c['periodMonth'] as num?)?.toInt();
+      final py = (c['periodYear'] as num?)?.toInt();
+      if (pm == null || py == null) continue;
+      final key = py * 100 + pm;
+      if (key <= nowKey && key > latestKey) {
+        latest = c;
+        latestKey = key;
+      }
     }
-    return cycles.last;
+    return latest ?? cycles.last;
   }
 
   // ── Selection helpers ─────────────────────────────────────────────
@@ -100,7 +112,7 @@ extension _AdminMaintenanceHubLifecyclePart on _AdminMaintenanceHubScreenState {
 
     final filter = ref.read(adminMaintenanceFilterProvider);
     final periodLabel =
-        DateFormat('MMMM y').format(DateTime(filter.year, filter.month));
+        DateFormat('MMMM y').format((DateTime(filter.year, filter.month)).toLocal());
 
     final data = ref.read(adminMaintenanceDashboardProvider).valueOrNull;
     final pendingList = data != null ? _pendingResidents(data) : <Map<String, dynamic>>[];

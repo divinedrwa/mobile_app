@@ -177,7 +177,7 @@ extension _MaintenanceDashboardSharedPart on _MaintenancePaymentScreenState {
       symbol: '\u20B9',
       decimalDigits: 0,
     );
-    final monthLabel = DateFormat('MMMM yyyy').format(DateTime(year, month));
+    final monthLabel = DateFormat('MMMM yyyy').format((DateTime(year, month)).toLocal());
 
     // Sort categories by amount descending
     final sorted = breakdown.entries.toList()

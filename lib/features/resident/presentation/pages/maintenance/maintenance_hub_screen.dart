@@ -132,7 +132,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     if (pending.isEmpty) return;
     final oldest = pending.first;
     final months = pending
-        .map((m) => DateFormat('MMM yyyy').format(DateTime(m.year, m.month)))
+        .map((m) => DateFormat('MMM yyyy').format((DateTime(m.year, m.month)).toLocal()))
         .toList();
     _pushPayment({
       'amount': total.toStringAsFixed(0),
@@ -342,7 +342,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     final y = int.tryParse(parts.first);
     final m = parts.length > 1 ? int.tryParse(parts[1]) : null;
     if (y == null || m == null) return period;
-    return DateFormat('MMM yyyy').format(DateTime(y, m));
+    return DateFormat('MMM yyyy').format((DateTime(y, m)).toLocal());
   }
 
   String? _cycleWindowText(BillingCycleCurrent cycle) {
@@ -1058,7 +1058,7 @@ class _MaintenanceHubScreenState extends ConsumerState<MaintenanceHubScreen>
     if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 30) return '${diff.inDays}d ago';
-    return DateFormat('d MMM y').format(t);
+    return DateFormat('d MMM y').format(t.toLocal());
   }
 
   Widget _listSkeleton(int count) => Column(

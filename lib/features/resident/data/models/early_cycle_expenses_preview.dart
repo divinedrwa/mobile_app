@@ -66,7 +66,7 @@ class EarlyCycleExpensesPreview {
       totalAmount: d(json['totalAmount']),
       expenseCount: iv(json['expenseCount']),
       paymentStartDate: json['paymentStartDate'] != null
-          ? DateTime.tryParse(json['paymentStartDate'].toString())
+          ? DateTime.tryParse(json['paymentStartDate'].toString())?.toLocal()
           : null,
     );
   }

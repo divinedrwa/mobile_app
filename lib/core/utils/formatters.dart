@@ -2,25 +2,25 @@ import 'package:intl/intl.dart';
 
 /// Data formatting utilities
 class Formatters {
-  // Date formatters
+  // Date formatters. API timestamps arrive in UTC, so always show device-local time.
   static String formatDate(DateTime date) {
-    return DateFormat('dd MMM yyyy').format(date);
+    return DateFormat('dd MMM yyyy').format(date.toLocal());
   }
-  
+
   static String formatTime(DateTime time) {
-    return DateFormat('hh:mm a').format(time);
+    return DateFormat('hh:mm a').format(time.toLocal());
   }
-  
+
   static String formatDateTime(DateTime dateTime) {
-    return DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
+    return DateFormat('dd MMM yyyy, hh:mm a').format(dateTime.toLocal());
   }
-  
+
   static String formatDateShort(DateTime date) {
-    return DateFormat('dd/MM/yy').format(date);
+    return DateFormat('dd/MM/yy').format(date.toLocal());
   }
-  
+
   static String formatMonthYear(DateTime date) {
-    return DateFormat('MMMM yyyy').format(date);
+    return DateFormat('MMMM yyyy').format(date.toLocal());
   }
   
   static String formatRelativeTime(DateTime dateTime) {

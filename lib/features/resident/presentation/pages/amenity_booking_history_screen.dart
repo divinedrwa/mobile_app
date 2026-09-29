@@ -296,7 +296,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
                 _buildDetailRow(
                   Icons.calendar_today,
                   'Date',
-                  DateFormat('EEEE, MMM d, y').format(booking.bookingDate),
+                  DateFormat('EEEE, MMM d, y').format(booking.bookingDate.toLocal()),
                   Colors.blue,
                 ),
                 const SizedBox(height: 12),
@@ -311,7 +311,7 @@ class _AmenityBookingHistoryScreenState extends ConsumerState<AmenityBookingHist
                   _buildDetailRow(
                     Icons.history,
                     'Booked on',
-                    DateFormat('MMM d, y').format(booking.createdAt!),
+                    DateFormat('MMM d, y').format(booking.createdAt!.toLocal()),
                     Colors.grey,
                   ),
                 ],

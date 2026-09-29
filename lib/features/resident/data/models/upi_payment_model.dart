@@ -53,10 +53,10 @@ class UpiPaymentModel {
       amount: dv(json['amount']),
       upiTransactionRef: json['upiTransactionRef']?.toString(),
       status: json['status']?.toString() ?? 'PENDING',
-      submittedAt: DateTime.tryParse(json['submittedAt']?.toString() ?? '') ??
+      submittedAt: DateTime.tryParse(json['submittedAt']?.toString() ?? '')?.toLocal() ??
           DateTime.now(),
       verifiedAt: json['verifiedAt'] != null
-          ? DateTime.tryParse(json['verifiedAt'].toString())
+          ? DateTime.tryParse(json['verifiedAt'].toString())?.toLocal()
           : null,
       rejectionReason: json['rejectionReason']?.toString(),
       remark: json['remark']?.toString(),

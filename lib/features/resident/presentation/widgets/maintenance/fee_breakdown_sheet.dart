@@ -22,7 +22,7 @@ class FeeBreakdownSheet {
       symbol: '\u20B9',
       decimalDigits: 0,
     );
-    final monthLabel = DateFormat('MMMM yyyy').format(DateTime(year, month));
+    final monthLabel = DateFormat('MMMM yyyy').format((DateTime(year, month)).toLocal());
 
     final sorted = breakdown.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));

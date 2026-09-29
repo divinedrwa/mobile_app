@@ -238,7 +238,7 @@ class _AdminCreateSpecialProjectScreenState
                         Expanded(
                           child: Text(
                             _dueDate != null
-                                ? DateFormat('dd MMM yyyy').format(_dueDate!)
+                                ? DateFormat('dd MMM yyyy').format(_dueDate!.toLocal())
                                 : 'Optional',
                             style: DesignTypography.body.copyWith(
                               color: _dueDate != null

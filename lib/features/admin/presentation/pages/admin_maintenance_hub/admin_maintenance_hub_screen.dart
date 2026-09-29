@@ -94,7 +94,7 @@ class _AdminMaintenanceHubScreenState
   Widget build(BuildContext context) {
     final filter = ref.watch(adminMaintenanceFilterProvider);
     final dashboardAsync = ref.watch(adminMaintenanceDashboardProvider);
-    final periodLabel = DateFormat('MMMM y').format(DateTime(filter.year, filter.month));
+    final periodLabel = DateFormat('MMMM y').format((DateTime(filter.year, filter.month)).toLocal());
 
     // ── Auto-select FY ──────────────────────────────────────────────
     ref.listen(adminCollectionFinancialYearsProvider, (prev, next) {

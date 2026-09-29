@@ -71,16 +71,16 @@ class SOSAlertModel {
       longitude: (json['longitude'] as num?)?.toDouble(),
       status: _parseStatus(json['status']?.toString()),
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
+          ? DateTime.tryParse(json['createdAt'].toString())?.toLocal()
           : null,
       acknowledgedAt: json['acknowledgedAt'] != null
-          ? DateTime.tryParse(json['acknowledgedAt'].toString())
+          ? DateTime.tryParse(json['acknowledgedAt'].toString())?.toLocal()
           : null,
       inProgressAt: json['inProgressAt'] != null
-          ? DateTime.tryParse(json['inProgressAt'].toString())
+          ? DateTime.tryParse(json['inProgressAt'].toString())?.toLocal()
           : null,
       resolvedAt: json['resolvedAt'] != null
-          ? DateTime.tryParse(json['resolvedAt'].toString())
+          ? DateTime.tryParse(json['resolvedAt'].toString())?.toLocal()
           : null,
       cancelReason: json['cancelReason']?.toString(),
       assignedGuardId: gm?['id']?.toString(),

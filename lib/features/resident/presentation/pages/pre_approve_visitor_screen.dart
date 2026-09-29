@@ -356,7 +356,7 @@ class _PreApproveVisitorScreenState
         DivinePickerRow(
           icon: Icons.calendar_today_rounded,
           label: 'Valid until',
-          value: DateFormat('EEE, d MMM yyyy').format(_selectedDate),
+          value: DateFormat('EEE, d MMM yyyy').format(_selectedDate.toLocal()),
           helper: _validityHelperText(),
           onTap: () async {
             final date = await showDatePicker(
@@ -502,7 +502,7 @@ class _PreApproveVisitorScreenState
               DivineSummaryRow(
                 label: 'Valid until',
                 value:
-                    '${DateFormat('EEE, d MMM yyyy').format(_selectedDate)} · ${_selectedTime.format(context)}',
+                    '${DateFormat('EEE, d MMM yyyy').format(_selectedDate.toLocal())} · ${_selectedTime.format(context)}',
               ),
               if (_selectedType.allowsFrequentPass)
                 DivineSummaryRow(

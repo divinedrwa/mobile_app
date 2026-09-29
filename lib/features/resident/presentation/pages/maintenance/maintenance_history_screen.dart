@@ -131,7 +131,7 @@ class _MaintenanceHistoryScreenState
             PaymentListTile(
               title: m.title.isNotEmpty
                   ? m.title
-                  : DateFormat('MMMM y').format(DateTime(m.year, m.month)),
+                  : DateFormat('MMMM y').format((DateTime(m.year, m.month)).toLocal()),
               subtitle: 'Cycle ${m.cycleKey}',
               amount: _displayAmount(m),
               status: _status(m),

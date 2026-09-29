@@ -129,7 +129,7 @@ extension _AdminMaintenanceHubSelectorsPart on _AdminMaintenanceHubScreenState {
               final pm = (cycle['periodMonth'] as num?)?.toInt();
               final py = (cycle['periodYear'] as num?)?.toInt();
               final chipLabel = pm != null
-                  ? DateFormat('MMM').format(DateTime(py ?? 2000, pm))
+                  ? DateFormat('MMM').format((DateTime(py ?? 2000, pm)).toLocal())
                   : (cycle['title']?.toString() ?? '?');
 
               return ChoiceChip(

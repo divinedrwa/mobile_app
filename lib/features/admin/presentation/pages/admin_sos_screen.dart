@@ -449,7 +449,7 @@ class _AdminSosScreenState extends ConsumerState<AdminSosScreen> {
 
   String _formatTime(String? iso) {
     if (iso == null) return '';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     final diff = DateTime.now().difference(dt.toLocal());
     if (diff.inDays > 0) return '${diff.inDays}d ago';

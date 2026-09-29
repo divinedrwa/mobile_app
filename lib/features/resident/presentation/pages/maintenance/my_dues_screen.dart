@@ -107,14 +107,14 @@ class _MyDuesScreenState extends ConsumerState<MyDuesScreen>
   /// Build a human-readable remark for a single cycle.
   String _singleCycleRemark(MaintenanceDueModel m) {
     if (m.title.isNotEmpty) return m.title;
-    return 'Maintenance ${DateFormat('MMM yyyy').format(DateTime(m.year, m.month))}';
+    return 'Maintenance ${DateFormat('MMM yyyy').format((DateTime(m.year, m.month)).toLocal())}';
   }
 
   /// Build a remark listing all months when paying multiple cycles.
   String _allCyclesRemark(List<MaintenanceDueModel> items) {
     if (items.length == 1) return _singleCycleRemark(items.first);
     final months = items
-        .map((m) => DateFormat('MMM yyyy').format(DateTime(m.year, m.month)))
+        .map((m) => DateFormat('MMM yyyy').format((DateTime(m.year, m.month)).toLocal()))
         .toList();
     return 'Maintenance: ${months.join(', ')}';
   }
@@ -557,7 +557,7 @@ class _DueCard extends StatelessWidget {
                                 item.title.isNotEmpty
                                     ? item.title
                                     : DateFormat('MMMM y')
-                                        .format(DateTime(item.year, item.month)),
+                                        .format((DateTime(item.year, item.month)).toLocal()),
                                 style: DesignTypography.bodyMedium.copyWith(
                                   color: DesignColors.textPrimary,
                                   fontWeight: FontWeight.w700,

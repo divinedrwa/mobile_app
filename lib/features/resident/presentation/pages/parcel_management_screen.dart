@@ -307,7 +307,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
             _buildDetailRow(
               Icons.access_time,
               'Received',
-              DateFormat('MMM d, y - h:mm a').format(parcel.receivedAt!),
+              DateFormat('MMM d, y - h:mm a').format(parcel.receivedAt!.toLocal()),
             ),
           
           if (parcel.collectedAt != null) ...[
@@ -315,7 +315,7 @@ class _ParcelManagementScreenState extends ConsumerState<ParcelManagementScreen>
             _buildDetailRow(
               Icons.check_circle,
               'Collected',
-              DateFormat('MMM d, y - h:mm a').format(parcel.collectedAt!),
+              DateFormat('MMM d, y - h:mm a').format(parcel.collectedAt!.toLocal()),
             ),
           ],
           

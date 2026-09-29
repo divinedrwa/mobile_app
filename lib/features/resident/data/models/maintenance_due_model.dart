@@ -122,12 +122,12 @@ class MaintenanceDueModel {
             json['dueDate']?.toString() ??
                 json['paymentDueDate']?.toString() ??
                 '',
-          ) ??
+          )?.toLocal() ??
           DateTime.now(),
       status: json['status']?.toString() ?? 'PENDING',
       paidAt: DateTime.tryParse(
         json['paidAt']?.toString() ?? json['paymentDate']?.toString() ?? '',
-      ),
+      )?.toLocal(),
       expectedAmount: dv(json['expectedAmount']),
       paidAmount: dv(json['paidAmount']),
       cashPaidAmount: dv(json['cashPaidAmount']),

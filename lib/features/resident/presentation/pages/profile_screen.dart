@@ -35,6 +35,8 @@ class ProfileScreen extends ConsumerWidget {
     }
 
     final topInset = MediaQuery.paddingOf(context).top;
+    // Resident of a non-paying villa: only the essentials (like a tenant profile).
+    final visitorOnly = user?.visitorOnlyAccess ?? false;
 
     return ColoredBox(
       color: DesignColors.background,
@@ -81,14 +83,16 @@ class ProfileScreen extends ConsumerWidget {
                       iconColor: DesignColors.error,
                       onTap: () => context.push('/resident/emergency-contacts'),
                     ),
-                    _divider,
-                    _ProfileTile(
-                      icon: Icons.shield_outlined,
-                      title: 'Incident Reports',
-                      subtitle: 'Society safety & incident log',
-                      iconColor: const Color(0xFFDC2626),
-                      onTap: () => context.push('/resident/incidents'),
-                    ),
+                    if (!visitorOnly) ...[
+                      _divider,
+                      _ProfileTile(
+                        icon: Icons.shield_outlined,
+                        title: 'Incident Reports',
+                        subtitle: 'Society safety & incident log',
+                        iconColor: const Color(0xFFDC2626),
+                        onTap: () => context.push('/resident/incidents'),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: DesignSpacing.xl),
@@ -113,8 +117,9 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: DesignSpacing.xl),
-                _ProfileSection(
+                // Non-paying villa (visitor-only access): no payments, complaints or bookings.
+                if (!visitorOnly) const SizedBox(height: DesignSpacing.xl),
+                if (!visitorOnly) _ProfileSection(
                   title: 'Payments & History',
                   delayMs: 80,
                   children: [
@@ -531,7 +536,10 @@ class _ProfileHeroHeader extends StatelessWidget {
                   ),
                   if (society != null && society.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _ProfileSocietyCard(societyName: society),
+                    _ProfileSocietyCard(
+                      societyName: society,
+                      tappable: !(user?.visitorOnlyAccess ?? false),
+                    ),
                   ],
                 ],
               ),
@@ -596,14 +604,17 @@ class _ProfileGreenDot extends StatelessWidget {
 }
 
 class _ProfileSocietyCard extends StatelessWidget {
-  const _ProfileSocietyCard({required this.societyName});
+  const _ProfileSocietyCard({required this.societyName, this.tappable = true});
 
   final String societyName;
+
+  /// Opens the society overview; off for visitor-only residents.
+  final bool tappable;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.push('/resident/overview'),
+      onTap: tappable ? () => context.push('/resident/overview') : null,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(

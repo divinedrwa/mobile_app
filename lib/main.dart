@@ -28,6 +28,7 @@ import 'features/resident/data/providers/notification_provider.dart';
 import 'features/resident/data/providers/parcel_provider.dart';
 import 'features/resident/data/providers/special_project_provider.dart';
 import 'features/resident/presentation/providers/visitor_provider.dart';
+import 'features/resident/data/providers/visitor_history_provider.dart';
 import 'features/resident/data/resident_data_refresh.dart';
 import 'core/session/account_deactivated_handler.dart';
 import 'core/session/session_expired_handler.dart';
@@ -250,6 +251,10 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
       ref.read(residentSpecialProjectsProvider.notifier).fetchProjects();
       ref.invalidate(visitorApprovalRequestsProvider('pending'));
       ref.invalidate(visitorApprovalRequestsProvider('all'));
+      // Visitor hub: today's summary, upcoming passes and history change with gate events.
+      ref.invalidate(visitorTodaySummaryProvider);
+      ref.invalidate(preApprovedVisitorsProvider);
+      ref.invalidate(visitorHistoryProvider);
       ref.read(parcelProvider.notifier).fetchParcels();
     };
   }

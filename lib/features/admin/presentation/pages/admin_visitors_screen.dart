@@ -294,7 +294,7 @@ class _AdminVisitorsScreenState extends ConsumerState<AdminVisitorsScreen> {
 
     String timeStr = '';
     try {
-      final checkIn = DateTime.parse(v['checkInAt']?.toString() ?? '');
+      final checkIn = DateTime.parse(v['checkInAt']?.toString() ?? '').toLocal();
       timeStr = DateFormat('d MMM, h:mm a').format(checkIn.toLocal());
     } catch (_) {}
 

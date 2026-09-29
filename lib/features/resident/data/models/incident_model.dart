@@ -32,10 +32,10 @@ class IncidentModel {
       location: json['location'] as String?,
       photoUrl: json['photoUrl'] as String?,
       resolvedAt: json['resolvedAt'] is String
-          ? DateTime.tryParse(json['resolvedAt'] as String)
+          ? DateTime.tryParse(json['resolvedAt'] as String)?.toLocal()
           : null,
       createdAt: json['createdAt'] is String
-          ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
+          ? (DateTime.tryParse(json['createdAt'] as String)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       reportedByName: json['reportedByName'] as String? ??
           (json['guard'] is Map

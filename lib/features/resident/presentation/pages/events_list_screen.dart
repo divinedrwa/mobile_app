@@ -148,12 +148,12 @@ class EventsListScreen extends ConsumerWidget {
   Map<String, dynamic> _toEventUiData(Map<String, dynamic> event) {
     final startDateRaw =
         event['startDate']?.toString() ?? event['createdAt']?.toString() ?? '';
-    final startDate = DateTime.tryParse(startDateRaw);
+    final startDate = DateTime.tryParse(startDateRaw)?.toLocal();
 
     DateTime? endDate;
     final endRaw = event['endDate'];
     if (endRaw != null && endRaw.toString().trim().isNotEmpty) {
-      endDate = DateTime.tryParse(endRaw.toString());
+      endDate = DateTime.tryParse(endRaw.toString())?.toLocal();
     }
 
     final now = DateTime.now();

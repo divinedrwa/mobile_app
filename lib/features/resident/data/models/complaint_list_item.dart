@@ -18,7 +18,7 @@ class ComplaintSlaTimelineEvent {
     return ComplaintSlaTimelineEvent(
       key: json['key']?.toString() ?? '',
       label: json['label']?.toString() ?? '',
-      at: DateTime.tryParse(json['at']?.toString() ?? '') ?? DateTime.now(),
+      at: DateTime.tryParse(json['at']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
       state: json['state']?.toString() ?? 'upcoming',
       detail: json['detail']?.toString(),
     );
@@ -73,17 +73,17 @@ class ComplaintListItem {
       category: (json['category'] as String?) ?? 'General',
       status: (json['status'] as String?) ?? 'OPEN',
       createdAt: created is String
-          ? (DateTime.tryParse(created) ?? DateTime.now())
+          ? (DateTime.tryParse(created)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       priority: json['priority'] as String?,
-      resolvedAt: resolved is String ? DateTime.tryParse(resolved) : null,
+      resolvedAt: resolved is String ? DateTime.tryParse(resolved)?.toLocal() : null,
       slaDeadline:
-          slaDeadlineRaw is String ? DateTime.tryParse(slaDeadlineRaw) : null,
+          slaDeadlineRaw is String ? DateTime.tryParse(slaDeadlineRaw)?.toLocal() : null,
       slaBreachNotifiedAt:
-          slaBreachRaw is String ? DateTime.tryParse(slaBreachRaw) : null,
+          slaBreachRaw is String ? DateTime.tryParse(slaBreachRaw)?.toLocal() : null,
       photoUrl: json['photoUrl'] as String?,
       adminNotes: json['adminNotes'] as String?,
-      updatedAt: updated is String ? DateTime.tryParse(updated) : null,
+      updatedAt: updated is String ? DateTime.tryParse(updated)?.toLocal() : null,
       slaTimeline: timelineRaw is List
           ? timelineRaw
               .whereType<Map>()

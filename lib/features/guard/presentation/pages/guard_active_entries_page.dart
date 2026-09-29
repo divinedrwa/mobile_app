@@ -209,42 +209,6 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     return GuardTokens.textSecondary;
   }
 
-  Future<void> _confirmAdmission(
-    BuildContext context,
-    GuardVisitorRow v,
-  ) async {
-    if (_busyVisitorIds.contains(v.id)) return;
-    final ok = await showGuardConfirmSheet(
-      context,
-      title: 'Confirm entry',
-      message: 'Residents approved ${v.name}. Mark them as on premises?',
-      confirmLabel: 'Confirm',
-      icon: Icons.verified_user_outlined,
-    );
-    if (ok != true || !context.mounted) return;
-    setState(() => _busyVisitorIds.add(v.id));
-    try {
-      await ref.read(guardRepositoryProvider).confirmVisitorEntryAfterApproval(v.id);
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
-      ref.invalidate(guardTodayVisitorsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${v.name} checked in')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userFacingMessage(e))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busyVisitorIds.remove(v.id));
-    }
-  }
-
   Widget _visitorCard(BuildContext context, GuardVisitorRow v) {
     final trailing = _visitorTrailing(context, v);
     final theme = Theme.of(context);
@@ -512,8 +476,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             padding: const EdgeInsets.only(bottom: 10),
             child: _SummaryBanner(
               icon: Icons.people_alt_rounded,
-              label:
-                  '${rows.length} visitor${rows.length == 1 ? '' : 's'} on-site',
+              label: _visitorsSummaryLabel(data),
               tone: GuardTokens.success,
             ),
           ),
@@ -542,37 +505,8 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
     GuardVisitorRow v,
   ) {
     final busy = _busyVisitorIds.contains(v.id);
-    if (v.awaitingGuardAdmission) {
-      return FilledButton.icon(
-        style: GuardTokens.primaryFilled(context).copyWith(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          minimumSize: WidgetStateProperty.all(const Size(0, 36)),
-          padding: WidgetStateProperty.all(
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          ),
-          shape: WidgetStateProperty.all(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        onPressed: busy ? null : () => _confirmAdmission(context, v),
-        icon: busy
-            ? const SizedBox.square(
-                dimension: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Icon(Icons.verified_user_outlined, size: 18),
-        label: Text(
-          busy ? 'Admitting…' : 'Admit at gate',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-        ),
-      );
-    }
+    // A guard-added visitor is at the gate from the start: one "Mark exit" action for
+    // every open visit, whatever the residents decided (the status pill shows that).
     final status = v.status.trim().toUpperCase();
     if (v.awaitingCheckout && ['CHECKED_IN', 'PENDING_APPROVAL', 'APPROVED'].contains(status)) {
       return FilledButton.tonalIcon(
@@ -595,7 +529,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
             ? SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2, color: GuardTokens.guardAccentDeep,))
             : Icon(Icons.logout_rounded, size: 18),
         label: Text(
-          busy ? 'Marking…' : (status == 'CHECKED_IN' ? 'Mark exit' : 'Left'),
+          busy ? 'Marking…' : 'Mark exit',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
         ),
       );
@@ -1468,6 +1402,17 @@ class _FetchWarningBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "3 inside · 2 to admit · 5 awaiting resident" — pending requests are not on-site.
+String _visitorsSummaryLabel(GuardActiveVisitorsTabData data) {
+  final c = GuardLiveQueueCounts.fromActiveTab(data);
+  final parts = <String>[
+    '${c.onPremises} inside',
+    if (c.readyToAdmit > 0) '${c.readyToAdmit} to admit',
+    if (c.awaitingResident > 0) '${c.awaitingResident} awaiting resident',
+  ];
+  return parts.join(' · ');
 }
 
 class _SummaryBanner extends StatelessWidget {

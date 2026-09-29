@@ -124,7 +124,7 @@ class _AdmitByOtpSheetState extends ConsumerState<_AdmitByOtpSheet> {
     if (raw == null || raw.isEmpty) return null;
     final dt = DateTime.tryParse(raw)?.toLocal();
     if (dt == null) return null;
-    return 'Valid till ${DateFormat('d MMM, h:mm a').format(dt)}';
+    return 'Valid till ${DateFormat('d MMM, h:mm a').format(dt.toLocal())}';
   }
 
   @override

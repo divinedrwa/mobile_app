@@ -49,7 +49,7 @@ class NotificationModel {
       return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
     }
     if (value is String) {
-      return DateTime.tryParse(value) ?? DateTime.now();
+      return DateTime.tryParse(value)?.toLocal() ?? DateTime.now();
     }
     return DateTime.now();
   }

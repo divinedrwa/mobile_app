@@ -24,7 +24,7 @@ class ExpenseAttachmentModel {
       fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
       uploadedAt: DateTime.tryParse(
             (json['uploadedAt'] ?? json['createdAt'] ?? '') as String,
-          ) ??
+          )?.toLocal() ??
           DateTime.now(),
     );
   }

@@ -54,7 +54,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             onPressed: () {
               Share.share(
                 '${widget.event.title}\n\n'
-                '${DateFormat('dd MMM yyyy, hh:mm a').format(widget.event.startTime)}\n'
+                '${DateFormat('dd MMM yyyy, hh:mm a').format(widget.event.startTime.toLocal())}\n'
                 'Location: ${widget.event.location}\n\n'
                 '${widget.event.description}',
               );
@@ -128,12 +128,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   _buildDetailRow(
                     Icons.calendar_today,
                     'Date',
-                    DateFormat('dd MMMM yyyy').format(widget.event.startTime),
+                    DateFormat('dd MMMM yyyy').format(widget.event.startTime.toLocal()),
                   ),
                   _buildDetailRow(
                     Icons.access_time,
                     'Time',
-                    '${DateFormat('hh:mm a').format(widget.event.startTime)} - ${DateFormat('hh:mm a').format(widget.event.endTime)}',
+                    '${DateFormat('hh:mm a').format(widget.event.startTime.toLocal())} - ${DateFormat('hh:mm a').format(widget.event.endTime.toLocal())}',
                   ),
                   _buildDetailRow(
                     Icons.location_on,

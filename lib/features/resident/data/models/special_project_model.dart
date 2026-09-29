@@ -50,7 +50,7 @@ class SpecialProjectModel {
       targetAmount: _toDouble(json['targetAmount']),
       totalCollected: _toDouble(json['totalCollected']),
       totalExpenses: _toDouble(json['totalExpenses']),
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
       createdByName: createdBy?['name'] as String?,
       contributionCount: count?['contributions'] as int? ?? 0,
@@ -95,7 +95,7 @@ class ProjectContributionModel {
       paidAmount: _toDouble(json['paidAmount']),
       status: json['status'] as String? ?? 'UNPAID',
       dueDate: json['dueDate'] != null
-          ? DateTime.tryParse(json['dueDate'] as String)
+          ? DateTime.tryParse(json['dueDate'] as String)?.toLocal()
           : null,
       villaNumber: villa?['villaNumber'] as String?,
       ownerName: villa?['ownerName'] as String?,
@@ -130,7 +130,7 @@ class ProjectPaymentModel {
       amount: _toDouble(json['amount']),
       method: json['method'] as String? ?? 'CASH',
       reference: json['reference'] as String?,
-      paidAt: DateTime.tryParse(json['paidAt'] as String? ?? '') ??
+      paidAt: DateTime.tryParse(json['paidAt'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
     );
   }
@@ -161,7 +161,7 @@ class ProjectExpenseModel {
       vendor: json['vendor'] as String?,
       receiptUrl: json['receiptUrl'] as String?,
       expenseDate:
-          DateTime.tryParse(json['expenseDate'] as String? ?? '') ??
+          DateTime.tryParse(json['expenseDate'] as String? ?? '')?.toLocal() ??
               DateTime.now(),
     );
   }

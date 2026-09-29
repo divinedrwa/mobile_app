@@ -11,7 +11,7 @@ String buildVisitorPassShareMessage(PreApprovedVisitorModel visitor) {
   final otp = visitor.passcode?.trim() ?? '';
   final url = visitor.publicPassUrl?.trim();
   final expiry = visitor.passcodeExpiry;
-  final visitDate = DateFormat('dd MMM yyyy').format(visitor.visitDate);
+  final visitDate = DateFormat('dd MMM yyyy').format(visitor.visitDate.toLocal());
   final lines = <String>[
     'Visitor Pass for $name',
     '',

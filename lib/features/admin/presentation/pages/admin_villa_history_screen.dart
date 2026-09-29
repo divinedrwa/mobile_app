@@ -284,7 +284,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
     final mode = row['paymentMode']?.toString() ?? '';
     final paidAt = DateTime.tryParse(
       row['paymentDate']?.toString() ?? row['paidAt']?.toString() ?? '',
-    );
+    )?.toLocal();
     final receiptNumber = row['receiptNumber']?.toString();
     final periodMonth =
         _readIntOrNull(row['month']) ?? _readIntOrNull(row['periodMonth']);
@@ -292,7 +292,7 @@ class AdminVillaHistoryScreen extends ConsumerWidget {
         _readIntOrNull(row['year']) ?? _readIntOrNull(row['periodYear']);
     final cycleTitle = row['cycleTitle']?.toString();
     final periodLabel = periodMonth != null && periodYear != null
-        ? DateFormat('MMM y').format(DateTime(periodYear, periodMonth))
+        ? DateFormat('MMM y').format((DateTime(periodYear, periodMonth)).toLocal())
         : cycleTitle ?? 'Cycle';
 
     final isPaid = status == 'PAID' || status == 'COMPLETED' || status == 'WAIVED';

@@ -452,7 +452,7 @@ class _PollsListScreenState extends ConsumerState<PollsListScreen> {
       'myOptionId': myOptionId,
       'hasVoted': hasVoted,
       'endDate': () {
-        final parsed = DateTime.tryParse(poll['endDate']?.toString() ?? '');
+        final parsed = DateTime.tryParse(poll['endDate']?.toString() ?? '')?.toLocal();
         return parsed != null ? formatCommunityCalendarDate(parsed) : null;
       }(),
       'options': options,

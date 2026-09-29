@@ -696,7 +696,7 @@ class _NotificationsCenterScreenState
     if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
     if (difference.inHours < 24) return '${difference.inHours}h ago';
     if (difference.inDays < 7) return '${difference.inDays}d ago';
-    return DateFormat('MMM d').format(DateTime.now().subtract(difference));
+    return DateFormat('MMM d').format((DateTime.now().subtract(difference)).toLocal());
   }
 }
 

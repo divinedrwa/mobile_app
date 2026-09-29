@@ -106,7 +106,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isBillingExcluded =
         (user?.isBillingExcluded ?? false) || billingExcludedFromCycle;
     final isTenant = user?.isTenant ?? false;
-    final showSocietyFinances = !isBillingExcluded && !isTenant;
+    // Non-paying villa: the app is for visitor management only.
+    final visitorOnly = user?.visitorOnlyAccess ?? false;
+    final showSocietyFinances = !isBillingExcluded && !isTenant && !visitorOnly;
     final unreadNotifications = notificationsState.maybeWhen(
       data: (list) => list.where((n) => !n.isRead).length,
       orElse: () => 0,
@@ -138,15 +140,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Unified priority feed (additive — existing sections unchanged)
-                    const HomeUpdatesStrip(),
+                    if (!visitorOnly) const HomeUpdatesStrip(),
                     // Live ops — water / garbage (hidden when inactive)
-                    const HomeUtilityStatusStrip().animateSection(0),
+                    if (!visitorOnly) const HomeUtilityStatusStrip().animateSection(0),
                     // Urgent gate approvals (hidden when no pending)
                     const HomeGateVisitorRequests().animateSection(1),
                     // Society banners — campaigns & events (hidden when empty)
-                    const HomeBannerCarousel().animateSection(2),
+                    if (!visitorOnly) const HomeBannerCarousel().animateSection(2),
                     // Important notices — below banner, above shortcuts (hidden when empty)
-                    if (hasImportantNotices) ...[
+                    if (hasImportantNotices && !visitorOnly) ...[
                       HomeImportantNotices(
                         noticesState: noticesState,
                         onViewAll: () => openCommunityTab(ref, subTab: 0),
@@ -158,7 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const HomeQuickActions().animateSection(3),
                     const SizedBox(height: kHomeSectionGap),
                     // Personal maintenance — actionable dues before society-wide stats
-                    if (!isBillingExcluded) ...[
+                    if (!isBillingExcluded && !visitorOnly) ...[
                       const HomeMaintenanceCard(),
                       const SizedBox(height: kHomeSectionGap),
                     ],
@@ -173,7 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     // Special projects (hidden when no active projects)
                     // The card itself returns SizedBox.shrink when empty,
                     // so we let it manage its own bottom padding internally.
-                    const HomeSpecialProjectsCard(),
+                    if (!visitorOnly) const HomeSpecialProjectsCard(),
                     // Support strip — always visible (falls back to 100 emergency)
                     HomeSupportStrip(
                       securityContactsAsync: securityContactsAsync,

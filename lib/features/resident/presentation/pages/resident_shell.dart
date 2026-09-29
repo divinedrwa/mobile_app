@@ -118,9 +118,12 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     final profileIndex = isAdmin ? 3 : 2;
     final wide = isWideScreen(context);
 
+    // Residents of a non-paying villa get visitor features only: no Community tab.
+    final visitorOnly = user?.visitorOnlyAccess ?? false;
+
     final pages = [
       const HomeScreen(),
-      const CommunityScreen(),
+      visitorOnly ? const SizedBox.shrink() : const CommunityScreen(),
       if (isAdmin) const AdminDashboardScreen(),
       const ProfileScreen(),
     ];
@@ -128,7 +131,8 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     // Clamp to valid range — if an admin's role flips mid-session (auth
     // refresh, logout transition, etc.) the page list shrinks but the
     // global currentTabProvider may still hold a stale high index.
-    final safeIndex = currentTab.clamp(0, pages.length - 1);
+    final clampedIndex = currentTab.clamp(0, pages.length - 1);
+    final safeIndex = visitorOnly && clampedIndex == 1 ? 0 : clampedIndex;
 
     final body = IndexedStack(
       index: safeIndex,
@@ -157,6 +161,7 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
                     isAdmin: isAdmin,
                     profileIndex: profileIndex,
                     unreadCount: unreadCount,
+                    visitorOnly: visitorOnly,
                   ),
                   const VerticalDivider(width: 1, thickness: 1),
                   Expanded(child: WebContentConstraint(child: body)),
@@ -201,7 +206,8 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
                         isSelected: safeIndex == 0,
                         badgeCount: unreadCount,
                       ),
-                      _buildNavItem(
+                      if (!visitorOnly)
+                        _buildNavItem(
                         context,
                         ref,
                         icon: Icons.people_outline_rounded,
@@ -244,10 +250,15 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
     required bool isAdmin,
     required int profileIndex,
     required int unreadCount,
+    bool visitorOnly = false,
   }) {
+    // Without the Community destination, rail positions after Home shift down by one.
+    int toRail(int tab) => visitorOnly && tab > 1 ? tab - 1 : tab;
+    int toTab(int rail) => visitorOnly && rail >= 1 ? rail + 1 : rail;
     return NavigationRail(
-      selectedIndex: currentTab,
-      onDestinationSelected: (index) {
+      selectedIndex: toRail(currentTab),
+      onDestinationSelected: (railIndex) {
+        final index = toTab(railIndex);
         DesignHaptics.selection();
         ref.read(currentTabProvider.notifier).state = index;
         if (index == 0) {
@@ -289,11 +300,12 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
           ),
           label: const Text('Home'),
         ),
-        const NavigationRailDestination(
-          icon: Icon(Icons.people_outline_rounded),
-          selectedIcon: Icon(Icons.people_rounded),
-          label: Text('Community'),
-        ),
+        if (!visitorOnly)
+          const NavigationRailDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
+            label: Text('Community'),
+          ),
         if (isAdmin)
           const NavigationRailDestination(
             icon: Icon(Icons.admin_panel_settings_outlined),

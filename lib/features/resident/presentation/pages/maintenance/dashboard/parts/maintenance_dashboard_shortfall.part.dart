@@ -385,7 +385,7 @@ extension _MaintenanceDashboardShortfallPart on _MaintenancePaymentScreenState {
                     Row(
                       children: [
                         Text(
-                          DateFormat('MMMM yyyy').format(DateTime(yr, m)),
+                          DateFormat('MMMM yyyy').format((DateTime(yr, m)).toLocal()),
                           style: DesignTypography.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Spacer(),

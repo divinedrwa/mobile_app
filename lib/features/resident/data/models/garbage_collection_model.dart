@@ -24,10 +24,10 @@ class GarbageCollectionEvent {
     return GarbageCollectionEvent(
       id: json['id']?.toString() ?? '',
       entryTime: json['entryTime'] is String
-          ? (DateTime.tryParse(json['entryTime'] as String) ?? DateTime.now())
+          ? (DateTime.tryParse(json['entryTime'] as String)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       exitTime: json['exitTime'] is String
-          ? DateTime.tryParse(json['exitTime'] as String)
+          ? DateTime.tryParse(json['exitTime'] as String)?.toLocal()
           : null,
       notes: json['notes'] as String?,
       gateName: (json['gateName'] as String?) ??

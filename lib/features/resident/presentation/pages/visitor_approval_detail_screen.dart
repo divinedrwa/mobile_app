@@ -901,11 +901,11 @@ String _formatRequestedAt(dynamic checkIn) {
   if (checkIn == null) return '—';
   DateTime? dt;
   if (checkIn is String) {
-    dt = DateTime.tryParse(checkIn);
+    dt = DateTime.tryParse(checkIn)?.toLocal();
   }
   if (dt == null) return '—';
   final local = dt.toLocal();
-  final date = DateFormat.yMMMd().format(local);
-  final time = DateFormat.jm().format(local);
+  final date = DateFormat.yMMMd().format(local.toLocal());
+  final time = DateFormat.jm().format(local.toLocal());
   return '$date · $time';
 }

@@ -77,7 +77,7 @@ class WhereMoneyGoesCard extends ConsumerWidget {
     final labelMonth = hasData ? data.month : (selection?.month ?? 0);
     final labelYear = hasData ? data.year : (selection?.year ?? 0);
     final monthLabel = (labelMonth >= 1 && labelMonth <= 12)
-        ? DateFormat('MMM y').format(DateTime(labelYear, labelMonth))
+        ? DateFormat('MMM y').format((DateTime(labelYear, labelMonth)).toLocal())
         : 'Cycle';
 
     return Container(
@@ -623,7 +623,7 @@ class _CyclePickerSheetState extends ConsumerState<_CyclePickerSheet> {
     final id = c['id']?.toString() ?? '';
     final my = _cycleMonthYear(c);
     final label = (my.month >= 1 && my.month <= 12)
-        ? DateFormat('MMMM y').format(DateTime(my.year, my.month))
+        ? DateFormat('MMMM y').format((DateTime(my.year, my.month)).toLocal())
         : (c['cycleKey']?.toString() ?? 'Cycle');
     final selected = current?.billingCycleId == id;
     return _OptionTile(

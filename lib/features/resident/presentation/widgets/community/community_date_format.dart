@@ -4,12 +4,12 @@ import 'package:intl/intl.dart';
 /// end-of-day). Format using the UTC calendar date so IST does not show 5:30 AM.
 String formatCommunityCalendarDate(DateTime dt) {
   final d = dt.toUtc();
-  return DateFormat('MMM d, y').format(DateTime(d.year, d.month, d.day));
+  return DateFormat('MMM d, y').format((DateTime(d.year, d.month, d.day)).toLocal());
 }
 
 String formatCommunityCalendarDateLong(DateTime dt) {
   final d = dt.toUtc();
-  return DateFormat('dd MMM yyyy').format(DateTime(d.year, d.month, d.day));
+  return DateFormat('dd MMM yyyy').format((DateTime(d.year, d.month, d.day)).toLocal());
 }
 
 /// Real timestamps (notice posted, document uploaded) — local date + time.

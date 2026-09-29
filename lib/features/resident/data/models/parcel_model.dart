@@ -34,7 +34,8 @@ class ParcelModel {
     DateTime? parseDt(dynamic v) {
       if (v == null) return null;
       if (v is String && v.trim().isEmpty) return null;
-      if (v is String) return DateTime.tryParse(v);
+      // API timestamps are UTC; show them in the device's time zone.
+      if (v is String) return DateTime.tryParse(v)?.toLocal();
       return null;
     }
 

@@ -509,8 +509,8 @@ class _AdminInvitationsScreenState
 
   static String _formatDate(String iso) {
     try {
-      final d = DateTime.parse(iso);
-      return DateFormat('d MMM yyyy').format(d);
+      final d = DateTime.parse(iso).toLocal();
+      return DateFormat('d MMM yyyy').format(d.toLocal());
     } catch (_) {
       return iso;
     }

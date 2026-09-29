@@ -39,11 +39,11 @@ class WaterRequestModel {
       reason: json['reason']?.toString() ?? '',
       status: json['status']?.toString() ?? 'PENDING',
       createdAt: json['createdAt'] is String
-          ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
+          ? (DateTime.tryParse(json['createdAt'] as String)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       resolvedByName: resolver?['name']?.toString() ?? json['resolvedByName']?.toString(),
       resolvedAt: json['resolvedAt'] is String
-          ? DateTime.tryParse(json['resolvedAt'] as String)
+          ? DateTime.tryParse(json['resolvedAt'] as String)?.toLocal()
           : null,
       resolvedNote: json['resolvedNote']?.toString(),
     );

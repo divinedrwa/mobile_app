@@ -13,7 +13,7 @@ DateTime _toIstParts(DateTime instant) {
 /// YYYY-MM-DD in society local time.
 String societyLocalDateKey(DateTime instant) {
   final p = _toIstParts(instant);
-  return DateFormat('yyyy-MM-dd').format(DateTime(p.year, p.month, p.day));
+  return DateFormat('yyyy-MM-dd').format((DateTime(p.year, p.month, p.day)).toLocal());
 }
 
 /// Whether [instant] falls on today's society-local calendar day.

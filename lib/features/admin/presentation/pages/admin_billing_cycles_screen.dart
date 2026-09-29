@@ -150,10 +150,10 @@ class _AdminBillingCyclesScreenState
     String startStr = '';
     String endStr = '';
     try {
-      final start = DateTime.parse(c['paymentStartDate']?.toString() ?? '');
-      final end = DateTime.parse(c['paymentEndDate']?.toString() ?? '');
-      startStr = DateFormat('d MMM').format(start);
-      endStr = DateFormat('d MMM yyyy').format(end);
+      final start = DateTime.parse(c['paymentStartDate']?.toString() ?? '').toLocal();
+      final end = DateTime.parse(c['paymentEndDate']?.toString() ?? '').toLocal();
+      startStr = DateFormat('d MMM').format(start.toLocal());
+      endStr = DateFormat('d MMM yyyy').format(end.toLocal());
     } catch (_) {}
 
     return EnterprisePanel(

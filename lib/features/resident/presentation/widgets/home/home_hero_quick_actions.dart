@@ -10,7 +10,10 @@ import 'home_shared.dart';
 
 /// GatePass+ hero row — Visitor hub + SOS + Complaint (no icon grid).
 class HomeQuickActionsHeroRow extends ConsumerWidget {
-  const HomeQuickActionsHeroRow({super.key});
+  const HomeQuickActionsHeroRow({super.key, this.visitorOnly = false});
+
+  /// Non-paying villa: no Complaint card (visitor features and SOS only).
+  final bool visitorOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,8 +66,8 @@ class HomeQuickActionsHeroRow extends ConsumerWidget {
               },
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
+          if (!visitorOnly) const SizedBox(width: 8),
+          if (!visitorOnly) Expanded(
             child: _CompactHeroCard(
               background: const Color(0xFFFFFBF5),
               borderColor: const Color(0xFFFED7AA),

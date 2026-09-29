@@ -137,7 +137,7 @@ class _AddFamilyMemberScreenState extends ConsumerState<AddFamilyMemberScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _dateOfBirth != null ? DateFormat('dd MMM yyyy').format(_dateOfBirth!) : 'Select date of birth',
+                        _dateOfBirth != null ? DateFormat('dd MMM yyyy').format(_dateOfBirth!.toLocal()) : 'Select date of birth',
                         style: TextStyle(
                           fontSize: 14,
                           color: _dateOfBirth != null ? DesignColors.textPrimary : DesignColors.textTertiary,

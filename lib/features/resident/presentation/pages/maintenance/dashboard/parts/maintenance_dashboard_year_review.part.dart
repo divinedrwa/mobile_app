@@ -387,7 +387,7 @@ extension _MaintenanceDashboardYearReviewPart on _MaintenancePaymentScreenState 
                                 children: [
                                   Text(
                                     DateFormat('MMMM yyyy')
-                                        .format(DateTime(yr, m)),
+                                        .format((DateTime(yr, m)).toLocal()),
                                     style: DesignTypography.bodyMedium.copyWith(
                                       fontWeight: FontWeight.w800,
                                     ),

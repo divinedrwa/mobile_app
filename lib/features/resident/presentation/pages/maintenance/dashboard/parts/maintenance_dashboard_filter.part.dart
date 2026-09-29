@@ -262,7 +262,7 @@ extension _MaintenanceDashboardFilterPart on _MaintenancePaymentScreenState {
     final key = c['cycleKey']?.toString() ?? '';
     final my = monthYearFromCycleKey(key);
     final label = my != null
-        ? DateFormat("MMM ''yy").format(DateTime(my.year, my.month))
+        ? DateFormat("MMM ''yy").format((DateTime(my.year, my.month)).toLocal())
         : key;
     final selected = id != null && id == selectedId;
     final isOpen = (c['status']?.toString() ?? '').toUpperCase() == 'OPEN';

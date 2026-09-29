@@ -134,8 +134,8 @@ final guardVisitorLogsProvider =
     if (key == 'today') return repo.getTodayVisitors();
     final parts = key.split('_');
     if (parts.length != 2) return repo.getTodayVisitors();
-    final from = DateTime.parse(parts[0]);
-    final to = DateTime.parse(parts[1]);
+    final from = DateTime.parse(parts[0]).toLocal();
+    final to = DateTime.parse(parts[1]).toLocal();
     return repo.getTodayVisitors(from: from, to: to);
   },
 );
@@ -152,8 +152,8 @@ final guardParcelLogsProvider =
     if (key == 'today') return repo.getTodayParcels();
     final parts = key.split('_');
     if (parts.length != 2) return repo.getTodayParcels();
-    final from = DateTime.parse(parts[0]);
-    final to = DateTime.parse(parts[1]);
+    final from = DateTime.parse(parts[0]).toLocal();
+    final to = DateTime.parse(parts[1]).toLocal();
     return repo.getTodayParcels(from: from, to: to);
   },
 );
@@ -227,8 +227,8 @@ final guardVehicleLogsProvider =
     if (key == 'today') return repo.getGateVehicleToday();
     final parts = key.split('_');
     if (parts.length != 2) return repo.getGateVehicleToday();
-    final from = DateTime.parse(parts[0]);
-    final to = DateTime.parse(parts[1]);
+    final from = DateTime.parse(parts[0]).toLocal();
+    final to = DateTime.parse(parts[1]).toLocal();
     return repo.getGateVehicleToday(from: from, to: to);
   },
 );

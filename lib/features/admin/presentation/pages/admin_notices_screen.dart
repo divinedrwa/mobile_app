@@ -382,11 +382,11 @@ class _AdminNoticesScreenState extends ConsumerState<AdminNoticesScreen>
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = DateTime(dt.year, dt.month, dt.day);
-    if (d == today) return 'Today ${DateFormat.jm().format(dt)}';
+    if (d == today) return 'Today ${DateFormat.jm().format(dt.toLocal())}';
     if (d == today.subtract(const Duration(days: 1))) {
-      return 'Yesterday ${DateFormat.jm().format(dt)}';
+      return 'Yesterday ${DateFormat.jm().format(dt.toLocal())}';
     }
-    return DateFormat('dd MMM yyyy').format(dt);
+    return DateFormat('dd MMM yyyy').format(dt.toLocal());
   }
 
   static String _categoryLabel(NoticeCategory cat) {

@@ -1243,7 +1243,7 @@ class _AdminGateUtilitiesScreenState
 
   String _formatTime(String? iso) {
     if (iso == null) return '';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     final local = dt.toLocal();
     final now = DateTime.now();

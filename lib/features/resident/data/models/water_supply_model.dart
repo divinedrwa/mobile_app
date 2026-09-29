@@ -25,7 +25,7 @@ class WaterSupplyStatus {
       location: (json['location'] as String?) ?? '',
       status: (json['status'] as String?) ?? 'OFF',
       lastChanged: json['lastChanged'] is String
-          ? DateTime.tryParse(json['lastChanged'] as String)
+          ? DateTime.tryParse(json['lastChanged'] as String)?.toLocal()
           : null,
       reason: json['reason'] as String?,
     );
@@ -56,7 +56,7 @@ class WaterSupplyEvent {
       turnedOn: json['turnedOn'] == true,
       reason: json['reason'] as String?,
       createdAt: json['createdAt'] is String
-          ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
+          ? (DateTime.tryParse(json['createdAt'] as String)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       gateName: (json['gateName'] as String?) ??
           (json['gate'] is Map

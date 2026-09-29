@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
-import '../../../../core/utils/phone_launch.dart' show launchDial, maskPhone;
+import '../../../../core/utils/phone_launch.dart' show launchDial;
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_offline_actions.dart';
@@ -26,9 +26,8 @@ class _GuardVisitorDetailPageState
     extends ConsumerState<GuardVisitorDetailPage> {
   // Local busy flags so the underlying button stays disabled (and shows a
   // spinner) while a network mutation is in flight. Without these, the guard
-  // could double-tap "Confirm guest entered" / "Mark exit" the moment the
-  // confirmation dialog dismisses and trigger duplicate POSTs.
-  bool _admitting = false;
+  // could double-tap "Mark exit" the moment the confirmation dialog dismisses
+  // and trigger duplicate POSTs.
   bool _exiting = false;
   bool _overriding = false;
 
@@ -47,7 +46,7 @@ class _GuardVisitorDetailPageState
         local.month == now.month &&
         local.day == now.day;
     if (sameDay) return 'Today';
-    return DateFormat('EEE, MMM d', locale).format(local);
+    return DateFormat('EEE, MMM d', locale).format(local.toLocal());
   }
 
   static String _statusLabel(GuardVisitorRow v) =>
@@ -369,8 +368,8 @@ class _GuardVisitorDetailPageState
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      maskPhone(v.phone),
+                                    SelectableText(
+                                      v.phone.trim().isNotEmpty ? v.phone.trim() : '—',
                                       style: GuardTokens.bodyStyle(context)
                                           .copyWith(
                                         fontWeight: FontWeight.w700,
@@ -440,9 +439,7 @@ class _GuardVisitorDetailPageState
                           label: Text(
                             _exiting
                                 ? 'Marking exit…'
-                                : (v.status.trim().toUpperCase() == 'CHECKED_IN'
-                                    ? 'Mark exit'
-                                    : 'Visitor left'),
+                                : 'Mark exit',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
@@ -561,35 +558,6 @@ class _GuardVisitorDetailPageState
                           ),
                         ),
                       ],
-                      if (v.awaitingGuardAdmission) ...[
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          style: GuardTokens.primaryFilled(context).copyWith(
-                            minimumSize: WidgetStateProperty.all(
-                              const Size(double.infinity, GuardTokens.btnPrimaryH),
-                            ),
-                          ),
-                          onPressed: _admitting
-                              ? null
-                              : () => _confirmAdmission(context, v),
-                          icon: _admitting
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Icon(Icons.verified_user_outlined),
-                          label: Text(
-                            _admitting ? 'Admitting…' : 'Confirm guest entered',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -599,44 +567,6 @@ class _GuardVisitorDetailPageState
         ),
       ),
     );
-  }
-
-  Future<void> _confirmAdmission(
-    BuildContext context,
-    GuardVisitorRow v,
-  ) async {
-    if (_admitting) return;
-    final ok = await showGuardConfirmSheet(
-      context,
-      title: 'Confirm entry',
-      message: 'Residents approved ${v.name}. Mark them as on premises?',
-      confirmLabel: 'Confirm',
-      icon: Icons.verified_user_outlined,
-    );
-    if (ok != true || !context.mounted) return;
-    setState(() => _admitting = true);
-    try {
-      await ref
-          .read(guardRepositoryProvider)
-          .confirmVisitorEntryAfterApproval(v.id);
-      ref.invalidate(guardPendingVisitorsProvider);
-      ref.invalidate(guardActiveVisitorsTabProvider);
-      ref.invalidate(guardPreApprovedEntriesProvider);
-      ref.invalidate(guardTodayVisitorsProvider);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${v.name} checked in')),
-      );
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _admitting = false);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userFacingMessage(e))),
-        );
-      }
-    }
   }
 
   Future<void> _overrideEntry(BuildContext context, GuardVisitorRow v) async {
@@ -730,14 +660,11 @@ class _GuardVisitorDetailPageState
     GuardVisitorRow v,
   ) async {
     if (_exiting) return;
-    final inside = v.status.trim().toUpperCase() == 'CHECKED_IN';
     final ok = await showGuardConfirmSheet(
       context,
-      title: inside ? 'Check out' : 'Visitor left',
-      message: inside
-          ? 'Mark ${v.name} as checked out?'
-          : '${v.name} left without entering. Close this entry?',
-      confirmLabel: inside ? 'Mark exit' : 'Close entry',
+      title: 'Mark exit',
+      message: 'Mark ${v.name} as exited?',
+      confirmLabel: 'Mark exit',
       icon: Icons.logout_rounded,
     );
     if (ok != true || !context.mounted) return;

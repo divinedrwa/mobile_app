@@ -122,7 +122,7 @@ class _SocietyExpensesScreenState
     final displayYear = widget.initialYear ?? filter.year;
     final hasMonthFilter = displayMonth != null && displayYear != null;
     final titleText = hasMonthFilter
-        ? 'Expenses \u2022 ${DateFormat('MMM yyyy').format(DateTime(displayYear, displayMonth))}'
+        ? 'Expenses \u2022 ${DateFormat('MMM yyyy').format((DateTime(displayYear, displayMonth)).toLocal())}'
         : 'Society Expenses';
 
     return Scaffold(
@@ -311,7 +311,7 @@ class _SocietyExpensesScreenState
                     child: EmptyStateWidget(
                       icon: Icons.receipt_long_outlined,
                       title: hasMonthFilter
-                          ? 'No expenses for ${DateFormat('MMM yyyy').format(DateTime(displayYear, displayMonth))}'
+                          ? 'No expenses for ${DateFormat('MMM yyyy').format((DateTime(displayYear, displayMonth)).toLocal())}'
                           : 'No expenses found',
                       subtitle: hasMonthFilter
                           ? 'There are no approved expenses recorded for this billing cycle.'

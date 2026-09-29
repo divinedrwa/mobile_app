@@ -31,10 +31,10 @@ class BannerModel {
       type: (json['type'] as String?) ?? 'ANNOUNCEMENT',
       priority: (json['priority'] as num?)?.toInt() ?? 0,
       startDate: json['startDate'] is String
-          ? DateTime.tryParse(json['startDate'] as String)
+          ? DateTime.tryParse(json['startDate'] as String)?.toLocal()
           : null,
       endDate: json['endDate'] is String
-          ? DateTime.tryParse(json['endDate'] as String)
+          ? DateTime.tryParse(json['endDate'] as String)?.toLocal()
           : null,
     );
   }

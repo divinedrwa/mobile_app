@@ -447,7 +447,7 @@ class _AdminComplaintsScreenState extends ConsumerState<AdminComplaintsScreen>
     final category = complaint['category']?.toString() ?? '';
     final status = complaint['status']?.toString() ?? 'OPEN';
     final adminNotes = complaint['adminNotes']?.toString();
-    final createdAt = DateTime.tryParse(complaint['createdAt']?.toString() ?? '');
+    final createdAt = DateTime.tryParse(complaint['createdAt']?.toString() ?? '')?.toLocal();
     final villa = complaint['villa'] as Map<String, dynamic>?;
     final villaNumber = villa?['villaNumber']?.toString() ?? '';
     final ownerName = villa?['ownerName']?.toString() ?? '';

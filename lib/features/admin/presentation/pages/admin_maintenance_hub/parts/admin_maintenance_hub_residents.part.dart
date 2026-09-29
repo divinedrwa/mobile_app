@@ -178,8 +178,8 @@ extension _AdminMaintenanceHubResidentsPart on _AdminMaintenanceHubScreenState {
     final amount = (r['amount'] as num?)?.toDouble() ?? 0;
     final paidToward = (r['paidTowardCycle'] as num?)?.toDouble();
     final advanceCredit = (r['advanceCredit'] as num?)?.toDouble() ?? 0;
-    final dueDate = DateTime.tryParse(r['dueDate']?.toString() ?? '');
-    final paidAt = DateTime.tryParse(r['paidAt']?.toString() ?? '');
+    final dueDate = DateTime.tryParse(r['dueDate']?.toString() ?? '')?.toLocal();
+    final paidAt = DateTime.tryParse(r['paidAt']?.toString() ?? '')?.toLocal();
 
     final isAdmin = _isAdmin;
     final actionable = isAdmin &&

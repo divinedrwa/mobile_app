@@ -51,8 +51,8 @@ String? pickDefaultFinancialYearId(List<Map<String, dynamic>> fys) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   for (final fy in fys) {
-    final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
-    final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
+    final s = DateTime.tryParse(fy['startDate']?.toString() ?? '')?.toLocal();
+    final e = DateTime.tryParse(fy['endDate']?.toString() ?? '')?.toLocal();
     if (s == null || e == null) continue;
     final ds = DateTime(s.year, s.month, s.day);
     final de = DateTime(e.year, e.month, e.day);

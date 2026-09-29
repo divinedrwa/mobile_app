@@ -363,7 +363,7 @@ class _VisitorSuccessScreenState extends ConsumerState<VisitorSuccessScreen> {
                   _buildDetailRow(
                     context,
                     'Visit date',
-                    DateFormat('dd MMM yyyy').format(visitor.visitDate),
+                    DateFormat('dd MMM yyyy').format(visitor.visitDate.toLocal()),
                   ),
                   if (visitor.visitTime != null)
                     _buildDetailRow(context, 'Visit time', visitor.visitTime!),

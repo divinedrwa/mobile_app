@@ -344,7 +344,7 @@ class _VillaOutstandingTileState extends State<_VillaOutstandingTile> {
     final month = ((cycle['month'] ?? cycle['periodMonth']) as num?)?.toInt();
     final year = ((cycle['year'] ?? cycle['periodYear']) as num?)?.toInt();
     final label = month != null && year != null
-        ? DateFormat('MMM y').format(DateTime(year, month))
+        ? DateFormat('MMM y').format((DateTime(year, month)).toLocal())
         : cycle['label']?.toString() ?? '—';
     final expected = (cycle['expectedAmount'] as num?)?.toDouble() ?? 0;
     final paid = (cycle['paidAmount'] as num?)?.toDouble() ?? 0;

@@ -56,8 +56,8 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     for (final fy in fys) {
-      final s = DateTime.tryParse(fy['startDate']?.toString() ?? '');
-      final e = DateTime.tryParse(fy['endDate']?.toString() ?? '');
+      final s = DateTime.tryParse(fy['startDate']?.toString() ?? '')?.toLocal();
+      final e = DateTime.tryParse(fy['endDate']?.toString() ?? '')?.toLocal();
       if (s == null || e == null) continue;
       final ds = DateTime(s.year, s.month, s.day);
       final de = DateTime(e.year, e.month, e.day);
@@ -239,7 +239,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
     final filter = ref.watch(adminMaintenanceFilterProvider);
     final dashAsync = ref.watch(adminMaintenanceDashboardProvider);
     final periodLabel =
-        DateFormat('MMMM y').format(DateTime(filter.year, filter.month));
+        DateFormat('MMMM y').format((DateTime(filter.year, filter.month)).toLocal());
 
     // ── Auto-select FY (same logic as AdminMaintenanceHubScreen) ──
     ref.listen(adminCollectionFinancialYearsProvider, (prev, next) {
@@ -503,7 +503,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
               final pm = (cycle['periodMonth'] as num?)?.toInt();
               final py = (cycle['periodYear'] as num?)?.toInt();
               final chipLabel = pm != null
-                  ? DateFormat('MMM').format(DateTime(py ?? 2000, pm))
+                  ? DateFormat('MMM').format((DateTime(py ?? 2000, pm)).toLocal())
                   : (cycle['title']?.toString() ?? '?');
 
               return ChoiceChip(
@@ -548,7 +548,7 @@ class _AdminRemindersScreenState extends ConsumerState<AdminRemindersScreen>
       Map<String, dynamic> data, List<Map<String, dynamic>> residents) {
     final filter = ref.watch(adminMaintenanceFilterProvider);
     final monthName =
-        DateFormat.MMMM().format(DateTime(filter.year, filter.month));
+        DateFormat.MMMM().format((DateTime(filter.year, filter.month)).toLocal());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -910,12 +910,12 @@ class _WaterRequestSheetState extends ConsumerState<_WaterRequestSheet> {
 String _relativeTime(DateTime dt) {
   final local = dt.toLocal();
   final diff = DateTime.now().difference(dt);
-  final clock = DateFormat.jm().format(local);
+  final clock = DateFormat.jm().format(local.toLocal());
   if (diff.inMinutes < 1) return 'just now';
   if (diff.inMinutes < 60) return '${diff.inMinutes}m ago \u00b7 $clock';
   if (diff.inHours < 24) return '${diff.inHours}h ago \u00b7 $clock';
   if (diff.inDays < 7) return '${diff.inDays}d ago \u00b7 $clock';
-  return '${DateFormat.yMMMd().format(local)} \u00b7 $clock';
+  return '${DateFormat.yMMMd().format(local.toLocal())} \u00b7 $clock';
 }
 
 String _formatDuration(Duration? d) {

@@ -64,8 +64,8 @@ class ShiftActiveHelper {
   static DateTime? _parseDateTime(dynamic v) {
     if (v == null) return null;
     if (v is DateTime) return v;
-    if (v is String) return DateTime.tryParse(v);
-    return DateTime.tryParse(v.toString());
+    if (v is String) return DateTime.tryParse(v)?.toLocal();
+    return DateTime.tryParse(v.toString())?.toLocal();
   }
 
   static int? _toInt(dynamic v) {

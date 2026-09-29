@@ -793,7 +793,7 @@ class _UserTile extends StatelessWidget {
   String? get _lastSeenLabel {
     final raw = user['lastSeenAt']?.toString();
     if (raw == null || raw.isEmpty) return null;
-    final dt = DateTime.tryParse(raw);
+    final dt = DateTime.tryParse(raw)?.toLocal();
     if (dt == null) return raw.split('T').first;
     final local = dt.toLocal();
     final now = DateTime.now();
@@ -801,7 +801,7 @@ class _UserTile extends StatelessWidget {
     if (days <= 0) return 'Today';
     if (days == 1) return 'Yesterday';
     if (days < 30) return '${days}d ago';
-    return DateFormat('dd MMM yyyy').format(local);
+    return DateFormat('dd MMM yyyy').format(local.toLocal());
   }
 
   @override

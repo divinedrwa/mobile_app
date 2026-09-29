@@ -23,7 +23,7 @@ class FinancialAlertCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isOverdue ? Colors.red : Colors.orange;
     final formattedAmount = '₹${amount.toStringAsFixed(0)}';
-    final formattedDate = DateFormat('MMM dd, yyyy').format(dueDate);
+    final formattedDate = DateFormat('MMM dd, yyyy').format(dueDate.toLocal());
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.md),

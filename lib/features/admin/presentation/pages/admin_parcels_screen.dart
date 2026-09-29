@@ -494,7 +494,7 @@ class _AdminParcel {
           '',
       villaNumber: villa?['villaNumber']?.toString() ?? '',
       ownerName: villa?['ownerName']?.toString() ?? '',
-      receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? ''),
+      receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? '')?.toLocal(),
     );
   }
 }
