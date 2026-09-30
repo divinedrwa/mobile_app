@@ -1344,18 +1344,26 @@ class _NoReplyNudge extends StatelessWidget {
           Expanded(
             child: Text(
               'No reply for $waited',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: GuardTokens.bodyStyle(context).copyWith(
                 fontWeight: FontWeight.w700,
                 fontSize: 13.5,
               ),
             ),
           ),
+          const SizedBox(width: 8),
           if (first != null)
             FilledButton.icon(
+              // The guard theme makes filled buttons full-width; keep this one compact.
               style: FilledButton.styleFrom(
                 backgroundColor: GuardTokens.success,
-                visualDensity: VisualDensity.compact,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 38),
+                maximumSize: const Size(190, 44),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () => contacts.length == 1
                   ? _call(context, first)
@@ -1363,6 +1371,8 @@ class _NoReplyNudge extends StatelessWidget {
               icon: const Icon(Icons.call_rounded, size: 18),
               label: Text(
                 contacts.length == 1 ? 'Call $firstName' : 'Call resident',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             )

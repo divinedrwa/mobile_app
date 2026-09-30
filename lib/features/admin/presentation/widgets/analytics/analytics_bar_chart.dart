@@ -53,6 +53,9 @@ class AnalyticsBarChart extends StatelessWidget {
     for (final p in points) {
       if (p.value > maxY) maxY = p.value;
     }
+    // Whole-number step, and a top that lands on a step, so axis labels never repeat.
+    final step = maxY > 4 ? (maxY / 4).ceilToDouble() : 1.0;
+    final topY = step * ((maxY * 1.15) / step).ceilToDouble();
 
     final groups = <BarChartGroupData>[
       for (var i = 0; i < points.length; i++)
@@ -79,11 +82,11 @@ class AnalyticsBarChart extends StatelessWidget {
         height: height,
         child: BarChart(
           BarChartData(
-            maxY: maxY * 1.15,
+            maxY: topY,
             gridData: FlGridData(
               show: true,
               drawVerticalLine: false,
-              horizontalInterval: maxY > 4 ? (maxY / 4).ceilToDouble() : 1,
+              horizontalInterval: step,
               getDrawingHorizontalLine: (_) => FlLine(
                 color: DesignColors.border.withValues(alpha: 0.35),
                 strokeWidth: 1,
@@ -97,6 +100,7 @@ class AnalyticsBarChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 28,
+                  interval: step,
                   getTitlesWidget: (v, _) => Text(
                     v.toInt().toString(),
                     style: DesignTypography.captionSmall.copyWith(

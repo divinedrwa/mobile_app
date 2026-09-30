@@ -261,10 +261,15 @@ class _GuardDeliveryQuickPageState
                           onPressed: _submitting ? null : _speakFlats,
                           icon: const Icon(Icons.mic_rounded, size: 18),
                           label: const Text('Speak'),
+                          // Guard theme buttons are full-width by default; keep this compact.
                           style: FilledButton.styleFrom(
                             foregroundColor: GuardTokens.guardAccentDeep,
                             backgroundColor:
                                 GuardTokens.guardAccent.withValues(alpha: 0.12),
+                            minimumSize: const Size(0, 40),
+                            maximumSize: const Size(140, 44),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
                           ),
                         ),
                       ],

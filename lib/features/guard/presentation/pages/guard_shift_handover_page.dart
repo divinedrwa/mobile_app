@@ -68,7 +68,7 @@ class GuardShiftHandoverPage extends ConsumerWidget {
       if (stats != null) {
         b
           ..writeln()
-          ..writeln('Today: ${stats.visitors} visitors · ${stats.parcels} deliveries · '
+          ..writeln('Today: ${stats.visitors} gate requests · ${stats.parcels} deliveries · '
               '${stats.patrols} patrols · ${stats.incidents} incidents');
       }
       if (pendingSync > 0) {
@@ -124,9 +124,14 @@ class GuardShiftHandoverPage extends ConsumerWidget {
                   _StatTile(label: 'Inside now', value: inside.length, tone: GuardTokens.success, icon: Icons.meeting_room_rounded),
                   _StatTile(label: 'Waiting', value: waiting.length, tone: GuardTokens.warning, icon: Icons.hourglass_top_rounded),
                   _StatTile(label: 'Parcels at gate', value: parcels.length, tone: GuardTokens.guardAccentDeep, icon: Icons.inventory_2_rounded),
-                  _StatTile(label: 'Visitors today', value: stats?.visitors, tone: GuardTokens.guardAccentDeep, icon: Icons.groups_rounded),
+                  _StatTile(label: 'Requests today', value: stats?.visitors, tone: GuardTokens.guardAccentDeep, icon: Icons.groups_rounded),
                   _StatTile(label: 'Patrols', value: stats?.patrols, tone: GuardTokens.guardAccentDeep, icon: Icons.directions_walk_rounded),
-                  _StatTile(label: 'Incidents', value: stats?.incidents, tone: GuardTokens.dangerBrand, icon: Icons.report_rounded),
+                  _StatTile(
+                    label: 'Incidents',
+                    value: stats?.incidents,
+                    tone: (stats?.incidents ?? 0) > 0 ? GuardTokens.dangerBrand : GuardTokens.guardAccentDeep,
+                    icon: Icons.report_rounded,
+                  ),
                 ],
               ),
               if (pendingSync > 0) ...[

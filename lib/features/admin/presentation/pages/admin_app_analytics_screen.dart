@@ -300,17 +300,21 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
       );
     }
 
+    // Whole-number step, and a top that lands on a step, so axis labels never repeat.
+    final step = maxY > 4 ? (maxY / 4).ceilToDouble() : 1.0;
+    final topY = step * ((maxY * 1.15) / step).ceilToDouble();
+
     return EnterprisePanel(
       padding: const EdgeInsets.fromLTRB(8, 16, 12, 8),
       child: SizedBox(
         height: 160,
         child: BarChart(
           BarChartData(
-            maxY: maxY * 1.15,
+            maxY: topY,
             gridData: FlGridData(
               show: true,
               drawVerticalLine: false,
-              horizontalInterval: maxY > 4 ? (maxY / 4).ceilToDouble() : 1,
+              horizontalInterval: step,
               getDrawingHorizontalLine: (_) => FlLine(
                 color: DesignColors.border.withValues(alpha: 0.35),
                 strokeWidth: 1,
@@ -324,6 +328,7 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 28,
+                  interval: step,
                   getTitlesWidget: (v, _) => Text(
                     v.toInt().toString(),
                     style: DesignTypography.captionSmall.copyWith(

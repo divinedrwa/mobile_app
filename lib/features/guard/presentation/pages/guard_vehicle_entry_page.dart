@@ -88,6 +88,8 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            // Guard theme buttons are full-width; keep dialog actions side by side.
+            style: FilledButton.styleFrom(minimumSize: const Size(88, 44)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Log'),
           ),

@@ -78,7 +78,11 @@ class _GuardGateUtilitiesCardState extends ConsumerState<GuardGateUtilitiesCard>
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            // Guard theme buttons are full-width; keep dialog actions side by side.
+            style: FilledButton.styleFrom(
+              backgroundColor: confirmColor,
+              minimumSize: const Size(88, 44),
+            ),
             child: Text(confirmLabel),
           ),
         ],
