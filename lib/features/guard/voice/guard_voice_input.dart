@@ -154,6 +154,8 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     _locale ??= await _preferredLocale();
     _speech.errorListener = _onError;
     _speech.statusListener = _onStatus;
+    // The guard may have tapped pause while the mic was still starting.
+    if (_status == _VoiceStatus.paused) return;
     _resume();
   }
 
@@ -454,7 +456,8 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
       label: listening ? 'Pause microphone' : 'Start microphone',
       child: GestureDetector(
         onTap: switch (_status) {
-          _VoiceStatus.listening => () => _pauseMic(),
+          // A tap while the mic is still starting pauses too, so it never feels dead.
+          _VoiceStatus.listening || _VoiceStatus.starting => () => _pauseMic(),
           _VoiceStatus.paused => _resume,
           _ => null,
         },
