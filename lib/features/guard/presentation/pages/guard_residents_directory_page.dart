@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/theme/design_animations.dart';
 import '../../../../core/utils/phone_launch.dart' show launchDial;
+import '../../voice/guard_voice_input.dart';
+import '../../voice/guard_voice_parser.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
@@ -297,6 +299,19 @@ class _GuardResidentsDirectoryPageState
                     decoration: InputDecoration(
                       hintText: 'e.g. A-101, Rahul',
                       prefixIcon: Icon(Icons.search_rounded),
+                      suffixIcon: GuardMicButton(
+                        title: 'Say a flat or name',
+                        example: '"A 25" or "Ashish"',
+                        onText: (t) {
+                          // "a 25" / "a twenty five" → "A-25" to match flat labels.
+                          final digits = digitsFromSpeech(t);
+                          final block = RegExp(r'^\s*([a-zA-Z])\b').firstMatch(t)?.group(1);
+                          _query.text = digits.isNotEmpty && digits.length <= 4
+                              ? (block != null ? '${block.toUpperCase()}-$digits' : digits)
+                              : t.trim();
+                          setState(() {});
+                        },
+                      ),
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(

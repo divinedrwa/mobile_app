@@ -508,6 +508,7 @@ class ApiEndpoints {
 
   static const String guardSocBroadcast = '/guards/soc-broadcast';
   static const String guardResidentsDirectory = '/guards/residents-directory';
+  static const String guardVisitorLookup = '/guards/visitor-lookup';
   static const String guardApprovedVehicles = '/guards/approved-vehicles';
 
   /// Validated incident — prefer over legacy [guardCreateIncident] when possible.

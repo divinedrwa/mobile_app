@@ -9,6 +9,8 @@ import '../../../../core/widgets/screen_skeletons.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
 import '../providers/guard_providers.dart';
+import '../../data/offline_queue_service.dart';
+import '../providers/guard_offline_actions.dart';
 import '../widgets/guard_error_banner.dart';
 import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_skeletons.dart';
@@ -30,15 +32,20 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
 
     setState(() => _busy = true);
     try {
-      await ref.read(guardRepositoryProvider).startPatrol(location: location);
+      final queued = await runOrQueueOffline(
+        ref,
+        type: OfflineMutationType.patrolStart,
+        params: {'location': location},
+        online: () => ref.read(guardRepositoryProvider).startPatrol(location: location),
+      );
       ref.invalidate(guardPatrolsTodayProvider);
       ref.invalidate(guardMyPatrolsProvider);
       ref.invalidate(guardDashboardProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Patrol started'),
+          content: Text(queued ? 'Patrol saved offline — will sync when back online' : 'Patrol started'),
         ),
       );
     } catch (e) {
@@ -60,19 +67,28 @@ class _GuardPatrolScreenState extends ConsumerState<GuardPatrolScreen> {
 
     setState(() => _busy = true);
     try {
-      await ref.read(guardRepositoryProvider).logPatrolCheckpoint(
-            location: result.location,
-            notes: result.notes,
-            issuesFound: result.issuesFound,
-          );
+      final queued = await runOrQueueOffline(
+        ref,
+        type: OfflineMutationType.patrolCheckpoint,
+        params: {
+          'location': result.location,
+          'notes': ?result.notes,
+          'issuesFound': result.issuesFound,
+        },
+        online: () => ref.read(guardRepositoryProvider).logPatrolCheckpoint(
+              location: result.location,
+              notes: result.notes,
+              issuesFound: result.issuesFound,
+            ),
+      );
       ref.invalidate(guardPatrolsTodayProvider);
       ref.invalidate(guardMyPatrolsProvider);
       ref.invalidate(guardDashboardProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Checkpoint logged'),
+          content: Text(queued ? 'Checkpoint saved offline — will sync when back online' : 'Checkpoint logged'),
         ),
       );
     } catch (e) {

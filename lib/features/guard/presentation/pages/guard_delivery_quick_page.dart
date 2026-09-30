@@ -9,6 +9,10 @@ import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../../data/offline_queue_service.dart';
+import '../../voice/guard_voice_input.dart';
+import '../../voice/guard_voice_parser.dart';
+import '../providers/guard_offline_actions.dart';
 
 /// Premium delivery entry — brand grid, searchable flat, sticky actions.
 class GuardDeliveryQuickPage extends ConsumerStatefulWidget {
@@ -60,6 +64,51 @@ class _GuardDeliveryQuickPageState
         _selectedFlats[flat.villaId] = flat;
       }
     });
+  }
+
+  /// "A 25 and A 26, Amazon" → selects those flats (and the courier if named).
+  Future<void> _speakFlats() async {
+    final text = await showGuardVoiceSheet(
+      context,
+      title: 'Say the flat numbers',
+      example: '"A 25 and A 26, Amazon"',
+    );
+    if (text == null || text.isEmpty || !mounted) return;
+    final residents = ref.read(guardResidentsPickerProvider).valueOrNull ?? const [];
+    final byLabel = <String, GuardFlatSelection>{};
+    for (final r in residents) {
+      if (r.villaId.isEmpty) continue;
+      final b = r.block?.trim();
+      final label = (b != null && b.isNotEmpty) ? '$b-${r.villaNumber}' : r.villaNumber;
+      final existing = byLabel[label];
+      byLabel[label] = GuardFlatSelection(
+        villaId: r.villaId,
+        label: label,
+        userIds: [...?existing?.userIds, r.userId],
+      );
+    }
+    final parsed = parseVisitorUtterance(text, knownFlatLabels: byLabel.keys.toList());
+    final lower = text.toLowerCase();
+    final brand = _brands
+        .where((b) => b.label != 'Other' && lower.contains(b.label.toLowerCase()))
+        .firstOrNull;
+    setState(() {
+      for (final label in parsed.flatLabels) {
+        final flat = byLabel[label];
+        if (flat != null) _selectedFlats[flat.villaId] = flat;
+      }
+      if (brand != null) _brand = brand.api;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: parsed.flatLabels.isEmpty ? GuardTokens.warning : null,
+      content: Text(
+        parsed.flatLabels.isEmpty
+            ? "Couldn't find a flat in \"$text\". Try again or tap the flat."
+            : 'Selected ${parsed.flatLabels.join(', ')}${brand != null ? ' · ${brand.label}' : ''}',
+      ),
+    ));
   }
 
   @override
@@ -199,10 +248,26 @@ class _GuardDeliveryQuickPageState
                       },
                     ),
                     const SizedBox(height: GuardTokens.sectionGap),
-                    const GuardScreenSectionHeader(
-                      icon: Icons.people_rounded,
-                      title: 'Deliver to flats',
-                      subtitle: 'Tap every flat this drop is for',
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: GuardScreenSectionHeader(
+                            icon: Icons.people_rounded,
+                            title: 'Deliver to flats',
+                            subtitle: 'Tap every flat — or say them',
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: _submitting ? null : _speakFlats,
+                          icon: const Icon(Icons.mic_rounded, size: 18),
+                          label: const Text('Speak'),
+                          style: FilledButton.styleFrom(
+                            foregroundColor: GuardTokens.guardAccentDeep,
+                            backgroundColor:
+                                GuardTokens.guardAccent.withValues(alpha: 0.12),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: GuardTokens.g2),
                     residentsAsync.when(
@@ -396,20 +461,35 @@ class _GuardDeliveryQuickPageState
     final description = noteParts.isEmpty ? null : noteParts.join(' | ');
 
     // One parcel per selected flat — the courier dropped a parcel for each.
+    // Without network each parcel is saved offline and synced later.
     var logged = 0;
+    var queued = 0;
     try {
       for (final flat in flats) {
-        await ref.read(guardDeliverySubmitProvider)(
-          GuardDeliverySubmitParams(
-            villaId: flat.villaId,
-            deliveryService: _brand,
-            trackingNumber: trackingNumber,
-            senderName: senderName,
-            description: description,
-            leftAtGate: leftAtGate,
+        final offline = await runOrQueueOffline(
+          ref,
+          type: OfflineMutationType.parcelReceived,
+          params: {
+            'villaId': flat.villaId,
+            'deliveryService': _brand,
+            'trackingNumber': ?trackingNumber,
+            'senderName': ?senderName,
+            'description': ?description,
+            'leftAtGate': leftAtGate,
+          },
+          online: () => ref.read(guardDeliverySubmitProvider)(
+            GuardDeliverySubmitParams(
+              villaId: flat.villaId,
+              deliveryService: _brand,
+              trackingNumber: trackingNumber,
+              senderName: senderName,
+              description: description,
+              leftAtGate: leftAtGate,
+            ),
           ),
         );
         logged++;
+        if (offline) queued++;
       }
       ref.invalidate(guardPendingParcelsProvider);
       ref.invalidate(guardTodayParcelsProvider);
@@ -421,9 +501,11 @@ class _GuardDeliveryQuickPageState
           SnackBar(
             behavior: SnackBarBehavior.floating,
             content: Text(
-              leftAtGate
-                  ? '$noun logged · left at gate'
-                  : '$noun logged · delivered',
+              queued > 0
+                  ? '$noun saved offline — will sync when back online'
+                  : leftAtGate
+                      ? '$noun logged · left at gate'
+                      : '$noun logged · delivered',
             ),
           ),
         );

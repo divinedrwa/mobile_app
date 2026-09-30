@@ -159,6 +159,15 @@ class OfflineSyncNotifier extends StateNotifier<OfflineSyncState> {
           notes: m.params['notes'] as String?,
           issuesFound: m.params['issuesFound'] as bool? ?? false,
         );
+      case OfflineMutationType.parcelReceived:
+        await repo.logParcelReceived(
+          villaId: m.params['villaId'] as String,
+          deliveryService: m.params['deliveryService'] as String,
+          trackingNumber: m.params['trackingNumber'] as String?,
+          senderName: m.params['senderName'] as String?,
+          description: m.params['description'] as String?,
+          leftAtGate: m.params['leftAtGate'] as bool? ?? false,
+        );
     }
   }
 

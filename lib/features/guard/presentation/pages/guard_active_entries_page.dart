@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/utils/foreground_polling_mixin.dart';
+import '../../../../core/utils/phone_launch.dart' show launchDial;
 import '../../../resident/data/models/parcel_model.dart';
 import '../../data/models/guard_models.dart';
 import '../../ui/guard_tokens.dart';
@@ -198,6 +199,23 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
   // two concurrent network calls for the same visitor.
   final Set<String> _busyVisitorIds = <String>{};
 
+  /// Re-renders waiting times so the "no reply — call" nudge appears on time.
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
   String _statusLabel(GuardVisitorRow v) =>
       guardVisitorStatusLabel(v, compact: true);
 
@@ -343,6 +361,7 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
                 ),
               ),
             ),
+            if (_waitingTooLong(v)) _NoReplyNudge(visitor: v),
             if (trailing != null) ...[
               Divider(
                 height: 1,
@@ -364,6 +383,16 @@ class _VisitorsTabState extends ConsumerState<_VisitorsTab> {
       ),
     ),
     );
+  }
+
+  /// A resident hasn't answered for [_noReplyAfter]: prompt the guard to call.
+  static const _noReplyAfter = Duration(minutes: 3);
+
+  bool _waitingTooLong(GuardVisitorRow v) {
+    final since = v.checkInTime;
+    return v.needsResidentApproval &&
+        since != null &&
+        DateTime.now().difference(since) >= _noReplyAfter;
   }
 
   @override
@@ -1235,6 +1264,112 @@ class _BusyTextActionButtonState extends State<_BusyTextActionButton> {
               ],
             )
           : Text(widget.label),
+    );
+  }
+}
+
+/// "No reply for 5 min" strip with one-tap calls to the flat's residents.
+class _NoReplyNudge extends StatelessWidget {
+  const _NoReplyNudge({required this.visitor});
+
+  final GuardVisitorRow visitor;
+
+  Future<void> _call(BuildContext context, GuardResidentContact c) async {
+    final ok = await launchDial(c.phone);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text('Cannot dial ${c.phone}'),
+      ));
+    }
+  }
+
+  Future<void> _pickAndCall(BuildContext context) async {
+    final contacts = visitor.residentContacts;
+    final picked = await showModalBottomSheet<GuardResidentContact>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                'Call a resident about ${visitor.name}',
+                style: GuardTokens.headingStyle(ctx).copyWith(fontSize: 17),
+              ),
+            ),
+            for (final c in contacts)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: GuardTokens.guardAccent.withValues(alpha: 0.14),
+                  child: Icon(Icons.person_rounded, color: GuardTokens.guardAccentDeep),
+                ),
+                title: Text(c.name.isEmpty ? 'Resident' : c.name),
+                subtitle: Text('${c.flatLabel} · ${c.phone}'),
+                trailing: Icon(Icons.call_rounded, color: GuardTokens.success),
+                onTap: () => Navigator.pop(ctx, c),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked != null && context.mounted) await _call(context, picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final since = visitor.checkInTime;
+    final mins = since == null ? 0 : DateTime.now().difference(since).inMinutes;
+    final waited = mins >= 60 ? '${mins ~/ 60} h ${mins % 60} min' : '$mins min';
+    final contacts = visitor.residentContacts;
+    final first = contacts.isEmpty ? null : contacts.first;
+    final firstName = first == null
+        ? null
+        : (first.name.trim().isEmpty ? 'resident' : first.name.trim().split(' ').first);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: GuardTokens.warningMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: GuardTokens.warning.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.phone_callback_rounded, size: 20, color: GuardTokens.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'No reply for $waited',
+              style: GuardTokens.bodyStyle(context).copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+          if (first != null)
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: GuardTokens.success,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              onPressed: () => contacts.length == 1
+                  ? _call(context, first)
+                  : _pickAndCall(context),
+              icon: const Icon(Icons.call_rounded, size: 18),
+              label: Text(
+                contacts.length == 1 ? 'Call $firstName' : 'Call resident',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            )
+          else
+            Text('No phone on file', style: GuardTokens.captionStyle(context)),
+        ],
+      ),
     );
   }
 }

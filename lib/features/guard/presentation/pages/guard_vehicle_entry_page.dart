@@ -11,6 +11,11 @@ import '../providers/guard_command_providers.dart';
 import '../providers/guard_providers.dart';
 import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
+import '../../data/offline_queue_service.dart';
+import '../../voice/guard_plate_scanner.dart';
+import '../../voice/guard_voice_input.dart';
+import '../../voice/guard_voice_parser.dart';
+import '../providers/guard_offline_actions.dart';
 
 /// Gate vehicle ledger — large targets, searchable flat optional.
 class GuardVehicleEntryPage extends ConsumerStatefulWidget {
@@ -99,13 +104,24 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
       final villaIds = flats.isEmpty
           ? <String?>[null]
           : flats.map((f) => f.villaId).toList();
+      var queued = false;
       for (final villaId in villaIds) {
-        await ref.read(guardRepositoryProvider).logGateVehicleEntry(
-              registrationNumber: reg,
-              kind: kind,
-              villaId: villaId,
-              notes: notes,
-            );
+        queued |= await runOrQueueOffline(
+          ref,
+          type: OfflineMutationType.vehicleEntry,
+          params: {
+            'registrationNumber': reg,
+            'kind': kind,
+            'villaId': ?villaId,
+            'notes': ?notes,
+          },
+          online: () => ref.read(guardRepositoryProvider).logGateVehicleEntry(
+                registrationNumber: reg,
+                kind: kind,
+                villaId: villaId,
+                notes: notes,
+              ),
+        );
       }
       span.complete();
       if (!mounted) return;
@@ -113,9 +129,13 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
       ref.invalidate(guardDashboardProvider);
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('Vehicle logged at gate'),
+          content: Text(
+            queued
+                ? 'Vehicle saved offline — will sync when back online'
+                : 'Vehicle logged at gate',
+          ),
         ),
       );
     } catch (e) {
@@ -181,6 +201,24 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                         prefixIcon: Icon(
                           Icons.pin_rounded,
                           color: GuardTokens.guardAccent,
+                        ),
+                        // Say it, or photograph the plate (optional).
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GuardMicButton(
+                              enabled: !_submitting,
+                              title: 'Say the vehicle number',
+                              example: '"K A zero one A B one two three four"',
+                              onText: (t) => setState(
+                                () => _vehicle.text = vehicleFromText(t) ?? t.toUpperCase(),
+                              ),
+                            ),
+                            GuardPlateScanButton(
+                              enabled: !_submitting,
+                              onPlate: (p) => setState(() => _vehicle.text = p),
+                            ),
+                          ],
                         ),
                         filled: true,
                         border: OutlineInputBorder(

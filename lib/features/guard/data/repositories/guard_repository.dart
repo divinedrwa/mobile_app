@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/utils/storage_service.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -284,19 +287,50 @@ class GuardRepository {
     }
   }
 
+  /// Flats + residents for the pickers. The last good list is kept on the
+  /// phone so the guard can still pick a flat without internet.
   Future<List<VillaPickerItem>> getVillasForSociety() async {
+    final list = await _fetchListWithOfflineCache(
+      cacheKey: _villasCacheKey,
+      failureMessage: 'Failed to load villas',
+      fetch: () async {
+        final data = (await _dio.get(ApiEndpoints.societyVillas)).data;
+        return data is Map ? (data['villas'] as List? ?? []) : [];
+      },
+    );
+    return list
+        .whereType<Map>()
+        .map((e) => VillaPickerItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  static const _villasCacheKey = 'guard_offline_villas_v1';
+  static const _directoryCacheKey = 'guard_offline_directory_v1';
+
+  /// Fetches a JSON list; on success caches it, on a network failure returns the
+  /// cached copy (if any) instead of failing.
+  Future<List<dynamic>> _fetchListWithOfflineCache({
+    required String cacheKey,
+    required String failureMessage,
+    required Future<List<dynamic>> Function() fetch,
+  }) async {
     try {
-      final response = await _dio.get(ApiEndpoints.societyVillas);
-      final data = response.data;
-      if (data is! Map) return [];
-      final map = Map<String, dynamic>.from(data);
-      final list = map['villas'] as List? ?? [];
-      return list
-          .whereType<Map>()
-          .map((e) => VillaPickerItem.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
+      final list = await fetch();
+      try {
+        await StorageService.setString(cacheKey, jsonEncode(list));
+      } catch (_) {}
+      return list;
     } on DioException catch (e) {
-      throw mapDioException(e, 'Failed to load villas');
+      final mapped = mapDioException(e, failureMessage);
+      if (mapped is NetworkException) {
+        final cached = StorageService.getString(cacheKey);
+        if (cached != null && cached.isNotEmpty) {
+          try {
+            return jsonDecode(cached) as List<dynamic>;
+          } catch (_) {}
+        }
+      }
+      throw mapped;
     }
   }
 
@@ -771,25 +805,49 @@ class GuardRepository {
   Future<List<ResidentDirectoryRow>> getResidentsDirectory({
     String? query,
   }) async {
+    final q = query?.trim() ?? '';
+    Future<List<dynamic>> fetch() async {
+      final data = (await _dio.get(
+        ApiEndpoints.guardResidentsDirectory,
+        queryParameters: {if (q.isNotEmpty) 'q': q},
+      ))
+          .data;
+      return data is Map ? (data['residents'] as List? ?? []) : [];
+    }
+
+    final List<dynamic> list;
+    if (q.isEmpty) {
+      // Full directory is cached so the guard can call residents offline.
+      list = await _fetchListWithOfflineCache(
+        cacheKey: _directoryCacheKey,
+        failureMessage: 'Could not load directory',
+        fetch: fetch,
+      );
+    } else {
+      try {
+        list = await fetch();
+      } on DioException catch (e) {
+        throw mapDioException(e, 'Could not load directory');
+      }
+    }
+    return list
+        .whereType<Map>()
+        .map((e) => ResidentDirectoryRow.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  /// Earlier visits of this phone number (returning visitor), or null if none.
+  Future<ReturningVisitor?> lookupVisitor(String phone) async {
     try {
       final response = await _dio.get(
-        ApiEndpoints.guardResidentsDirectory,
-        queryParameters: {
-          if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-        },
+        ApiEndpoints.guardVisitorLookup,
+        queryParameters: {'phone': phone},
       );
       final data = response.data;
-      if (data is! Map) return [];
-      final map = Map<String, dynamic>.from(data);
-      final list = map['residents'] as List? ?? [];
-      return list
-          .whereType<Map>()
-          .map(
-            (e) => ResidentDirectoryRow.fromJson(Map<String, dynamic>.from(e)),
-          )
-          .toList();
+      if (data is! Map || data['found'] != true) return null;
+      return ReturningVisitor.fromJson(Map<String, dynamic>.from(data));
     } on DioException catch (e) {
-      throw mapDioException(e, 'Could not load directory');
+      throw mapDioException(e, 'Could not look up visitor');
     }
   }
 

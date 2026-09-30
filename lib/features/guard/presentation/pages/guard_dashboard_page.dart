@@ -287,6 +287,7 @@ class _DashboardContent extends ConsumerWidget {
         ),
         const SizedBox(height: GuardTokens.sectionGap),
         GuardPremiumQuickActions(
+          onHandover: () => context.push(GuardRoutes.handover),
           onAddVisitor: () => context.push(GuardRoutes.addVisitor),
           onScanQr: () async {
             final raw = await context.push<String>(GuardRoutes.qrScan);

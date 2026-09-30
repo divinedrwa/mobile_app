@@ -77,6 +77,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>GatePass+ uses the microphone so security guards can fill visitor entries by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>GatePass+ converts the guard's speech to text to fill visitor entries faster.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>GatePass+ uses the camera so you can attach photos for your profile picture, complaints, and visitor / daily-help registration.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

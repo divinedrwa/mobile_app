@@ -19,6 +19,7 @@ import 'theme/theme.dart' as gp_theme;
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/guard/data/guard_data_refresh.dart';
 import 'features/guard/presentation/providers/guard_providers.dart';
+import 'features/guard/presentation/providers/guard_offline_sync_notifier.dart';
 import 'features/resident/data/providers/banner_provider.dart';
 import 'features/resident/data/providers/complaint_provider.dart';
 import 'features/resident/data/providers/content_provider.dart';
@@ -270,6 +271,11 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
       ref.invalidate(guardPendingVisitorsProvider);
       ref.invalidate(guardDashboardProvider);
       ref.invalidate(guardPreApprovedEntriesProvider);
+      // Retry anything saved offline (the connectivity listener can miss a
+      // reconnect while the app was in the background).
+      if (ref.read(offlineSyncProvider).pendingCount > 0) {
+        unawaited(ref.read(offlineSyncProvider.notifier).syncAll());
+      }
     };
   }
 

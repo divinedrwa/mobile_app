@@ -11,6 +11,7 @@ enum OfflineMutationType {
   vehicleEntry,
   patrolStart,
   patrolCheckpoint,
+  parcelReceived,
 }
 
 /// A single queued mutation, serializable to/from JSON.

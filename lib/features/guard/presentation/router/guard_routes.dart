@@ -15,6 +15,7 @@ import '../pages/guard_vehicle_entry_page.dart';
 import '../pages/guard_emergency_page.dart';
 import '../pages/guard_incident_report_page.dart';
 import '../pages/guard_patrol_screen.dart';
+import '../pages/guard_shift_handover_page.dart';
 import '../pages/guard_residents_directory_page.dart';
 import '../pages/guard_approved_vehicles_page.dart';
 import '../pages/guard_shift_details_page.dart';
@@ -48,6 +49,8 @@ abstract final class GuardRoutes {
   static const approvedVehicles = '/guard/approved-vehicles';
   static const patrol = '/guard/patrol';
   static const shift = '/guard/shift';
+  /// End-of-shift summary to share with the next guard.
+  static const handover = '/guard/handover';
   static const notifications = '/guard/notifications';
   /// Full-screen detail; pass [GuardVisitorRow] as `extra`.
   static const visitorDetail = '/guard/visitor-detail';
@@ -179,6 +182,11 @@ final class GuardRouteModule {
           path: 'patrol',
           parentNavigatorKey: appRootNavigatorKey,
           builder: (context, state) => const GuardPatrolScreen(),
+        ),
+        GoRoute(
+          path: 'handover',
+          parentNavigatorKey: appRootNavigatorKey,
+          builder: (context, state) => const GuardShiftHandoverPage(),
         ),
         GoRoute(
           path: 'incident-report',

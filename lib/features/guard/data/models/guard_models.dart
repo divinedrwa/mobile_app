@@ -209,7 +209,11 @@ class GuardVisitorRow {
     this.visitorType,
     this.villaApprovals = const [],
     this.exitNotMarked = false,
+    this.residentContacts = const [],
   });
+
+  /// Residents of the visited flat(s) with a phone number (for "no reply? call").
+  final List<GuardResidentContact> residentContacts;
 
   final String id;
   final String name;
@@ -275,6 +279,7 @@ class GuardVisitorRow {
             : null;
     final nums = <String>[];
     final approvals = <GuardVillaApproval>[];
+    final contacts = <GuardResidentContact>[];
     if (vv != null) {
       for (final e in vv) {
         if (e is! Map) continue;
@@ -286,6 +291,18 @@ class GuardVisitorRow {
           if (n != null && n.trim().isNotEmpty) n.trim(),
         ].join('-');
         if (n != null && n.isNotEmpty) nums.add(n);
+        final users = villa is Map ? villa['users'] : null;
+        if (users is List) {
+          for (final u in users.whereType<Map>()) {
+            final phone = u['phone']?.toString().trim() ?? '';
+            if (phone.isEmpty) continue;
+            contacts.add(GuardResidentContact(
+              name: u['name']?.toString() ?? '',
+              phone: phone,
+              flatLabel: label,
+            ));
+          }
+        }
         final st = e['approvalStatus']?.toString();
         if (label.isNotEmpty && st != null && st.isNotEmpty) {
           approvals.add(GuardVillaApproval(villaLabel: label, status: st));
@@ -316,8 +333,22 @@ class GuardVisitorRow {
       visitorType: json['visitorType']?.toString(),
       villaApprovals: approvals,
       exitNotMarked: json['exitNotMarked'] == true,
+      residentContacts: contacts,
     );
   }
+}
+
+/// A resident of the visited flat the guard can call (active entries).
+class GuardResidentContact {
+  const GuardResidentContact({
+    required this.name,
+    required this.phone,
+    required this.flatLabel,
+  });
+
+  final String name;
+  final String phone;
+  final String flatLabel;
 }
 
 /// Minimal resident info nested inside a villa picker row.
@@ -810,6 +841,50 @@ class GuardPatrolRow {
       status: json['status']?.toString() ?? 'SCHEDULED',
       notes: _jsonString(json['notes']),
       createdAt: parseAt(json['createdAt']),
+    );
+  }
+}
+
+/// GET /guards/visitor-lookup — what we know about a returning visitor.
+class ReturningVisitor {
+  const ReturningVisitor({
+    required this.name,
+    required this.visitorType,
+    this.vehicleNumber,
+    this.lastFlats = const [],
+    this.lastVisitAt,
+    this.visitCount = 0,
+  });
+
+  final String name;
+
+  /// API value, e.g. `DELIVERY`.
+  final String visitorType;
+  final String? vehicleNumber;
+
+  /// Flats of the last visit: (villaId, label like "A-25").
+  final List<({String villaId, String label})> lastFlats;
+  final DateTime? lastVisitAt;
+  final int visitCount;
+
+  factory ReturningVisitor.fromJson(Map<String, dynamic> json) {
+    final flats = (json['lastFlats'] as List? ?? const [])
+        .whereType<Map>()
+        .map((f) => (
+              villaId: f['villaId']?.toString() ?? '',
+              label: f['label']?.toString() ?? '',
+            ))
+        .where((f) => f.villaId.isNotEmpty)
+        .toList();
+    return ReturningVisitor(
+      name: json['name']?.toString() ?? '',
+      visitorType: json['visitorType']?.toString() ?? '',
+      vehicleNumber: (json['vehicleNumber'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (json['vehicleNumber'] as String).trim(),
+      lastFlats: flats,
+      lastVisitAt: DateTime.tryParse(json['lastVisitAt']?.toString() ?? '')?.toLocal(),
+      visitCount: (json['visitCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

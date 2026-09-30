@@ -13,6 +13,30 @@ class GuardCheckOutResult {
   final bool queuedOffline;
 }
 
+/// Runs [online]; with no network, saves the action ([type] + [params]) to the
+/// offline queue instead. Returns true when it was queued offline.
+Future<bool> runOrQueueOffline(
+  WidgetRef ref, {
+  required OfflineMutationType type,
+  required Map<String, dynamic> params,
+  required Future<void> Function() online,
+}) async {
+  try {
+    await online();
+    return false;
+  } on NetworkException {
+    await ref.read(offlineSyncProvider.notifier).enqueue(
+          OfflineMutation(
+            id: const Uuid().v4(),
+            type: type,
+            params: params,
+            createdAt: DateTime.now(),
+          ),
+        );
+    return true;
+  }
+}
+
 /// Check out a visitor online, or enqueue for offline sync on network failure.
 Future<GuardCheckOutResult> guardCheckOutWithOfflineFallback(
   WidgetRef ref,

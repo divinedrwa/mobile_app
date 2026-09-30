@@ -14,7 +14,11 @@ class GuardPremiumQuickActions extends StatelessWidget {
     required this.onPatrol,
     required this.onApprovedVehicles,
     required this.onCallResidents,
+    this.onHandover,
   });
+
+  /// Shift handover summary (shown as a full-width tile when set).
+  final VoidCallback? onHandover;
 
   final VoidCallback onAddVisitor;
   final VoidCallback onScanQr;
@@ -145,6 +149,17 @@ class GuardPremiumQuickActions extends StatelessWidget {
             ),
           ],
         ),
+        if (onHandover != null) ...[
+          const SizedBox(height: 10),
+          _QuickTile(
+            icon: Icons.assignment_turned_in_rounded,
+            label: 'Shift handover',
+            subtitle: "Inside, pending & parcels — share with next guard",
+            accent: const Color(0xFF475569),
+            isDark: isDark,
+            onTap: onHandover!,
+          ),
+        ],
       ],
     );
   }

@@ -95,6 +95,16 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
     state = state.copyWith(selectedUserIds: ids, clearError: true);
   }
 
+  /// Adds the residents of the given flats (voice entry / returning visitor);
+  /// never deselects anything the guard already picked.
+  void selectFlats(Iterable<Iterable<String>> flatsUserIds) {
+    final ids = Set<String>.from(state.selectedUserIds);
+    for (final flat in flatsUserIds) {
+      ids.addAll(flat);
+    }
+    state = state.copyWith(selectedUserIds: ids, clearError: true);
+  }
+
   void clearResidents() {
     state = state.copyWith(selectedUserIds: const {});
   }

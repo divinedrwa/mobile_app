@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +20,9 @@ import '../widgets/guard_flat_picker.dart';
 import '../widgets/guard_screen_section_header.dart';
 import '../widgets/guard_section_card.dart';
 import '../widgets/guard_action_sheet.dart';
+import '../../voice/guard_plate_scanner.dart';
+import '../../voice/guard_voice_input.dart';
+import '../../voice/guard_voice_parser.dart';
 
 /// Premium **Add visitor** — card sections, large inputs, searchable flats, optional vehicle & photo.
 class GuardCheckInScreen extends ConsumerStatefulWidget {
@@ -36,9 +40,16 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   final _phoneFocus = FocusNode();
   final _nameFocus = FocusNode();
 
+  // Returning visitor: looked up once the phone number is complete.
+  Timer? _lookupDebounce;
+  String? _lookedUpPhone;
+  ReturningVisitor? _returning;
+  bool _lookingUp = false;
+
   @override
   void initState() {
     super.initState();
+    _phone.addListener(_onPhoneChanged);
     // Open keyboard on the first contact field — phone is primary at the gate.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _phoneFocus.requestFocus();
@@ -47,6 +58,8 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
 
   @override
   void dispose() {
+    _lookupDebounce?.cancel();
+    _phone.removeListener(_onPhoneChanged);
     _phoneFocus.dispose();
     _nameFocus.dispose();
     _name.dispose();
@@ -66,6 +79,130 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
         );
       }
     }
+  }
+
+  // ── Returning visitor ────────────────────────────────────────────────
+
+  void _onPhoneChanged() {
+    final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
+      _lookupDebounce?.cancel();
+      if (_returning != null || _lookedUpPhone != null) {
+        setState(() {
+          _returning = null;
+          _lookedUpPhone = null;
+        });
+      }
+      return;
+    }
+    final key = digits.substring(digits.length - 10);
+    if (key == _lookedUpPhone) return;
+    _lookupDebounce?.cancel();
+    _lookupDebounce = Timer(const Duration(milliseconds: 350), () => _lookup(key));
+  }
+
+  Future<void> _lookup(String phone) async {
+    setState(() {
+      _lookedUpPhone = phone;
+      _lookingUp = true;
+    });
+    ReturningVisitor? found;
+    try {
+      found = await ref.read(guardRepositoryProvider).lookupVisitor(phone);
+    } catch (_) {
+      found = null; // Offline or unknown: the guard just types the details.
+    }
+    if (!mounted || _lookedUpPhone != phone) return;
+    setState(() {
+      _returning = found;
+      _lookingUp = false;
+    });
+    if (found != null) _applyReturning(found, selectFlat: false);
+  }
+
+  /// Fills empty fields from the last visit; [selectFlat] also picks that flat.
+  void _applyReturning(ReturningVisitor v, {required bool selectFlat}) {
+    final notifier = ref.read(checkInFormProvider.notifier);
+    // Only fill a fresh form: never overwrite what the guard already entered.
+    final fresh = _name.text.trim().isEmpty;
+    if (fresh && v.name.trim().isNotEmpty) _name.text = v.name.trim();
+    if (_vehicle.text.trim().isEmpty && (v.vehicleNumber ?? '').isNotEmpty) {
+      _vehicle.text = v.vehicleNumber!;
+    }
+    final type = GuardCheckInVisitorType.values
+        .where((t) => t.apiValue == v.visitorType)
+        .firstOrNull;
+    if (fresh && type != null) notifier.setVisitorType(type);
+    if (selectFlat) {
+      final index = _flatIndex();
+      notifier.selectFlats(
+        v.lastFlats.map((f) => index.byVillaId[f.villaId] ?? const <String>[]),
+      );
+    }
+  }
+
+  // ── Voice entry ──────────────────────────────────────────────────────
+
+  /// Flats in the picker: label ("A-25") → resident ids, and villaId → ids.
+  ({Map<String, List<String>> byLabel, Map<String, List<String>> byVillaId}) _flatIndex() {
+    final list = ref.read(guardResidentsPickerProvider).valueOrNull ?? const [];
+    final byLabel = <String, List<String>>{};
+    final byVillaId = <String, List<String>>{};
+    for (final r in list) {
+      if (r.villaId.isEmpty) continue;
+      final b = r.block?.trim();
+      final label = (b != null && b.isNotEmpty) ? '$b-${r.villaNumber}' : r.villaNumber;
+      byLabel.putIfAbsent(label, () => []).add(r.userId);
+      byVillaId.putIfAbsent(r.villaId, () => []).add(r.userId);
+    }
+    return (byLabel: byLabel, byVillaId: byVillaId);
+  }
+
+  Future<void> _speakEntry() async {
+    final text = await showGuardVoiceSheet(
+      context,
+      title: 'Say the visitor details',
+      example: '"Ramesh, 98765 43210, flat A 25, delivery"',
+    );
+    if (text == null || text.isEmpty || !mounted) return;
+    final index = _flatIndex();
+    final parsed = parseVisitorUtterance(text, knownFlatLabels: index.byLabel.keys.toList());
+    if (parsed.isEmpty) {
+      _toast("Couldn't pick out details. Try again or type them.", warning: true);
+      return;
+    }
+    final notifier = ref.read(checkInFormProvider.notifier);
+    final filled = <String>[];
+    if (parsed.phone != null) {
+      _phone.text = parsed.phone!;
+      filled.add('mobile');
+    }
+    if (parsed.name != null) {
+      _name.text = parsed.name!;
+      filled.add('name');
+    }
+    if (parsed.visitorType != null) {
+      notifier.setVisitorType(parsed.visitorType!);
+      filled.add(parsed.visitorType!.label.toLowerCase());
+    }
+    if (parsed.vehicleNumber != null) {
+      _vehicle.text = parsed.vehicleNumber!;
+      filled.add('vehicle');
+    }
+    if (parsed.flatLabels.isNotEmpty) {
+      notifier.selectFlats(parsed.flatLabels.map((l) => index.byLabel[l] ?? const <String>[]));
+      filled.add('flat ${parsed.flatLabels.join(', ')}');
+    }
+    DesignHaptics.success();
+    _toast('Filled ${filled.join(' · ')}. Check and confirm.');
+  }
+
+  void _toast(String msg, {bool warning = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: warning ? GuardTokens.warning : null,
+      content: Text(msg),
+    ));
   }
 
   bool _hasActiveShift(List<GuardShiftRow> rows) =>
@@ -123,12 +260,14 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
     required String label,
     String? hint,
     Widget? prefix,
+    Widget? suffix,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       labelText: label,
       hintText: hint,
       prefixIcon: prefix,
+      suffixIcon: suffix,
       filled: true,
       fillColor: isDark
           ? GuardTokens.darkSurface.withValues(alpha: 0.55)
@@ -219,7 +358,10 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                   ),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      _IntroBanner(isDark: isDark),
+                      _VoiceEntryCard(
+                        enabled: !_submitting,
+                        onTap: _speakEntry,
+                      ),
                       shiftsAsync.when(
                         loading: () => const Padding(
                           padding: EdgeInsets.only(top: GuardTokens.g2),
@@ -328,12 +470,34 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     Icons.phone_android_rounded,
                                     color: GuardTokens.guardAccent,
                                   ),
+                                  suffix: GuardMicButton(
+                                    enabled: !_submitting,
+                                    title: 'Say the mobile number',
+                                    example: '"nine eight seven six five…"',
+                                    onText: (t) {
+                                      final d = digitsFromSpeech(t);
+                                      if (d.isNotEmpty) {
+                                        _phone.text = d.length > 10 ? d.substring(d.length - 10) : d;
+                                      }
+                                    },
+                                  ),
                                 ),
                                 validator: (v) =>
                                     (v == null || v.trim().length < 10)
                                     ? 'Enter a valid mobile number'
                                     : null,
                               ),
+                              if (_lookingUp || _returning != null) ...[
+                                const SizedBox(height: GuardTokens.g2),
+                                _ReturningVisitorCard(
+                                  loading: _lookingUp,
+                                  visitor: _returning,
+                                  onSelectFlat: _returning == null ||
+                                          _returning!.lastFlats.isEmpty
+                                      ? null
+                                      : () => _applyReturning(_returning!, selectFlat: true),
+                                ),
+                              ],
                               const SizedBox(height: GuardTokens.g2),
                               TextFormField(
                                 controller: _name,
@@ -353,6 +517,15 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   prefix: Icon(
                                     Icons.badge_outlined,
                                     color: GuardTokens.guardAccent,
+                                  ),
+                                  suffix: GuardMicButton(
+                                    enabled: !_submitting,
+                                    title: "Say the visitor's name",
+                                    onText: (t) => _name.text = t
+                                        .split(RegExp(r'\s+'))
+                                        .where((w) => w.isNotEmpty)
+                                        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+                                        .join(' '),
                                   ),
                                 ),
                                 validator: (v) =>
@@ -547,6 +720,22 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     Icons.directions_car_outlined,
                                     color: GuardTokens.guardAccent,
                                   ),
+                                  suffix: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GuardMicButton(
+                                        enabled: !_submitting,
+                                        title: 'Say the vehicle number',
+                                        example: '"M H one two A B one two three four"',
+                                        onText: (t) => _vehicle.text =
+                                            vehicleFromText(t) ?? t.toUpperCase(),
+                                      ),
+                                      GuardPlateScanButton(
+                                        enabled: !_submitting,
+                                        onPlate: (p) => _vehicle.text = p,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -684,34 +873,157 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   String _labelForType(GuardCheckInVisitorType t) => t.label;
 }
 
-class _IntroBanner extends StatelessWidget {
-  const _IntroBanner({required this.isDark});
+/// "Speak entry": one sentence fills mobile, name, flat and category.
+class _VoiceEntryCard extends StatelessWidget {
+  const _VoiceEntryCard({required this.onTap, required this.enabled});
 
-  final bool isDark;
+  final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+            gradient: LinearGradient(
+              colors: [
+                GuardTokens.guardAccentDeep,
+                GuardTokens.guardAccentDeep.withValues(alpha: 0.86),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: GuardTokens.guardAccentDeep.withValues(alpha: 0.22),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.16),
+                ),
+                child: const Icon(Icons.mic_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Speak entry',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Say name, mobile and flat — fields fill themselves',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown under the mobile field when this number has visited before.
+class _ReturningVisitorCard extends StatelessWidget {
+  const _ReturningVisitorCard({
+    required this.loading,
+    required this.visitor,
+    required this.onSelectFlat,
+  });
+
+  final bool loading;
+  final ReturningVisitor? visitor;
+  final VoidCallback? onSelectFlat;
+
+  @override
+  Widget build(BuildContext context) {
+    final v = visitor;
+    if (loading || v == null) {
+      return Row(
         children: [
-          Icon(
-            Icons.how_to_reg_rounded,
-            size: 18,
-            color: isDark
-                ? GuardTokens.guardAccent
-                : GuardTokens.guardAccentDeep,
+          const SizedBox.square(
+            dimension: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 8),
+          Text('Checking earlier visits…', style: GuardTokens.captionStyle(context)),
+        ],
+      );
+    }
+    final last = v.lastVisitAt;
+    final when = last == null
+        ? null
+        : '${last.day}/${last.month} ${last.hour.toString().padLeft(2, '0')}:${last.minute.toString().padLeft(2, '0')}';
+    final flats = v.lastFlats.map((f) => f.label).join(', ');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: GuardTokens.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(GuardTokens.radiusButton),
+        border: Border.all(color: GuardTokens.success.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history_rounded, color: GuardTokens.success, size: 22),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              'Accurate contact + flat selection keeps residents informed.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.7),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Returning visitor · ${v.visitCount} ${v.visitCount == 1 ? 'visit' : 'visits'}',
+                  style: GuardTokens.bodyStyle(context).copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: GuardTokens.success,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    'Details filled',
+                    if (flats.isNotEmpty) 'last to $flats',
+                    if (when != null) when,
+                  ].join(' · '),
+                  style: GuardTokens.captionStyle(context),
+                ),
+              ],
             ),
           ),
+          if (onSelectFlat != null)
+            TextButton(
+              onPressed: onSelectFlat,
+              style: GuardTokens.textLink(context),
+              child: Text('Same flat'),
+            ),
         ],
       ),
     );

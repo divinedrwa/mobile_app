@@ -139,6 +139,13 @@ class GuardProfilePage extends ConsumerWidget {
           ),
           _tile(
             context,
+            icon: Icons.assignment_turned_in_rounded,
+            title: 'Shift handover',
+            subtitle: "Who's inside, pending requests and parcels — share with next guard",
+            onTap: () => context.push(GuardRoutes.handover),
+          ),
+          _tile(
+            context,
             icon: Icons.apartment_rounded,
             title: 'Residents directory',
             subtitle: 'Search residents and start approval flows quickly',
