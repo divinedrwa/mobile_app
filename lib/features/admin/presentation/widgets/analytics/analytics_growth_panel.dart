@@ -56,7 +56,7 @@ class AnalyticsGrowthPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Business growth',
+          'How the app is doing',
           style: DesignTypography.headingM.copyWith(
             fontWeight: FontWeight.w800,
             color: DesignColors.textPrimary,
@@ -65,7 +65,7 @@ class AnalyticsGrowthPanel extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Last $days days · Is the society activating, retaining, and completing key work?',
+          'Last $days days · Changes compare with the $days days before',
           style: DesignTypography.captionSmall.copyWith(
             color: DesignColors.textSecondary,
             height: 1.35,
@@ -79,7 +79,7 @@ class AnalyticsGrowthPanel extends StatelessWidget {
           const SizedBox(height: 14),
         ],
         Text(
-          'Key performance',
+          'Key numbers',
           style: DesignTypography.bodySmall.copyWith(
             fontWeight: FontWeight.w800,
             color: DesignColors.textPrimary,
@@ -87,7 +87,7 @@ class AnalyticsGrowthPanel extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Green = healthy · Amber = watch · Red = needs action. Trends vs previous $days days.',
+          'Green = healthy · Amber = watch · Red = act now. Rates change in points, counts in %.',
           style: DesignTypography.captionSmall.copyWith(
             color: DesignColors.textTertiary,
           ),
@@ -104,6 +104,8 @@ class AnalyticsGrowthPanel extends StatelessWidget {
                   trend: k['trend']?.toString(),
                   growthPct:
                       k['growthPct'] == null ? null : _toInt(k['growthPct']),
+                  deltaLabel: k['deltaLabel']?.toString(),
+                  lowerIsBetter: k['lowerIsBetter'] == true,
                   hint: k['hint']?.toString(),
                 ),
               )
@@ -129,7 +131,7 @@ class AnalyticsGrowthPanel extends StatelessWidget {
     if (score >= 70) {
       return (
         label: 'Healthy',
-        meaning: 'Activation, stickiness, retention, and reliability look solid.',
+        meaning: 'People use the app, come back weekly, and sessions run without errors.',
         color: DesignColors.success,
       );
     }
@@ -142,32 +144,13 @@ class AnalyticsGrowthPanel extends StatelessWidget {
     }
     return (
       label: 'At risk',
-      meaning: 'Low engagement or reliability — prioritise outreach and fixes.',
+      meaning: 'Few people use it regularly or many sessions hit errors — see the notes below.',
       color: DesignColors.error,
     );
   }
 
-  /// Shorter, admin-friendly KPI names.
-  static String _kpiLabel(Map<String, dynamic> k) {
-    switch (k['id']?.toString()) {
-      case 'activation_rate':
-        return 'Ever used app';
-      case 'active_rate':
-        return 'Active this period';
-      case 'stickiness':
-        return 'Daily stickiness';
-      case 'retention_d7':
-        return '7-day return';
-      case 'guard_success':
-        return 'Gate flow success';
-      case 'maintenance_payments':
-        return 'Online payments';
-      case 'pre_approvals':
-        return 'Visitor pre-approvals';
-      default:
-        return k['label']?.toString() ?? '';
-    }
-  }
+  /// The server already sends plain-language labels.
+  static String _kpiLabel(Map<String, dynamic> k) => k['label']?.toString() ?? '';
 }
 
 class _HealthBanner extends StatelessWidget {
@@ -220,7 +203,7 @@ class _HealthBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Growth health · ${status.label}',
+                  'App health · ${status.label}',
                   style: DesignTypography.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: DesignColors.textPrimary,
@@ -264,29 +247,34 @@ class _PillarStrip extends StatelessWidget {
 
     final items = [
       _PillarItem(
-        label: 'DAU',
+        label: 'Active',
         value: '${_n(engagement['dailyActiveUsers'])}',
         hint: 'Today',
       ),
       _PillarItem(
-        label: 'MAU',
+        label: 'Active',
+        value: '${_n(engagement['weeklyActiveUsers'])}',
+        hint: '7 days',
+      ),
+      _PillarItem(
+        label: 'Active',
         value: '${_n(engagement['monthlyActiveUsers'])}',
-        hint: '$days days',
+        hint: '30 days',
       ),
       _PillarItem(
-        label: 'Sessions',
-        value: '${_n(operations['sessions'])}',
-        hint: '$days days',
+        label: 'Let in',
+        value: '${_n(operations['gateEntries'])}',
+        hint: 'Gate · $days d',
       ),
       _PillarItem(
-        label: 'Payments',
+        label: 'Paid online',
         value: '${_n(monetization['maintenancePayments'])}',
-        hint: 'Completed',
+        hint: '$days days',
       ),
       _PillarItem(
-        label: 'Pre-approvals',
+        label: 'Pre-approved',
         value: '${_n(communication['preApprovals'])}',
-        hint: 'Visitors',
+        hint: 'Guests',
       ),
     ];
 
@@ -378,7 +366,7 @@ class _ActivationFunnel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Activation funnel',
+          'From account to everyday use',
           style: DesignTypography.bodySmall.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -556,7 +544,7 @@ class _NextActions extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Low-adoption features — promote these to grow usage.',
+          'Self-service features with room to grow — share of flats using each.',
           style: DesignTypography.captionSmall.copyWith(
             color: DesignColors.textSecondary,
           ),

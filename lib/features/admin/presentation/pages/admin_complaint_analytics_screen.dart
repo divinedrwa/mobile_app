@@ -1,27 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/design_animations.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
-import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_blocks.dart';
+import '../widgets/analytics/analytics_kpi_card.dart';
 import '../widgets/analytics/analytics_tab_switcher.dart';
 
-/// Admin screen for advanced complaint analytics.
+/// Complaint analytics: what is open, how fast it is resolved, and which
+/// categories lag. Resolved includes complaints that were later auto-closed.
 class AdminComplaintAnalyticsScreen extends ConsumerStatefulWidget {
   const AdminComplaintAnalyticsScreen({super.key});
 
   @override
-  ConsumerState<AdminComplaintAnalyticsScreen> createState() =>
-      _AdminComplaintAnalyticsScreenState();
+  ConsumerState<AdminComplaintAnalyticsScreen> createState() => _AdminComplaintAnalyticsScreenState();
 }
 
-class _AdminComplaintAnalyticsScreenState
-    extends ConsumerState<AdminComplaintAnalyticsScreen> {
+class _AdminComplaintAnalyticsScreenState extends ConsumerState<AdminComplaintAnalyticsScreen> {
   Future<void> _refresh() async {
     ref.invalidate(adminComplaintAnalyticsSummaryProvider);
     ref.invalidate(adminComplaintAnalyticsByCategoryProvider);
@@ -40,7 +39,7 @@ class _AdminComplaintAnalyticsScreenState
         backgroundColor: DesignColors.background,
         scrolledUnderElevation: 0,
         title: Text(
-          'Complaint Analytics',
+          'Complaints',
           style: DesignTypography.headingM.copyWith(
             color: DesignColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -57,9 +56,7 @@ class _AdminComplaintAnalyticsScreenState
           preferredSize: Size.fromHeight(48),
           child: Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: AnalyticsTabSwitcher(
-              currentRoute: '/resident/admin-complaint-analytics',
-            ),
+            child: AnalyticsTabSwitcher(currentRoute: '/resident/admin-complaint-analytics'),
           ),
         ),
       ),
@@ -72,16 +69,11 @@ class _AdminComplaintAnalyticsScreenState
             child: ShimmerWrap(
               child: Column(
                 children: [
-                  ShimmerBox(height: 100, borderRadius: DesignRadius.xl),
-                  const SizedBox(height: 12),
-                  ...List.generate(
-                    4,
-                    (i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ShimmerBox(
-                          height: 48, borderRadius: DesignRadius.lg),
+                  for (var i = 0; i < 4; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ShimmerBox(height: 84, borderRadius: DesignRadius.lg),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -92,8 +84,8 @@ class _AdminComplaintAnalyticsScreenState
                 padding: const EdgeInsets.only(top: 80),
                 child: EmptyStateWidget(
                   icon: Icons.error_outline_rounded,
-                  title: 'Failed to load analytics',
-                  subtitle: 'Something went wrong. Please try again.',
+                  title: 'Could not load complaint analytics',
+                  subtitle: 'Check the connection and try again.',
                   iconColor: DesignColors.error,
                   actionLabel: 'Retry',
                   onAction: _refresh,
@@ -101,250 +93,173 @@ class _AdminComplaintAnalyticsScreenState
               ),
             ],
           ),
-          data: (summary) => _buildBody(summary),
+          data: _body,
         ),
       ),
     );
   }
 
-  Widget _buildBody(Map<String, dynamic> summary) {
-    final byCatAsync = ref.watch(adminComplaintAnalyticsByCategoryProvider);
-    final pendingAsync = ref.watch(adminComplaintAnalyticsPendingProvider);
-    final trendAsync = ref.watch(adminComplaintAnalyticsTrendProvider);
+  Widget _body(Map<String, dynamic> data) {
+    final s = (data['summary'] as Map?) ?? const {};
+    final categories = ref.watch(adminComplaintAnalyticsByCategoryProvider).valueOrNull ?? const [];
+    final pending = ref.watch(adminComplaintAnalyticsPendingProvider).valueOrNull ?? const [];
+    final trend = ref.watch(adminComplaintAnalyticsTrendProvider).valueOrNull ?? const [];
 
-    final total = _toInt(summary['totalComplaints']);
-    final resolved = _toInt(summary['resolvedComplaints']);
-    final resRate = _toDouble(summary['resolutionRate']);
-    final avgDays = _toDouble(summary['averageResolutionDays'] ??
-        summary['averageResolutionTime']);
+    final total = analyticsInt(s['totalComplaints']);
+    final resolved = analyticsInt(s['resolvedCount']);
+    final openNow = analyticsInt(s['openNow'] ?? (analyticsInt(s['pendingCount']) + analyticsInt(s['inProgressCount'])));
+    final over7 = analyticsInt(s['openOver7Days']);
+    final sla = s['slaComplianceRate'];
+    final median = s['medianResolutionDays'] ?? s['avgResolutionTime'];
+    final byPriority = (s['byPriority'] as Map?) ?? const {};
+
+    final attention = [
+      for (final c in pending.take(8))
+        AnalyticsAttentionItem(
+          tone: c['urgencyLevel'] == 'critical'
+              ? 'critical'
+              : (c['urgencyLevel'] == 'high' ? 'watch' : 'neutral'),
+          title: c['title']?.toString() ?? 'Complaint',
+          detail: [
+            if (c['villa'] is Map) 'Flat ${_flat(c['villa'] as Map)}',
+            c['category']?.toString(),
+            analyticsInt(c['daysPending']) == 0
+                ? 'today'
+                : '${analyticsInt(c['daysPending'])} ${analyticsInt(c['daysPending']) == 1 ? 'day' : 'days'} open',
+            if (c['slaBreached'] == true) 'SLA missed',
+          ].whereType<String>().join(' · '),
+          action: IconButton(
+            tooltip: 'Open complaints',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => context.push('/resident/admin-complaints'),
+            icon: Icon(Icons.chevron_right_rounded, color: DesignColors.textSecondary),
+          ),
+        ),
+    ];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
-        // Summary hero
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignColors.error, DesignColors.error],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        const AnalyticsSectionTitle('Right now'),
+        AnalyticsKpiGrid(
+          cards: [
+            AnalyticsKpiCard(
+              label: 'Open right now',
+              displayValue: '$openNow',
+              status: openNow > 0 ? 'watch' : 'good',
+              hint: 'Open or in progress, from any date.',
             ),
-            borderRadius: BorderRadius.circular(DesignRadius.xl),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.analytics_outlined,
-                      color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Complaint Summary (30 days)',
-                    style: DesignTypography.label.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _heroStat('Total', '$total'),
-                  _heroStat('Resolved', '$resolved'),
-                  _heroStat('Rate', '${resRate.round()}%'),
-                  _heroStat('Avg Days', avgDays.toStringAsFixed(1)),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // By category
-        EnterpriseSectionHeader(title: 'By Category'),
-        const SizedBox(height: 8),
-        byCatAsync.when(
-          loading: () => ShimmerWrap(
-              child: ShimmerBox(height: 100, borderRadius: DesignRadius.lg)),
-          error: (_, __) => const SizedBox.shrink(),
-          data: (categories) => _categoryList(categories),
-        ),
-        const SizedBox(height: 16),
-
-        // Trend
-        EnterpriseSectionHeader(title: '6-Month Trend'),
-        const SizedBox(height: 8),
-        trendAsync.when(
-          loading: () => ShimmerWrap(
-              child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (_, __) => const SizedBox.shrink(),
-          data: (trend) => _trendCard(trend),
-        ),
-        const SizedBox(height: 16),
-
-        // Pending
-        EnterpriseSectionHeader(title: 'Pending Complaints'),
-        const SizedBox(height: 8),
-        pendingAsync.when(
-          loading: () => ShimmerWrap(
-            child: Column(
-              children: List.generate(
-                3,
-                (i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ShimmerBox(
-                      height: 56, borderRadius: DesignRadius.lg),
-                ),
-              ),
+            AnalyticsKpiCard(
+              label: 'Open over 7 days',
+              displayValue: '$over7',
+              status: over7 > 0 ? 'critical' : 'good',
+              hint: 'Oldest items residents are waiting on.',
             ),
-          ),
-          error: (_, __) => const SizedBox.shrink(),
-          data: (pending) {
-            if (pending.isEmpty) {
-              return EnterprisePanel(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  'No pending complaints',
-                  style: DesignTypography.bodySmall
-                      .copyWith(color: DesignColors.textSecondary),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Needs attention', subtitle: 'Most urgent open complaints first'),
+        AnalyticsAttentionList(items: attention, emptyText: 'No open complaints.'),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Last 30 days'),
+        AnalyticsKpiGrid(
+          cards: [
+            AnalyticsKpiCard(
+              label: 'Resolved',
+              displayValue: total > 0 ? '$resolved/$total' : '0',
+              status: total > 0 ? analyticsTone(analyticsInt(s['resolutionRate']), 80, 50) : 'neutral',
+              hint: total > 0 ? '${s['resolutionRate']}% of complaints filed.' : 'No complaints filed.',
+            ),
+            AnalyticsKpiCard(
+              label: 'Typical time to resolve',
+              displayValue: resolved > 0 ? '$median days' : '—',
+              status: resolved > 0 ? analyticsTone(analyticsDouble(median), 2, 5, lowerIsBetter: true) : 'neutral',
+              hint: resolved > 0 ? 'Median · average ${s['avgResolutionTime']} days.' : null,
+            ),
+            AnalyticsKpiCard(
+              label: 'Resolved within SLA',
+              displayValue: sla == null ? '—' : '$sla%',
+              status: sla == null ? 'neutral' : analyticsTone(analyticsInt(sla), 90, 70),
+              hint: sla == null ? 'Nothing with an SLA resolved yet.' : 'Of resolved complaints with an SLA.',
+            ),
+            AnalyticsKpiCard(
+              label: 'SLA missed (still open)',
+              displayValue: '${analyticsInt(s['slaBreached'])}',
+              status: analyticsInt(s['slaBreached']) > 0 ? 'critical' : 'good',
+            ),
+            AnalyticsKpiCard(
+              label: 'Urgent / high priority',
+              displayValue: '${analyticsInt(byPriority['URGENT']) + analyticsInt(byPriority['HIGH'])}',
+              status: 'neutral',
+              hint: '${analyticsInt(byPriority['URGENT'])} urgent · ${analyticsInt(byPriority['HIGH'])} high',
+            ),
+            AnalyticsKpiCard(
+              label: 'Filed',
+              displayValue: '$total',
+              status: 'neutral',
+              hint: 'In the last 30 days.',
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Filed per month', subtitle: 'Last 6 months'),
+        AnalyticsBarChart(
+          points: [
+            for (final m in trend)
+              AnalyticsBarPoint(label: _month(m['month']?.toString() ?? ''), value: analyticsDouble(m['totalComplaints'])),
+          ],
+          color: DesignColors.warning,
+          emptyTitle: 'No complaints yet',
+          emptySubtitle: 'Monthly counts appear once complaints are filed.',
+        ),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('By category', subtitle: 'Last 30 days'),
+        AnalyticsCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          child: categories.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No complaints filed in this period.', style: DesignTypography.bodySmall),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < categories.length; i++) ...[
+                      if (i > 0) Divider(height: 1, color: DesignColors.borderLight),
+                      _CategoryRow(c: categories[i]),
+                    ],
+                  ],
                 ),
-              );
-            }
-            return Column(
-              children: pending.take(10).toList().asMap().entries.map((e) => _pendingCard(e.value, e.key)).toList(),
-            );
-          },
         ),
       ],
     );
   }
 
-  Widget _heroStat(String label, String value) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: DesignTypography.captionSmall.copyWith(
-              color: Colors.white60,
-              fontWeight: FontWeight.w600,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
+  static String _flat(Map v) {
+    final b = v['block']?.toString() ?? '';
+    return b.isEmpty ? '${v['villaNumber']}' : '$b-${v['villaNumber']}';
   }
 
-  Widget _categoryList(List<Map<String, dynamic>> categories) {
-    if (categories.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'No category data available',
-          style: DesignTypography.bodySmall
-              .copyWith(color: DesignColors.textSecondary),
-        ),
-      );
-    }
-
-    final maxCount = categories.fold<int>(
-        0,
-        (m, c) => _toInt(c['totalCount'] ?? c['count']) > m
-            ? _toInt(c['totalCount'] ?? c['count'])
-            : m);
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: categories.map((c) {
-          final name = c['category']?.toString() ?? c['name']?.toString() ?? '';
-          final count = _toInt(c['totalCount'] ?? c['count']);
-          final fraction = maxCount > 0 ? count / maxCount : 0.0;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      name.isNotEmpty ? name : 'Uncategorized',
-                      style: DesignTypography.captionSmall
-                          .copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '$count',
-                      style: DesignTypography.captionSmall
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: fraction,
-                    minHeight: 8,
-                    backgroundColor:
-                        DesignColors.error.withValues(alpha: 0.08),
-                    valueColor:
-                        AlwaysStoppedAnimation(DesignColors.error),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
+  static String _month(String key) {
+    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final m = int.tryParse(key.split('-').last) ?? 0;
+    return m >= 1 && m <= 12 ? names[m - 1] : key;
   }
+}
 
-  Widget _trendCard(List<Map<String, dynamic>> trend) {
-    return AnalyticsBarChart(
-      color: DesignColors.error,
-      emptyTitle: 'No trend data available',
-      emptySubtitle: 'Monthly complaint volume will appear here once data is available.',
-      points: trend
-          .map(
-            (t) => AnalyticsBarPoint(
-              label: t['month']?.toString() ?? '',
-              value: _toInt(t['totalComplaints'] ?? t['count']).toDouble(),
-            ),
-          )
-          .toList(),
-    );
-  }
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({required this.c});
 
-  Widget _pendingCard(Map<String, dynamic> c, [int index = 0]) {
-    final title = c['title']?.toString() ?? c['subject']?.toString() ?? '';
-    final category = c['category']?.toString() ?? '';
-    final priority = c['priority']?.toString().toUpperCase() ?? '';
+  final Map<String, dynamic> c;
 
-    final prioColor = priority == 'HIGH' || priority == 'URGENT'
-        ? DesignColors.error
-        : priority == 'MEDIUM'
-            ? DesignColors.warning
-            : DesignColors.info;
-
-    return EnterprisePanel(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(12),
+  @override
+  Widget build(BuildContext context) {
+    final resolved = analyticsInt(c['resolvedCount']);
+    final open = analyticsInt(c['pendingCount']) + analyticsInt(c['inProgressCount']);
+    final perf = c['performance']?.toString() ?? 'none';
+    final tone = switch (perf) { 'good' => 'good', 'fair' => 'watch', 'slow' => 'critical', _ => 'neutral' };
+    final label = (c['performanceStatus']?.toString() ?? '').replaceAll(RegExp(r'^[^A-Za-z]+'), '');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
           Expanded(
@@ -352,54 +267,24 @@ class _AdminComplaintAnalyticsScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: DesignTypography.label
-                      .copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (category.isNotEmpty)
-                  Text(
-                    category,
-                    style: DesignTypography.captionSmall
-                        .copyWith(color: DesignColors.textSecondary),
+                  c['category']?.toString() ?? 'Other',
+                  style: DesignTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: DesignColors.textPrimary,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${analyticsInt(c['totalCount'])} filed · $open open · $resolved resolved'
+                  '${resolved > 0 ? ' · ${c['avgResolutionTime']} days avg' : ''}',
+                  style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
+                ),
               ],
             ),
           ),
-          if (priority.isNotEmpty)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: prioColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                priority,
-                style: DesignTypography.captionSmall.copyWith(
-                  color: prioColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 9,
-                ),
-              ),
-            ),
+          AnalyticsPill(label.isEmpty ? '—' : label, tone: tone),
         ],
       ),
-    ).animate(delay: DesignAnimations.staggerFor(index)).fadeIn(duration: 200.ms).slideY(begin: DesignAnimations.slideSubtle, curve: DesignAnimations.curveEntrance);
-  }
-
-  static int _toInt(dynamic v) {
-    if (v is int) return v;
-    if (v is double) return v.toInt();
-    if (v is String) return int.tryParse(v) ?? 0;
-    return 0;
-  }
-
-  static double _toDouble(dynamic v) {
-    if (v is double) return v;
-    if (v is int) return v.toDouble();
-    if (v is String) return double.tryParse(v) ?? 0.0;
-    return 0.0;
+    );
   }
 }

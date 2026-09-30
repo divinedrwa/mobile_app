@@ -12,23 +12,25 @@ class AdminGateAnalyticsRepository {
         ApiEndpoints.gateAnalyticsOverview,
       );
       final data = res.data ?? {};
-      // Backend returns { gates: [ { isActive, todayVisitors, assignedGuard } ] }.
-      // Derive the flat overview stats the screen renders.
       final gates =
           (data['gates'] as List?)?.whereType<Map>().toList() ?? const [];
+      final totals = data['totals'] is Map ? Map<String, dynamic>.from(data['totals'] as Map) : null;
       int toInt(dynamic v) =>
           v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
-      final todayVisitors =
-          gates.fold<int>(0, (sum, g) => sum + toInt(g['todayVisitors']));
-      final guardsOnDuty = gates.where((g) {
+      int sum(String key) => gates.fold<int>(0, (s, g) => s + toInt(g[key]));
+      // "On duty" means an active shift right now, not just an active account.
+      final guardsOnShift = gates.where((g) {
         final guard = g['assignedGuard'];
-        return guard is Map && guard['isActive'] == true;
+        return guard is Map && guard['onShift'] == true;
       }).length;
       return {
-        'totalGates': gates.length,
-        'activeGates': gates.where((g) => g['isActive'] == true).length,
-        'todayVisitors': todayVisitors,
-        'guardsOnDuty': guardsOnDuty,
+        'totalGates': totals?['gates'] ?? gates.length,
+        'activeGates': totals?['activeGates'] ?? gates.where((g) => g['isActive'] == true).length,
+        'todayVisitors': totals?['todayEntries'] ?? sum('todayVisitors'),
+        'todayRequests': totals?['todayRequests'] ?? sum('todayRequests'),
+        'insideNow': totals?['insideNow'] ?? sum('activeVisitors'),
+        'waitingNow': totals?['waitingNow'] ?? sum('waitingNow'),
+        'guardsOnDuty': totals?['guardsOnShift'] ?? guardsOnShift,
         'gates': gates,
       };
     } on DioException catch (e) {

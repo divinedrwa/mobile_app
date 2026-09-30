@@ -45,3 +45,16 @@
 # Plugins that use reflection on plugin-channel handler classes are usually
 # annotated @Keep upstream; if we add Java/Kotlin native code with reflective
 # entry points later, register their packages here so R8 doesn't strip them.
+
+# --- ML Kit text recognition (guard number-plate scan) -----------------------
+# Only the Latin model is bundled; the plugin references the optional
+# Chinese/Devanagari/Japanese/Korean models, which R8 must not fail on.
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+-keep class com.google.mlkit.** { *; }
+-keep class com.google_mlkit_text_recognition.** { *; }
+
+# --- speech_to_text (guard voice entry) --------------------------------------
+-keep class com.csdcorp.speech_to_text.** { *; }

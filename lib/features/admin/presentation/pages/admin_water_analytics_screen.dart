@@ -3,39 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
-import '../../../../core/widgets/enterprise_ui.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
 import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_blocks.dart';
+import '../widgets/analytics/analytics_kpi_card.dart';
 import '../widgets/analytics/analytics_tab_switcher.dart';
 
-/// Admin screen for water supply analytics.
+/// Water analytics: hours of supply per day, longest outage, what is running now.
 class AdminWaterAnalyticsScreen extends ConsumerStatefulWidget {
   const AdminWaterAnalyticsScreen({super.key});
 
   @override
-  ConsumerState<AdminWaterAnalyticsScreen> createState() =>
-      _AdminWaterAnalyticsScreenState();
+  ConsumerState<AdminWaterAnalyticsScreen> createState() => _AdminWaterAnalyticsScreenState();
 }
 
-class _AdminWaterAnalyticsScreenState
-    extends ConsumerState<AdminWaterAnalyticsScreen> {
+class _AdminWaterAnalyticsScreenState extends ConsumerState<AdminWaterAnalyticsScreen> {
   Future<void> _refresh() async {
     ref.invalidate(adminWaterAnalyticsOverviewProvider);
     ref.invalidate(adminWaterAnalyticsDailyProvider);
-    ref.invalidate(adminWaterAnalyticsHourlyProvider);
     ref.invalidate(adminWaterAnalyticsGateProvider);
     ref.invalidate(adminWaterRecentEventsProvider);
   }
 
-  void _setPeriod(int days) {
-    ref.read(adminWaterAnalyticsDaysProvider.notifier).state = days;
-    _refresh();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final period = ref.watch(adminWaterAnalyticsDaysProvider);
     final overviewAsync = ref.watch(adminWaterAnalyticsOverviewProvider);
 
     return Scaffold(
@@ -45,7 +37,7 @@ class _AdminWaterAnalyticsScreenState
         backgroundColor: DesignColors.background,
         scrolledUnderElevation: 0,
         title: Text(
-          'Water Analytics',
+          'Water supply',
           style: DesignTypography.headingM.copyWith(
             color: DesignColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -62,9 +54,7 @@ class _AdminWaterAnalyticsScreenState
           preferredSize: Size.fromHeight(48),
           child: Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: AnalyticsTabSwitcher(
-              currentRoute: '/resident/admin-water-analytics',
-            ),
+            child: AnalyticsTabSwitcher(currentRoute: '/resident/admin-water-analytics'),
           ),
         ),
       ),
@@ -77,16 +67,11 @@ class _AdminWaterAnalyticsScreenState
             child: ShimmerWrap(
               child: Column(
                 children: [
-                  ShimmerBox(height: 100, borderRadius: DesignRadius.xl),
-                  const SizedBox(height: 12),
-                  ...List.generate(
-                    3,
-                    (i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ShimmerBox(
-                          height: 80, borderRadius: DesignRadius.lg),
+                  for (var i = 0; i < 4; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ShimmerBox(height: 84, borderRadius: DesignRadius.lg),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -97,8 +82,8 @@ class _AdminWaterAnalyticsScreenState
                 padding: const EdgeInsets.only(top: 80),
                 child: EmptyStateWidget(
                   icon: Icons.error_outline_rounded,
-                  title: 'Failed to load analytics',
-                  subtitle: 'Something went wrong. Please try again.',
+                  title: 'Could not load water analytics',
+                  subtitle: 'Check the connection and try again.',
                   iconColor: DesignColors.error,
                   actionLabel: 'Retry',
                   onAction: _refresh,
@@ -106,386 +91,247 @@ class _AdminWaterAnalyticsScreenState
               ),
             ],
           ),
-          data: (overview) => _buildBody(overview, period),
+          data: _body,
         ),
       ),
     );
   }
 
-  Widget _buildBody(Map<String, dynamic> overview, int period) {
-    final dailyAsync = ref.watch(adminWaterAnalyticsDailyProvider);
-    final hourlyAsync = ref.watch(adminWaterAnalyticsHourlyProvider);
-    final gateAsync = ref.watch(adminWaterAnalyticsGateProvider);
+  Widget _body(Map<String, dynamic> overview) {
+    final days = ref.watch(adminWaterAnalyticsDaysProvider);
+    final daily = ref.watch(adminWaterAnalyticsDailyProvider).valueOrNull ?? const [];
+    final gates = ref.watch(adminWaterAnalyticsGateProvider).valueOrNull ?? const [];
+    final recent = ref.watch(adminWaterRecentEventsProvider).valueOrNull ?? const [];
 
-    final totalEvents = _toInt(overview['totalEvents']);
-    final onEvents = _toInt(overview['onEvents']);
-    final offEvents = _toInt(overview['offEvents']);
-    final cycles = _toInt(overview['completedCycles']);
-    final avgDuration = _toDouble(overview['averageDurationMinutes']);
-    final totalGates = _toInt(overview['totalGates']);
+    final s = (overview['summary'] as Map?) ?? const {};
+    final status = (overview['currentStatus'] as List? ?? const []).whereType<Map>().toList();
+    final supplyMin = analyticsInt(s['supplyMinutes']);
+    final noData = analyticsInt(s['totalEvents']) == 0 && supplyMin == 0;
+    final gap = s['longestGapMinutes'];
+
+    final attention = <AnalyticsAttentionItem>[
+      for (final g in status)
+        if (g['currentStatus'] == 'ON' && g['lastUpdated'] != null)
+          if (_minutesSince(g['lastUpdated'].toString()) >= 60)
+            AnalyticsAttentionItem(
+              tone: _minutesSince(g['lastUpdated'].toString()) >= 180 ? 'critical' : 'watch',
+              title: '${g['gateName']}: water ON for ${analyticsMinutes(_minutesSince(g['lastUpdated'].toString()))}',
+              detail: 'Check the tank — the motor may have been left running.',
+            ),
+      if (gap != null && analyticsInt(gap) >= 24 * 60)
+        AnalyticsAttentionItem(
+          title: 'Longest stretch without water: ${analyticsMinutes(analyticsInt(gap))}',
+          detail: 'Residents may have gone a full day without supply.',
+        ),
+    ];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
-        Row(
-          children: [
-            _periodChip('7 days', 7, period),
-            const SizedBox(width: 8),
-            _periodChip('30 days', 30, period),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DesignColors.info, DesignColors.info],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(DesignRadius.xl),
+        AnalyticsSectionTitle(
+          'Last $days days',
+          trailing: _PeriodChips(
+            value: days,
+            onChanged: (d) => ref.read(adminWaterAnalyticsDaysProvider.notifier).state = d,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.water_drop_outlined,
-                      color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Water Supply ($period days)',
-                    style: DesignTypography.label.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+        ),
+        if (noData)
+          AnalyticsCard(
+            child: Text(
+              'No water updates yet. Guards log water ON/OFF from Gate utilities; supply hours and outages appear here once they start.',
+              style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary, height: 1.4),
+            ),
+          )
+        else
+          AnalyticsKpiGrid(
+            cards: [
+              AnalyticsKpiCard(
+                label: 'Supply per day',
+                displayValue: analyticsMinutes(analyticsInt(s['avgSupplyMinutesPerDay'])),
+                status: 'good',
+                hint: 'Total ${analyticsMinutes(supplyMin)} in $days days.',
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _overviewStat('Total', '$totalEvents'),
-                  _overviewStat('ON', '$onEvents'),
-                  _overviewStat('OFF', '$offEvents'),
-                ],
+              AnalyticsKpiCard(
+                label: 'Running now',
+                displayValue: '${analyticsInt(s['runningNow'])}/${status.length}',
+                status: analyticsInt(s['runningNow']) > 0 ? 'good' : 'neutral',
+                hint: 'Gates where water is ON.',
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  _overviewStat('Cycles', '$cycles'),
-                  _overviewStat('Avg', '${avgDuration.round()} min'),
-                  _overviewStat('Gates', '$totalGates'),
-                ],
+              AnalyticsKpiCard(
+                label: 'Longest without water',
+                displayValue: gap == null ? '—' : analyticsMinutes(analyticsInt(gap)),
+                status: gap != null && analyticsInt(gap) >= 24 * 60 ? 'watch' : 'neutral',
+              ),
+              AnalyticsKpiCard(
+                label: 'Typical supply',
+                displayValue: analyticsInt(s['completedCycles']) > 0
+                    ? analyticsMinutes(analyticsInt(s['avgDurationMinutes']))
+                    : '—',
+                status: 'neutral',
+                hint: '${analyticsInt(s['completedCycles'])} supplies · longest ${analyticsMinutes(analyticsInt(s['longestSupplyMinutes']))}',
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        EnterpriseSectionHeader(title: 'Daily usage (ON + OFF per day)'),
-        const SizedBox(height: 8),
-        dailyAsync.when(
-          loading: () => ShimmerWrap(
-              child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (e, _) => const SizedBox.shrink(),
-          data: (daily) {
-            final activeDays = daily
-                .where((d) => _toInt(d['totalEvents']) > 0)
-                .toList();
-            return activeDays.isEmpty
-                ? _emptyPanel('No water toggles in this period')
-                : _dailyList(activeDays);
-          },
-        ),
-        const SizedBox(height: 16),
-        EnterpriseSectionHeader(title: 'Peak hours (last 30 days)'),
-        const SizedBox(height: 8),
-        hourlyAsync.when(
-          loading: () => ShimmerWrap(
-              child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (e, _) => const SizedBox.shrink(),
-          data: (hourly) => _hourlyList(hourly),
-        ),
-        const SizedBox(height: 16),
-        EnterpriseSectionHeader(title: 'Gate performance (last 30 days)'),
-        const SizedBox(height: 8),
-        gateAsync.when(
-          loading: () => ShimmerWrap(
-              child: ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-          error: (e, _) => const SizedBox.shrink(),
-          data: (gates) => _gateList(gates),
-        ),
-        const SizedBox(height: 16),
-        EnterpriseSectionHeader(title: 'Recent events'),
-        const SizedBox(height: 8),
-        ref.watch(adminWaterRecentEventsProvider).when(
-              loading: () => ShimmerWrap(
-                  child:
-                      ShimmerBox(height: 120, borderRadius: DesignRadius.lg)),
-              error: (e, _) => const SizedBox.shrink(),
-              data: (events) => _recentEvents(events),
-            ),
-      ],
-    );
-  }
-
-  Widget _recentEvents(List<Map<String, dynamic>> events) {
-    if (events.isEmpty) {
-      return _emptyPanel('No water events recorded yet');
-    }
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: events.map((e) {
-          final on = e['action']?.toString() == 'ON' || e['turnedOn'] == true;
-          final gate = e['gate'] is Map ? (e['gate'] as Map)['name']?.toString() : null;
-          final reason = e['reason']?.toString() ?? '';
-          final minutesAgo = _toInt(e['minutesAgo']);
-          final ago = minutesAgo < 60
-              ? '${minutesAgo}m ago'
-              : minutesAgo < 1440
-                  ? '${minutesAgo ~/ 60}h ago'
-                  : '${minutesAgo ~/ 1440}d ago';
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  on ? Icons.water_drop_rounded : Icons.water_drop_outlined,
-                  size: 16,
-                  color: on ? DesignColors.info : DesignColors.textTertiary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${on ? 'Turned ON' : 'Turned OFF'}${gate != null ? ' · $gate' : ''}',
-                        style: DesignTypography.label
-                            .copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      if (reason.isNotEmpty)
-                        Text(
-                          reason,
-                          style: DesignTypography.captionSmall
-                              .copyWith(color: DesignColors.textSecondary),
-                        ),
-                    ],
-                  ),
-                ),
-                Text(
-                  ago,
-                  style: DesignTypography.captionSmall
-                      .copyWith(color: DesignColors.textTertiary),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _periodChip(String label, int days, int selected) {
-    final isSelected = selected == days;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => _setPeriod(days),
-      selectedColor: DesignColors.info,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : DesignColors.textSecondary,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      showCheckmark: false,
-    );
-  }
-
-  Widget _overviewStat(String label, String value) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: DesignTypography.captionSmall.copyWith(
-              color: Colors.white54,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: DesignTypography.label.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dailyList(List<Map<String, dynamic>> items) {
-    if (items.isEmpty) {
-      return _emptyPanel('No daily water events in this period');
-    }
-
-    final sorted = [...items]
-      ..sort((a, b) => (a['date'] ?? '').toString().compareTo(
-            (b['date'] ?? '').toString(),
-          ));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Needs attention'),
+        AnalyticsAttentionList(items: attention, emptyText: 'Nothing unusual with water supply.'),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Hours of supply per day'),
         AnalyticsBarChart(
+          points: [
+            for (final d in daily)
+              AnalyticsBarPoint(
+                label: (d['displayDate']?.toString() ?? '').split(' ').last,
+                value: analyticsDouble(d['supplyHours']),
+              ),
+          ],
           color: DesignColors.info,
-          emptyTitle: 'No daily water events in this period',
-          points: sorted
-              .map(
-                (item) => AnalyticsBarPoint(
-                  label: item['displayDate']?.toString() ??
-                      item['date']?.toString() ??
-                      '',
-                  value: _toInt(item['totalEvents']).toDouble(),
-                ),
-              )
-              .toList(),
+          emptyTitle: 'No supply logged',
+          emptySubtitle: 'Daily hours appear once guards log water ON/OFF.',
         ),
-        const SizedBox(height: 8),
-        EnterprisePanel(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: sorted.map((item) {
-              final label = item['displayDate']?.toString() ??
-                  item['date']?.toString() ??
-                  '';
-              final on = _toInt(item['onCount']);
-              final off = _toInt(item['offCount']);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Gates'),
+        AnalyticsCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          child: gates.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No gates yet.', style: DesignTypography.bodySmall),
+                )
+              : Column(
                   children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: DesignTypography.captionSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: DesignColors.textSecondary,
+                    for (var i = 0; i < gates.length; i++) ...[
+                      if (i > 0) Divider(height: 1, color: DesignColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    gates[i]['gateName']?.toString() ?? 'Gate',
+                                    style: DesignTypography.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: DesignColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${analyticsMinutes(analyticsInt(gates[i]['supplyMinutes']))} supply in 30 days · '
+                                    'updated ${_ago(gates[i]['lastEventTime']?.toString())}',
+                                    style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            AnalyticsPill(
+                              switch (gates[i]['currentStatus']) {
+                                'ON' => 'Water ON',
+                                'OFF' => 'Water OFF',
+                                _ => 'No updates',
+                              },
+                              tone: gates[i]['currentStatus'] == 'ON'
+                                  ? 'good'
+                                  : (gates[i]['currentStatus'] == 'OFF' ? 'neutral' : 'watch'),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    Text(
-                      'ON $on · OFF $off',
-                      style: DesignTypography.captionSmall.copyWith(
-                        color: DesignColors.textTertiary,
-                        fontSize: 10,
-                      ),
-                    ),
+                    ],
                   ],
                 ),
-              );
-            }).toList(),
-          ),
+        ),
+        const SizedBox(height: 18),
+        const AnalyticsSectionTitle('Recent updates'),
+        AnalyticsCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          child: recent.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No updates yet.', style: DesignTypography.bodySmall),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < recent.length && i < 10; i++) ...[
+                      if (i > 0) Divider(height: 1, color: DesignColors.borderLight),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        child: Row(
+                          children: [
+                            AnalyticsPill(
+                              recent[i]['action']?.toString() ?? '',
+                              tone: recent[i]['action'] == 'ON' ? 'good' : 'neutral',
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                [
+                                  (recent[i]['gate'] as Map?)?['name']?.toString() ?? 'Gate',
+                                  if ((recent[i]['reason']?.toString() ?? '').isNotEmpty) recent[i]['reason'].toString(),
+                                ].join(' · '),
+                                style: DesignTypography.bodySmall.copyWith(color: DesignColors.textPrimary),
+                              ),
+                            ),
+                            Text(
+                              _ago(recent[i]['timestamp']?.toString()),
+                              style: DesignTypography.captionSmall.copyWith(color: DesignColors.textTertiary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
         ),
       ],
     );
   }
 
-  Widget _hourlyList(List<Map<String, dynamic>> items) {
-    return AnalyticsBarChart(
-      color: DesignColors.secondary,
-      emptyIcon: Icons.schedule_outlined,
-      emptyTitle: 'No hourly pattern data',
-      points: items
-          .map(
-            (item) => AnalyticsBarPoint(
-              label: item['label']?.toString() ??
-                  '${item['hour']?.toString().padLeft(2, '0')}:00',
-              value: _toInt(item['totalEvents']).toDouble(),
+  static int _minutesSince(String iso) {
+    final t = DateTime.tryParse(iso);
+    return t == null ? 0 : DateTime.now().difference(t).inMinutes;
+  }
+
+  static String _ago(String? iso) {
+    if (iso == null) return 'never';
+    final t = DateTime.tryParse(iso)?.toLocal();
+    if (t == null) return '—';
+    final m = DateTime.now().difference(t).inMinutes;
+    if (m < 1) return 'just now';
+    if (m < 60) return '$m min ago';
+    if (m < 24 * 60) return '${m ~/ 60} h ago';
+    return '${t.day}/${t.month}';
+  }
+}
+
+class _PeriodChips extends StatelessWidget {
+  const _PeriodChips({required this.value, required this.onChanged});
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final d in const [7, 30, 90])
+          ChoiceChip(
+            label: Text('${d}d'),
+            selected: value == d,
+            onSelected: (_) => onChanged(d),
+            visualDensity: VisualDensity.compact,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: value == d ? Colors.white : DesignColors.textSecondary,
             ),
-          )
-          .toList(),
+            selectedColor: DesignColors.primary,
+            showCheckmark: false,
+          ),
+      ],
     );
-  }
-
-  Widget _gateList(List<Map<String, dynamic>> gates) {
-    if (gates.isEmpty) {
-      return _emptyPanel('No gate water events in this period');
-    }
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: gates.map((g) {
-          final gateName =
-              g['gateName']?.toString() ?? g['name']?.toString() ?? '';
-          final total = _toInt(g['totalEvents'] ?? g['count'] ?? g['events']);
-          final on = _toInt(g['onEvents'] ?? g['onCount']);
-          final off = _toInt(g['offEvents'] ?? g['offCount']);
-          final avgMin = _toDouble(
-            g['avgDurationMinutes'] ?? g['averageDurationMinutes'],
-          );
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.door_sliding_outlined,
-                    size: 16, color: DesignColors.info),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        gateName,
-                        style: DesignTypography.label
-                            .copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$total events · ON $on · OFF $off · ${avgMin.round()} min avg',
-                        style: DesignTypography.captionSmall
-                            .copyWith(color: DesignColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _emptyPanel(String message) {
-    return EmptyStateWidget(
-      icon: Icons.water_drop_outlined,
-      title: 'No data',
-      subtitle: message,
-      iconColor: DesignColors.info,
-    );
-  }
-
-  static int _toInt(dynamic v) {
-    if (v is int) return v;
-    if (v is double) return v.toInt();
-    if (v is String) return int.tryParse(v) ?? 0;
-    return 0;
-  }
-
-  static double _toDouble(dynamic v) {
-    if (v is double) return v;
-    if (v is int) return v.toDouble();
-    if (v is String) return double.tryParse(v) ?? 0.0;
-    return 0.0;
   }
 }
