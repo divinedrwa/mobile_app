@@ -4,9 +4,10 @@ import '../../../core/constants/app_constants.dart';
 ///
 /// Labels are derived from the canonical [VisitorType] to stay consistent
 /// across resident and guard screens.
+/// Declaration order is the picker order: deliveries are the most common walk-in.
 enum GuardCheckInVisitorType {
-  guest('GUEST'),
   delivery('DELIVERY'),
+  guest('GUEST'),
   cab('CAB'),
   serviceProvider('SERVICE_PROVIDER'),
   vendor('VENDOR');
@@ -27,6 +28,22 @@ enum GuardCheckInVisitorType {
         return VisitorType.service.label;
       case vendor:
         return VisitorType.vendor.label;
+    }
+  }
+
+  /// One-word label that fits five tiles in a row.
+  String get shortLabel {
+    switch (this) {
+      case delivery:
+        return 'Delivery';
+      case guest:
+        return 'Guest';
+      case cab:
+        return 'Cab';
+      case serviceProvider:
+        return 'Service';
+      case vendor:
+        return 'Vendor';
     }
   }
 }

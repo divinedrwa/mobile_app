@@ -18,7 +18,7 @@ import 'guard_providers.dart';
 @immutable
 class CheckInFormState {
   const CheckInFormState({
-    this.visitorType = GuardCheckInVisitorType.guest,
+    this.visitorType = GuardCheckInVisitorType.delivery,
     this.selectedUserIds = const {},
     this.photoBytes,
     this.submitting = false,

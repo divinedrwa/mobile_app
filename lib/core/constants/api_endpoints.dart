@@ -361,6 +361,8 @@ class ApiEndpoints {
   static const String appAnalyticsGrowthDashboard =
       '/app-analytics/growth-dashboard';
   static const String appAnalyticsRoleAdoption = '/app-analytics/role-adoption';
+  static const String appAnalyticsSocietyOverview =
+      '/app-analytics/society-overview';
   static const String gateAnalyticsVisitorStats =
       '/gate-analytics/visitor-statistics';
   static const String gateAnalyticsPeakHours = '/gate-analytics/peak-hours';

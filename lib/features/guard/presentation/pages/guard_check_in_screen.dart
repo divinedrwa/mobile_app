@@ -159,13 +159,23 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
   }
 
   Future<void> _speakEntry() async {
+    final index = _flatIndex();
+    final flatLabels = index.byLabel.keys.toList();
     final text = await showGuardVoiceSheet(
       context,
       title: 'Say the visitor details',
       example: '"Ramesh, 98765 43210, flat A 25, delivery"',
+      checklist: (said) {
+        final p = parseVisitorUtterance(said, knownFlatLabels: flatLabels);
+        return {
+          'Mobile': p.phone != null,
+          'Name': p.name != null,
+          'Flat': p.flatLabels.isNotEmpty,
+          'Type': p.visitorType != null,
+        };
+      },
     );
     if (text == null || text.isEmpty || !mounted) return;
-    final index = _flatIndex();
     final parsed = parseVisitorUtterance(text, knownFlatLabels: index.byLabel.keys.toList());
     if (parsed.isEmpty) {
       _toast("Couldn't pick out details. Try again or type them.", warning: true);
@@ -227,7 +237,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       context,
       title: 'Confirm check-in',
       message:
-          'Check in ${_name.text.trim()} (${formState.visitorType.name})?',
+          'Check in ${_name.text.trim()} (${formState.visitorType.label})?',
       confirmLabel: 'Check in',
       icon: Icons.how_to_reg_rounded,
     );
@@ -389,44 +399,23 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   'Used for notifications and audit trail',
                             ),
                               const SizedBox(height: GuardTokens.g2),
-                              Wrap(
-                                spacing: GuardTokens.g2,
-                                runSpacing: GuardTokens.g2,
-                                children: GuardCheckInVisitorType.values.map((
-                                  t,
-                                ) {
-                                  final selected = _type == t;
-                                  return ChoiceChip(
-                                    label: Text(
-                                      _labelForType(t),
-                                      style: TextStyle(
-                                        fontWeight: selected
-                                            ? FontWeight.w700
-                                            : FontWeight.w600,
-                                        fontSize: GuardTokens.body,
+                              Row(
+                                children: [
+                                  for (final t in GuardCheckInVisitorType.values) ...[
+                                    if (t != GuardCheckInVisitorType.values.first)
+                                      const SizedBox(width: 6),
+                                    Expanded(
+                                      child: _VisitorTypeTile(
+                                        type: t,
+                                        selected: _type == t,
+                                        isDark: isDark,
+                                        onTap: _submitting
+                                            ? null
+                                            : () => formNotifier.setVisitorType(t),
                                       ),
                                     ),
-                                    selected: selected,
-                                    onSelected: _submitting
-                                        ? null
-                                        : (_) => formNotifier.setVisitorType(t),
-                                    selectedColor: GuardTokens.guardAccent
-                                        .withValues(alpha: 0.22),
-                                    checkmarkColor: GuardTokens.guardAccentDeep,
-                                    side: BorderSide(
-                                      color: selected
-                                          ? GuardTokens.guardAccent
-                                          : (isDark
-                                                ? GuardTokens.darkBorder
-                                                : GuardTokens.borderSubtle),
-                                      width: selected ? 1.5 : 1,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: GuardTokens.g1,
-                                      vertical: 8,
-                                    ),
-                                  );
-                                }).toList(),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -869,8 +858,81 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
       ),
     );
   }
+}
 
-  String _labelForType(GuardCheckInVisitorType t) => t.label;
+/// One of five equal category tiles in a single row: icon over a one-word label.
+class _VisitorTypeTile extends StatelessWidget {
+  const _VisitorTypeTile({
+    required this.type,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final GuardCheckInVisitorType type;
+  final bool selected;
+  final bool isDark;
+  final VoidCallback? onTap;
+
+  static IconData iconFor(GuardCheckInVisitorType t) => switch (t) {
+        GuardCheckInVisitorType.delivery => Icons.local_shipping_rounded,
+        GuardCheckInVisitorType.guest => Icons.person_rounded,
+        GuardCheckInVisitorType.cab => Icons.local_taxi_rounded,
+        GuardCheckInVisitorType.serviceProvider => Icons.handyman_rounded,
+        GuardCheckInVisitorType.vendor => Icons.storefront_rounded,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected
+        ? GuardTokens.guardAccentDeep
+        : (isDark ? Colors.white70 : GuardTokens.textSecondary);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: type.label,
+      child: Material(
+        color: selected
+            ? GuardTokens.guardAccent.withValues(alpha: 0.16)
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: selected
+                ? GuardTokens.guardAccent
+                : (isDark ? GuardTokens.darkBorder : GuardTokens.borderSubtle),
+            width: selected ? 1.8 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(iconFor(type), size: 24, color: fg),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    type.shortLabel,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      color: fg,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// "Speak entry": one sentence fills mobile, name, flat and category.

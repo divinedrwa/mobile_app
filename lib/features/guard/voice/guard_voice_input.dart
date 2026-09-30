@@ -22,13 +22,18 @@ Future<bool> _ensureSpeech() async {
   return _speechReady!;
 }
 
+/// Live "what's still missing" check for the voice sheet: label → found yet.
+typedef GuardVoiceChecklist = Map<String, bool> Function(String text);
+
 /// Opens the voice sheet and returns what the guard said, or null if cancelled.
 ///
 /// [title] tells the guard what to say, e.g. "Say name, mobile and flat".
+/// [checklist] shows ticks for each detail heard so far (e.g. Mobile, Flat).
 Future<String?> showGuardVoiceSheet(
   BuildContext context, {
   required String title,
   String? example,
+  GuardVoiceChecklist? checklist,
 }) {
   DesignHaptics.selection();
   return showModalBottomSheet<String>(
@@ -36,88 +41,207 @@ Future<String?> showGuardVoiceSheet(
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
-    builder: (_) => _GuardVoiceSheet(title: title, example: example),
+    builder: (_) => _GuardVoiceSheet(title: title, example: example, checklist: checklist),
   );
 }
 
 class _GuardVoiceSheet extends StatefulWidget {
-  const _GuardVoiceSheet({required this.title, this.example});
+  const _GuardVoiceSheet({required this.title, this.example, this.checklist});
 
   final String title;
   final String? example;
+  final GuardVoiceChecklist? checklist;
 
   @override
   State<_GuardVoiceSheet> createState() => _GuardVoiceSheetState();
 }
 
-enum _VoiceStatus { starting, listening, done, unavailable, error }
+/// listening: mic on · paused: mic off, words kept · unavailable: no recognizer.
+enum _VoiceStatus { starting, listening, paused, unavailable }
 
 class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     with SingleTickerProviderStateMixin {
+  /// Android ends a recognition after ~2 s of silence; we quietly start a new one
+  /// and keep adding words, so pausing to think doesn't lose the entry.
+  static const _silenceLimit = Duration(seconds: 10);
+  static const _sessionLimit = Duration(seconds: 90);
+
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
   )..repeat(reverse: true);
+  final _editor = TextEditingController();
 
   _VoiceStatus _status = _VoiceStatus.starting;
-  String _text = '';
-  String? _error;
+
+  /// Words from finished segments, and the segment being heard right now.
+  String _committed = '';
+  String _partial = '';
+  String? _note;
+
+  /// True while the guard wants the mic on (until Done, pause, or silence).
+  bool _wantListening = false;
+  DateTime _lastSpeechAt = DateTime.now();
+  DateTime _sessionStart = DateTime.now();
+  String? _locale;
+  int _segment = 0;
+  Timer? _restartTimer;
+
+  String get _text => [_committed, _partial].where((s) => s.trim().isNotEmpty).join(' ').trim();
 
   @override
   void initState() {
     super.initState();
-    _start();
+    _begin();
   }
 
   @override
   void dispose() {
+    _wantListening = false;
+    _restartTimer?.cancel();
     _pulse.dispose();
+    _editor.dispose();
     if (_speech.isListening) unawaited(_speech.cancel());
     super.dispose();
   }
 
-  Future<void> _start() async {
-    setState(() {
-      _status = _VoiceStatus.starting;
-      _text = '';
-      _error = null;
-    });
+  Future<void> _begin() async {
+    setState(() => _status = _VoiceStatus.starting);
     final ok = await _ensureSpeech();
     if (!mounted) return;
     if (!ok) {
       setState(() => _status = _VoiceStatus.unavailable);
       return;
     }
-    _speech.errorListener = (SpeechRecognitionError e) {
-      if (!mounted) return;
-      setState(() {
-        _status = _text.isEmpty ? _VoiceStatus.error : _VoiceStatus.done;
-        _error = e.errorMsg == 'error_no_match' || e.errorMsg == 'error_speech_timeout'
-            ? "Didn't catch that. Tap the mic and speak again."
-            : 'Voice input stopped. Tap the mic to try again.';
-      });
-    };
-    _speech.statusListener = (status) {
-      if (!mounted) return;
-      if (status == SpeechToText.doneStatus || status == SpeechToText.notListeningStatus) {
-        if (_status == _VoiceStatus.listening) {
-          setState(() => _status = _text.isEmpty ? _VoiceStatus.error : _VoiceStatus.done);
-          _error ??= _text.isEmpty ? "Didn't catch that. Tap the mic and speak again." : null;
-        }
-      }
-    };
+    _locale ??= await _preferredLocale();
+    _speech.errorListener = _onError;
+    _speech.statusListener = _onStatus;
+    _resume();
+  }
+
+  /// Turns the mic on and keeps the words already heard.
+  void _resume() {
+    _commitEdits();
+    _wantListening = true;
+    _lastSpeechAt = DateTime.now();
+    _sessionStart = DateTime.now();
+    _note = null;
+    _listenSegment();
+  }
+
+  Future<void> _listenSegment() async {
+    if (!mounted || !_wantListening) return;
+    final segment = ++_segment;
     setState(() => _status = _VoiceStatus.listening);
-    await _speech.listen(
-      onResult: _onResult,
-      localeId: await _preferredLocale(),
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      listenOptions: SpeechListenOptions(
-        partialResults: true,
-        listenMode: ListenMode.dictation,
-        cancelOnError: true,
-      ),
-    );
+    try {
+      await _speech.listen(
+        onResult: (r) => _onResult(r, segment),
+        localeId: _locale,
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 5),
+        listenOptions: SpeechListenOptions(
+          partialResults: true,
+          listenMode: ListenMode.dictation,
+          cancelOnError: true,
+        ),
+      );
+    } catch (_) {
+      _segmentEnded();
+    }
+  }
+
+  void _onResult(SpeechRecognitionResult r, int segment) {
+    if (!mounted || segment != _segment) return;
+    final words = r.recognizedWords.trim();
+    setState(() {
+      if (words.isNotEmpty) _lastSpeechAt = DateTime.now();
+      _partial = words;
+      if (r.finalResult) _commitPartial();
+    });
+  }
+
+  void _commitPartial() {
+    if (_partial.isEmpty) return;
+    _committed = [_committed, _partial].where((s) => s.isNotEmpty).join(' ');
+    _partial = '';
+    _editor.text = _committed;
+  }
+
+  void _onStatus(String status) {
+    if (!mounted) return;
+    if (status == SpeechToText.doneStatus || status == SpeechToText.notListeningStatus) {
+      _segmentEnded();
+    }
+  }
+
+  void _onError(SpeechRecognitionError e) {
+    if (!mounted) return;
+    // no_match / speech_timeout are just silence — keep going.
+    final silence = e.errorMsg == 'error_no_match' || e.errorMsg == 'error_speech_timeout';
+    if (!silence) {
+      _pauseMic(note: 'Microphone stopped. Tap the mic to continue.');
+      return;
+    }
+    _segmentEnded();
+  }
+
+  /// A recognition ended (silence, time limit or result): continue unless the
+  /// guard is done or has been quiet for a while.
+  void _segmentEnded() {
+    if (!mounted) return;
+    setState(_commitPartial);
+    if (!_wantListening) return;
+    final now = DateTime.now();
+    if (now.difference(_lastSpeechAt) > _silenceLimit ||
+        now.difference(_sessionStart) > _sessionLimit) {
+      _pauseMic(
+        note: _text.isEmpty
+            ? "Didn't hear anything. Tap the mic and speak."
+            : 'Paused. Tap the mic to add more, or tap Done.',
+      );
+      return;
+    }
+    _restartTimer?.cancel();
+    _restartTimer = Timer(const Duration(milliseconds: 250), () {
+      if (mounted && _wantListening && !_speech.isListening) _listenSegment();
+    });
+  }
+
+  void _pauseMic({String? note}) {
+    _wantListening = false;
+    _restartTimer?.cancel();
+    if (_speech.isListening) unawaited(_speech.stop());
+    if (!mounted) return;
+    setState(() {
+      _commitPartial();
+      _status = _VoiceStatus.paused;
+      _note = note;
+      _editor.text = _committed;
+    });
+  }
+
+  /// Keeps corrections the guard typed while paused.
+  void _commitEdits() {
+    if (_status == _VoiceStatus.paused) _committed = _editor.text.trim();
+  }
+
+  void _startOver() {
+    _pauseMic();
+    setState(() {
+      _committed = '';
+      _partial = '';
+      _editor.clear();
+      _note = null;
+    });
+    _resume();
+  }
+
+  void _done() {
+    _commitEdits();
+    final text = _text;
+    _pauseMic();
+    DesignHaptics.success();
+    Navigator.of(context).pop(text);
   }
 
   /// Indian English when the phone has it (better for names and numbers).
@@ -131,24 +255,14 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     return null;
   }
 
-  void _onResult(SpeechRecognitionResult r) {
-    if (!mounted) return;
-    setState(() {
-      _text = r.recognizedWords;
-      if (r.finalResult) _status = _VoiceStatus.done;
-    });
-    if (r.finalResult && _text.trim().isNotEmpty) {
-      DesignHaptics.success();
-    }
-  }
-
-  void _use() => Navigator.of(context).pop(_text.trim());
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final listening = _status == _VoiceStatus.listening || _status == _VoiceStatus.starting;
-    final canUse = _text.trim().isNotEmpty && !listening;
+    final paused = _status == _VoiceStatus.paused;
+    final text = paused ? _editor.text : _text;
+    final hasText = text.trim().isNotEmpty;
+    final checks = widget.checklist?.call(text);
 
     return SafeArea(
       child: Padding(
@@ -175,50 +289,38 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
                 style: GuardTokens.captionStyle(context),
               ),
             ],
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
             Center(child: _micButton(listening)),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Text(
               switch (_status) {
                 _VoiceStatus.starting => 'Starting microphone…',
-                _VoiceStatus.listening => 'Listening… speak now',
-                _VoiceStatus.done => 'Got it. Check and tap Use.',
-                _VoiceStatus.unavailable => 'Voice input is not available on this phone.',
-                _VoiceStatus.error => _error ?? 'Tap the mic to try again.',
+                _VoiceStatus.listening => hasText
+                    ? 'Listening… take your time, pauses are fine'
+                    : 'Listening… speak now',
+                _VoiceStatus.paused => _note ?? 'Paused. Tap the mic to add more.',
+                _VoiceStatus.unavailable => 'Voice input is not available on this phone. Please type instead.',
               },
               textAlign: TextAlign.center,
               style: GuardTokens.captionStyle(context).copyWith(
                 fontWeight: FontWeight.w600,
-                color: _status == _VoiceStatus.error || _status == _VoiceStatus.unavailable
-                    ? GuardTokens.warning
-                    : null,
+                color: _status == _VoiceStatus.unavailable ? GuardTokens.warning : null,
               ),
             ),
+            if (checks != null && checks.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final e in checks.entries) _CheckPill(label: e.key, done: e.value),
+                ],
+              ),
+            ],
+            const SizedBox(height: 14),
+            _transcript(theme, paused),
             const SizedBox(height: 16),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              constraints: const BoxConstraints(minHeight: 72),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: GuardTokens.guardAccent.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
-                border: Border.all(
-                  color: GuardTokens.guardAccent.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Text(
-                _text.isEmpty ? 'Your words appear here' : _text,
-                style: TextStyle(
-                  fontSize: 17,
-                  height: 1.35,
-                  fontWeight: _text.isEmpty ? FontWeight.w500 : FontWeight.w700,
-                  color: _text.isEmpty
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
             Row(
               children: [
                 Expanded(
@@ -226,22 +328,23 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(GuardTokens.btnPrimaryH),
                     ),
-                    onPressed: listening || _status == _VoiceStatus.unavailable ? null : _start,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Speak again'),
+                    onPressed: !hasText || _status == _VoiceStatus.unavailable ? null : _startOver,
+                    icon: const Icon(Icons.restart_alt_rounded),
+                    label: const Text('Start over'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  flex: 2,
                   child: FilledButton.icon(
                     style: GuardTokens.primaryFilled(context).copyWith(
                       minimumSize: WidgetStateProperty.all(
                         const Size.fromHeight(GuardTokens.btnPrimaryH),
                       ),
                     ),
-                    onPressed: canUse ? _use : null,
+                    onPressed: hasText ? _done : null,
                     icon: const Icon(Icons.check_rounded),
-                    label: const Text('Use'),
+                    label: const Text('Done'),
                   ),
                 ),
               ],
@@ -252,53 +355,147 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     );
   }
 
-  Widget _micButton(bool listening) {
-    return GestureDetector(
-      onTap: listening
-          ? () => _speech.stop()
-          : (_status == _VoiceStatus.unavailable ? null : _start),
-      child: AnimatedBuilder(
-        animation: _pulse,
-        builder: (context, child) {
-          final scale = listening ? 1 + _pulse.value * 0.18 : 1.0;
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: GuardTokens.guardAccent.withValues(alpha: listening ? 0.16 : 0.08),
-                  ),
-                ),
-              ),
-              child!,
-            ],
-          );
-        },
-        child: Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: GuardTokens.guardAccentDeep,
-            boxShadow: [
-              BoxShadow(
-                color: GuardTokens.guardAccentDeep.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Icon(
-            listening ? Icons.stop_rounded : Icons.mic_rounded,
-            color: Colors.white,
-            size: 36,
+  /// Live words while listening; an editable box while paused to fix mistakes.
+  Widget _transcript(ThemeData theme, bool paused) {
+    final decoration = BoxDecoration(
+      color: GuardTokens.guardAccent.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(GuardTokens.radiusCard),
+      border: Border.all(color: GuardTokens.guardAccent.withValues(alpha: 0.25)),
+    );
+    const style = TextStyle(fontSize: 17, height: 1.35, fontWeight: FontWeight.w700);
+    if (paused) {
+      return Container(
+        decoration: decoration,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: TextField(
+          controller: _editor,
+          minLines: 2,
+          maxLines: 5,
+          style: style,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            hintText: 'Your words appear here — tap to correct',
           ),
         ),
+      );
+    }
+    return Container(
+      constraints: const BoxConstraints(minHeight: 72),
+      padding: const EdgeInsets.all(14),
+      decoration: decoration,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            if (_committed.isNotEmpty) TextSpan(text: '$_committed '),
+            TextSpan(
+              text: _partial,
+              style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+            if (_committed.isEmpty && _partial.isEmpty)
+              TextSpan(
+                text: 'Your words appear here',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+          ],
+        ),
+        style: style.copyWith(color: theme.colorScheme.onSurface),
+      ),
+    );
+  }
+
+  Widget _micButton(bool listening) {
+    return Semantics(
+      button: true,
+      label: listening ? 'Pause microphone' : 'Start microphone',
+      child: GestureDetector(
+        onTap: switch (_status) {
+          _VoiceStatus.listening => () => _pauseMic(),
+          _VoiceStatus.paused => _resume,
+          _ => null,
+        },
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, child) {
+            final scale = listening ? 1 + _pulse.value * 0.18 : 1.0;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 104,
+                    height: 104,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: GuardTokens.guardAccent.withValues(alpha: listening ? 0.16 : 0.08),
+                    ),
+                  ),
+                ),
+                child!,
+              ],
+            );
+          },
+          child: Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: listening ? GuardTokens.dangerBrand : GuardTokens.guardAccentDeep,
+              boxShadow: [
+                BoxShadow(
+                  color: GuardTokens.guardAccentDeep.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Icon(
+              listening ? Icons.pause_rounded : Icons.mic_rounded,
+              color: Colors.white,
+              size: 36,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "✓ Mobile" once heard, "○ Flat" while still missing.
+class _CheckPill extends StatelessWidget {
+  const _CheckPill({required this.label, required this.done});
+
+  final String label;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = done ? GuardTokens.success : GuardTokens.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: done ? GuardTokens.success.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: done ? 0.5 : 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
       ),
     );
   }

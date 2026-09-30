@@ -68,12 +68,6 @@ class _GuardDeliveryQuickPageState
 
   /// "A 25 and A 26, Amazon" → selects those flats (and the courier if named).
   Future<void> _speakFlats() async {
-    final text = await showGuardVoiceSheet(
-      context,
-      title: 'Say the flat numbers',
-      example: '"A 25 and A 26, Amazon"',
-    );
-    if (text == null || text.isEmpty || !mounted) return;
     final residents = ref.read(guardResidentsPickerProvider).valueOrNull ?? const [];
     final byLabel = <String, GuardFlatSelection>{};
     for (final r in residents) {
@@ -87,6 +81,16 @@ class _GuardDeliveryQuickPageState
         userIds: [...?existing?.userIds, r.userId],
       );
     }
+    final labels = byLabel.keys.toList();
+    final text = await showGuardVoiceSheet(
+      context,
+      title: 'Say the flat numbers',
+      example: '"A 25 and A 26, Amazon"',
+      checklist: (said) => {
+        'Flat': parseVisitorUtterance(said, knownFlatLabels: labels).flatLabels.isNotEmpty,
+      },
+    );
+    if (text == null || text.isEmpty || !mounted) return;
     final parsed = parseVisitorUtterance(text, knownFlatLabels: byLabel.keys.toList());
     final lower = text.toLowerCase();
     final brand = _brands

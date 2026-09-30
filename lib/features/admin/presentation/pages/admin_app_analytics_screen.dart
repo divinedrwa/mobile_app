@@ -1,78 +1,67 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/telemetry/telemetry_safe.dart';
-import '../../../../core/widgets/enterprise_ui.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
-import '../widgets/analytics/analytics_growth_panel.dart';
-import '../widgets/analytics/analytics_role_adoption_panel.dart';
+import '../widgets/analytics/analytics_bar_chart.dart';
+import '../widgets/analytics/analytics_blocks.dart';
 import '../widgets/analytics/analytics_tab_switcher.dart';
 
-/// Admin view of first-party mobile/web app usage with premium charts.
+/// Analytics "Overview": how the society is doing, in plain words — what needs
+/// attention, one card per area (tap to open its tab), who uses the app and
+/// which self-service features residents use. Technical app metrics are folded
+/// away at the bottom.
 class AdminAppAnalyticsScreen extends ConsumerStatefulWidget {
   const AdminAppAnalyticsScreen({super.key});
 
   @override
-  ConsumerState<AdminAppAnalyticsScreen> createState() =>
-      _AdminAppAnalyticsScreenState();
+  ConsumerState<AdminAppAnalyticsScreen> createState() => _AdminAppAnalyticsScreenState();
 }
 
 class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScreen> {
+  int _days = 30;
+
+  static const _areaRoutes = {
+    'gate': '/resident/admin-gate-analytics',
+    'complaints': '/resident/admin-complaint-analytics',
+    'water': '/resident/admin-water-analytics',
+    'dues': '/resident/admin-reconciliation',
+    'sos': '/resident/admin-sos',
+  };
+
+  static const _areaIcons = {
+    'gate': Icons.how_to_reg_rounded,
+    'complaints': Icons.report_problem_rounded,
+    'dues': Icons.account_balance_wallet_rounded,
+    'water': Icons.water_drop_rounded,
+    'app': Icons.smartphone_rounded,
+  };
+
   Future<void> _refresh() async {
-    ref.invalidate(adminAppAnalyticsDailyTrendProvider);
-    ref.invalidate(adminAppAnalyticsScreensProvider);
+    ref.invalidate(adminSocietyOverviewProvider(_days));
     ref.invalidate(adminAppAnalyticsFlowsProvider);
-    ref.invalidate(adminAppAnalyticsActionsProvider);
+    ref.invalidate(adminAppAnalyticsScreensProvider);
     ref.invalidate(adminAppAnalyticsInsightsProvider);
-    ref.invalidate(adminAppAnalyticsGrowthDashboardProvider);
-    ref.invalidate(adminAppAnalyticsRoleAdoptionProvider);
   }
 
-  int _toInt(dynamic v) {
-    if (v is int) return v;
-    if (v is num) return v.toInt();
-    return int.tryParse(v?.toString() ?? '') ?? 0;
-  }
-
-  Widget _sectionError(String title, Object error) {
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline_rounded, color: DesignColors.error, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: DesignTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: DesignColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  error.toString(),
-                  style: DesignTypography.captionSmall.copyWith(
-                    color: DesignColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  void _open(String? area) {
+    final route = _areaRoutes[area];
+    if (route == null) return;
+    if (area == 'sos') {
+      context.push(route);
+    } else {
+      context.pushReplacement(route);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final overviewAsync = ref.watch(adminSocietyOverviewProvider(_days));
+
     return Scaffold(
       backgroundColor: DesignColors.background,
       appBar: AppBar(
@@ -97,400 +86,574 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
           preferredSize: Size.fromHeight(48),
           child: Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: AnalyticsTabSwitcher(
-              currentRoute: '/resident/admin-app-analytics',
-            ),
+            child: AnalyticsTabSwitcher(currentRoute: '/resident/admin-app-analytics'),
           ),
         ),
       ),
       body: RefreshIndicator(
         color: DesignColors.primary,
         onRefresh: _refresh,
-        child: _buildBody(),
+        child: overviewAsync.when(
+          skipLoadingOnReload: true,
+          loading: () => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ShimmerWrap(
+              child: Column(
+                children: [
+                  for (final h in const [70.0, 110.0, 110.0, 110.0])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: ShimmerBox(height: h, borderRadius: DesignRadius.lg),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          error: (e, _) => ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 80),
+                child: EmptyStateWidget(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Could not load the overview',
+                  subtitle: 'Check the connection and try again.',
+                  iconColor: DesignColors.error,
+                  actionLabel: 'Retry',
+                  onAction: _refresh,
+                ),
+              ),
+            ],
+          ),
+          data: _body,
+        ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    final trendAsync = ref.watch(adminAppAnalyticsDailyTrendProvider);
-    final insightsAsync = ref.watch(adminAppAnalyticsInsightsProvider);
-    final actionsAsync = ref.watch(adminAppAnalyticsActionsProvider);
-    final flowsAsync = ref.watch(adminAppAnalyticsFlowsProvider);
-    final screensAsync = ref.watch(adminAppAnalyticsScreensProvider);
-    final growthAsync = ref.watch(adminAppAnalyticsGrowthDashboardProvider);
-    final roleAdoptionAsync = ref.watch(adminAppAnalyticsRoleAdoptionProvider);
+  Widget _body(Map<String, dynamic> o) {
+    final attention = telemetrySafeMapList(o['attention']);
+    final areas = telemetrySafeMapList(o['areas']);
+    final people = telemetrySafeMap(o['people']);
+    final roles = telemetrySafeMapList(people['roles']);
+    final features = telemetrySafeMapList(o['features']);
+    final daily = telemetrySafeMapList(o['dailyActive']);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
-        // 1) Who uses the app (role adoption)
-        roleAdoptionAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 200, borderRadius: DesignRadius.xl),
-          error: (error, _) =>
-              _sectionError('Could not load app usage by role', error),
-          data: (adoption) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnalyticsRoleAdoptionPanel(adoption: adoption),
-              const SizedBox(height: 20),
-            ],
-          ),
+        AnalyticsSectionTitle(
+          'Needs attention',
+          subtitle: 'What to act on first',
+          trailing: _PeriodChips(value: _days, onChanged: (d) => setState(() => _days = d)),
         ),
-        // 2) Business growth — below app-usage analytics
-        growthAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 220, borderRadius: DesignRadius.xl),
-          error: (error, _) =>
-              _sectionError('Could not load business growth metrics', error),
-          data: (growth) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnalyticsGrowthPanel(growth: growth),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-        const EnterpriseSectionHeader(
-          title: 'Daily active users',
-          subtitle: 'Last 14 days — how many people opened the app each day',
-        ),
-        const SizedBox(height: 8),
-        trendAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 140, borderRadius: DesignRadius.lg),
-          error: (error, _) =>
-              _sectionError('Could not load daily active users', error),
-          data: (trend) => _trendBarChart(trend),
-        ),
-        const SizedBox(height: 16),
-        insightsAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 90, borderRadius: DesignRadius.lg),
-          error: (error, _) =>
-              _sectionError('Could not load retention insights', error),
-          data: (insights) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const EnterpriseSectionHeader(
-                title: 'Retention & peak hours',
-                subtitle: 'How often people return, and when the app is busiest',
+        AnalyticsAttentionList(
+          emptyText: 'All clear — nothing needs your attention right now.',
+          items: [
+            for (final a in attention)
+              AnalyticsAttentionItem(
+                title: a['title']?.toString() ?? '',
+                detail: a['detail']?.toString(),
+                tone: switch (a['severity']) {
+                  'critical' => 'critical',
+                  'warning' => 'watch',
+                  _ => 'neutral',
+                },
+                action: _areaRoutes.containsKey(a['area'])
+                    ? IconButton(
+                        tooltip: 'Open',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(Icons.chevron_right_rounded, color: DesignColors.textSecondary),
+                        onPressed: () => _open(a['area']?.toString()),
+                      )
+                    : null,
               ),
-              const SizedBox(height: 8),
-              _insightsCard(insights),
-              const SizedBox(height: 16),
-            ],
+          ],
+        ),
+        const SizedBox(height: 20),
+        AnalyticsSectionTitle(
+          'Last $_days days',
+          subtitle: 'Tap a card for the full details',
+        ),
+        for (final a in areas)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _AreaCard(
+              area: a,
+              icon: _areaIcons[a['id']] ?? Icons.insights_rounded,
+              onTap: _areaRoutes.containsKey(a['id']) ? () => _open(a['id']?.toString()) : null,
+            ),
           ),
+        const SizedBox(height: 10),
+        AnalyticsSectionTitle(
+          'Who uses the app',
+          subtitle:
+              '${analyticsInt(people['using'])} of ${analyticsInt(people['total'])} people opened it in the last $_days days',
         ),
-        const EnterpriseSectionHeader(
-          title: 'Feature adoption',
-          subtitle: 'Which business actions residents and admins complete',
-        ),
-        const SizedBox(height: 8),
-        actionsAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 100, borderRadius: DesignRadius.lg),
-          error: (error, _) =>
-              _sectionError('Could not load feature adoption', error),
-          data: (actions) => _horizontalBars(
-            items: actions
-                .take(8)
-                .map(
-                  (a) => (
-                    label: a['label']?.toString() ?? '',
-                    value: _toInt(a['count']),
-                    trailing: '${a['adoptionPct'] ?? 0}%',
-                  ),
-                )
-                .toList(),
-            emptyLabel: 'No business actions recorded yet',
-            barColor: DesignColors.primary,
+        _PeopleCard(roles: roles),
+        const SizedBox(height: 20),
+        if (features.isNotEmpty) ...[
+          const AnalyticsSectionTitle(
+            'Features residents use',
+            subtitle: 'Higher is better — each one saves the guard or the office work',
           ),
+          for (final f in features)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _FeatureCard(feature: f),
+            ),
+          const SizedBox(height: 10),
+        ],
+        const AnalyticsSectionTitle(
+          'People using the app each day',
+          subtitle: 'Residents, guards and admins who opened it',
         ),
-        const SizedBox(height: 16),
-        const EnterpriseSectionHeader(
-          title: 'Guard flows',
-          subtitle: 'Gate workflows — volume and success rate',
+        AnalyticsBarChart(
+          height: 160,
+          color: DesignColors.primary,
+          emptyTitle: 'No app activity yet',
+          emptySubtitle: 'This fills in as people open the app.',
+          points: [
+            for (final d in daily)
+              AnalyticsBarPoint(
+                label: d['label']?.toString() ?? '',
+                value: analyticsDouble(d['count']),
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
-        flowsAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 100, borderRadius: DesignRadius.lg),
-          error: (error, _) =>
-              _sectionError('Could not load guard flow metrics', error),
-          data: (flows) => _horizontalBars(
-            items: flows
-                .take(8)
-                .map(
-                  (f) => (
-                    label: f['label']?.toString() ??
-                        (f['flowId']?.toString() ?? '').replaceAll('_', ' '),
-                    value: _toInt(f['count']),
-                    trailing: '${f['successRate'] ?? 0}% ok',
-                  ),
-                )
-                .toList(),
-            emptyLabel: 'No guard flow data yet',
-            barColor: const Color(0xFF0E7490),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const EnterpriseSectionHeader(
-          title: 'Top screens',
-          subtitle: 'Most visited screens in the app',
-        ),
-        const SizedBox(height: 8),
-        screensAsync.when(
-          loading: () =>
-              const ShimmerBox(height: 100, borderRadius: DesignRadius.lg),
-          error: (error, _) =>
-              _sectionError('Could not load top screens', error),
-          data: (screens) => _horizontalBars(
-            items: screens
-                .take(8)
-                .map(
-                  (s) => (
-                    label: _shortScreen(s['screen']?.toString() ?? ''),
-                    value: _toInt(s['views']),
-                    trailing: 'views',
-                  ),
-                )
-                .toList(),
-            emptyLabel: 'No screen views yet',
-            barColor: const Color(0xFF6366F1),
-          ),
-        ),
+        const SizedBox(height: 20),
+        const _TechnicalDetails(),
       ],
     );
   }
+}
 
-  Widget _trendBarChart(List<Map<String, dynamic>> trend) {
-    if (trend.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'Trend appears after users open the app',
-          style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
-        ),
-      );
-    }
+class _PeriodChips extends StatelessWidget {
+  const _PeriodChips({required this.value, required this.onChanged});
 
-    final spots = <BarChartGroupData>[];
-    var maxY = 1.0;
-    for (var i = 0; i < trend.length; i++) {
-      final y = _toInt(trend[i]['activeUsers']).toDouble();
-      if (y > maxY) maxY = y;
-      spots.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: y,
-              width: 12,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-              gradient: LinearGradient(
-                colors: [DesignColors.primary, DesignColors.primary.withValues(alpha: 0.65)],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final d in const [7, 30, 90])
+          ChoiceChip(
+            label: Text('${d}d'),
+            selected: value == d,
+            onSelected: (_) => onChanged(d),
+            visualDensity: VisualDensity.compact,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: value == d ? Colors.white : DesignColors.textSecondary,
             ),
-          ],
-        ),
-      );
-    }
+            selectedColor: DesignColors.primary,
+            showCheckmark: false,
+          ),
+      ],
+    );
+  }
+}
 
-    // Whole-number step, and a top that lands on a step, so axis labels never repeat.
-    final step = maxY > 4 ? (maxY / 4).ceilToDouble() : 1.0;
-    final topY = step * ((maxY * 1.15) / step).ceilToDouble();
+/// Icon, big number with its meaning, one line of context and the change vs before.
+class _AreaCard extends StatelessWidget {
+  const _AreaCard({required this.area, required this.icon, this.onTap});
 
-    return EnterprisePanel(
-      padding: const EdgeInsets.fromLTRB(8, 16, 12, 8),
-      child: SizedBox(
-        height: 160,
-        child: BarChart(
-          BarChartData(
-            maxY: topY,
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              horizontalInterval: step,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: DesignColors.border.withValues(alpha: 0.35),
-                strokeWidth: 1,
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  interval: step,
-                  getTitlesWidget: (v, _) => Text(
-                    v.toInt().toString(),
-                    style: DesignTypography.captionSmall.copyWith(
-                      color: DesignColors.textSecondary,
-                      fontSize: 10,
-                    ),
-                  ),
+  final Map<String, dynamic> area;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = area['tone']?.toString() ?? 'neutral';
+    final toneColor = tone == 'neutral' ? DesignColors.primary : analyticsToneColor(tone);
+    final change = telemetrySafeMap(area['change']);
+    final hasChange = change['label'] != null;
+    final changeColor = change['direction'] == 'flat'
+        ? DesignColors.textSecondary
+        : (change['good'] == true ? DesignColors.success : DesignColors.error);
+
+    return Material(
+      color: DesignColors.surface,
+      borderRadius: BorderRadius.circular(DesignRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(DesignRadius.lg),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(DesignRadius.lg),
+            border: Border.all(color: DesignColors.borderLight),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: toneColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(icon, color: toneColor, size: 22),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (v, _) {
-                    final i = v.toInt();
-                    if (i < 0 || i >= trend.length) return const SizedBox.shrink();
-                    final date = trend[i]['displayDate']?.toString() ?? '';
-                    final short = date.length >= 5 ? date.substring(5) : date;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        short,
-                        style: DesignTypography.captionSmall.copyWith(fontSize: 9),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barGroups: spots,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _insightsCard(Map<String, dynamic> insights) {
-    final stickiness = telemetrySafeMap(insights['stickiness']);
-    final retention = telemetrySafeMap(insights['retention']);
-    final peakHours = telemetrySafeMapList(insights['peakHours']);
-    final peak = peakHours.isNotEmpty ? peakHours.first : null;
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _insightChip('1d retention', '${retention['d1Pct'] ?? 0}%', const Color(0xFF7C3AED)),
-          _insightChip('7d retention', '${retention['d7Pct'] ?? 0}%', DesignColors.success),
-          _insightChip('30d retention', '${retention['d30Pct'] ?? 0}%', const Color(0xFF0E7490)),
-          _insightChip('WAU/MAU', '${stickiness['wauMauPct'] ?? 0}%', DesignColors.primary),
-          if (peak != null)
-            _insightChip(
-              'Peak hour',
-              '${peak['label'] ?? ''} (${peak['count'] ?? 0})',
-              DesignColors.warning,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _insightChip(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(DesignRadius.md),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: color,
-              fontSize: 15,
-            ),
-          ),
-          Text(
-            label,
-            style: DesignTypography.captionSmall.copyWith(
-              color: DesignColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _horizontalBars({
-    required List<({String label, int value, String trailing})> items,
-    required String emptyLabel,
-    required Color barColor,
-  }) {
-    if (items.isEmpty) {
-      return EnterprisePanel(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          emptyLabel,
-          style: DesignTypography.bodySmall.copyWith(color: DesignColors.textSecondary),
-        ),
-      );
-    }
-
-    final maxVal = items.fold<int>(0, (m, i) => i.value > m ? i.value : m);
-
-    return EnterprisePanel(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        children: items.map((item) {
-          final fraction = maxVal > 0 ? item.value / maxVal : 0.0;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: DesignTypography.bodySmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                     Text(
-                      '${item.value} ${item.trailing}',
+                      area['title']?.toString() ?? '',
                       style: DesignTypography.captionSmall.copyWith(
                         color: DesignColors.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: area['value']?.toString() ?? '—',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: tone == 'neutral' ? DesignColors.textPrimary : toneColor,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '  ${area['label'] ?? ''}',
+                            style: DesignTypography.bodySmall.copyWith(
+                              color: DesignColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      area['detail']?.toString() ?? '',
+                      style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
+                    ),
+                    if (hasChange) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            switch (change['direction']) {
+                              'up' => Icons.arrow_upward_rounded,
+                              'down' => Icons.arrow_downward_rounded,
+                              _ => Icons.remove_rounded,
+                            },
+                            size: 14,
+                            color: changeColor,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            change['label'].toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: changeColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: fraction,
-                    minHeight: 8,
-                    backgroundColor: DesignColors.border.withValues(alpha: 0.35),
-                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+              ),
+              if (onTap != null)
+                Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One bar per role: green = using, amber = stopped, grey = never opened.
+class _PeopleCard extends StatelessWidget {
+  const _PeopleCard({required this.roles});
+
+  final List<Map<String, dynamic>> roles;
+
+  @override
+  Widget build(BuildContext context) {
+    if (roles.isEmpty) {
+      return AnalyticsCard(
+        child: Text(
+          'No accounts yet.',
+          style: DesignTypography.bodySmall.copyWith(color: DesignColors.textTertiary),
+        ),
+      );
+    }
+    return AnalyticsCard(
+      child: Column(
+        children: [
+          for (var i = 0; i < roles.length; i++) ...[
+            if (i > 0) const SizedBox(height: 14),
+            _roleRow(roles[i]),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _legend(DesignColors.success, 'Using'),
+              _legend(DesignColors.warning, 'Stopped using'),
+              _legend(DesignColors.borderLight, 'Never opened'),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  String _shortScreen(String path) {
-    if (path.startsWith('/resident/tab/')) return path.replaceFirst('/resident/tab/', '');
-    if (path.startsWith('/guard/tab/')) return path.replaceFirst('/guard/tab/', '');
-    return path.length > 28 ? '…${path.substring(path.length - 26)}' : path;
+  Widget _roleRow(Map<String, dynamic> r) {
+    final total = analyticsInt(r['total']);
+    final using = analyticsInt(r['using']);
+    final stopped = analyticsInt(r['stopped']);
+    final never = analyticsInt(r['never']);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                r['label']?.toString() ?? '',
+                style: DesignTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: DesignColors.textPrimary,
+                ),
+              ),
+            ),
+            Text(
+              '$using of $total using',
+              style: DesignTypography.captionSmall.copyWith(
+                color: DesignColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: SizedBox(
+            height: 10,
+            child: Row(
+              children: [
+                if (using > 0) Expanded(flex: using, child: ColoredBox(color: DesignColors.success)),
+                if (stopped > 0) Expanded(flex: stopped, child: ColoredBox(color: DesignColors.warning)),
+                if (never > 0) Expanded(flex: never, child: ColoredBox(color: DesignColors.borderLight)),
+                if (total == 0) Expanded(child: ColoredBox(color: DesignColors.borderLight)),
+              ],
+            ),
+          ),
+        ),
+        if (stopped + never > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            [
+              if (stopped > 0) '$stopped stopped using it',
+              if (never > 0) '$never never opened it',
+            ].join(' · '),
+            style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _legend(Color c, String label) => Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
+            ),
+            const SizedBox(width: 4),
+            Text(label, style: DesignTypography.captionSmall.copyWith(fontSize: 11)),
+          ],
+        ),
+      );
+}
+
+/// "Invite guests in advance — 1 of 25 flats (4%)" with a progress bar and a tip.
+class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({required this.feature});
+
+  final Map<String, dynamic> feature;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = analyticsInt(feature['pct']);
+    final color = analyticsToneColor(feature['tone']?.toString() ?? 'neutral');
+    return AnalyticsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  feature['label']?.toString() ?? '',
+                  style: DesignTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: DesignColors.textPrimary,
+                  ),
+                ),
+              ),
+              AnalyticsPill('$pct%', tone: feature['tone']?.toString() ?? 'neutral'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${analyticsInt(feature['used'])} of ${analyticsInt(feature['of'])} ${feature['unit'] ?? ''}',
+            style: DesignTypography.captionSmall.copyWith(
+              color: DesignColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (pct / 100).clamp(0, 1).toDouble(),
+              minHeight: 7,
+              backgroundColor: DesignColors.borderLight,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, size: 15, color: DesignColors.textSecondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  feature['tip']?.toString() ?? '',
+                  style: DesignTypography.captionSmall.copyWith(
+                    color: DesignColors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Folded by default: guard-flow success, most-used screens and return rates.
+class _TechnicalDetails extends ConsumerWidget {
+  const _TechnicalDetails();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AnalyticsCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          leading: Icon(Icons.tune_rounded, color: DesignColors.textSecondary),
+          title: Text(
+            'Technical details',
+            style: DesignTypography.bodySmall.copyWith(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            'Guard tasks, most-used screens, return rates',
+            style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
+          ),
+          children: [_TechnicalBody()],
+        ),
+      ),
+    );
+  }
+}
+
+class _TechnicalBody extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flows = ref.watch(adminAppAnalyticsFlowsProvider).valueOrNull ?? const [];
+    final screens = ref.watch(adminAppAnalyticsScreensProvider).valueOrNull ?? const [];
+    final insights = ref.watch(adminAppAnalyticsInsightsProvider).valueOrNull ?? const {};
+    final retention = telemetrySafeMap(insights['retention']);
+    final peak = telemetrySafeMapList(insights['peakHours']);
+
+    Widget line(String label, String value) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DesignTypography.captionSmall.copyWith(color: DesignColors.textPrimary),
+                ),
+              ),
+              Text(
+                value,
+                style: DesignTypography.captionSmall.copyWith(
+                  color: DesignColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        );
+
+    Widget heading(String t) => Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 2),
+          child: Text(
+            t,
+            style: DesignTypography.captionSmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: DesignColors.textSecondary,
+            ),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        heading('Came back to the app'),
+        line('Next day', '${retention['d1Pct'] ?? 0}%'),
+        line('Within a week', '${retention['d7Pct'] ?? 0}%'),
+        line('Within a month', '${retention['d30Pct'] ?? 0}%'),
+        if (peak.isNotEmpty) line('Busiest hour', peak.first['label']?.toString() ?? '—'),
+        heading('Guard tasks'),
+        if (flows.isEmpty) line('No guard task data yet', ''),
+        for (final f in flows.take(6))
+          line(
+            f['label']?.toString() ?? (f['flowId']?.toString() ?? '').replaceAll('_', ' '),
+            '${analyticsInt(f['count'])} · ${f['successRate'] ?? 0}% ok',
+          ),
+        heading('Most-used screens'),
+        if (screens.isEmpty) line('No screen data yet', ''),
+        for (final s in screens.take(6))
+          line(_shortScreen(s['screen']?.toString() ?? ''), '${analyticsInt(s['views'])} views'),
+      ],
+    );
+  }
+
+  static String _shortScreen(String path) {
+    for (final prefix in ['/resident/tab/', '/guard/tab/', '/resident/', '/guard/']) {
+      if (path.startsWith(prefix)) return path.substring(prefix.length);
+    }
+    return path;
   }
 }

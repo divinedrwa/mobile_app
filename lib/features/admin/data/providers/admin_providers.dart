@@ -478,11 +478,6 @@ final adminAppAnalyticsSummaryProvider =
   return ref.watch(adminAppAnalyticsRepositoryProvider).getSummary(days: 30);
 });
 
-final adminAppAnalyticsDailyTrendProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return ref.watch(adminAppAnalyticsRepositoryProvider).getDailyTrend(days: 14);
-});
-
 final adminAppAnalyticsScreensProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref.watch(adminAppAnalyticsRepositoryProvider).getTopScreens();
@@ -491,11 +486,6 @@ final adminAppAnalyticsScreensProvider =
 final adminAppAnalyticsFlowsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   return ref.watch(adminAppAnalyticsRepositoryProvider).getFlows();
-});
-
-final adminAppAnalyticsActionsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return ref.watch(adminAppAnalyticsRepositoryProvider).getActions();
 });
 
 final adminAppAnalyticsErrorsProvider =
@@ -518,14 +508,10 @@ final adminAppAnalyticsUserEngagementProvider =
   return ref.watch(adminAppAnalyticsRepositoryProvider).getUserEngagement();
 });
 
-final adminAppAnalyticsGrowthDashboardProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(adminAppAnalyticsRepositoryProvider).getGrowthDashboard();
-});
-
-final adminAppAnalyticsRoleAdoptionProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(adminAppAnalyticsRepositoryProvider).getRoleAdoption();
+/// Overview tab: society summary for the chosen period (7 / 30 / 90 days).
+final adminSocietyOverviewProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, int>((ref, days) async {
+  return ref.watch(adminAppAnalyticsRepositoryProvider).getSocietyOverview(days: days);
 });
 
 // ── Financial Reconciliation ─────────────────────────────────────────

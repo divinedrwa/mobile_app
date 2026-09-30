@@ -151,6 +151,19 @@ class AdminAppAnalyticsRepository {
     }
   }
 
+  /// Plain-language society summary for the Overview tab (one consistent payload).
+  Future<Map<String, dynamic>> getSocietyOverview({int days = 30}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.appAnalyticsSocietyOverview,
+        queryParameters: {'days': days},
+      );
+      return (res.data?['overview'] as Map?)?.cast<String, dynamic>() ?? {};
+    } on DioException catch (e) {
+      throw mapDioException(e, 'Failed to load society overview');
+    }
+  }
+
   Future<Map<String, dynamic>> getRoleAdoption({int days = 30}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
