@@ -7,14 +7,14 @@ import '../../../../core/telemetry/telemetry_safe.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/shimmer_box.dart';
 import '../../data/providers/admin_providers.dart';
-import '../widgets/analytics/analytics_bar_chart.dart';
 import '../widgets/analytics/analytics_blocks.dart';
 import '../widgets/analytics/analytics_tab_switcher.dart';
+import '../widgets/analytics/overview_sections.dart';
 
-/// Analytics "Overview": how the society is doing, in plain words — what needs
-/// attention, one card per area (tap to open its tab), who uses the app and
-/// which self-service features residents use. Technical app metrics are folded
-/// away at the bottom.
+/// Analytics "Overview": everything an admin needs to run and grow the society,
+/// in plain words — what needs attention, this week, money, gate & security,
+/// service, people & app, growth and who to contact. Technical app metrics are
+/// folded away at the bottom.
 class AdminAppAnalyticsScreen extends ConsumerStatefulWidget {
   const AdminAppAnalyticsScreen({super.key});
 
@@ -25,38 +25,48 @@ class AdminAppAnalyticsScreen extends ConsumerStatefulWidget {
 class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScreen> {
   int _days = 30;
 
-  static const _areaRoutes = {
+  /// Analytics tabs are swapped in place; other admin screens open on top.
+  static const _tabRoutes = {
     'gate': '/resident/admin-gate-analytics',
     'complaints': '/resident/admin-complaint-analytics',
     'water': '/resident/admin-water-analytics',
-    'dues': '/resident/admin-reconciliation',
-    'sos': '/resident/admin-sos',
   };
-
-  static const _areaIcons = {
-    'gate': Icons.how_to_reg_rounded,
-    'complaints': Icons.report_problem_rounded,
-    'dues': Icons.account_balance_wallet_rounded,
-    'water': Icons.water_drop_rounded,
-    'app': Icons.smartphone_rounded,
+  static const _screenRoutes = {
+    'dues': '/resident/admin-outstanding-dues',
+    'sos': '/resident/admin-sos',
+    'security': '/resident/admin-patrols',
   };
 
   Future<void> _refresh() async {
+    // Recompute on the server first, then reload (the server caches for a minute).
+    try {
+      await ref.read(adminAppAnalyticsRepositoryProvider).getSocietyOverview(days: _days, fresh: true);
+    } catch (_) {}
     ref.invalidate(adminSocietyOverviewProvider(_days));
     ref.invalidate(adminAppAnalyticsFlowsProvider);
     ref.invalidate(adminAppAnalyticsScreensProvider);
-    ref.invalidate(adminAppAnalyticsInsightsProvider);
   }
 
-  void _open(String? area) {
-    final route = _areaRoutes[area];
-    if (route == null) return;
-    if (area == 'sos') {
-      context.push(route);
-    } else {
+  void _openRoute(String route) {
+    if (_tabRoutes.containsValue(route)) {
       context.pushReplacement(route);
+    } else {
+      context.push(route);
     }
   }
+
+  void _openArea(String? area) {
+    final route = _tabRoutes[area] ?? _screenRoutes[area];
+    if (route != null) _openRoute(route);
+  }
+
+  static const _listTitles = {
+    'duesPending': 'Flats with pending dues',
+    'neverOpened': 'Never opened the app',
+    'cantGetAlerts': "Can't get alerts",
+    'flatsWithoutApp': 'Flats not using the app',
+    'regularVisitors': 'Regular visitors',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +110,7 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
             child: ShimmerWrap(
               child: Column(
                 children: [
-                  for (final h in const [70.0, 110.0, 110.0, 110.0])
+                  for (final h in const [70.0, 110.0, 150.0, 110.0])
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: ShimmerBox(height: h, borderRadius: DesignRadius.lg),
@@ -132,11 +142,17 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
 
   Widget _body(Map<String, dynamic> o) {
     final attention = telemetrySafeMapList(o['attention']);
-    final areas = telemetrySafeMapList(o['areas']);
-    final people = telemetrySafeMap(o['people']);
-    final roles = telemetrySafeMapList(people['roles']);
+    final outreach = telemetrySafeMap(o['outreach']);
+    final summary = (o['summary'] as List? ?? const []).map((e) => '$e').toList();
     final features = telemetrySafeMapList(o['features']);
-    final daily = telemetrySafeMapList(o['dailyActive']);
+
+    Widget section(String title, {String? subtitle, required Widget child}) => Padding(
+          padding: const EdgeInsets.only(top: 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [AnalyticsSectionTitle(title, subtitle: subtitle), child],
+          ),
+        );
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -144,7 +160,7 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
       children: [
         AnalyticsSectionTitle(
           'Needs attention',
-          subtitle: 'What to act on first',
+          subtitle: 'Most important first — tap to act',
           trailing: _PeriodChips(value: _days, onChanged: (d) => setState(() => _days = d)),
         ),
         AnalyticsAttentionList(
@@ -159,72 +175,85 @@ class _AdminAppAnalyticsScreenState extends ConsumerState<AdminAppAnalyticsScree
                   'warning' => 'watch',
                   _ => 'neutral',
                 },
-                action: _areaRoutes.containsKey(a['area'])
-                    ? IconButton(
-                        tooltip: 'Open',
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(Icons.chevron_right_rounded, color: DesignColors.textSecondary),
-                        onPressed: () => _open(a['area']?.toString()),
-                      )
-                    : null,
+                action: _attentionAction(a, outreach),
               ),
           ],
         ),
-        const SizedBox(height: 20),
-        AnalyticsSectionTitle(
-          'Last $_days days',
-          subtitle: 'Tap a card for the full details',
+        if (summary.isNotEmpty)
+          section('This week', subtitle: 'Compared with last week', child: OverviewWeekSummary(lines: summary)),
+        section(
+          'Money',
+          subtitle: 'Collection, dues, income and spending',
+          child: OverviewMoney(money: telemetrySafeMap(o['money']), days: _days, onOpen: _openRoute),
         ),
-        for (final a in areas)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _AreaCard(
-              area: a,
-              icon: _areaIcons[a['id']] ?? Icons.insights_rounded,
-              onTap: _areaRoutes.containsKey(a['id']) ? () => _open(a['id']?.toString()) : null,
-            ),
+        section(
+          'Gate & security',
+          subtitle: 'Last $_days days',
+          child: OverviewGateSecurity(
+            gate: telemetrySafeMap(o['gate']),
+            security: telemetrySafeMap(o['security']),
+            onOpen: _openRoute,
           ),
-        const SizedBox(height: 10),
-        AnalyticsSectionTitle(
-          'Who uses the app',
-          subtitle:
-              '${analyticsInt(people['using'])} of ${analyticsInt(people['total'])} people opened it in the last $_days days',
         ),
-        _PeopleCard(roles: roles),
-        const SizedBox(height: 20),
-        if (features.isNotEmpty) ...[
-          const AnalyticsSectionTitle(
+        section(
+          'Service',
+          subtitle: 'Complaints, amenities, notices and water',
+          child: OverviewService(service: telemetrySafeMap(o['service']), water: telemetrySafeMap(o['water'])),
+        ),
+        section(
+          'People & app',
+          subtitle: 'Who uses the app, phones and app health',
+          child: OverviewPeopleApp(
+            people: telemetrySafeMap(o['people']),
+            app: telemetrySafeMap(o['app']),
+            outreach: outreach,
+            days: _days,
+          ),
+        ),
+        section(
+          'Growth',
+          subtitle: 'Flats using the app each week (last 8 weeks)',
+          child: OverviewGrowth(growth: telemetrySafeMap(o['growth'])),
+        ),
+        if (features.isNotEmpty)
+          section(
             'Features residents use',
             subtitle: 'Higher is better — each one saves the guard or the office work',
-          ),
-          for (final f in features)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _FeatureCard(feature: f),
+            child: Column(
+              children: [
+                for (final f in features)
+                  Padding(padding: const EdgeInsets.only(bottom: 10), child: _FeatureCard(feature: f)),
+              ],
             ),
-          const SizedBox(height: 10),
-        ],
-        const AnalyticsSectionTitle(
-          'People using the app each day',
-          subtitle: 'Residents, guards and admins who opened it',
-        ),
-        AnalyticsBarChart(
-          height: 160,
-          color: DesignColors.primary,
-          emptyTitle: 'No app activity yet',
-          emptySubtitle: 'This fills in as people open the app.',
-          points: [
-            for (final d in daily)
-              AnalyticsBarPoint(
-                label: d['label']?.toString() ?? '',
-                value: analyticsDouble(d['count']),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
+          ),
+        const SizedBox(height: 12),
         const _TechnicalDetails(),
       ],
     );
+  }
+
+  /// Opens the contact list for the item, or the screen that explains it.
+  Widget? _attentionAction(Map<String, dynamic> a, Map<String, dynamic> outreach) {
+    final list = a['list']?.toString();
+    final contacts = list == null ? const <Map<String, dynamic>>[] : telemetrySafeMapList(outreach[list]);
+    if (contacts.isNotEmpty) {
+      return IconButton(
+        tooltip: 'See who',
+        visualDensity: VisualDensity.compact,
+        icon: Icon(Icons.people_alt_outlined, color: DesignColors.primary),
+        onPressed: () => showOverviewContacts(context, title: _listTitles[list] ?? 'People', contacts: contacts),
+      );
+    }
+    final area = a['area']?.toString();
+    if (_tabRoutes.containsKey(area) || _screenRoutes.containsKey(area)) {
+      return IconButton(
+        tooltip: 'Open',
+        visualDensity: VisualDensity.compact,
+        icon: Icon(Icons.chevron_right_rounded, color: DesignColors.textSecondary),
+        onPressed: () => _openArea(area),
+      );
+    }
+    return null;
   }
 }
 
@@ -256,234 +285,6 @@ class _PeriodChips extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Icon, big number with its meaning, one line of context and the change vs before.
-class _AreaCard extends StatelessWidget {
-  const _AreaCard({required this.area, required this.icon, this.onTap});
-
-  final Map<String, dynamic> area;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tone = area['tone']?.toString() ?? 'neutral';
-    final toneColor = tone == 'neutral' ? DesignColors.primary : analyticsToneColor(tone);
-    final change = telemetrySafeMap(area['change']);
-    final hasChange = change['label'] != null;
-    final changeColor = change['direction'] == 'flat'
-        ? DesignColors.textSecondary
-        : (change['good'] == true ? DesignColors.success : DesignColors.error);
-
-    return Material(
-      color: DesignColors.surface,
-      borderRadius: BorderRadius.circular(DesignRadius.lg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(DesignRadius.lg),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(DesignRadius.lg),
-            border: Border.all(color: DesignColors.borderLight),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: toneColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: toneColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      area['title']?.toString() ?? '',
-                      style: DesignTypography.captionSmall.copyWith(
-                        color: DesignColors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: area['value']?.toString() ?? '—',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: tone == 'neutral' ? DesignColors.textPrimary : toneColor,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '  ${area['label'] ?? ''}',
-                            style: DesignTypography.bodySmall.copyWith(
-                              color: DesignColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      area['detail']?.toString() ?? '',
-                      style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
-                    ),
-                    if (hasChange) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            switch (change['direction']) {
-                              'up' => Icons.arrow_upward_rounded,
-                              'down' => Icons.arrow_downward_rounded,
-                              _ => Icons.remove_rounded,
-                            },
-                            size: 14,
-                            color: changeColor,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            change['label'].toString(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: changeColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (onTap != null)
-                Icon(Icons.chevron_right_rounded, color: DesignColors.textTertiary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One bar per role: green = using, amber = stopped, grey = never opened.
-class _PeopleCard extends StatelessWidget {
-  const _PeopleCard({required this.roles});
-
-  final List<Map<String, dynamic>> roles;
-
-  @override
-  Widget build(BuildContext context) {
-    if (roles.isEmpty) {
-      return AnalyticsCard(
-        child: Text(
-          'No accounts yet.',
-          style: DesignTypography.bodySmall.copyWith(color: DesignColors.textTertiary),
-        ),
-      );
-    }
-    return AnalyticsCard(
-      child: Column(
-        children: [
-          for (var i = 0; i < roles.length; i++) ...[
-            if (i > 0) const SizedBox(height: 14),
-            _roleRow(roles[i]),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _legend(DesignColors.success, 'Using'),
-              _legend(DesignColors.warning, 'Stopped using'),
-              _legend(DesignColors.borderLight, 'Never opened'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _roleRow(Map<String, dynamic> r) {
-    final total = analyticsInt(r['total']);
-    final using = analyticsInt(r['using']);
-    final stopped = analyticsInt(r['stopped']);
-    final never = analyticsInt(r['never']);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                r['label']?.toString() ?? '',
-                style: DesignTypography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: DesignColors.textPrimary,
-                ),
-              ),
-            ),
-            Text(
-              '$using of $total using',
-              style: DesignTypography.captionSmall.copyWith(
-                color: DesignColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: SizedBox(
-            height: 10,
-            child: Row(
-              children: [
-                if (using > 0) Expanded(flex: using, child: ColoredBox(color: DesignColors.success)),
-                if (stopped > 0) Expanded(flex: stopped, child: ColoredBox(color: DesignColors.warning)),
-                if (never > 0) Expanded(flex: never, child: ColoredBox(color: DesignColors.borderLight)),
-                if (total == 0) Expanded(child: ColoredBox(color: DesignColors.borderLight)),
-              ],
-            ),
-          ),
-        ),
-        if (stopped + never > 0) ...[
-          const SizedBox(height: 4),
-          Text(
-            [
-              if (stopped > 0) '$stopped stopped using it',
-              if (never > 0) '$never never opened it',
-            ].join(' · '),
-            style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _legend(Color c, String label) => Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
-            ),
-            const SizedBox(width: 4),
-            Text(label, style: DesignTypography.captionSmall.copyWith(fontSize: 11)),
-          ],
-        ),
-      );
 }
 
 /// "Invite guests in advance — 1 of 25 flats (4%)" with a progress bar and a tip.
@@ -555,7 +356,7 @@ class _FeatureCard extends StatelessWidget {
   }
 }
 
-/// Folded by default: guard-flow success, most-used screens and return rates.
+/// Folded by default: guard-task success and most-used screens.
 class _TechnicalDetails extends ConsumerWidget {
   const _TechnicalDetails();
 
@@ -574,7 +375,7 @@ class _TechnicalDetails extends ConsumerWidget {
             style: DesignTypography.bodySmall.copyWith(fontWeight: FontWeight.w700),
           ),
           subtitle: Text(
-            'Guard tasks, most-used screens, return rates',
+            'Guard tasks and most-used screens',
             style: DesignTypography.captionSmall.copyWith(color: DesignColors.textSecondary),
           ),
           children: [_TechnicalBody()],
@@ -589,9 +390,6 @@ class _TechnicalBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final flows = ref.watch(adminAppAnalyticsFlowsProvider).valueOrNull ?? const [];
     final screens = ref.watch(adminAppAnalyticsScreensProvider).valueOrNull ?? const [];
-    final insights = ref.watch(adminAppAnalyticsInsightsProvider).valueOrNull ?? const {};
-    final retention = telemetrySafeMap(insights['retention']);
-    final peak = telemetrySafeMapList(insights['peakHours']);
 
     Widget line(String label, String value) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -630,11 +428,6 @@ class _TechnicalBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        heading('Came back to the app'),
-        line('Next day', '${retention['d1Pct'] ?? 0}%'),
-        line('Within a week', '${retention['d7Pct'] ?? 0}%'),
-        line('Within a month', '${retention['d30Pct'] ?? 0}%'),
-        if (peak.isNotEmpty) line('Busiest hour', peak.first['label']?.toString() ?? '—'),
         heading('Guard tasks'),
         if (flows.isEmpty) line('No guard task data yet', ''),
         for (final f in flows.take(6))
@@ -650,10 +443,19 @@ class _TechnicalBody extends ConsumerWidget {
     );
   }
 
+  /// "/resident/community/notices" → "Community notices"; "/" → "App start".
   static String _shortScreen(String path) {
-    for (final prefix in ['/resident/tab/', '/guard/tab/', '/resident/', '/guard/']) {
-      if (path.startsWith(prefix)) return path.substring(prefix.length);
+    const named = {'/': 'App start', '/resident': 'Resident home', '/guard': 'Guard home', 'home': 'Home'};
+    if (named.containsKey(path)) return named[path]!;
+    var p = path;
+    for (final prefix in ['/resident/tab/', '/guard/tab/', '/resident/', '/guard/', '/']) {
+      if (p.startsWith(prefix)) {
+        p = p.substring(prefix.length);
+        break;
+      }
     }
-    return path;
+    final words = p.replaceAll(RegExp(r'[/_-]+'), ' ').trim();
+    if (words.isEmpty) return path;
+    return words[0].toUpperCase() + words.substring(1);
   }
 }

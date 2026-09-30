@@ -152,11 +152,12 @@ class AdminAppAnalyticsRepository {
   }
 
   /// Plain-language society summary for the Overview tab (one consistent payload).
-  Future<Map<String, dynamic>> getSocietyOverview({int days = 30}) async {
+  /// [fresh] skips the server's one-minute cache (pull to refresh).
+  Future<Map<String, dynamic>> getSocietyOverview({int days = 30, bool fresh = false}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         ApiEndpoints.appAnalyticsSocietyOverview,
-        queryParameters: {'days': days},
+        queryParameters: {'days': days, if (fresh) 'fresh': 1},
       );
       return (res.data?['overview'] as Map?)?.cast<String, dynamic>() ?? {};
     } on DioException catch (e) {

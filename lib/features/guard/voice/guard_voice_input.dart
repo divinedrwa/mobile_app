@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
@@ -74,9 +75,12 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
 
   _VoiceStatus _status = _VoiceStatus.starting;
 
-  /// Words from finished segments, and the segment being heard right now.
-  String _committed = '';
-  String _partial = '';
+  /// Text kept from before (typed corrections), plus the words of each
+  /// recognition round keyed by round number. Android often delivers a round's
+  /// final words after the next round has started, so late words still land in
+  /// their own slot instead of being dropped or doubled.
+  String _base = '';
+  final SplayTreeMap<int, String> _rounds = SplayTreeMap();
   String? _note;
 
   /// True while the guard wants the mic on (until Done, pause, or silence).
@@ -85,9 +89,26 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
   DateTime _sessionStart = DateTime.now();
   String? _locale;
   int _segment = 0;
+
+  /// Rounds up to this number were folded into [_base] and are ignored.
+  int _ignoreUpTo = 0;
+
+  /// The guard typed in the box while paused.
+  bool _editorDirty = false;
   Timer? _restartTimer;
 
-  String get _text => [_committed, _partial].where((s) => s.trim().isNotEmpty).join(' ').trim();
+  String get _text =>
+      [_base, ..._rounds.values].where((s) => s.trim().isNotEmpty).join(' ').trim();
+
+  /// Everything except the round being heard right now (shown in full colour).
+  String get _committed => [
+        _base,
+        for (final e in _rounds.entries)
+          if (e.key != _segment || !_wantListening) e.value,
+      ].where((s) => s.trim().isNotEmpty).join(' ').trim();
+
+  /// The round being heard right now (shown lighter while listening).
+  String get _partial => _wantListening ? (_rounds[_segment] ?? '') : '';
 
   @override
   void initState() {
@@ -136,41 +157,40 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     try {
       await _speech.listen(
         onResult: (r) => _onResult(r, segment),
-        localeId: _locale,
-        listenFor: const Duration(seconds: 60),
-        pauseFor: const Duration(seconds: 5),
         listenOptions: SpeechListenOptions(
+          localeId: _locale,
+          listenFor: const Duration(seconds: 60),
+          pauseFor: const Duration(seconds: 5),
           partialResults: true,
           listenMode: ListenMode.dictation,
           cancelOnError: true,
         ),
       );
     } catch (_) {
-      _segmentEnded();
+      _segmentEnded(const Duration(milliseconds: 600));
     }
   }
 
   void _onResult(SpeechRecognitionResult r, int segment) {
-    if (!mounted || segment != _segment) return;
+    if (!mounted || segment <= _ignoreUpTo) return;
     final words = r.recognizedWords.trim();
+    if (words.isEmpty) return;
     setState(() {
-      if (words.isNotEmpty) _lastSpeechAt = DateTime.now();
-      _partial = words;
-      if (r.finalResult) _commitPartial();
+      _lastSpeechAt = DateTime.now();
+      _rounds[segment] = words;
+      // Words that arrive just after pausing still show in the edit box.
+      if (_status == _VoiceStatus.paused && !_editorDirty) _editor.text = _text;
     });
-  }
-
-  void _commitPartial() {
-    if (_partial.isEmpty) return;
-    _committed = [_committed, _partial].where((s) => s.isNotEmpty).join(' ');
-    _partial = '';
-    _editor.text = _committed;
   }
 
   void _onStatus(String status) {
     if (!mounted) return;
-    if (status == SpeechToText.doneStatus || status == SpeechToText.notListeningStatus) {
-      _segmentEnded();
+    // "done" comes after the round's final words; "notListening" can come
+    // before them, so wait longer there to avoid cutting those words off.
+    if (status == SpeechToText.doneStatus) {
+      _segmentEnded(const Duration(milliseconds: 300));
+    } else if (status == SpeechToText.notListeningStatus) {
+      _segmentEnded(const Duration(milliseconds: 1200));
     }
   }
 
@@ -182,15 +202,13 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
       _pauseMic(note: 'Microphone stopped. Tap the mic to continue.');
       return;
     }
-    _segmentEnded();
+    _segmentEnded(const Duration(milliseconds: 300));
   }
 
-  /// A recognition ended (silence, time limit or result): continue unless the
-  /// guard is done or has been quiet for a while.
-  void _segmentEnded() {
-    if (!mounted) return;
-    setState(_commitPartial);
-    if (!_wantListening) return;
+  /// A recognition round ended (silence, time limit or result): start another
+  /// after [delay] unless the guard is done or has been quiet for a while.
+  void _segmentEnded(Duration delay) {
+    if (!mounted || !_wantListening) return;
     final now = DateTime.now();
     if (now.difference(_lastSpeechAt) > _silenceLimit ||
         now.difference(_sessionStart) > _sessionLimit) {
@@ -202,7 +220,7 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
       return;
     }
     _restartTimer?.cancel();
-    _restartTimer = Timer(const Duration(milliseconds: 250), () {
+    _restartTimer = Timer(delay, () {
       if (mounted && _wantListening && !_speech.isListening) _listenSegment();
     });
   }
@@ -213,24 +231,30 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     if (_speech.isListening) unawaited(_speech.stop());
     if (!mounted) return;
     setState(() {
-      _commitPartial();
       _status = _VoiceStatus.paused;
       _note = note;
-      _editor.text = _committed;
+      _editor.text = _text;
+      _editorDirty = false;
     });
   }
 
-  /// Keeps corrections the guard typed while paused.
+  /// Keeps corrections the guard typed while paused (they replace what was heard).
   void _commitEdits() {
-    if (_status == _VoiceStatus.paused) _committed = _editor.text.trim();
+    if (!_editorDirty) return;
+    _base = _editor.text.trim();
+    _rounds.clear();
+    _ignoreUpTo = _segment;
+    _editorDirty = false;
   }
 
   void _startOver() {
     _pauseMic();
     setState(() {
-      _committed = '';
-      _partial = '';
+      _base = '';
+      _rounds.clear();
+      _ignoreUpTo = _segment;
       _editor.clear();
+      _editorDirty = false;
       _note = null;
     });
     _resume();
@@ -330,7 +354,7 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
                     ),
                     onPressed: !hasText || _status == _VoiceStatus.unavailable ? null : _startOver,
                     icon: const Icon(Icons.restart_alt_rounded),
-                    label: const Text('Start over'),
+                    label: const Text('Clear', maxLines: 1),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -372,7 +396,7 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
           minLines: 2,
           maxLines: 5,
           style: style,
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) => setState(() => _editorDirty = true),
           decoration: const InputDecoration(
             border: InputBorder.none,
             hintText: 'Your words appear here — tap to correct',

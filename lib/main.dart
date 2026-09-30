@@ -168,8 +168,8 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
         if (auth.user != null) {
           AppAnalyticsService.setUserContext(auth.user!);
         }
+        // A restored session is an app open, not a sign-in — no login event.
         unawaited(AppAnalyticsService.startSession());
-        unawaited(AppAnalyticsService.logLogin());
       }
       _registerGuardDataRefresh();
       _checkAppVersion();
@@ -334,7 +334,11 @@ class _DivineAppState extends ConsumerState<DivineApp> with WidgetsBindingObserv
           AppAnalyticsService.setUserContext(next.user!);
         }
         unawaited(AppAnalyticsService.startSession());
-        unawaited(AppAnalyticsService.logLogin());
+        // Restoring a saved session goes straight from "not initialized" to
+        // signed in; only a sign-in on a ready app is a real login.
+        if (prev?.isInitialized ?? false) {
+          unawaited(AppAnalyticsService.logLogin());
+        }
         gp_theme.refreshSocietyThemeFromServer(ref);
       }
     });
