@@ -210,12 +210,15 @@ class AnalyticsAttentionList extends StatelessWidget {
 }
 
 class AnalyticsShare {
-  const AnalyticsShare(this.label, this.value, this.color, {this.meta});
+  const AnalyticsShare(this.label, this.value, this.color, {this.meta, this.valueLabel});
 
   final String label;
   final int value;
   final Color color;
   final String? meta;
+
+  /// How to show [value], e.g. "₹23,800" (defaults to the plain number).
+  final String? valueLabel;
 }
 
 /// Horizontal share bars (e.g. visitors by type, request outcomes).
@@ -252,7 +255,7 @@ class AnalyticsShareBars extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${item.value} · ${(item.value * 100 / total).round()}%',
+                              '${item.valueLabel ?? item.value} · ${(item.value * 100 / total).round()}%',
                               style: DesignTypography.captionSmall.copyWith(
                                 color: DesignColors.textSecondary,
                                 fontWeight: FontWeight.w600,

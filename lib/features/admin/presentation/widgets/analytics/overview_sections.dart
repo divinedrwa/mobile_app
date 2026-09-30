@@ -308,6 +308,8 @@ List<AnalyticsShare> _shares(List<_J> rows, List<Color> palette, {String valueKe
         analyticsInt(rows[i][valueKey]),
         palette[i % palette.length],
         meta: metaKey == null ? null : _s(rows[i][metaKey]),
+        // Money rows carry a formatted amount ("₹23,800").
+        valueLabel: rows[i]['amount']?.toString(),
       ),
   ];
 }
