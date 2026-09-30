@@ -1,8 +1,9 @@
 name: Build test APK
 
 # Manual only (Actions tab → "Build test APK" → Run workflow), so pushes don't
-# spend build minutes. Produces a debug-signed release APK for testing on phones;
-# it is not a Play Store build.
+# spend build minutes. Produces a release APK for testing on phones, signed with
+# the upload key from repository secrets when present (so each new build updates
+# the installed app instead of needing a reinstall); it is not a Play Store build.
 on:
   workflow_dispatch:
     inputs:
@@ -31,6 +32,22 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Write signing config (if secrets are set)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "No signing secrets — debug-signed build"; exit 0; fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload.jks
+          {
+            echo "storeFile=upload.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
 
       - name: Install dependencies
         run: flutter pub get
