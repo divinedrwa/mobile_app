@@ -24,6 +24,9 @@ List<GuardVisitorRow> _mergePendingWithTodayForActiveTab({
     out.add(v);
     seen.add(v.id);
   }
+  // Newest entry on top, whichever source it came from.
+  final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+  out.sort((a, b) => (b.checkInTime ?? epoch).compareTo(a.checkInTime ?? epoch));
   return out;
 }
 
