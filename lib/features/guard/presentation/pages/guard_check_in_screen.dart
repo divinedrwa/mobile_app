@@ -463,6 +463,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                     enabled: !_submitting,
                                     title: 'Say the mobile number',
                                     example: '"nine eight seven six five…"',
+                                    currentText: () => _phone.text,
                                     onText: (t) {
                                       final d = digitsFromSpeech(t);
                                       if (d.isNotEmpty) {
@@ -510,6 +511,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   suffix: GuardMicButton(
                                     enabled: !_submitting,
                                     title: "Say the visitor's name",
+                                    currentText: () => _name.text,
                                     onText: (t) => _name.text = t
                                         .split(RegExp(r'\s+'))
                                         .where((w) => w.isNotEmpty)
@@ -716,6 +718,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                         enabled: !_submitting,
                                         title: 'Say the vehicle number',
                                         example: '"M H one two A B one two three four"',
+                                        currentText: () => _vehicle.text,
                                         onText: (t) => _vehicle.text =
                                             vehicleFromText(t) ?? t.toUpperCase(),
                                       ),

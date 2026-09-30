@@ -212,6 +212,7 @@ class _GuardVehicleEntryPageState extends ConsumerState<GuardVehicleEntryPage> {
                               enabled: !_submitting,
                               title: 'Say the vehicle number',
                               example: '"K A zero one A B one two three four"',
+                              currentText: () => _vehicle.text,
                               onText: (t) => setState(
                                 () => _vehicle.text = vehicleFromText(t) ?? t.toUpperCase(),
                               ),

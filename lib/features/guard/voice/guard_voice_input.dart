@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/theme/design_haptics.dart';
 import '../ui/guard_tokens.dart';
+import 'voice_transcript.dart';
 
 /// One shared recognizer: initializing is slow, so it's done once per app run.
 final SpeechToText _speech = SpeechToText();
@@ -30,11 +31,14 @@ typedef GuardVoiceChecklist = Map<String, bool> Function(String text);
 ///
 /// [title] tells the guard what to say, e.g. "Say name, mobile and flat".
 /// [checklist] shows ticks for each detail heard so far (e.g. Mobile, Flat).
+/// [initialText] is what the field already holds: new speech is added after it
+/// (Clear starts over), and the result is the combined text.
 Future<String?> showGuardVoiceSheet(
   BuildContext context, {
   required String title,
   String? example,
   GuardVoiceChecklist? checklist,
+  String initialText = '',
 }) {
   DesignHaptics.selection();
   return showModalBottomSheet<String>(
@@ -42,16 +46,22 @@ Future<String?> showGuardVoiceSheet(
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
-    builder: (_) => _GuardVoiceSheet(title: title, example: example, checklist: checklist),
+    builder: (_) => _GuardVoiceSheet(
+      title: title,
+      example: example,
+      checklist: checklist,
+      initialText: initialText,
+    ),
   );
 }
 
 class _GuardVoiceSheet extends StatefulWidget {
-  const _GuardVoiceSheet({required this.title, this.example, this.checklist});
+  const _GuardVoiceSheet({required this.title, this.example, this.checklist, this.initialText = ''});
 
   final String title;
   final String? example;
   final GuardVoiceChecklist? checklist;
+  final String initialText;
 
   @override
   State<_GuardVoiceSheet> createState() => _GuardVoiceSheetState();
@@ -78,9 +88,11 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
   /// Text kept from before (typed corrections), plus the words of each
   /// recognition round keyed by round number. Android often delivers a round's
   /// final words after the next round has started, so late words still land in
-  /// their own slot instead of being dropped or doubled.
+  /// their own slot instead of being dropped or doubled. Within a round the
+  /// recognizer starts a fresh utterance after a pause; [VoiceTranscript] keeps
+  /// the words said before it.
   String _base = '';
-  final SplayTreeMap<int, String> _rounds = SplayTreeMap();
+  final SplayTreeMap<int, VoiceTranscript> _rounds = SplayTreeMap();
   String? _note;
 
   /// True while the guard wants the mic on (until Done, pause, or silence).
@@ -97,22 +109,27 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
   bool _editorDirty = false;
   Timer? _restartTimer;
 
-  String get _text =>
-      [_base, ..._rounds.values].where((s) => s.trim().isNotEmpty).join(' ').trim();
+  String get _text => [_base, ..._rounds.values.map((t) => t.text)]
+      .where((s) => s.trim().isNotEmpty)
+      .join(' ')
+      .trim();
 
-  /// Everything except the round being heard right now (shown in full colour).
+  /// Everything except the phrase being heard right now (shown in full colour).
   String get _committed => [
         _base,
         for (final e in _rounds.entries)
-          if (e.key != _segment || !_wantListening) e.value,
+          (e.key == _segment && _wantListening) ? e.value.settled : e.value.text,
       ].where((s) => s.trim().isNotEmpty).join(' ').trim();
 
-  /// The round being heard right now (shown lighter while listening).
-  String get _partial => _wantListening ? (_rounds[_segment] ?? '') : '';
+  /// The phrase being heard right now (shown lighter while listening).
+  String get _partial => _wantListening ? (_rounds[_segment]?.current ?? '') : '';
 
   @override
   void initState() {
     super.initState();
+    // Continue from what the field already holds instead of replacing it.
+    _base = widget.initialText.trim();
+    _editor.text = _base;
     _begin();
   }
 
@@ -177,7 +194,7 @@ class _GuardVoiceSheetState extends State<_GuardVoiceSheet>
     if (words.isEmpty) return;
     setState(() {
       _lastSpeechAt = DateTime.now();
-      _rounds[segment] = words;
+      (_rounds[segment] ??= VoiceTranscript()).add(words, isFinal: r.finalResult);
       // Words that arrive just after pausing still show in the edit box.
       if (_status == _VoiceStatus.paused && !_editorDirty) _editor.text = _text;
     });
@@ -526,6 +543,9 @@ class _CheckPill extends StatelessWidget {
 }
 
 /// Small mic button for a text field's suffix: speaks into [onText].
+///
+/// With [currentText] the sheet starts from the field's value, so speaking adds
+/// to it ("Ramesh" + "Kumar" → "Ramesh Kumar"); [onText] gets the combined text.
 class GuardMicButton extends StatelessWidget {
   const GuardMicButton({
     super.key,
@@ -533,12 +553,14 @@ class GuardMicButton extends StatelessWidget {
     required this.onText,
     this.example,
     this.enabled = true,
+    this.currentText,
   });
 
   final String title;
   final String? example;
   final bool enabled;
   final ValueChanged<String> onText;
+  final String Function()? currentText;
 
   @override
   Widget build(BuildContext context) {
@@ -547,7 +569,12 @@ class GuardMicButton extends StatelessWidget {
       onPressed: !enabled
           ? null
           : () async {
-              final text = await showGuardVoiceSheet(context, title: title, example: example);
+              final text = await showGuardVoiceSheet(
+                context,
+                title: title,
+                example: example,
+                initialText: currentText?.call() ?? '',
+              );
               if (text != null && text.isNotEmpty) onText(text);
             },
       icon: Icon(Icons.mic_none_rounded, color: GuardTokens.guardAccentDeep),
