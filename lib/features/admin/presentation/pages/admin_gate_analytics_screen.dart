@@ -268,7 +268,7 @@ class _AdminGateAnalyticsScreenState extends ConsumerState<AdminGateAnalyticsScr
             AnalyticsShare('Let in', analyticsInt(o['entries']), DesignColors.success),
             AnalyticsShare('Rejected by residents', analyticsInt(o['rejected']), DesignColors.error),
             AnalyticsShare('Expired (no answer in 12 h)', analyticsInt(o['expired']), DesignColors.warning),
-            AnalyticsShare('Left without entering', analyticsInt(o['leftWithoutEntering']), DesignColors.textTertiary),
+            AnalyticsShare('Exit marked, entry not recorded', analyticsInt(o['leftWithoutEntering']), DesignColors.textTertiary),
             AnalyticsShare('Still waiting', analyticsInt(o['waiting']), DesignColors.info),
           ],
         ),
