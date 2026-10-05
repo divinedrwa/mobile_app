@@ -28,6 +28,8 @@ class _Flat {
     required this.villaNumber,
     required this.userIds,
     required this.residentNames,
+    this.floorLabel = '',
+    this.subtitle,
   });
 
   final String villaId;
@@ -36,10 +38,18 @@ class _Flat {
   final List<String> userIds;
   final List<String> residentNames;
 
-  String get label {
+  /// Short floor name ("GF", "FF") when this tile is one floor of a multi-floor flat.
+  final String floorLabel;
+
+  /// Who lives there ("Owner", "Tenant"), shown under the label for floor tiles.
+  final String? subtitle;
+
+  String get flatLabel {
     final b = block?.trim();
     return (b != null && b.isNotEmpty) ? '$b-$villaNumber' : villaNumber;
   }
+
+  String get label => floorLabel.isEmpty ? flatLabel : '$flatLabel · $floorLabel';
 
   GuardFlatSelection toSelection() =>
       GuardFlatSelection(villaId: villaId, label: label, userIds: userIds);
@@ -58,10 +68,16 @@ class GuardFlatPicker extends StatefulWidget {
     required this.selectedUserIds,
     required this.onToggleFlat,
     this.singleSelect = false,
+    this.splitByFloor = false,
   });
 
   final List<ResidentPickerItem> residents;
   final Set<String> selectedUserIds;
+
+  /// When true, a flat whose residents live on more than one floor is listed as one tile per
+  /// floor (e.g. "A-12 · GF" for the tenant, "A-12 · FF" for the owner) so the guard can ask a
+  /// specific floor. Single-floor flats stay one tile.
+  final bool splitByFloor;
 
   /// When true, highlight a flat if any occupant is selected (visitor approval).
   final bool singleSelect;
@@ -84,33 +100,73 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
     super.dispose();
   }
 
+  _Flat _flatFor(List<ResidentPickerItem> people, {String floorLabel = '', String? subtitle}) {
+    final first = people.first;
+    return _Flat(
+      villaId: first.villaId,
+      block: first.block,
+      villaNumber: first.villaNumber,
+      userIds: [for (final p in people) p.userId],
+      residentNames: [
+        for (final p in people)
+          if (p.name.trim().isNotEmpty) p.name.trim(),
+      ],
+      floorLabel: floorLabel,
+      subtitle: subtitle,
+    );
+  }
+
   List<_Flat> _flats() {
-    final byVilla = <String, _Flat>{};
+    final byVilla = <String, List<ResidentPickerItem>>{};
     for (final r in widget.residents) {
-      final vid = r.villaId;
-      if (vid.isEmpty) continue;
-      final flat = byVilla.putIfAbsent(
-        vid,
-        () => _Flat(
-          villaId: vid,
-          block: r.block,
-          villaNumber: r.villaNumber,
-          userIds: [],
-          residentNames: [],
-        ),
-      );
-      flat.userIds.add(r.userId);
-      if (r.name.trim().isNotEmpty) flat.residentNames.add(r.name.trim());
+      if (r.villaId.isEmpty) continue;
+      byVilla.putIfAbsent(r.villaId, () => []).add(r);
     }
-    final list = byVilla.values.toList();
+
+    final list = <_Flat>[];
+    for (final people in byVilla.values) {
+      if (!widget.splitByFloor) {
+        list.add(_flatFor(people));
+        continue;
+      }
+      // Group by floor; residents with no floor assigned form their own group.
+      final byFloor = <String, List<ResidentPickerItem>>{};
+      for (final p in people) {
+        byFloor.putIfAbsent(p.unitId ?? '', () => []).add(p);
+      }
+      if (byFloor.length <= 1) {
+        list.add(_flatFor(people));
+        continue;
+      }
+      for (final group in byFloor.values) {
+        final floor = shortFloorLabel(group.first.unitLabel);
+        final types = <String>{
+          for (final p in group)
+            if (p.typeLabel.isNotEmpty) p.typeLabel,
+        };
+        list.add(
+          _flatFor(
+            group,
+            floorLabel: floor.isEmpty ? 'Other' : floor,
+            subtitle: types.isEmpty ? null : types.join(' · '),
+          ),
+        );
+      }
+    }
+
     list.sort((a, b) {
       final bc = (a.block ?? '').compareTo(b.block ?? '');
       if (bc != 0) return bc;
       // Numeric-aware where possible, else lexical.
       final an = int.tryParse(a.villaNumber);
       final bn = int.tryParse(b.villaNumber);
-      if (an != null && bn != null) return an.compareTo(bn);
-      return a.villaNumber.compareTo(b.villaNumber);
+      final vc = (an != null && bn != null)
+          ? an.compareTo(bn)
+          : a.villaNumber.compareTo(b.villaNumber);
+      if (vc != 0) return vc;
+      // Same flat: lowest floor first.
+      final fc = floorRank(a.floorLabel).compareTo(floorRank(b.floorLabel));
+      return fc != 0 ? fc : a.floorLabel.compareTo(b.floorLabel);
     });
     return list;
   }
@@ -225,6 +281,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
               final selected = _isSelected(f);
               return GuardFlatGridTile(
                 label: f.label,
+                subtitle: f.subtitle,
                 selected: selected,
                 onTap: () => widget.onToggleFlat(f.toSelection()),
               );

@@ -60,6 +60,31 @@ class VisitTarget {
       );
 }
 
+/// Turns the residents the guard selected into check-in targets: one per (flat, floor).
+///
+/// A flat can have an owner and tenants on different floors. Targeting the whole flat only reached
+/// the flat's default floor, so each floor with a selected resident is targeted explicitly. A
+/// resident with no floor assigned can only be reached directly, so they are targeted by person.
+List<VisitTarget> visitTargetsForSelection(
+  Iterable<ResidentPickerItem> residents,
+  Set<String> selectedUserIds,
+) {
+  final seen = <String>{};
+  final targets = <VisitTarget>[];
+  for (final r in residents) {
+    if (!selectedUserIds.contains(r.userId) || r.villaId.isEmpty) continue;
+    final unitId = r.unitId;
+    if (unitId != null && unitId.isNotEmpty) {
+      if (seen.add('${r.villaId}:$unitId')) {
+        targets.add(VisitTarget(villaId: r.villaId, unitId: unitId));
+      }
+    } else if (seen.add('${r.villaId}:person:${r.userId}')) {
+      targets.add(VisitTarget(villaId: r.villaId, residentUserId: r.userId));
+    }
+  }
+  return targets;
+}
+
 class GuardCheckInSubmitParams {
   GuardCheckInSubmitParams({
     required this.name,

@@ -671,6 +671,7 @@ class _GuardCheckInScreenState extends ConsumerState<GuardCheckInScreen> {
                                   }
                                   return GuardFlatPicker(
                                     residents: list,
+                                    splitByFloor: true,
                                     selectedUserIds: _selectedUserIds,
                                     onToggleFlat: (flat) =>
                                         formNotifier.toggleFlat(flat.userIds),

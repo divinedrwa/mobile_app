@@ -179,15 +179,10 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
     try {
       final allResidents =
           _ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
-      // One target per selected FLAT (villa), not per resident. The flat picker
-      // selects whole flats, so collapse to the villa: this avoids the
-      // VisitorVilla @@unique([visitorId,villaId,unitId]) collision when
-      // occupants share a unit, and targets the whole flat (the backend
-      // resolves the default unit and notifies every occupant).
-      final targets = <String>{
-        for (final r in allResidents)
-          if (state.selectedUserIds.contains(r.userId)) r.villaId,
-      }.map((vid) => VisitTarget(villaId: vid)).toList();
+      // One target per selected FLOOR of a flat (not per resident): every resident on a
+      // selected floor is asked, and occupants sharing a unit don't collide on the
+      // VisitorVilla @@unique([visitorId,villaId,unitId]) key.
+      final targets = visitTargetsForSelection(allResidents, state.selectedUserIds);
 
       final params = GuardCheckInSubmitParams(
         name: name,
@@ -239,11 +234,10 @@ class CheckInFormNotifier extends StateNotifier<CheckInFormState> {
       if (e is NetworkException) {
         final allResidents =
             _ref.read(guardResidentsPickerProvider).valueOrNull ?? [];
-        // Same whole-flat collapse as the online path (one target per villa).
-        final targets = <String>{
-          for (final r in allResidents)
-            if (state.selectedUserIds.contains(r.userId)) r.villaId,
-        }.map((vid) => VisitTarget(villaId: vid).toJson()).toList();
+        // Same targets as the online path (one per selected floor).
+        final targets = visitTargetsForSelection(allResidents, state.selectedUserIds)
+            .map((t) => t.toJson())
+            .toList();
         final clientMutationId = const Uuid().v4();
         final mutation = OfflineMutation(
           id: clientMutationId,

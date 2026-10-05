@@ -195,6 +195,18 @@ class GuardVillaApproval {
   bool get pending => !approved && !rejected;
 }
 
+/// Higher wins when floors of one flat carry different decisions: approved > pending > declined.
+int _approvalRank(String status) {
+  switch (status.trim().toUpperCase()) {
+    case 'APPROVED':
+      return 2;
+    case 'REJECTED':
+      return 0;
+    default:
+      return 1;
+  }
+}
+
 /// Visitor row from guard visitor APIs (nested `villaVisits`).
 class GuardVisitorRow {
   GuardVisitorRow({
@@ -290,12 +302,15 @@ class GuardVisitorRow {
           if (block != null && block.trim().isNotEmpty) block.trim(),
           if (n != null && n.trim().isNotEmpty) n.trim(),
         ].join('-');
-        if (n != null && n.isNotEmpty) nums.add(n);
+        // A visit sent to several floors of one flat has one entry per floor: list the flat,
+        // and each resident to call, only once.
+        if (n != null && n.isNotEmpty && !nums.contains(n)) nums.add(n);
         final users = villa is Map ? villa['users'] : null;
         if (users is List) {
           for (final u in users.whereType<Map>()) {
             final phone = u['phone']?.toString().trim() ?? '';
             if (phone.isEmpty) continue;
+            if (contacts.any((c) => c.flatLabel == label && c.phone == phone)) continue;
             contacts.add(GuardResidentContact(
               name: u['name']?.toString() ?? '',
               phone: phone,
@@ -305,7 +320,14 @@ class GuardVisitorRow {
         }
         final st = e['approvalStatus']?.toString();
         if (label.isNotEmpty && st != null && st.isNotEmpty) {
-          approvals.add(GuardVillaApproval(villaLabel: label, status: st));
+          // One decision per flat: floors of the same flat merge, and the first resident to
+          // approve counts (approved beats pending beats declined).
+          final at = approvals.indexWhere((a) => a.villaLabel == label);
+          if (at < 0) {
+            approvals.add(GuardVillaApproval(villaLabel: label, status: st));
+          } else if (_approvalRank(st) > _approvalRank(approvals[at].status)) {
+            approvals[at] = GuardVillaApproval(villaLabel: label, status: st);
+          }
         }
       }
     }
@@ -406,6 +428,38 @@ class VillaResident {
   }
 }
 
+/// Short floor name for a flat tile: "Ground floor" → "GF", "First floor" → "FF", and so on.
+/// Unknown names are returned unchanged.
+String shortFloorLabel(String? raw) {
+  final s = (raw ?? '').trim();
+  if (s.isEmpty) return '';
+  final l = s.toLowerCase();
+  if (l.startsWith('ground') || l == 'gf') return 'GF';
+  if (l.startsWith('first') || l == 'ff') return 'FF';
+  if (l.startsWith('second') || l == 'sf') return 'SF';
+  if (l.startsWith('third') || l == 'tf') return 'TF';
+  if (l.startsWith('fourth')) return '4F';
+  return s;
+}
+
+/// Lowest first: GF, FF, SF, TF, 4F, then anything else.
+int floorRank(String shortLabel) {
+  switch (shortLabel) {
+    case 'GF':
+      return 0;
+    case 'FF':
+      return 1;
+    case 'SF':
+      return 2;
+    case 'TF':
+      return 3;
+    case '4F':
+      return 4;
+    default:
+      return 9;
+  }
+}
+
 /// A single resident entry for the guard picker — one row per person.
 /// Carries enough context to build `visitTargets[{villaId, unitId, residentUserId}]`.
 class ResidentPickerItem {
@@ -443,6 +497,11 @@ class ResidentPickerItem {
     if (unitLabel != null && unitLabel!.isNotEmpty) parts.add(unitLabel!);
     return parts.join(' · ');
   }
+
+  /// e.g. "Owner", "Tenant", "Family" — empty when unknown.
+  String get typeLabel => (residentType == null || residentType!.isEmpty)
+      ? ''
+      : VillaResident._humanType(residentType!);
 
   /// Build from a [VillaPickerItem] + one of its [VillaResident] entries.
   factory ResidentPickerItem.fromVillaAndResident(
