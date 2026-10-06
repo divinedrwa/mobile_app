@@ -22,6 +22,7 @@ import '../routing/app_navigator_keys.dart';
 import '../telemetry/app_analytics_service.dart';
 import '../utils/notification_preference_storage.dart';
 import '../utils/storage_service.dart';
+import 'push_display_text.dart';
 import 'push_sync_service.dart';
 import 'web_notification.dart' as web_notif;
 
@@ -192,9 +193,17 @@ class NotificationService {
           fcmDiag('RX_FOREGROUND_WEB', 'skip display: push disabled in settings');
           return;
         }
-        final title = message.notification?.title ?? data['title'] ?? 'Notification';
-        final body = message.notification?.body ?? data['body'] ?? '';
-        web_notif.showWebNotification(title, body, data);
+        final text = resolvePushDisplayText(
+          notificationTitle: message.notification?.title,
+          notificationBody: message.notification?.body,
+          dataTitle: data['title'],
+          dataBody: data['body'],
+        );
+        if (text == null) {
+          fcmDiag('RX_FOREGROUND_WEB', 'skip display: push has no title and no body');
+          return;
+        }
+        web_notif.showWebNotification(text.title, text.body, data);
       });
 
       // Message-opened (user clicked browser notification while app was open).
@@ -566,18 +575,27 @@ class NotificationService {
       );
     }
 
-    final titleFromData = message.data['title']?.toString().trim();
-    final bodyFromData = message.data['body']?.toString().trim();
-
-    final nTitle = message.notification?.title?.trim();
-    final nBody = message.notification?.body?.trim();
-    var title = (nTitle != null && nTitle.isNotEmpty)
-        ? nTitle
-        : (titleFromData?.isNotEmpty == true ? titleFromData! : 'Notification');
-    var bodyRaw = (nBody != null && nBody.isNotEmpty)
-        ? nBody
-        : (bodyFromData ?? '');
-    var body = bodyRaw.isNotEmpty ? bodyRaw : title;
+    // A push with no words must not become a placeholder "Notification" / "Notification".
+    // (Visitor approval requests build their text from the visitor details in the data block.)
+    final hasApprovalDetails =
+        message.data['type']?.toString() == 'VISITOR_APPROVAL_REQUEST' &&
+            cleanPushText(message.data['visitorName']?.toString()).isNotEmpty;
+    final text = resolvePushDisplayText(
+      notificationTitle: message.notification?.title,
+      notificationBody: message.notification?.body,
+      dataTitle: message.data['title']?.toString(),
+      dataBody: message.data['body']?.toString(),
+    );
+    if (text == null && !hasApprovalDetails) {
+      fcmDiag(
+        'FOREGROUND_LOCAL',
+        'skip: push has no title and no body (messageId=${message.messageId}, '
+            'type=${message.data['type']})',
+      );
+      return;
+    }
+    var title = text?.title ?? AppConstants.appName;
+    var body = text?.body ?? title;
 
     if (message.data['type']?.toString() == 'VISITOR_APPROVAL_REQUEST') {
       title = _visitorApprovalTitle(message, title);
