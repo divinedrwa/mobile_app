@@ -168,7 +168,10 @@ final guardPendingParcelsProvider =
 
 final guardVillasProvider =
     FutureProvider.autoDispose<List<VillaPickerItem>>((ref) async {
-  cacheFor(ref, const Duration(hours: 1));
+  // Short: a resident or tenant just added in admin must show up here soon, and a stale list
+  // here means a visitor request that silently misses them. Offline use is covered separately by
+  // the repository's own offline cache.
+  cacheFor(ref, const Duration(minutes: 5));
   return ref.read(guardRepositoryProvider).getVillasForSociety();
 });
 
