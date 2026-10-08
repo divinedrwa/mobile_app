@@ -193,6 +193,16 @@ void main() {
       await tester.tap(find.text('A-12 · FF'));
       expect(tapped?.userIds, ['owner12']);
       expect(tapped?.villaId, 'v12');
+      expect(tapped?.unitId, 'u12ff');
+    });
+  });
+
+  group('GuardFlatSelection.key', () {
+    test('a floor and the whole flat are different selections', () {
+      const whole = GuardFlatSelection(villaId: 'v12', label: 'A-12', userIds: ['a']);
+      const floor = GuardFlatSelection(villaId: 'v12', label: 'A-12 · GF', userIds: ['a'], unitId: 'u1');
+      const otherFloor = GuardFlatSelection(villaId: 'v12', label: 'A-12 · FF', userIds: ['b'], unitId: 'u2');
+      expect({whole.key, floor.key, otherFloor.key}.length, 3);
     });
   });
 }

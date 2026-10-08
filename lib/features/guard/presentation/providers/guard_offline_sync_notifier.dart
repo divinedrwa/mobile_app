@@ -162,6 +162,7 @@ class OfflineSyncNotifier extends StateNotifier<OfflineSyncState> {
       case OfflineMutationType.parcelReceived:
         await repo.logParcelReceived(
           villaId: m.params['villaId'] as String,
+          unitId: m.params['unitId'] as String?,
           deliveryService: m.params['deliveryService'] as String,
           trackingNumber: m.params['trackingNumber'] as String?,
           senderName: m.params['senderName'] as String?,

@@ -11,6 +11,10 @@ class ParcelModel {
   final String? photo;
   final bool leftAtGate;
 
+  /// Flat the parcel is for ("A-12") and its floor ("Ground floor"), when the server sends them.
+  final String? flatLabel;
+  final String? unitLabel;
+
   ParcelModel({
     this.id,
     required this.trackingNumber,
@@ -22,6 +26,8 @@ class ParcelModel {
     this.notes,
     this.photo,
     this.leftAtGate = false,
+    this.flatLabel,
+    this.unitLabel,
   });
 
   factory ParcelModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +56,8 @@ class ParcelModel {
       notes: json['notes'] as String?,
       photo: json['photo'] as String?,
       leftAtGate: json['leftAtGate'] == true,
+      flatLabel: json['flatLabel'] as String?,
+      unitLabel: json['unitLabel'] as String?,
     );
   }
 
@@ -65,6 +73,8 @@ class ParcelModel {
       if (notes != null) 'notes': notes,
       if (photo != null) 'photo': photo,
       'leftAtGate': leftAtGate,
+      if (flatLabel != null) 'flatLabel': flatLabel,
+      if (unitLabel != null) 'unitLabel': unitLabel,
     };
   }
 }

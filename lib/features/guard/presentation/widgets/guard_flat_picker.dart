@@ -13,11 +13,18 @@ class GuardFlatSelection {
     required this.villaId,
     required this.label,
     required this.userIds,
+    this.unitId,
   });
 
   final String villaId;
   final String label;
   final List<String> userIds;
+
+  /// The floor (unit) when the guard tapped one floor of a multi-floor flat; null = the whole flat.
+  final String? unitId;
+
+  /// Identifies this choice: a flat, or one floor of a flat.
+  String get key => '$villaId:${unitId ?? ''}';
 }
 
 /// One flat (villa) grouped from the resident directory.
@@ -30,6 +37,7 @@ class _Flat {
     required this.residentNames,
     this.floorLabel = '',
     this.subtitle,
+    this.unitId,
   });
 
   final String villaId;
@@ -44,6 +52,9 @@ class _Flat {
   /// Who lives there ("Owner", "Tenant"), shown under the label for floor tiles.
   final String? subtitle;
 
+  /// The floor this tile stands for (null for a whole-flat tile).
+  final String? unitId;
+
   String get flatLabel {
     final b = block?.trim();
     return (b != null && b.isNotEmpty) ? '$b-$villaNumber' : villaNumber;
@@ -51,8 +62,12 @@ class _Flat {
 
   String get label => floorLabel.isEmpty ? flatLabel : '$flatLabel · $floorLabel';
 
-  GuardFlatSelection toSelection() =>
-      GuardFlatSelection(villaId: villaId, label: label, userIds: userIds);
+  GuardFlatSelection toSelection() => GuardFlatSelection(
+        villaId: villaId,
+        label: label,
+        userIds: userIds,
+        unitId: unitId,
+      );
 }
 
 /// Block-first, select-by-flat picker for guard flows (add visitor / delivery /
@@ -100,7 +115,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
     super.dispose();
   }
 
-  _Flat _flatFor(List<ResidentPickerItem> people, {String floorLabel = '', String? subtitle}) {
+  _Flat _flatFor(List<ResidentPickerItem> people, {String floorLabel = '', String? subtitle, String? unitId}) {
     final first = people.first;
     return _Flat(
       villaId: first.villaId,
@@ -113,6 +128,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
       ],
       floorLabel: floorLabel,
       subtitle: subtitle,
+      unitId: unitId,
     );
   }
 
@@ -149,6 +165,7 @@ class _GuardFlatPickerState extends State<GuardFlatPicker> {
             group,
             floorLabel: floor.isEmpty ? 'Other' : floor,
             subtitle: types.isEmpty ? null : types.join(' · '),
+            unitId: group.first.unitId,
           ),
         );
       }

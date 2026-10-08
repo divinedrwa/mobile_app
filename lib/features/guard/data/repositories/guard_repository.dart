@@ -582,6 +582,7 @@ class GuardRepository {
 
   Future<void> logParcelReceived({
     required String villaId,
+    String? unitId,
     String? deliveryService,
     String? trackingNumber,
     String? senderName,
@@ -593,6 +594,7 @@ class GuardRepository {
         ApiEndpoints.guardParcelReceived,
         data: {
           'villaId': villaId,
+          if (unitId != null && unitId.trim().isNotEmpty) 'unitId': unitId.trim(),
           if (deliveryService != null && deliveryService.trim().isNotEmpty)
             'deliveryService': deliveryService.trim(),
           if (trackingNumber != null && trackingNumber.trim().isNotEmpty)

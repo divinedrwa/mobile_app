@@ -41,7 +41,7 @@ class _GuardDeliveryQuickPageState
   String _brand = 'Zomato';
   // A courier can hand over parcels for several flats at once — multi-select
   // (same block-grid picker as Add Visitor); one parcel is logged per flat.
-  final Map<String, GuardFlatSelection> _selectedFlats = {}; // villaId -> flat
+  final Map<String, GuardFlatSelection> _selectedFlats = {}; // flat.key (villa + floor) -> flat
   bool _submitting = false;
 
   Set<String> get _selectedUserIds =>
@@ -58,12 +58,19 @@ class _GuardDeliveryQuickPageState
   void _onFlatTapped(GuardFlatSelection flat) {
     if (_submitting) return;
     setState(() {
-      if (_selectedFlats.containsKey(flat.villaId)) {
-        _selectedFlats.remove(flat.villaId);
+      if (_selectedFlats.containsKey(flat.key)) {
+        _selectedFlats.remove(flat.key);
       } else {
-        _selectedFlats[flat.villaId] = flat;
+        _addFlat(flat);
       }
     });
+  }
+
+  /// A whole-flat entry and a floor entry of the same flat overlap, so the newer pick replaces them.
+  void _addFlat(GuardFlatSelection flat) {
+    _selectedFlats.removeWhere((_, f) =>
+        f.villaId == flat.villaId && (flat.unitId == null || f.unitId == null));
+    _selectedFlats[flat.key] = flat;
   }
 
   /// "A 25 and A 26, Amazon" → selects those flats (and the courier if named).
@@ -99,7 +106,7 @@ class _GuardDeliveryQuickPageState
     setState(() {
       for (final label in parsed.flatLabels) {
         final flat = byLabel[label];
-        if (flat != null) _selectedFlats[flat.villaId] = flat;
+        if (flat != null) _addFlat(flat);
       }
       if (brand != null) _brand = brand.api;
     });
@@ -317,6 +324,7 @@ class _GuardDeliveryQuickPageState
                         }
                         return GuardFlatPicker(
                           residents: residents,
+                          splitByFloor: true,
                           selectedUserIds: _selectedUserIds,
                           onToggleFlat: _onFlatTapped,
                         );
@@ -480,6 +488,7 @@ class _GuardDeliveryQuickPageState
           type: OfflineMutationType.parcelReceived,
           params: {
             'villaId': flat.villaId,
+            'unitId': ?flat.unitId,
             'deliveryService': _brand,
             'trackingNumber': ?trackingNumber,
             'senderName': ?senderName,
@@ -489,6 +498,7 @@ class _GuardDeliveryQuickPageState
           online: () => ref.read(guardDeliverySubmitProvider)(
             GuardDeliverySubmitParams(
               villaId: flat.villaId,
+              unitId: flat.unitId,
               deliveryService: _brand,
               trackingNumber: trackingNumber,
               senderName: senderName,

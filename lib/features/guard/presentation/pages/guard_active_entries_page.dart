@@ -1021,6 +1021,13 @@ class _DeliveryCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 5),
+                          if (((parcel.flatLabel as String?) ?? '').isNotEmpty)
+                            _VisitorMetaLine(
+                              icon: Icons.home_outlined,
+                              text: ((parcel.unitLabel as String?) ?? '').isNotEmpty
+                                  ? 'Flat ${parcel.flatLabel} · ${parcel.unitLabel}'
+                                  : 'Flat ${parcel.flatLabel}',
+                            ),
                           if ((parcel.trackingNumber as String).trim().isNotEmpty &&
                               primaryTitle.trim() != (parcel.trackingNumber as String).trim())
                             _VisitorMetaLine(

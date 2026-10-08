@@ -116,6 +116,7 @@ final guardDeliverySubmitProvider =
               .read(guardRepositoryProvider)
               .logParcelReceived(
                 villaId: params.villaId,
+                unitId: params.unitId,
                 deliveryService: params.deliveryService,
                 trackingNumber: params.trackingNumber,
                 senderName: params.senderName,
@@ -133,6 +134,7 @@ final guardDeliverySubmitProvider =
 class GuardDeliverySubmitParams {
   GuardDeliverySubmitParams({
     required this.villaId,
+    this.unitId,
     required this.deliveryService,
     this.trackingNumber,
     this.senderName,
@@ -141,6 +143,9 @@ class GuardDeliverySubmitParams {
   });
 
   final String villaId;
+
+  /// The floor the parcel is for; null = the whole flat.
+  final String? unitId;
   final String deliveryService;
   final String? trackingNumber;
   final String? senderName;
